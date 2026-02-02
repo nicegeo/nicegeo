@@ -1,0 +1,17 @@
+# dune run
+# OCAMLPARAM: unset
+# Shared cache: enabled-except-user-rules
+# Shared cache location: /Users/eric/.cache/dune/db
+# Workspace root: /Users/eric/Documents/buildyourown/system-e-kernel
+# Auto-detected concurrency: 8
+# Dune context:
+#  { name = "default"
+#  ; kind = "default"
+#  ; profile = Dev
+#  ; merlin = true
+#  ; fdo_target_exe = None
+#  ; build_dir = In_build_dir "default"
+#  ; instrument_with = []
+#  }
+$ /Users/eric/.opam/default/bin/ocamlc.opt -config > /var/folders/fy/ckq1g5mx7ngggp3dsd5nc4780000gq/T/dune_978b72_output
+$ (cd _build/default/test && ./test_system_e_kernel.exe)
