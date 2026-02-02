@@ -1,7 +1,0 @@
-(lang dune 3.21)
-(name system-e-kernel)
-(sections (lib .) (bin ../../bin) (doc ../../doc/system-e-kernel))
-(files
- (lib (META dune-package opam))
- (bin (system-e-kernel))
- (doc (README.md)))
