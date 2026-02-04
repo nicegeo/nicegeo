@@ -1,0 +1,4 @@
+(executable
+ (public_name system-e-kernel)
+ (name main)
+ (libraries system_e_kernel))

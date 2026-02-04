@@ -1,0 +1,2 @@
+(library
+ (name system_e_kernel))
