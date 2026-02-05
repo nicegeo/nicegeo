@@ -7,8 +7,8 @@ type term =
     | App of term * term
     | Sort of int
 
-(* Maps constants to their types *)
+(* Maps constants (and free variables) to their types *)
 type environment = (string, term) Hashtbl.t
 
-(* Maps free variables to their types *)
-type localcontext = (string, term) Hashtbl.t
+(* Stack of types for bound variables: head = type of Bvar 0 (innermost binder) *)
+type localcontext = term list
