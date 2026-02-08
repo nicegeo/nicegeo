@@ -2,6 +2,7 @@
 open System_e_kernel
 open Term
 open Infer
+open Printexc
 
 let str_contains s sub =
   let n = String.length sub in
@@ -17,6 +18,7 @@ let mk_env () =
   Hashtbl.add env "Point" (Sort 0);
   Hashtbl.add env "Line" (Sort 0);
   Hashtbl.add env "p" (Const "Point");
+  Hashtbl.add env "l" (Const "Line");
   env
 
 let test_const_lookup () =
@@ -67,11 +69,27 @@ let test_const_unknown_fails () =
     assert false
   with Failure msg -> assert (str_contains msg "unknown constant")
 
+let test_infer_function_type () =
+  let env = mk_env () in 
+
+  (* environment used in test contains a variable "p" with type Point *)
+  let const_func = Lam (Const "Point", Const "p") in
+  assert ((inferType env [] const_func) = Forall (Const "Point", Const "Point"));
+
+  let identity_func = Lam (Const "Point", Bvar 0) in
+  assert ((inferType env [] identity_func) = Forall (Const "Point", Const "Point"))
+
+
 let () =
+  (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
+  turns on stack traces *)
+  record_backtrace true;
+
   test_const_lookup ();
   test_fvar_lookup ();
   test_fvar_unknown_fails ();
   test_bvar_stack ();
   test_bvar_out_of_scope_fails ();
   test_const_unknown_fails ();
+  test_infer_function_type ();
   print_endline "All inferType tests passed."
