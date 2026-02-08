@@ -77,8 +77,10 @@ let test_infer_function_type () =
   assert ((inferType env [] const_func) = Forall (Const "Point", Const "Point"));
 
   let identity_func = Lam (Const "Point", Bvar 0) in
-  assert ((inferType env [] identity_func) = Forall (Const "Point", Const "Point"))
-
+  assert ((inferType env [] identity_func) = Forall (Const "Point", Const "Point"));
+  
+  let func_returning_outer_bvar = Lam (Const "Line", Bvar 1) in
+  assert ((inferType env [Const "Point"] func_returning_outer_bvar) = Forall (Const "Line", Const "Point"))
 
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
