@@ -63,3 +63,11 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
     )
   | Forall (_domainType, _returnType) -> failwith "infer type of a forall"
   | Sort _level -> failwith "infer type of a sort"
+
+let mk_axioms_env () =
+  let env = Hashtbl.create 16 in
+  Hashtbl.add env "Point" (Sort 1);
+  Hashtbl.add env "Line" (Sort 1);
+  Hashtbl.add env "Circle" (Sort 1);
+  env
+
