@@ -131,6 +131,43 @@ let test_subst_bvar () =
   assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 0 (Sort 5) = Forall (Sort 5, Sort 5));
   assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 1 (Sort 5) = Forall (Bvar 0, Bvar 1))
 
+(* --- Dependent pair encoding via constants Exists / Exists.intro --- *)
+let type0 = Sort 0                 (* "Type" *)
+let pi (a : term) (b : term) = Forall (a, b)  (* Π (_ : a), b *)
+let app2 f x y = App (App (f, x), y)
+
+let exists_ty : term =
+  pi type0
+    (pi (pi (Bvar 0) type0)
+        type0)
+
+let exists_intro_ty : term =
+  pi type0
+    (pi (pi (Bvar 0) type0)
+      (pi (Bvar 1)
+        (pi (App (Bvar 1, Bvar 0))
+          (app2 (Const "Exists") (Bvar 3) (Bvar 2)))))
+
+let add_exists (env : environment) : unit =
+  Hashtbl.replace env "Exists" exists_ty;
+  Hashtbl.replace env "Exists.intro" exists_intro_ty
+
+let add_unit (env : environment) : unit =
+  Hashtbl.replace env "Unit" (Sort 0);
+  Hashtbl.replace env "star" (Const "Unit")
+
+let test_exists_constants_lookup () =
+  let env = mk_env () in
+  add_exists env;
+  add_unit env;
+  (* Check that the constants are registered with the expected types *)
+  assert (inferType env [] (Const "Exists") = exists_ty);
+  assert (inferType env [] (Const "Exists.intro") = exists_intro_ty);
+  (* Also sanity-check that Unit/star work in the environment *)
+  assert (inferType env [] (Const "Unit") = Sort 0);
+  assert (inferType env [] (Const "star") = Const "Unit")
+
+
 
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
@@ -146,4 +183,5 @@ let () =
   test_infer_function_type ();
   test_subst_bvar ();
   test_infer_function_application ();
+  test_exists_constants_lookup ();
   print_endline "All inferType tests passed."
