@@ -69,5 +69,18 @@ let mk_axioms_env () =
   Hashtbl.add env "Point" (Sort 1);
   Hashtbl.add env "Line" (Sort 1);
   Hashtbl.add env "Circle" (Sort 1);
+
+  Hashtbl.add env "Exists.elim" (
+    Forall (Sort 1, (* A: Type *)
+    Forall (Forall (Bvar 0, Sort 0), (* p: A -> Prop *)
+    Forall (Sort 0, (* b: Prop *)
+    Forall (App (App (Const "Exists", Bvar 2), Bvar 1), (* e: Exists A p *)
+    Forall ( (* h: Forall (a: A) (Forall (App p a) b) *)
+      Forall (Bvar 3, (* a: A *)
+      Forall (App (Bvar 3, Bvar 0), (* App p a *)
+      Bvar 3)), (* b *)
+    Bvar 2 (* b *)
+  ))))));
+
   env
 
