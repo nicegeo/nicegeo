@@ -38,10 +38,17 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
     let func_type = inferType env localCtx func in
     let inferred_arg_type = inferType env localCtx arg in
     match func_type with
-      | Forall (expected_arg_type, return_type) -> 
+      | Forall (expected_arg_type, _) -> 
           (* TODO: replace this with checking for definitional equality *)
         if expected_arg_type = inferred_arg_type then
-          return_type
+          (* TODO: check if this is the right approach *)
+          (* The actual type of the function application can depend on the
+          actual value that it's evaluated at so we need to evaluate the function
+          at the given argument and then infer the type of the result *)
+          let body_evaluated_at_arg = match func with
+            | Lam (_, body) -> subst_bvar body 0 arg
+            | _ -> failwith "Expected Lam for `func` in application" in
+          inferType env localCtx body_evaluated_at_arg
         else failwith "Function called with invalid argument type"
       | _ -> failwith "Tried to apply non-function to an argument"
   )

@@ -80,7 +80,10 @@ let test_infer_function_type () =
   assert ((inferType env [] identity_func) = Forall (Const "Point", Const "Point"));
   
   let func_returning_outer_bvar = Lam (Const "Line", Bvar 1) in
-  assert ((inferType env [Const "Point"] func_returning_outer_bvar) = Forall (Const "Line", Const "Point"))
+  assert ((inferType env [Const "Point"] func_returning_outer_bvar) = Forall (Const "Line", Const "Point"));
+
+  let generic_func = Lam (Sort 1, Lam (Bvar 0, Bvar 0)) in
+  assert ((inferType env [] generic_func) = Forall (Sort 1, Forall (Bvar 0, Bvar 0)))
 
 let test_infer_function_application () =
   let env = mk_env () in
@@ -101,6 +104,15 @@ let test_infer_function_application () =
   try
     ignore (inferType env [] application_with_non_function);
     assert false
+  with Failure msg -> assert (str_contains msg "apply non-function to an argument");
+
+  (* TODO: should Point be a Sort 0 or a Sort 1? *)
+  (* Corresponds to the expression `(fun (A: Type) -> fun (x: A) -> x) Point` which
+  is equivalent to `fun (x: Point) -> x`, so we'd expect a type of `Point => Point` *)
+  let generic_func_app = App (Lam (Sort 0, Lam (Bvar 0, Bvar 0)), Const "Point") in
+  let inferred_type = inferType env [] generic_func_app in
+  assert (inferred_type = Forall (Const "Point", Const "Point"))
+
 let test_subst_bvar () = 
   assert (subst_bvar (Const "Point") 0 (Const "p") = Const "Point");
   assert (subst_bvar (Bvar 0) 0 (Const "p") = Const "p");
@@ -115,9 +127,9 @@ let test_subst_bvar () =
   (* Forall isn't really a function (in the sense that we can't apply it to an expression) 
   but the domain type does act as a bound variable similarly to a Lam, meaning that we
   need to recursively substitute in a Forall as well using the same rules*)
-  assert (subst_bvar (Forall (Bvar 0, Bvar 0)) 0 (Const "Point") = Forall (Const "Point", Bvar 0));
-  assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 0 (Const "Point") = Forall (Const "Point", Const "Point"));
-  assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 1 (Const "Point") = Forall (Bvar 0, Bvar 1))
+  assert (subst_bvar (Forall (Bvar 0, Bvar 0)) 0 (Sort 5) = Forall (Sort 5, Bvar 0));
+  assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 0 (Sort 5) = Forall (Sort 5, Sort 5));
+  assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 1 (Sort 5) = Forall (Bvar 0, Bvar 1))
 
 
 let () =
