@@ -82,7 +82,7 @@ let mk_axioms_env () =
     Bvar 2 (* b *)
   ))))));
 
-    (* Length (magnitude) axioms *)
+  (* Length (magnitude) axioms *)
   Hashtbl.add env "Len" (Sort 1);
   (* There exists a total order "Lt" on Len *)
   Hashtbl.add env "Lt" (Forall (Const "Len", Forall (Const "Len", Sort 0)));
