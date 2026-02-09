@@ -82,6 +82,27 @@ let test_infer_function_type () =
   let func_returning_outer_bvar = Lam (Const "Line", Bvar 1) in
   assert ((inferType env [Const "Point"] func_returning_outer_bvar) = Forall (Const "Line", Const "Point"))
 
+let test_infer_function_application () =
+  let env = mk_env () in
+  
+  (* TODO: try testing case where return type is computed from argument? *)
+
+  let const_func_app = App (Lam (Const "Point", Const "p"), Bvar 0) in
+  assert ((inferType env [Const "Point"] const_func_app) = Const "Point");
+  try
+    ignore (inferType env [Const "Line"] const_func_app);
+    assert false
+  with Failure msg -> assert (str_contains msg "invalid argument type");
+
+  let identity_func_app = App (Lam (Const "Point", Bvar 0), Const "p") in
+  assert ((inferType env [] identity_func_app) = Const "Point");
+
+  let application_with_non_function = App (Const "p", Const "l") in
+  try
+    ignore (inferType env [] application_with_non_function);
+    assert false
+  with Failure msg -> assert (str_contains msg "apply non-function to an argument")
+
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
   turns on stack traces *)
@@ -94,4 +115,5 @@ let () =
   test_bvar_out_of_scope_fails ();
   test_const_unknown_fails ();
   test_infer_function_type ();
+  test_infer_function_application ();
   print_endline "All inferType tests passed."

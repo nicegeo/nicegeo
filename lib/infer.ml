@@ -6,6 +6,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
       try Hashtbl.find env name
       with Not_found -> failwith ("unknown constant: " ^ name)
     )
+  (* TODO: remove this (since we're not using free variables anymore) *)
   | Fvar name -> (
       try Hashtbl.find env name
       with Not_found -> failwith ("unknown free variable: " ^ name)
@@ -15,7 +16,17 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
       with Failure _ | Invalid_argument _ ->
         failwith ("bound variable index out of scope: " ^ string_of_int idx)
     )
-  | App (_func, _arg) -> failwith "infer type of function application"
+  | App (func, arg) -> (
+    let func_type = inferType env localCtx func in
+    let inferred_arg_type = inferType env localCtx arg in
+    match func_type with
+      | Forall (expected_arg_type, return_type) -> 
+          (* TODO: replace this with checking for definitional equality *)
+        if expected_arg_type = inferred_arg_type then
+          return_type
+        else failwith "Function called with invalid argument type"
+      | _ -> failwith "Tried to apply non-function to an argument"
+  )
   | Lam (domainType, body) -> (
       (* Put the type of the argument at the start of the local context list so
       that Bvar 0 in the lambda points to domainType, and Bvar 1 (for example)
