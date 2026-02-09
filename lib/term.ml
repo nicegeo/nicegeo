@@ -11,4 +11,4 @@ type term =
 type environment = (string, term) Hashtbl.t
 
 (* Stack of types for bound variables: head = type of Bvar 0 (innermost binder) *)
-type localcontext = term list
+type localcontext = (string, term) Hashtbl.t

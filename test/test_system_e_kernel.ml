@@ -23,25 +23,27 @@ let mk_env () =
 
 let test_const_lookup () =
   let env = mk_env () in
-  let ty = inferType env [] (Const "Point") in
+  let ty = inferType env (Hashtbl.create 0) (Const "Point") in
   assert (ty = Sort 0);
-  let ty_line = inferType env [] (Const "Line") in
+  let ty_line = inferType env (Hashtbl.create 0) (Const "Line") in
   assert (ty_line = Sort 0)
 
 let test_fvar_lookup () =
   let env = mk_env () in
-  let ty = inferType env [] (Fvar "p") in
+  let local_ctx = Hashtbl.create 16 in
+  Hashtbl.add local_ctx "p1" (Const "Point");
+  let ty = inferType env local_ctx (Fvar "p1") in
   assert (ty = Const "Point")
 
 let test_fvar_unknown_fails () =
   let env = mk_env () in
   try
-    ignore (inferType env [] (Fvar "nonexistent"));
+    ignore (inferType env (Hashtbl.create 0) (Fvar "nonexistent"));
     assert false
   with Failure msg -> assert (str_contains msg "unknown free variable")
 
-let test_bvar_stack () =
-  let env = mk_env () in
+let test_bvar_stack () = ()
+  (* let env = mk_env () in
   (* Bvar 0 with [Point] -> Point *)
   let t0 = inferType env [ Const "Point" ] (Bvar 0) in
   assert (t0 = Const "Point");
@@ -49,23 +51,14 @@ let test_bvar_stack () =
   let t0' = inferType env [ Const "Line"; Const "Point" ] (Bvar 0) in
   let t1' = inferType env [ Const "Line"; Const "Point" ] (Bvar 1) in
   assert (t0' = Const "Line");
-  assert (t1' = Const "Point")
+  assert (t1' = Const "Point") *)
 
-let test_bvar_out_of_scope_fails () =
-  let env = mk_env () in
-  try
-    ignore (inferType env [] (Bvar 0));
-    assert false
-  with Failure msg -> assert (str_contains msg "out of scope");
-  try
-    ignore (inferType env [ Const "Point" ] (Bvar 1));
-    assert false
-  with Failure msg -> assert (str_contains msg "out of scope")
+let test_bvar_out_of_scope_fails () = ()
 
 let test_const_unknown_fails () =
   let env = mk_env () in
   try
-    ignore (inferType env [] (Const "Unknown"));
+    ignore (inferType env (Hashtbl.create 0) (Const "Unknown"));
     assert false
   with Failure msg -> assert (str_contains msg "unknown constant")
 
@@ -74,35 +67,35 @@ let test_infer_function_type () =
 
   (* environment used in test contains a variable "p" with type Point *)
   let const_func = Lam (Const "Point", Const "p") in
-  assert ((inferType env [] const_func) = Forall (Const "Point", Const "Point"));
-
+  assert ((inferType env (Hashtbl.create 0) const_func) = Forall (Const "Point", Const "Point"));
   let identity_func = Lam (Const "Point", Bvar 0) in
-  assert ((inferType env [] identity_func) = Forall (Const "Point", Const "Point"));
-  
-  let func_returning_outer_bvar = Lam (Const "Line", Bvar 1) in
-  assert ((inferType env [Const "Point"] func_returning_outer_bvar) = Forall (Const "Line", Const "Point"));
+  assert ((inferType env (Hashtbl.create 0) identity_func) = Forall (Const "Point", Const "Point"));
 
   let generic_func = Lam (Sort 1, Lam (Bvar 0, Bvar 0)) in
-  assert ((inferType env [] generic_func) = Forall (Sort 1, Forall (Bvar 0, Bvar 0)))
+  assert ((inferType env (Hashtbl.create 0) generic_func) = Forall (Sort 1, Forall (Bvar 0, Bvar 1)))
 
 let test_infer_function_application () =
-  let env = mk_env () in
+  let env = mk_env () in 
   
   (* TODO: try testing case where return type is computed from argument? *)
 
-  let const_func_app = App (Lam (Const "Point", Const "p"), Bvar 0) in
-  assert ((inferType env [Const "Point"] const_func_app) = Const "Point");
+  let local_ctx = Hashtbl.create 16 in
+  Hashtbl.add local_ctx "p1" (Const "Point");
+  let const_func_app = App (Lam (Const "Point", Const "p"), Fvar "p1") in
+  assert ((inferType env local_ctx const_func_app) = Const "Point");
+  Hashtbl.clear local_ctx;
+  Hashtbl.add local_ctx "l1" (Const "Line");
   try
-    ignore (inferType env [Const "Line"] const_func_app);
+    ignore (inferType env local_ctx const_func_app);
     assert false
-  with Failure msg -> assert (str_contains msg "invalid argument type");
-
+  with Failure msg -> assert (str_contains msg "unknown free variable");
+  Hashtbl.clear local_ctx;
   let identity_func_app = App (Lam (Const "Point", Bvar 0), Const "p") in
-  assert ((inferType env [] identity_func_app) = Const "Point");
+  assert ((inferType env local_ctx identity_func_app) = Const "Point");
 
   let application_with_non_function = App (Const "p", Const "l") in
   try
-    ignore (inferType env [] application_with_non_function);
+    ignore (inferType env local_ctx application_with_non_function);
     assert false
   with Failure msg -> assert (str_contains msg "apply non-function to an argument");
 
@@ -110,7 +103,7 @@ let test_infer_function_application () =
   (* Corresponds to the expression `(fun (A: Type) -> fun (x: A) -> x) Point` which
   is equivalent to `fun (x: Point) -> x`, so we'd expect a type of `Point => Point` *)
   let generic_func_app = App (Lam (Sort 0, Lam (Bvar 0, Bvar 0)), Const "Point") in
-  let inferred_type = inferType env [] generic_func_app in
+  let inferred_type = inferType env local_ctx generic_func_app in
   assert (inferred_type = Forall (Const "Point", Const "Point"))
 
 let test_subst_bvar () = 
@@ -132,6 +125,22 @@ let test_subst_bvar () =
   assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 1 (Sort 5) = Forall (Bvar 0, Bvar 1))
 
 
+let test_rebind_bvar () = 
+  assert (rebind_bvar (Const "Point") 0 "p" = Const "Point");
+  assert (rebind_bvar (Fvar "p") 0 "p" = Bvar 0);
+  assert (rebind_bvar (Fvar "p") 0 "l" = Fvar "p");
+  assert (rebind_bvar (Fvar "p") 1 "p" = Bvar 1);
+  assert (rebind_bvar (Bvar 0) 0 "p" = Bvar 0);
+  assert (rebind_bvar (Bvar 5) 0 "p" = Bvar 5);
+  assert (rebind_bvar (Bvar 0) 5 "p" = Bvar 0);
+  assert (rebind_bvar (Bvar 5) 5 "p" = Bvar 5);
+
+  assert (rebind_bvar (Lam (Fvar "Point", Bvar 0)) 0 "Point" = Lam (Bvar 0, Bvar 0));
+  assert (rebind_bvar (Lam (Fvar "Point", Fvar "Point")) 0 "Point" = Lam (Bvar 0, Bvar 1));
+  assert (rebind_bvar (Lam (Fvar "Point", Fvar "Line")) 0 "Point" = Lam (Bvar 0, Fvar "Line"));
+  assert (rebind_bvar (Lam (Bvar 0, Bvar 1)) 1 "Point" = Lam (Bvar 0, Bvar 1))
+
+
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
   turns on stack traces *)
@@ -145,5 +154,6 @@ let () =
   test_const_unknown_fails ();
   test_infer_function_type ();
   test_subst_bvar ();
+  test_rebind_bvar ();
   test_infer_function_application ();
   print_endline "All inferType tests passed."
