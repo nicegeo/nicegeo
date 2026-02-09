@@ -64,6 +64,25 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
   | Forall (_domainType, _returnType) -> failwith "infer type of a forall"
   | Sort _level -> failwith "infer type of a sort"
 
+let type0 = Sort 0                 (* "Type" *)
+let pi (a : term) (b : term) = Forall (a, b)  (* Π (_ : a), b *)
+let app2 f x y = App (App (f, x), y)
+let exists_ty : term =
+  pi type0
+    (pi (pi (Bvar 0) type0)   (* B : A -> Type *)
+        type0)                (* Exists A B : Type *)
+let exists_intro_ty : term =
+  pi type0
+    (pi (pi (Bvar 0) type0)          (* B : A -> Type *)
+      (pi (Bvar 1)                   (* a : A   (A is Bvar 1 here) *)
+        (pi (App (Bvar 1, Bvar 0))   (* b : B a *)
+          (app2 (Const "Exists") (Bvar 3) (Bvar 2)))))  (* Exists A B *)
+
+let add_exists (env : environment) : unit =
+  Hashtbl.replace env "Exists" exists_ty;
+  Hashtbl.replace env "Exists.intro" exists_intro_ty
+
+
 let mk_axioms_env () =
   let env = Hashtbl.create 16 in
   Hashtbl.add env "Point" (Sort 1);
