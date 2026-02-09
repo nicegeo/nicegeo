@@ -131,6 +131,11 @@ let test_subst_bvar () =
   assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 0 (Sort 5) = Forall (Sort 5, Sort 5));
   assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 1 (Sort 5) = Forall (Bvar 0, Bvar 1))
 
+let test_app_multiarg () =
+  let t = application_multiple_arguments (Const "f") [Const "a"; Const "b"; Const "c"] in
+  let expected = App (App (App (Const "f", Const "a"), Const "b"), Const "c") in
+  assert (t = expected)
+
 
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
@@ -146,4 +151,5 @@ let () =
   test_infer_function_type ();
   test_subst_bvar ();
   test_infer_function_application ();
+  test_app_multiarg ();
   print_endline "All inferType tests passed."

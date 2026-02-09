@@ -64,6 +64,14 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
   | Forall (_domainType, _returnType) -> failwith "infer type of a forall"
   | Sort _level -> failwith "infer type of a sort"
 
+(* Create an expression where func is applied to all arguments in order *)
+(* Ex: f a b c -> App(App (App (f, a), b), c) *)
+let application_multiple_arguments (func: term) (args: term list): term = 
+  List.fold_left
+    (fun application_so_far first_arg -> App (application_so_far, first_arg))
+    func
+    args
+
 let mk_axioms_env () =
   let env = Hashtbl.create 16 in
   Hashtbl.add env "Point" (Sort 1);
@@ -82,5 +90,17 @@ let mk_axioms_env () =
     Bvar 2 (* b *)
   ))))));
 
+  Hashtbl.add env "Eq" (
+    Forall (Const "Type",
+      (Forall (Bvar 0, Forall (Bvar 1, Const "Prop")))
+    )
+  );
+  Hashtbl.add env "Eq.intro" (
+    Forall (Const "Type", 
+      Forall (Bvar 0,
+        application_multiple_arguments (Const "Eq") [Bvar 1; Bvar 0; Bvar 0]
+      )
+    )
+  );
   env
 
