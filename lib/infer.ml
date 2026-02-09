@@ -1,5 +1,23 @@
 open Term
 
+(* Substitute the bound variable at index `bvar_idx` (relative to the top level
+term, so what would have been at index `bvar_idx` in the localcontext stack for
+the original term) with the provided value `bvar_val` in the term `t`*)
+let rec subst_bvar (t: term) (bvar_idx: int) (bvar_val: term) : term = 
+  match t with
+    | Const _ | Sort _ | Fvar _ -> t
+    | Bvar idx -> if bvar_idx = idx then bvar_val else Bvar idx
+    | Lam (domain_type, body) -> 
+        (* Add 1 to bvar_idx to account for the fact that a Lam introduces a bound
+        variable *)
+        Lam (subst_bvar domain_type bvar_idx bvar_val, subst_bvar body (bvar_idx + 1) bvar_val)
+    | Forall (domain_type, ret_type) ->
+        Forall (subst_bvar domain_type bvar_idx bvar_val, subst_bvar ret_type (bvar_idx + 1) bvar_val)
+    | App (func, arg) -> 
+        let func_subst = subst_bvar func bvar_idx bvar_val in
+        let arg_subst = subst_bvar arg bvar_idx bvar_val in
+        App (func_subst, arg_subst)
+
 let rec inferType (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
   | Const name -> (

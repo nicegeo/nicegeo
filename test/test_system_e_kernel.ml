@@ -101,7 +101,24 @@ let test_infer_function_application () =
   try
     ignore (inferType env [] application_with_non_function);
     assert false
-  with Failure msg -> assert (str_contains msg "apply non-function to an argument")
+let test_subst_bvar () = 
+  assert (subst_bvar (Const "Point") 0 (Const "p") = Const "Point");
+  assert (subst_bvar (Bvar 0) 0 (Const "p") = Const "p");
+  assert (subst_bvar (Bvar 0) 1 (Const "l") = Bvar 0);
+  assert (subst_bvar (Bvar 0) 0 (Bvar 5) = Bvar 5);
+  (* The inner Bvar 0 refers to the argument to the Lam, so Bvar 0 for the topmost
+  expression is Bvar 1 from the point of view of the inner expression *)
+  assert (subst_bvar (Lam (Bvar 0, Bvar 0)) 0 (Const "Point") = Lam (Const "Point", Bvar 0));
+  assert (subst_bvar (Lam (Bvar 0, Bvar 1)) 0 (Const "Point") = Lam (Const "Point", Const "Point"));
+  assert (subst_bvar (Lam (Bvar 0, Bvar 1)) 1 (Const "Point") = Lam (Bvar 0, Bvar 1));
+
+  (* Forall isn't really a function (in the sense that we can't apply it to an expression) 
+  but the domain type does act as a bound variable similarly to a Lam, meaning that we
+  need to recursively substitute in a Forall as well using the same rules*)
+  assert (subst_bvar (Forall (Bvar 0, Bvar 0)) 0 (Const "Point") = Forall (Const "Point", Bvar 0));
+  assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 0 (Const "Point") = Forall (Const "Point", Const "Point"));
+  assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 1 (Const "Point") = Forall (Bvar 0, Bvar 1))
+
 
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
@@ -115,5 +132,6 @@ let () =
   test_bvar_out_of_scope_fails ();
   test_const_unknown_fails ();
   test_infer_function_type ();
+  test_subst_bvar ();
   test_infer_function_application ();
   print_endline "All inferType tests passed."
