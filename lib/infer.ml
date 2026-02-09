@@ -39,6 +39,19 @@ let gen_new_fvar_name () : string =
   incr fvar_counter;
   name
 
+let rec term_to_string (t : term) : string =
+  match t with
+  | Const name -> "Const " ^ name
+  | Sort level -> "Sort " ^ string_of_int level
+  | Fvar name -> "Fvar " ^ name
+  | Bvar idx -> "Bvar " ^ string_of_int idx
+  | Lam (dom, body) -> "Lam (" ^ term_to_string dom ^ ", " ^ term_to_string body ^ ")"
+  | Forall (dom, body) -> "Forall (" ^ term_to_string dom ^ ", " ^ term_to_string body ^ ")"
+  | App (f, a) -> "App (" ^ term_to_string f ^ ", " ^ term_to_string a ^ ")"
+
+let context_to_string (ctx : localcontext) : string =
+  Hashtbl.fold (fun k v acc -> acc ^ k ^ " : " ^ term_to_string v ^ "\n") ctx ""
+
 let rec inferType (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
   | Const name -> (
@@ -64,7 +77,25 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
           actual value that it's evaluated at so we need to substitute the arg
           for any bvars referring to this arg in the return_type. *)
           subst_bvar return_type 0 arg
-        else failwith "Function called with invalid argument type"
+        else 
+          let msg = 
+            Printf.sprintf 
+              "Function called with invalid argument type.\n\
+               Local Context:\n%s\n\
+               Term: %s\n\
+               Func: %s\n\
+               Arg: %s\n\n\
+               Expected Arg Type: %s\n\
+               Inferred Arg Type: %s\n"
+              (context_to_string localCtx)
+              (term_to_string t)
+              (term_to_string func)
+              (term_to_string arg)
+              (term_to_string expected_arg_type)
+              (term_to_string inferred_arg_type)
+          in
+          print_endline msg;
+          failwith "Function called with invalid argument type"
       | _ -> failwith "Tried to apply non-function to an argument"
   )
   | Lam (domainType, body) -> (
@@ -110,12 +141,14 @@ let mk_axioms_env () =
 
   (* TODO: should Const "Type" be replaced with Sort 1 or something like that? *)
   Hashtbl.add env "Eq" (
-    Forall (Const "Type",
+    Forall (Sort 1,
       (Forall (Bvar 0, Forall (Bvar 1, Const "Prop")))
     )
   );
+  (* Eq: (A: Type) -> a: A -> b: A -> Prop *)
+
   Hashtbl.add env "Eq.intro" (
-    Forall (Const "Type", 
+    Forall (Sort 1, 
       Forall (Bvar 0,
         application_multiple_arguments (Const "Eq") [Bvar 1; Bvar 0; Bvar 0]
       )
@@ -123,7 +156,7 @@ let mk_axioms_env () =
   );
 
   Hashtbl.add env "Eq.elim" (
-    Forall (Const "Type", (* A: Type *)
+    Forall (Sort 1, (* A: Type *)
     Forall (Bvar 0, (* a: A *)
     Forall (Forall (Bvar 1, Const "Prop"), (* motive: A -> Prop *)
     Forall (App (Bvar 0, Bvar 1), (* refl: motive a *)
@@ -137,3 +170,6 @@ let mk_axioms_env () =
   );
   env
 
+(* 
+Eq.elim A a (fun (b: A) -> b=a) (Eq.intro A a : a=a) b (h: Eq A a b) : b = a
+*)
