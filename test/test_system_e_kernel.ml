@@ -208,6 +208,48 @@ let test_rebind_bvar () =
   assert (rebind_bvar (Lam (Bvar 0, Bvar 1)) 1 "Point" = Lam (Bvar 0, Bvar 1))
 
 
+(* These two tests are made my AI so can remove or change them completely if wanted *)
+let test_axioms_sanity () =
+  let env = mk_axioms_env () in
+  (* Base types are Sort 1 *)
+  assert (inferType env [] (Const "Len") = Sort 1);
+  assert (inferType env [] (Const "Point") = Sort 1);
+  (* Zero is an element of Len *)
+  assert (inferType env [] (Const "Zero") = Const "Len");
+  (* Lt and Add have the right top-level shape *)
+  assert (inferType env [] (Const "Lt") =
+    Forall (Const "Len", Forall (Const "Len", Sort 0)));
+  assert (inferType env [] (Const "Add") =
+    Forall (Const "Len", Forall (Const "Len", Const "Len")));
+  (* AddZero is exact enough to check de Bruijn encoding *)
+  assert (inferType env [] (Const "AddZero") =
+    Forall (Const "Len",
+      App (App (App (Const "Eq", Const "Len"),
+        App (App (Const "Add", Const "Zero"), Bvar 0)),
+        Bvar 0)))
+
+let test_axioms_app () =
+  let env = mk_axioms_env () in
+  (* Lt Zero Zero : Prop *)
+  assert (inferType env [] (App (App (Const "Lt", Const "Zero"), Const "Zero")) = Sort 0);
+  (* Add Zero Zero : Len *)
+  assert (inferType env [] (App (App (Const "Add", Const "Zero"), Const "Zero")) = Const "Len");
+  (* LtTrans applied to 3 Len args gives Lt a b -> Lt b c -> Lt a c *)
+  Hashtbl.add env "a" (Const "Len");
+  Hashtbl.add env "b" (Const "Len");
+  Hashtbl.add env "c" (Const "Len");
+  let ty = inferType env [] (App (App (App (Const "LtTrans", Fvar "a"), Fvar "b"), Fvar "c") ) in
+  assert (ty =
+    Forall (App (App (Const "Lt", Fvar "a"), Fvar "b"),
+    Forall (App (App (Const "Lt", Fvar "b"), Fvar "c"),
+    App (App (Const "Lt", Fvar "a"), Fvar "c"))));
+  (* Type mismatch: Lt applied to a Point should fail *)
+  Hashtbl.add env "p" (Const "Point");
+  try
+    ignore (inferType env [] (App (Const "Lt", Fvar "p")));
+    assert false
+  with Failure _ -> ()
+
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
   turns on stack traces *)
@@ -225,4 +267,6 @@ let () =
   test_app_multiarg ();
   test_empty_constants ();
   test_and_constants ();
+  test_axioms_sanity ();
+  test_axioms_app ();
   print_endline "All inferType tests passed."

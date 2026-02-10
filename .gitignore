@@ -29,6 +29,7 @@ src/dune_rules/setup.ml
 nix/profiles/
 result*
 start/dune
+flake*
 
 .claude/
 

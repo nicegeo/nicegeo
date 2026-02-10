@@ -204,5 +204,82 @@ let mk_axioms_env () =
       App (Bvar 3, Bvar 1)
     ))))))
   );
+  
+  (* Length (magnitude) axioms *)
+  Hashtbl.add env "Len" (Sort 1);
+  (* There exists a total order "Lt" on Len *)
+  Hashtbl.add env "Lt" (Forall (Const "Len", Forall (Const "Len", Sort 0)));
+  Hashtbl.add env "LtTrans" (
+    Forall (Const "Len", (* a : Len -> *)
+    Forall (Const "Len", (* b : Len -> *)
+    Forall (Const "Len", (* c : Len -> *)
+    Forall (App (App (Const "Lt", Bvar 2), Bvar 1), (* Lt a b -> *)
+    Forall (App (App (Const "Lt", Bvar 2), Bvar 1), (* Lt b c -> *)
+    (App (App (Const "Lt", Bvar 4), Bvar 2)) (*Lt a c *)
+  ))))));
+  Hashtbl.add env "LtTricot" (
+    Forall (Const "Len", (* a : Len -> *)
+    Forall (Const "Len", (* b : Len -> *)
+    (App (App (Const "Or", (*Lt a b \/ *)
+      App (App (Const "Lt", Bvar 1), Bvar 0)),
+      (App (App (Const "Or", (* Lt b a \/ Eq Len a b *)
+        App (App (Const "Lt", Bvar 0), Bvar 1)),
+        App (App (App (Const "Eq", Const "Len"), Bvar 1), Bvar 0)
+      ))
+    ))
+  )));
+  (* There exists an element zero of len that is the least of sort len *)
+  Hashtbl.add env "Zero" (Const "Len");
+  Hashtbl.add env "ZeroLeast" (
+    Forall (Const "Len", (* a : Len -> *)
+    App (App (Const "Or", (*Lt Zero a \/ Eq Len Zero a *)
+      App (App (Const "Lt", Const "Zero"), Bvar 0)),
+      App (App (App (Const "Eq", Const "Len"), Const "Zero"), Bvar 0))
+    )
+  );
+  (* There is an operation Add on Len which is commutative and associative *)
+  Hashtbl.add env "Add" (Forall (Const "Len", Forall (Const "Len", Const "Len")));
+  Hashtbl.add env "AddComm" (
+    Forall (Const "Len", (* a : Len -> *)
+    Forall (Const "Len", (* b : Len -> *)
+    (App (App (App (Const "Eq", Const "Len"), (* Add a b = Add b a *)
+      App (App (Const "Add", Bvar 1), Bvar 0)),
+      App (App (Const "Add", Bvar 0), Bvar 1)
+    ))
+  )));
+  Hashtbl.add env "AddAssoc" (
+    Forall (Const "Len", (* a : Len -> *)
+    Forall (Const "Len", (* b : Len -> *)
+    Forall (Const "Len", (* c : Len -> *)
+    (App (App (App (Const "Eq", Const "Len"), (* Add (Add a b) c = Add a (Add b c) *)
+      App (App (Const "Add",
+        App (App (Const "Add", Bvar 2), Bvar 1)), (* Add a b *)
+        Bvar 0 (* c *)
+      )),
+      App (App (Const "Add",
+        Bvar 2), (* a *)
+        App (App (Const "Add", Bvar 1), Bvar 0) (* Add b c *)
+      )
+    ))
+  ))));
+  Hashtbl.add env "AddZero" (
+    Forall (Const "Len", (* a : Len -> *)
+    (App (App (App (Const "Eq", Const "Len"), (* Eq Len (Add Zero a) a*)
+      App (App (Const "Add", Const "Zero"), Bvar 0)),
+      Bvar 0
+    )) 
+  ));
+  Hashtbl.add env "LtAdd" (
+    Forall (Const "Len", (* a : Len -> *)
+    Forall (Const "Len", (* b : Len -> *)
+    Forall (Const "Len", (* c : Len -> *)
+    Forall (App (App (Const "Lt", Bvar 2), Bvar 1), (* Lt a b -> *)
+    (App (App (Const "Lt", (* Lt (Add a c) (Add b c) *)
+      App (App (Const "Add", Bvar 3), Bvar 1)), (* note that we increment the indices *)
+      App (App (Const "Add", Bvar 2), Bvar 1)
+    ))
+  )))));
+  Hashtbl.add env "Length" (Forall (Const "Point", Forall (Const "Point", Const "Len")));
+  
   env
 
