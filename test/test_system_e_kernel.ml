@@ -186,6 +186,11 @@ let test_subst_bvar () =
   assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 0 (Sort 5) = Forall (Sort 5, Sort 5));
   assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 1 (Sort 5) = Forall (Bvar 0, Bvar 1))
 
+let test_app_multiarg () =
+  let t = application_multiple_arguments (Const "f") [Const "a"; Const "b"; Const "c"] in
+  let expected = App (App (App (Const "f", Const "a"), Const "b"), Const "c") in
+  assert (t = expected)
+
 
 let test_rebind_bvar () = 
   assert (rebind_bvar (Const "Point") 0 "p" = Const "Point");
@@ -217,6 +222,7 @@ let () =
   test_subst_bvar ();
   test_rebind_bvar ();
   test_infer_function_application ();
+  test_app_multiarg ();
   test_empty_constants ();
   test_and_constants ();
   print_endline "All inferType tests passed."

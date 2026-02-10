@@ -110,6 +110,14 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
     )
   | Sort level -> Sort (level + 1)
 
+(* Create an expression where func is applied to all arguments in order *)
+(* Ex: f a b c -> App(App (App (f, a), b), c) *)
+let application_multiple_arguments (func: term) (args: term list): term = 
+  List.fold_left
+    (fun application_so_far first_arg -> App (application_so_far, first_arg))
+    func
+    args
+
 let mk_axioms_env () =
   let env = Hashtbl.create 16 in
   (* Built-in geometric types *)
@@ -170,5 +178,31 @@ let mk_axioms_env () =
                   Bvar 3)),                  (* b *)
               Bvar 2))))));                  (* result: b *)
 
+  Hashtbl.add env "Eq" (
+    Forall (Sort 1,
+      (Forall (Bvar 0, Forall (Bvar 1, Sort 0)))
+    )
+  );
+  Hashtbl.add env "Eq.intro" (
+    Forall (Sort 1, 
+      Forall (Bvar 0,
+        application_multiple_arguments (Const "Eq") [Bvar 1; Bvar 0; Bvar 0]
+      )
+    )
+  );
+
+  Hashtbl.add env "Eq.elim" (
+    Forall (Sort 1, (* A: Type *)
+    Forall (Bvar 0, (* a: A *)
+    Forall (Forall (Bvar 1, Sort 0), (* motive: A -> Prop *)
+    Forall (App (Bvar 0, Bvar 1), (* refl: motive a *)
+    Forall (Bvar 3, (* b: A *)
+    Forall (
+      (* eq: Eq A a b *)
+      application_multiple_arguments (Const "Eq") [Bvar 4; Bvar 3; Bvar 0], 
+      (* motive b *)
+      App (Bvar 3, Bvar 1)
+    ))))))
+  );
   env
 
