@@ -107,5 +107,22 @@ let mk_axioms_env () =
   in
   Hashtbl.add env "And.elim" and_elim_type;
 
+  (* Exists.elim from main branch:
+     (A : Type) -> (p : A -> Prop) -> (b : Prop) ->
+     (e : Exists A p) ->
+     (h : Forall (a : A), p a -> b) ->
+     b
+  *)
+  Hashtbl.add env "Exists.elim"
+    (Forall (Sort 1,                         (* A : Type *)
+      Forall (Forall (Bvar 0, Sort 0),       (* p : A -> Prop *)
+        Forall (Sort 0,                      (* b : Prop *)
+          Forall (App (App (Const "Exists", Bvar 2), Bvar 1),  (* e : Exists A p *)
+            Forall (
+              Forall (Bvar 3,                (* a : A *)
+                Forall (App (Bvar 4, Bvar 0), (* p a *)
+                  Bvar 3)),                  (* b *)
+              Bvar 2))))));                  (* result: b *)
+
   env
 
