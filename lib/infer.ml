@@ -88,5 +88,6 @@ let mk_axioms_env () =
   Hashtbl.add env "Point" (Sort 1);
   Hashtbl.add env "Line" (Sort 1);
   Hashtbl.add env "Circle" (Sort 1);
+  add_exists env;
   env
 
