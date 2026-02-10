@@ -42,19 +42,6 @@ let test_fvar_unknown_fails () =
     assert false
   with Failure msg -> assert (str_contains msg "unknown free variable")
 
-let test_bvar_stack () = ()
-  (* let env = mk_env () in
-  (* Bvar 0 with [Point] -> Point *)
-  let t0 = inferType env [ Const "Point" ] (Bvar 0) in
-  assert (t0 = Const "Point");
-  (* Bvar 0 = head, Bvar 1 = second; [Line; Point] -> Bvar 0: Line, Bvar 1: Point *)
-  let t0' = inferType env [ Const "Line"; Const "Point" ] (Bvar 0) in
-  let t1' = inferType env [ Const "Line"; Const "Point" ] (Bvar 1) in
-  assert (t0' = Const "Line");
-  assert (t1' = Const "Point") *)
-
-let test_bvar_out_of_scope_fails () = ()
-
 let test_const_unknown_fails () =
   let env = mk_env () in
   try
@@ -196,8 +183,6 @@ let () =
   test_const_lookup ();
   test_fvar_lookup ();
   test_fvar_unknown_fails ();
-  test_bvar_stack ();
-  test_bvar_out_of_scope_fails ();
   test_const_unknown_fails ();
   test_infer_function_type ();
   test_infer_forall ();
