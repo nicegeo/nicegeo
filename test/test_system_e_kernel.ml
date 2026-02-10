@@ -197,14 +197,14 @@ let test_eq_symm () =
     Lam (Bvar 0, (* a: A *)
     Lam (Bvar 1, (* b: A *)
     Lam (eq (Bvar 2) (Bvar 1) (Bvar 0), (* eq_ab: Eq a b *)
-      App (Const "Eq.elim", application_multiple_arguments (Const "Eq.elim") [
+      application_multiple_arguments (Const "Eq.elim") [
         Bvar 3; (* A: Type *)
         Bvar 2; (* a: A *)
         (Lam (Bvar 3, eq (Bvar 4) (Bvar 0) (Bvar 3))); (* motive: A -> Prop *)
         App (App (Const "Eq.intro", (Bvar 3)), (Bvar 2)); (* refl: motive a *)
         Bvar 1; (* b: A *)
         Bvar 0 (* eq_ab: Eq a b *)
-      ])
+      ]
     )))) in
   assert (inferType env local_ctx eq_symm_term = eq_symm_type)
 

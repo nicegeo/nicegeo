@@ -137,7 +137,21 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
         )
         | (Sort _, _) -> failwith "Return type of a Forall must be a sort"
         | (_, Sort _) -> failwith "Domain type of a Forall must be a sort"
-        | _ -> failwith "Domain and return types of a Forall must be sorts"
+        | _ -> 
+          let msg = 
+            Printf.sprintf 
+              "Domain and return types of a Forall must be sorts.\n\
+               Local Context:\n%s\n\
+               Term: %s\n\
+               Domain Type Sort: %s\n\
+               Return Type Sort: %s\n\n"
+              (context_to_string localCtx)
+              (term_to_string t)
+              (term_to_string domainTypeType)
+              (term_to_string returnTypeType)
+          in
+          print_endline msg;
+          failwith "Domain and return types of a Forall must be sorts"
     )
   | Sort level -> Sort (level + 1)
 
@@ -170,7 +184,7 @@ let mk_axioms_env () =
   (* TODO: should Const "Type" be replaced with Sort 1 or something like that? *)
   Hashtbl.add env "Eq" (
     Forall (Sort 1,
-      (Forall (Bvar 0, Forall (Bvar 1, Const "Prop")))
+      (Forall (Bvar 0, Forall (Bvar 1, Sort 0)))
     )
   );
   (* Eq: (A: Type) -> a: A -> b: A -> Prop *)
@@ -186,7 +200,7 @@ let mk_axioms_env () =
   Hashtbl.add env "Eq.elim" (
     Forall (Sort 1, (* A: Type *)
     Forall (Bvar 0, (* a: A *)
-    Forall (Forall (Bvar 1, Const "Prop"), (* motive: A -> Prop *)
+    Forall (Forall (Bvar 1, Sort 0), (* motive: A -> Prop *)
     Forall (App (Bvar 0, Bvar 1), (* refl: motive a *)
     Forall (Bvar 3, (* b: A *)
     Forall (
