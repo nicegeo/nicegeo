@@ -88,7 +88,26 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
       let rebound_type = rebind_bvar ret_type 0 new_fvar_name in
       Forall (domainType, rebound_type)
     )
-  | Forall (_domainType, _returnType) -> Sort 0 (* todo: soundness, consider the universes of domainType, returnType. cap at Sort 2? *)
+  | Forall (domainType, returnType) -> (
+      let domainTypeType = inferType env localCtx domainType in
+      let returnTypeType = 
+        let new_fvar_name = gen_new_fvar_name () in
+        let newLocalCtx = 
+          let t = Hashtbl.copy localCtx in
+          Hashtbl.replace t new_fvar_name domainType;
+          t
+        in
+        let substed_return_type = subst_bvar returnType 0 (Fvar new_fvar_name) in
+        inferType env newLocalCtx substed_return_type in
+      match (domainTypeType, returnTypeType) with
+        | (Sort u, Sort v) -> (
+          if v = 0 then Sort 0  (* Prop is impredicative *)
+          else Sort (max u v)
+        )
+        | (Sort _, _) -> failwith "Return type of a Forall must be a sort"
+        | (_, Sort _) -> failwith "Domain type of a Forall must be a sort"
+        | _ -> failwith "Domain and return types of a Forall must be sorts"
+    )
   | Sort level -> Sort (level + 1)
 
 let mk_axioms_env () =
