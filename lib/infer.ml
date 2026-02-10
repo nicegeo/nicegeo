@@ -18,6 +18,11 @@ let rec subst_bvar (t: term) (bvar_idx: int) (bvar_val: term) : term =
         let arg_subst = subst_bvar arg bvar_idx bvar_val in
         App (func_subst, arg_subst)
 
+(* In the term t, converts a free variable fvar_name to a bound variable with index 
+bvar_idx relative to the top level. Replaces all `FVar fvar_name` references with the
+appropriate `Bvar idx` reference. This will return a term that by itself will have 
+out-of-bounds Bvar references, so it should be placed in an appropriate Lam/Forall 
+to be valid. *)
 let rec rebind_bvar (t: term) (bvar_idx: int) (fvar_name: string) : term = 
   match t with
     | Const _ | Sort _  | Bvar _ -> t
@@ -100,17 +105,40 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
   )
   | Lam (domainType, body) -> (
       let new_fvar_name = gen_new_fvar_name () in
+      (* add mapping new_fvar_name -> domainType to localCtx in recursive call *)
+      (* this is fine because domainType won't have any unresolved BVars *)
       let newLocalCtx = 
         let t = Hashtbl.copy localCtx in
         Hashtbl.replace t new_fvar_name domainType;
         t
       in
+      (* replace bound variable with new free variable *)
       let substed_term = subst_bvar body 0 (Fvar new_fvar_name) in
       let ret_type = inferType env newLocalCtx substed_term in
+      (* replace the free variable with bound variable *)
       let rebound_type = rebind_bvar ret_type 0 new_fvar_name in
       Forall (domainType, rebound_type)
     )
-  | Forall (_domainType, _returnType) -> Sort 0
+  | Forall (domainType, returnType) -> (
+      let domainTypeType = inferType env localCtx domainType in
+      let returnTypeType = 
+        let new_fvar_name = gen_new_fvar_name () in
+        let newLocalCtx = 
+          let t = Hashtbl.copy localCtx in
+          Hashtbl.replace t new_fvar_name domainType;
+          t
+        in
+        let substed_return_type = subst_bvar returnType 0 (Fvar new_fvar_name) in
+        inferType env newLocalCtx substed_return_type in
+      match (domainTypeType, returnTypeType) with
+        | (Sort u, Sort v) -> (
+          if v = 0 then Sort 0  (* Prop is impredicative *)
+          else Sort (max u v)
+        )
+        | (Sort _, _) -> failwith "Return type of a Forall must be a sort"
+        | (_, Sort _) -> failwith "Domain type of a Forall must be a sort"
+        | _ -> failwith "Domain and return types of a Forall must be sorts"
+    )
   | Sort level -> Sort (level + 1)
 
 (* Create an expression where func is applied to all arguments in order *)

@@ -15,8 +15,8 @@ let str_contains s sub =
 
 let mk_env () =
   let env = Hashtbl.create 16 in
-  Hashtbl.add env "Point" (Sort 0);
-  Hashtbl.add env "Line" (Sort 0);
+  Hashtbl.add env "Point" (Sort 1);
+  Hashtbl.add env "Line" (Sort 1);
   Hashtbl.add env "p" (Const "Point");
   Hashtbl.add env "l" (Const "Line");
   env
@@ -24,9 +24,9 @@ let mk_env () =
 let test_const_lookup () =
   let env = mk_env () in
   let ty = inferType env (Hashtbl.create 0) (Const "Point") in
-  assert (ty = Sort 0);
+  assert (ty = Sort 1);
   let ty_line = inferType env (Hashtbl.create 0) (Const "Line") in
-  assert (ty_line = Sort 0)
+  assert (ty_line = Sort 1)
 
 let test_fvar_lookup () =
   let env = mk_env () in
@@ -41,19 +41,6 @@ let test_fvar_unknown_fails () =
     ignore (inferType env (Hashtbl.create 0) (Fvar "nonexistent"));
     assert false
   with Failure msg -> assert (str_contains msg "unknown free variable")
-
-let test_bvar_stack () = ()
-  (* let env = mk_env () in
-  (* Bvar 0 with [Point] -> Point *)
-  let t0 = inferType env [ Const "Point" ] (Bvar 0) in
-  assert (t0 = Const "Point");
-  (* Bvar 0 = head, Bvar 1 = second; [Line; Point] -> Bvar 0: Line, Bvar 1: Point *)
-  let t0' = inferType env [ Const "Line"; Const "Point" ] (Bvar 0) in
-  let t1' = inferType env [ Const "Line"; Const "Point" ] (Bvar 1) in
-  assert (t0' = Const "Line");
-  assert (t1' = Const "Point") *)
-
-let test_bvar_out_of_scope_fails () = ()
 
 let test_const_unknown_fails () =
   let env = mk_env () in
@@ -73,6 +60,53 @@ let test_infer_function_type () =
 
   let generic_func = Lam (Sort 1, Lam (Bvar 0, Bvar 0)) in
   assert ((inferType env (Hashtbl.create 0) generic_func) = Forall (Sort 1, Forall (Bvar 0, Bvar 1)))
+
+let test_infer_forall () = 
+  let env = mk_env () in 
+
+  (* functions Point -> Point should be Type *)
+  let forall_term = Forall (Const "Point", Const "Point") in
+  assert ((inferType env (Hashtbl.create 0) forall_term) = Sort 1);
+
+  (* fun T: Type => (fun (t: T) => t) *)
+  let generic_func = Lam (Sort 1, Lam (Bvar 0, Bvar 0)) in
+  let generic_func_type = inferType env (Hashtbl.create 0) generic_func in
+  assert (generic_func_type = Forall (Sort 1, Forall (Bvar 0, Bvar 1)));
+  (* (T: Type) -> (T -> T) should be Type 1 (= Sort 2) *)
+  let generic_func_type_type = inferType env (Hashtbl.create 0) generic_func_type in
+  assert (generic_func_type_type = Sort 2);
+
+  (* predicate *)
+  let predicate = Forall (Const "Point", Sort 0) in
+  Hashtbl.add env "IsRed" predicate;
+  (* for all points p, p isRed -> p isRed *)
+  let pred_forall = Forall (Const "Point", Forall (App (Const "IsRed", Bvar 0), App (Const "IsRed", Bvar 1))) in
+  (* the forall statement is a Prop by impredicativity *)
+  assert ((inferType env (Hashtbl.create 0) pred_forall) = Sort 0);
+  let bigger_pred_forall = Forall (Sort 67, App (Const "IsRed", Const "p")) in
+  assert ((inferType env (Hashtbl.create 0) bigger_pred_forall) = Sort 0);
+  (* not a prop, something like fun (p: Point) => p=p like what you might see as a motive in eliminators *)
+  let motive = Forall (Const "Point", Sort 0) in
+  (* (Point -> Prop) : Type *)
+  assert ((inferType env (Hashtbl.create 0) motive) = Sort 1);
+
+  (* failure cases *)
+  let return_type_not_sort = Forall (Const "Point", Const "p") in
+  assert (try
+    ignore (inferType env (Hashtbl.create 0) return_type_not_sort);
+    false  
+  with Failure msg -> str_contains msg "Return type of a Forall must be a sort");
+  let domain_type_not_sort = Forall (Const "p", App (Const "IsRed", Const "p")) in
+  assert (try
+    ignore (inferType env (Hashtbl.create 0) domain_type_not_sort);
+    false  
+  with Failure msg -> str_contains msg "Domain type of a Forall must be a sort");
+  let domain_and_return_type_not_sort = Forall (Const "p", Const "p") in
+  assert (try
+    ignore (inferType env (Hashtbl.create 0) domain_and_return_type_not_sort);
+    false  
+  with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts")
+
 
 let test_infer_function_application () =
   let env = mk_env () in 
@@ -102,7 +136,7 @@ let test_infer_function_application () =
   (* TODO: should Point be a Sort 0 or a Sort 1? *)
   (* Corresponds to the expression `(fun (A: Type) -> fun (x: A) -> x) Point` which
   is equivalent to `fun (x: Point) -> x`, so we'd expect a type of `Point => Point` *)
-  let generic_func_app = App (Lam (Sort 0, Lam (Bvar 0, Bvar 0)), Const "Point") in
+  let generic_func_app = App (Lam (Sort 1, Lam (Bvar 0, Bvar 0)), Const "Point") in
   let inferred_type = inferType env local_ctx generic_func_app in
   assert (inferred_type = Forall (Const "Point", Const "Point"))
 
@@ -182,10 +216,9 @@ let () =
   test_const_lookup ();
   test_fvar_lookup ();
   test_fvar_unknown_fails ();
-  test_bvar_stack ();
-  test_bvar_out_of_scope_fails ();
   test_const_unknown_fails ();
   test_infer_function_type ();
+  test_infer_forall ();
   test_subst_bvar ();
   test_rebind_bvar ();
   test_infer_function_application ();
