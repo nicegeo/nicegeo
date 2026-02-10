@@ -99,9 +99,9 @@ let mk_axioms_env () =
     Forall (Const "Len", (* b : Len -> *)
     (App (App (Const "Or", (*Lt a b \/ *)
       App (App (Const "Lt", Bvar 1), Bvar 0)),
-      (App (App (Const "Or", (* Lt b a \/ Eq a b *)
+      (App (App (Const "Or", (* Lt b a \/ Eq Len a b *)
         App (App (Const "Lt", Bvar 0), Bvar 1)),
-        App (App (Const "Eq", Bvar 1), Bvar 0)
+        App (App (App (Const "Eq", Const "Len"), Bvar 1), Bvar 0)
       ))
     ))
   )));
@@ -109,9 +109,9 @@ let mk_axioms_env () =
   Hashtbl.add env "Zero" (Const "Len");
   Hashtbl.add env "ZeroLeast" (
     Forall (Const "Len", (* a : Len -> *)
-    App (App (Const "Or", (*Lt Zero a \/ Eq Zero a *)
+    App (App (Const "Or", (*Lt Zero a \/ Eq Len Zero a *)
       App (App (Const "Lt", Const "Zero"), Bvar 0)),
-      App (App (Const "Eq", Const "Zero"), Bvar 0))
+      App (App (App (Const "Eq", Const "Len"), Const "Zero"), Bvar 0))
     )
   );
   (* There is an operation Add on Len which is commutative and associative *)
@@ -119,7 +119,7 @@ let mk_axioms_env () =
   Hashtbl.add env "AddComm" (
     Forall (Const "Len", (* a : Len -> *)
     Forall (Const "Len", (* b : Len -> *)
-    (App (App (Const "Eq", (* Add a b = Add b a *)
+    (App (App (App (Const "Eq", Const "Len"), (* Add a b = Add b a *)
       App (App (Const "Add", Bvar 1), Bvar 0)),
       App (App (Const "Add", Bvar 0), Bvar 1)
     ))
@@ -128,7 +128,7 @@ let mk_axioms_env () =
     Forall (Const "Len", (* a : Len -> *)
     Forall (Const "Len", (* b : Len -> *)
     Forall (Const "Len", (* c : Len -> *)
-    (App (App (Const "Eq", (* Add (Add a b) c = Add a (Add b c) *)
+    (App (App (App (Const "Eq", Const "Len"), (* Add (Add a b) c = Add a (Add b c) *)
       App (App (Const "Add",
         App (App (Const "Add", Bvar 2), Bvar 1)), (* Add a b *)
         Bvar 0 (* c *)
@@ -141,7 +141,7 @@ let mk_axioms_env () =
   ))));
   Hashtbl.add env "AddZero" (
     Forall (Const "Len", (* a : Len -> *)
-    (App (App (Const "Eq",
+    (App (App (App (Const "Eq", Const "Len"), (* Eq Len (Add Zero a) a*)
       App (App (Const "Add", Const "Zero"), Bvar 0)),
       Bvar 0
     )) 
@@ -156,7 +156,7 @@ let mk_axioms_env () =
       App (App (Const "Add", Bvar 2), Bvar 1)
     ))
   )))));
-  Hashtbl.add env "Length" (Forall (Const "Point", Forall (Const "Point", Const "Len")))
+  Hashtbl.add env "Length" (Forall (Const "Point", Forall (Const "Point", Const "Len")));
 
   env
 
