@@ -90,14 +90,13 @@ let mk_axioms_env () =
     Bvar 2 (* b *)
   ))))));
 
-  (* TODO: should Const "Type" be replaced with Sort 1 or something like that? *)
   Hashtbl.add env "Eq" (
-    Forall (Const "Type",
-      (Forall (Bvar 0, Forall (Bvar 1, Const "Prop")))
+    Forall (Sort 1,
+      (Forall (Bvar 0, Forall (Bvar 1, Sort 0)))
     )
   );
   Hashtbl.add env "Eq.intro" (
-    Forall (Const "Type", 
+    Forall (Sort 1, 
       Forall (Bvar 0,
         application_multiple_arguments (Const "Eq") [Bvar 1; Bvar 0; Bvar 0]
       )
@@ -105,9 +104,9 @@ let mk_axioms_env () =
   );
 
   Hashtbl.add env "Eq.elim" (
-    Forall (Const "Type", (* A: Type *)
+    Forall (Sort 1, (* A: Type *)
     Forall (Bvar 0, (* a: A *)
-    Forall (Forall (Bvar 1, Const "Prop"), (* motive: A -> Prop *)
+    Forall (Forall (Bvar 1, Sort 0), (* motive: A -> Prop *)
     Forall (App (Bvar 0, Bvar 1), (* refl: motive a *)
     Forall (Bvar 3, (* b: A *)
     Forall (
