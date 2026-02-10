@@ -69,6 +69,17 @@ let test_const_unknown_fails () =
     assert false
   with Failure msg -> assert (str_contains msg "unknown constant")
 
+let test_empty_constants () =
+  (* Empty and Empty.elim live in the axioms env *)
+  let env = Infer.mk_axioms_env () in
+  (* Empty : Type (i.e. Sort 1) *)
+  let empty_ty = inferType env [] (Const "Empty") in
+  assert (empty_ty = Sort 1);
+  (* Empty.elim : (C : Type) -> Empty -> C *)
+  let elim_ty = inferType env [] (Const "Empty.elim") in
+  (match elim_ty with
+   | Forall (Sort 1, Forall (Const "Empty", Bvar 1)) -> ()
+   | _ -> assert false)
 let test_infer_function_type () =
   let env = mk_env () in 
 

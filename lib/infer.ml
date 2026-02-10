@@ -66,8 +66,19 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
 
 let mk_axioms_env () =
   let env = Hashtbl.create 16 in
+  (* Built-in geometric types *)
   Hashtbl.add env "Point" (Sort 1);
   Hashtbl.add env "Line" (Sort 1);
   Hashtbl.add env "Circle" (Sort 1);
+  (* Empty: Type — the empty type (no inhabitants); used for negation (¬P = P -> Empty) *)
+  Hashtbl.add env "Empty" (Sort 1);
+  (* Empty.elim: (C : Type) -> Empty -> C — ex falso quodlibet: from a proof of Empty, derive any C *)
+  let empty_elim_type =
+    (* (C : Type) *)
+    Forall (Sort 1,
+      (* (e : Empty) -> C *)
+      Forall (Const "Empty", Bvar 1))
+  in
+  Hashtbl.add env "Empty.elim" empty_elim_type;
   env
 
