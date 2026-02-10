@@ -80,5 +80,32 @@ let mk_axioms_env () =
       Forall (Const "Empty", Bvar 1))
   in
   Hashtbl.add env "Empty.elim" empty_elim_type;
+
+  (* And: (A : Prop) -> (B : Prop) -> Prop — conjunction of two propositions *)
+  let and_type =
+    Forall (Sort 0, Forall (Sort 0, Sort 0))
+  in
+  Hashtbl.add env "And" and_type;
+
+  (* And.intro: (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
+  let and_intro_type =
+    Forall (Sort 0,
+      Forall (Sort 0,
+        Forall (Bvar 1, (* A *)
+          Forall (Bvar 2, (* B *)
+            App (App (Const "And", Bvar 3), Bvar 2)))))
+  in
+  Hashtbl.add env "And.intro" and_intro_type;
+
+  (* And.elim: (A : Prop) -> (B : Prop) -> (C : Type) -> (f : A -> B -> C) -> (h : And A B) -> C *)
+  let and_elim_type =
+    Forall (Sort 0,
+      Forall (Sort 0,
+        Forall (Sort 1,
+          Forall (Forall (Bvar 4, Forall (Bvar 3, Bvar 2)),
+            Forall (App (App (Const "And", Bvar 4), Bvar 3), Bvar 2)))))
+  in
+  Hashtbl.add env "And.elim" and_elim_type;
+
   env
 

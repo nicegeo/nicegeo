@@ -80,6 +80,23 @@ let test_empty_constants () =
   (match elim_ty with
    | Forall (Sort 1, Forall (Const "Empty", Bvar 1)) -> ()
    | _ -> assert false)
+
+let test_and_constants () =
+  let env = Infer.mk_axioms_env () in
+  (* And : (A : Prop) -> (B : Prop) -> Prop *)
+  let and_ty = inferType env [] (Const "And") in
+  assert (and_ty = Forall (Sort 0, Forall (Sort 0, Sort 0)));
+  (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
+  let intro_ty = inferType env [] (Const "And.intro") in
+  (match intro_ty with
+   | Forall (Sort 0, Forall (Sort 0, Forall (Bvar 1, Forall (Bvar 2, App (App (Const "And", Bvar 3), Bvar 2))))) -> ()
+   | _ -> assert false);
+  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Type) -> (f : A -> B -> C) -> (h : And A B) -> C *)
+  let elim_ty = inferType env [] (Const "And.elim") in
+  (match elim_ty with
+   | Forall (Sort 0, Forall (Sort 0, Forall (Sort 1, Forall (Forall (Bvar 4, Forall (Bvar 3, Bvar 2)), Forall (App (App (Const "And", Bvar 4), Bvar 3), Bvar 2))))) -> ()
+   | _ -> assert false)
+
 let test_infer_function_type () =
   let env = mk_env () in 
 
@@ -157,4 +174,6 @@ let () =
   test_infer_function_type ();
   test_subst_bvar ();
   test_infer_function_application ();
+  test_empty_constants ();
+  test_and_constants ();
   print_endline "All inferType tests passed."
