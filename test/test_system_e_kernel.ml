@@ -206,7 +206,11 @@ let test_eq_symm () =
         Bvar 0 (* eq_ab: Eq a b *)
       ]
     )))) in
-  assert (inferType env local_ctx eq_symm_term = eq_symm_type)
+  (* print_endline ("eq_symm_term: " ^ (term_to_string eq_symm_term)); *)
+  let inferred_type = inferType env local_ctx eq_symm_term in
+  (* print_endline ("expected eq_symm_type: " ^ (term_to_string eq_symm_type));
+  print_endline ("inferred eq_symm_type: " ^ (term_to_string inferred_type)); *)
+  assert (definitional_eq env local_ctx inferred_type eq_symm_type)
 
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,

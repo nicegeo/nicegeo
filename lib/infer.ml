@@ -76,7 +76,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
     match func_type with
       | Forall (expected_arg_type, return_type) -> 
           (* TODO: replace this with checking for definitional equality *)
-        if expected_arg_type = inferred_arg_type then
+        if definitional_eq env localCtx expected_arg_type inferred_arg_type then
           (* TODO: check if this is the right approach *)
           (* The actual type of the function application can depend on the
           actual value that it's evaluated at so we need to substitute the arg
@@ -99,8 +99,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
               (term_to_string expected_arg_type)
               (term_to_string inferred_arg_type)
           in
-          print_endline msg;
-          failwith "Function called with invalid argument type"
+          failwith msg
       | _ -> failwith "Tried to apply non-function to an argument"
   )
   | Lam (domainType, body) -> (
@@ -150,10 +149,52 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
               (term_to_string domainTypeType)
               (term_to_string returnTypeType)
           in
-          print_endline msg;
-          failwith "Domain and return types of a Forall must be sorts"
+          failwith msg
     )
   | Sort level -> Sort (level + 1)
+
+and definitional_eq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term) : bool =
+  let t1_reduced = reduce env localCtx t1 in
+  let t2_reduced = reduce env localCtx t2 in
+  t1_reduced = t2_reduced
+
+and reduce (env : environment) (localCtx : localcontext) (t : term) : term =
+  match t with
+  | App (Lam (domainType, body), arg) -> (* beta reduction i think *)
+      let arg_type = inferType env localCtx arg in
+      if domainType = arg_type then
+        let substed_body = subst_bvar body 0 arg in
+        reduce env localCtx substed_body
+      else
+        failwith "Function called with invalid argument type during reduction"
+  | App (func, arg) -> 
+      let reduced_func = reduce env localCtx func in
+      let reduced_arg = reduce env localCtx arg in
+      App (reduced_func, reduced_arg)
+  | Lam (domainType, body) -> 
+    (* need to subst fvar *)
+    let new_fvar_name = gen_new_fvar_name () in
+    let domainTypeReduced = reduce env localCtx domainType in
+    let newLocalCtx = 
+      let t = Hashtbl.copy localCtx in
+      Hashtbl.replace t new_fvar_name domainTypeReduced;
+      t
+    in
+    let substed_body = subst_bvar body 0 (Fvar new_fvar_name) in
+    let bodyReduced = reduce env newLocalCtx substed_body in
+    Lam (domainTypeReduced, rebind_bvar bodyReduced 0 new_fvar_name)
+  | Forall (domainType, returnType) -> 
+    let new_fvar_name = gen_new_fvar_name () in
+    let domainTypeReduced = reduce env localCtx domainType in
+    let newLocalCtx = 
+      let t = Hashtbl.copy localCtx in
+      Hashtbl.replace t new_fvar_name domainTypeReduced;
+      t
+    in
+    let substed_return_type = subst_bvar returnType 0 (Fvar new_fvar_name) in
+    let returnTypeReduced = reduce env newLocalCtx substed_return_type in
+    Forall (domainTypeReduced, rebind_bvar returnTypeReduced 0 new_fvar_name)
+  | _ -> t
 
 (* Create an expression where func is applied to all arguments in order *)
 (* Ex: f a b c -> App(App (App (f, a), b), c) *)
