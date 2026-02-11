@@ -366,38 +366,5 @@ let mk_axioms_env () =
     ))
   )))));
   Hashtbl.add env "Length" (Forall (Const "Point", Forall (Const "Point", Const "Len")));
-  
-  (* TODO: should Const "Type" be replaced with Sort 1 or something like that? *)
-  Hashtbl.add env "Eq" (
-    Forall (Sort 1,
-      (Forall (Bvar 0, Forall (Bvar 1, Sort 0)))
-    )
-  );
-  (* Eq: (A: Type) -> a: A -> b: A -> Prop *)
 
-  Hashtbl.add env "Eq.intro" (
-    Forall (Sort 1, 
-      Forall (Bvar 0,
-        application_multiple_arguments (Const "Eq") [Bvar 1; Bvar 0; Bvar 0]
-      )
-    )
-  );
-
-  Hashtbl.add env "Eq.elim" (
-    Forall (Sort 1, (* A: Type *)
-    Forall (Bvar 0, (* a: A *)
-    Forall (Forall (Bvar 1, Sort 0), (* motive: A -> Prop *)
-    Forall (App (Bvar 0, Bvar 1), (* refl: motive a *)
-    Forall (Bvar 3, (* b: A *)
-    Forall (
-      (* eq: Eq A a b *)
-      application_multiple_arguments (Const "Eq") [Bvar 4; Bvar 3; Bvar 0], 
-      (* motive b *)
-      App (Bvar 3, Bvar 1)
-    ))))))
-  );
   env
-
-(* 
-Eq.elim A a (fun (b: A) -> b=a) (Eq.intro A a : a=a) b (h: Eq A a b) : b = a
-*)
