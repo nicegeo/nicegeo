@@ -2,6 +2,7 @@
 open System_e_kernel
 open Term
 open Infer
+open Env
 open Printexc
 
 let str_contains s sub =
@@ -51,7 +52,7 @@ let test_const_unknown_fails () =
 
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
-  let env = Infer.mk_axioms_env () in
+  let env = mk_axioms_env () in
   let lctx = Hashtbl.create 16 in
   (* Empty : Type (i.e. Sort 1) *)
   let empty_ty = inferType env lctx (Const "Empty") in
@@ -63,7 +64,7 @@ let test_empty_constants () =
    | _ -> assert false)
 
 let test_and_constants () =
-  let env = Infer.mk_axioms_env () in
+  let env = mk_axioms_env () in
   let lctx = Hashtbl.create 16 in
   (* And : (A : Prop) -> (B : Prop) -> Prop *)
   let and_ty = inferType env lctx (Const "And") in
@@ -240,7 +241,7 @@ let test_eq_symm () =
   let inferred_type = inferType env local_ctx eq_symm_term in
   (* print_endline ("expected eq_symm_type: " ^ (term_to_string eq_symm_type));
   print_endline ("inferred eq_symm_type: " ^ (term_to_string inferred_type)); *)
-  assert (definitional_eq env local_ctx inferred_type eq_symm_type)
+  assert (isDefEq env local_ctx inferred_type eq_symm_type)
 
 
 (* These two tests are made my AI so can remove or change them completely if wanted *)
@@ -287,6 +288,13 @@ let test_axioms_app () =
     assert false
   with Failure _ -> ()
 
+let test_exists_constants_lookup () =
+  let env = mk_axioms_env () in
+  let lctx = Hashtbl.create 16 in
+  (* Check that the constants are registered with the expected types *)
+  assert (inferType env lctx (Const "Exists") = exists_ty);
+  assert (inferType env lctx (Const "Exists.intro") = exists_intro_ty)
+
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
   turns on stack traces *)
@@ -301,6 +309,7 @@ let () =
   test_subst_bvar ();
   test_rebind_bvar ();
   test_infer_function_application ();
+  test_exists_constants_lookup ();
   test_app_multiarg ();
   test_empty_constants ();
   test_and_constants ();
