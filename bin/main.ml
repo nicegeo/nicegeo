@@ -11,24 +11,14 @@ let str_contains s sub =
      in
      loop 0
 
-let mk_env () =
-  let env = Hashtbl.create 16 in
-  (* Point : Sort 0 (type) *)
-  Hashtbl.add env "Point" (Sort 0);
-  (* Line : Sort 0 *)
-  Hashtbl.add env "Line" (Sort 0);
-  (* Free var p : Point (for testing) *)
-  Hashtbl.add env "p" (Const "Point");
-  env
-
 let () =
-  let env = mk_env () in
+  let env = mk_axioms_env () in
 
   let local_ctx = Hashtbl.create 16 in
-  (* Const "Point" -> Sort 0 *)
+  (* Const "Point" -> Sort 1 *)
   let t1 = inferType env local_ctx (Const "Point") in
-  assert (t1 = Sort 0);
-  print_endline "Const \"Point\" -> Sort 0: OK";
+  assert (t1 = Sort 1);
+  print_endline "Const \"Point\" -> Sort 1: OK";
 
   (* Bvar 0 with empty stack -> should fail *)
   (try

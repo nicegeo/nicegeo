@@ -1,4 +1,5 @@
 open Term
+open Reduce
 
 (* Substitute the bound variable at index `bvar_idx` (relative to the top level
 term, so what would have been at index `bvar_idx` in the localcontext stack for
@@ -63,7 +64,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
     match func_type with
       | Forall (expected_arg_type, return_type) -> 
           (* TODO: replace this with checking for definitional equality *)
-        if expected_arg_type = inferred_arg_type then
+        if isDefEq env expected_arg_type inferred_arg_type then
           (* TODO: check if this is the right approach *)
           (* The actual type of the function application can depend on the
           actual value that it's evaluated at so we need to substitute the arg
