@@ -33,8 +33,21 @@ let () =
   let ic = open_in filename in
   let lexbuf = Lexing.from_channel ic in
   
-  let decls : declaration list = Parser.main Lexer.token lexbuf in
-  close_in ic;
+  let decls : declaration list =
+    try
+      Parser.main Lexer.token lexbuf
+    with
+    | Failure msg ->
+        Printf.eprintf "Parsing error: %s\n" msg;
+        Printf.eprintf "At offset: %d-%d\n" (Lexing.lexeme_start lexbuf) (Lexing.lexeme_end lexbuf);
+        close_in ic;
+        exit 1
+    | exn ->
+        Printf.eprintf "Parsing exception: %s\n" (Printexc.to_string exn);
+        Printf.eprintf "At offset: %d-%d\n" (Lexing.lexeme_start lexbuf) (Lexing.lexeme_end lexbuf);
+        close_in ic;
+        exit 1
+  in
 
   let env = getEnv in
 
