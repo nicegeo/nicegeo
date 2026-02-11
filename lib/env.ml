@@ -55,7 +55,7 @@ let mk_axioms_env () =
     Forall (Sort 0,
       Forall (Sort 0,
         Forall (Bvar 1, (* A *)
-          Forall (Bvar 2, (* B *)
+          Forall (Bvar 1, (* B *)
             App (App (Const "And", Bvar 3), Bvar 2)))))
   in
   Hashtbl.add env "And.intro" and_intro_type;
@@ -64,7 +64,7 @@ let mk_axioms_env () =
   let and_elim_type =
     Forall (Sort 0,
       Forall (Sort 0,
-        Forall (Sort 1,
+        Forall (Sort 0,
           Forall (Forall (Bvar 4, Forall (Bvar 3, Bvar 2)),
             Forall (App (App (Const "And", Bvar 4), Bvar 3), Bvar 2)))))
   in
