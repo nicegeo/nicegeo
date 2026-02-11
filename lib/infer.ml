@@ -67,6 +67,11 @@ let rec reduce (env : environment) (t : term) : term =
 let isDefEq (env : environment) (t1 : term) (t2 : term) : bool =
     (reduce env t1) = (reduce env t2)
 
+let isSort (env : environment) (t : term) : bool =
+  match reduce env t with
+  | Sort _ -> true
+  | _ -> false
+
 let rec inferType (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
   | Const name -> (
@@ -85,9 +90,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
     let inferred_arg_type = inferType env localCtx arg in
     match func_type with
       | Forall (expected_arg_type, return_type) -> 
-          (* TODO: replace this with checking for definitional equality *)
         if isDefEq env expected_arg_type inferred_arg_type then
-          (* TODO: check if this is the right approach *)
           (* The actual type of the function application can depend on the
           actual value that it's evaluated at so we need to substitute the arg
           for any bvars referring to this arg in the return_type. *)
@@ -97,6 +100,10 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
   )
   | Lam (domainType, body) -> (
       let new_fvar_name = gen_new_fvar_name () in
+      let domainTypeType = inferType env localCtx domainType in
+      if not (isSort env domainTypeType) then
+        failwith "invalid domain type for lambda"
+      else
       (* add mapping new_fvar_name -> domainType to localCtx in recursive call *)
       (* this is fine because domainType won't have any unresolved BVars *)
       let newLocalCtx = 
