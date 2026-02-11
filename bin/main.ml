@@ -3,6 +3,20 @@ open Decl
 open Env
 open Printexc
 
+let getEnv =
+  let env = mk_axioms_env () in
+
+  (* Add the axioms in env.txt *)
+  let envFilename = "lib/env.txt" in
+  let env_ic = open_in envFilename in
+  let env_lexbuf = Lexing.from_channel env_ic in
+  
+  let env_decls : declaration list = Parser.main Lexer.token env_lexbuf in
+  close_in env_ic;
+  List.fold_left (fun _ decl -> addDeclaration decl env) () env_decls;
+
+  env
+
 let () =
   record_backtrace true;
 
@@ -18,7 +32,8 @@ let () =
   let decls : declaration list = Parser.main Lexer.token lexbuf in
   close_in ic;
 
-  let env = mk_axioms_env () in
+  let env = getEnv in
 
+  (* Process proof.txt *)
   List.fold_left (fun _ decl -> addDeclaration decl env) () decls;
   print_endline "Valid proofs!"

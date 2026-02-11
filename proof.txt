@@ -3,6 +3,8 @@ Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a)))
 
+Theorem test : Point -> Circle -> Prop := CenterCircle
+
 Theorem prop1 :
 (a : Point) -> (b : Point) -> (ab : Point -> Empty) -> 
 Exists Point (fun (c : Point) =>

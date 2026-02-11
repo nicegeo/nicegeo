@@ -189,5 +189,5 @@ let mk_axioms_env () =
     ))
   )))));
   Hashtbl.add env "Length" (Forall (Const "Point", Forall (Const "Point", Const "Len")));
-  
+
   env
