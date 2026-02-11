@@ -49,6 +49,36 @@ let test_const_unknown_fails () =
     assert false
   with Failure msg -> assert (str_contains msg "unknown constant")
 
+let test_empty_constants () =
+  (* Empty and Empty.elim live in the axioms env *)
+  let env = Infer.mk_axioms_env () in
+  let lctx = Hashtbl.create 16 in
+  (* Empty : Type (i.e. Sort 1) *)
+  let empty_ty = inferType env lctx (Const "Empty") in
+  assert (empty_ty = Sort 1);
+  (* Empty.elim : (C : Type) -> Empty -> C *)
+  let elim_ty = inferType env lctx (Const "Empty.elim") in
+  (match elim_ty with
+   | Forall (Sort 1, Forall (Const "Empty", Bvar 1)) -> ()
+   | _ -> assert false)
+
+let test_and_constants () =
+  let env = Infer.mk_axioms_env () in
+  let lctx = Hashtbl.create 16 in
+  (* And : (A : Prop) -> (B : Prop) -> Prop *)
+  let and_ty = inferType env lctx (Const "And") in
+  assert (and_ty = Forall (Sort 0, Forall (Sort 0, Sort 0)));
+  (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
+  let intro_ty = inferType env lctx (Const "And.intro") in
+  (match intro_ty with
+   | Forall (Sort 0, Forall (Sort 0, Forall (Bvar 1, Forall (Bvar 2, App (App (Const "And", Bvar 3), Bvar 2))))) -> ()
+   | _ -> assert false);
+  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Type) -> (f : A -> B -> C) -> (h : And A B) -> C *)
+  let elim_ty = inferType env lctx (Const "And.elim") in
+  (match elim_ty with
+   | Forall (Sort 0, Forall (Sort 0, Forall (Sort 1, Forall (Forall (Bvar 4, Forall (Bvar 3, Bvar 2)), Forall (App (App (Const "And", Bvar 4), Bvar 3), Bvar 2))))) -> ()
+   | _ -> assert false)
+
 let test_infer_function_type () =
   let env = mk_env () in 
 
@@ -212,6 +242,51 @@ let test_eq_symm () =
   print_endline ("inferred eq_symm_type: " ^ (term_to_string inferred_type)); *)
   assert (definitional_eq env local_ctx inferred_type eq_symm_type)
 
+
+(* These two tests are made my AI so can remove or change them completely if wanted *)
+let test_axioms_sanity () =
+  let env = mk_axioms_env () in
+  let lctx = Hashtbl.create 16 in
+  (* Base types are Sort 1 *)
+  assert (inferType env lctx (Const "Len") = Sort 1);
+  assert (inferType env lctx (Const "Point") = Sort 1);
+  (* Zero is an element of Len *)
+  assert (inferType env lctx (Const "Zero") = Const "Len");
+  (* Lt and Add have the right top-level shape *)
+  assert (inferType env lctx (Const "Lt") =
+    Forall (Const "Len", Forall (Const "Len", Sort 0)));
+  assert (inferType env lctx (Const "Add") =
+    Forall (Const "Len", Forall (Const "Len", Const "Len")));
+  (* AddZero is exact enough to check de Bruijn encoding *)
+  assert (inferType env lctx (Const "AddZero") =
+    Forall (Const "Len",
+      App (App (App (Const "Eq", Const "Len"),
+        App (App (Const "Add", Const "Zero"), Bvar 0)),
+        Bvar 0)))
+
+let test_axioms_app () =
+  let env = mk_axioms_env () in
+  let lctx = Hashtbl.create 16 in
+  (* Lt Zero Zero : Prop *)
+  assert (inferType env lctx (App (App (Const "Lt", Const "Zero"), Const "Zero")) = Sort 0);
+  (* Add Zero Zero : Len *)
+  assert (inferType env lctx (App (App (Const "Add", Const "Zero"), Const "Zero")) = Const "Len");
+  (* LtTrans applied to 3 Len args gives Lt a b -> Lt b c -> Lt a c *)
+  Hashtbl.add lctx "a" (Const "Len");
+  Hashtbl.add lctx "b" (Const "Len");
+  Hashtbl.add lctx "c" (Const "Len");
+  let ty = inferType env lctx (App (App (App (Const "LtTrans", Fvar "a"), Fvar "b"), Fvar "c") ) in
+  assert (ty =
+    Forall (App (App (Const "Lt", Fvar "a"), Fvar "b"),
+    Forall (App (App (Const "Lt", Fvar "b"), Fvar "c"),
+    App (App (Const "Lt", Fvar "a"), Fvar "c"))));
+  (* Type mismatch: Lt applied to a Point should fail *)
+  Hashtbl.add env "p" (Const "Point");
+  try
+    ignore (inferType env lctx (App (Const "Lt", Fvar "p")));
+    assert false
+  with Failure _ -> ()
+
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
   turns on stack traces *)
@@ -227,8 +302,10 @@ let () =
   test_rebind_bvar ();
   test_infer_function_application ();
   test_app_multiarg ();
-
-  (* actual theorem *)
+  test_empty_constants ();
+  test_and_constants ();
+  test_axioms_sanity ();
+  test_axioms_app ();
   test_eq_symm ();
 
   print_endline "All inferType tests passed."
