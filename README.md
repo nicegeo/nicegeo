@@ -28,3 +28,9 @@ Run the kernel on the test file:
 ```bash
 dune exec system-e-kernel proof.txt
 ```
+
+## Project Structure
+- `bin/main.ml` is the entry point. It reads in the proof from the file and checks if it is correct.
+- `lib/env.ml` defines all the builtin constants.
+- `lib/infer.ml` defines the `inferType` and `isDefEq` functions.
+- `lib/term.ml` defines the basic types like `term`.
