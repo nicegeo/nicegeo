@@ -263,8 +263,8 @@ Exists Point (fun (c : Point) =>
    )
 
     )
-    circlesinter_of_inside_on_circle a b aa bb baa abb
-        (inside_circle_of_center a aa aaa) (inside_circle_of_center b bb bbb)
+    (circlesinter_of_inside_on_circle a b aa bb baa abb
+        (inside_circle_of_center a aa aaa) (inside_circle_of_center b bb bbb))
     ) 
     b_center_and_on
     ))
