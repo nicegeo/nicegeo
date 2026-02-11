@@ -1,0 +1,5 @@
+Claim:
+Point -> Point
+
+Proof:
+fun (x : Point) => x
