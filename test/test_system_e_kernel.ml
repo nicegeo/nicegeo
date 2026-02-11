@@ -2,6 +2,7 @@
 open System_e_kernel
 open Term
 open Infer
+open Env
 open Printexc
 
 let str_contains s sub =
@@ -51,7 +52,7 @@ let test_const_unknown_fails () =
 
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
-  let env = Infer.mk_axioms_env () in
+  let env = mk_axioms_env () in
   let lctx = Hashtbl.create 16 in
   (* Empty : Type (i.e. Sort 1) *)
   let empty_ty = inferType env lctx (Const "Empty") in
@@ -63,7 +64,7 @@ let test_empty_constants () =
    | _ -> assert false)
 
 let test_and_constants () =
-  let env = Infer.mk_axioms_env () in
+  let env = mk_axioms_env () in
   let lctx = Hashtbl.create 16 in
   (* And : (A : Prop) -> (B : Prop) -> Prop *)
   let and_ty = inferType env lctx (Const "And") in
@@ -254,22 +255,12 @@ let test_axioms_app () =
     assert false
   with Failure _ -> ()
 
-let add_unit (env : environment) : unit =
-  Hashtbl.replace env "Unit" (Sort 0);
-  Hashtbl.replace env "star" (Const "Unit")
-
 let test_exists_constants_lookup () =
-  let env = mk_env () in
-  add_exists env;
-  add_unit env;
+  let env = mk_axioms_env () in
+  let lctx = Hashtbl.create 16 in
   (* Check that the constants are registered with the expected types *)
-  assert (inferType env [] (Const "Exists") = exists_ty);
-  assert (inferType env [] (Const "Exists.intro") = exists_intro_ty);
-  (* Also sanity-check that Unit/star work in the environment *)
-  assert (inferType env [] (Const "Unit") = Sort 0);
-  assert (inferType env [] (Const "star") = Const "Unit")
-
-
+  assert (inferType env lctx (Const "Exists") = exists_ty);
+  assert (inferType env lctx (Const "Exists.intro") = exists_intro_ty)
 
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
