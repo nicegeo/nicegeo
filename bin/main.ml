@@ -19,7 +19,11 @@ let () =
   let local_ctx = Hashtbl.create 16 in
 
   let inferredType = inferType env local_ctx proof in
-  let isValidProof = isDefEq env inferredType claim in
+  let isValidProof = isDefEq env (Hashtbl.create 0) inferredType claim in
+
+  print_endline ("Claim: " ^ (term_to_string claim));
+  print_endline ("Proof: " ^ (term_to_string proof));
+  print_endline ("Inferred type of proof: " ^ (term_to_string inferredType));
 
   if isValidProof then
     print_endline "Valid proof!"

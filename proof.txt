@@ -2,4 +2,4 @@ Claim:
 Point -> Point
 
 Proof:
-fun (x : Point) => Point
+fun (x : Point) => x
