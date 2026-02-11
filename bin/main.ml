@@ -1,6 +1,7 @@
 open System_e_kernel
 open Term
 open Infer
+open Env
 
 let str_contains s sub =
   let n = String.length sub in

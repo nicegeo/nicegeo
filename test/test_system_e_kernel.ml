@@ -2,6 +2,7 @@
 open System_e_kernel
 open Term
 open Infer
+open Env
 open Printexc
 
 let str_contains s sub =
@@ -51,7 +52,7 @@ let test_const_unknown_fails () =
 
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
-  let env = Infer.mk_axioms_env () in
+  let env = mk_axioms_env () in
   let lctx = Hashtbl.create 16 in
   (* Empty : Type (i.e. Sort 1) *)
   let empty_ty = inferType env lctx (Const "Empty") in
@@ -63,7 +64,7 @@ let test_empty_constants () =
    | _ -> assert false)
 
 let test_and_constants () =
-  let env = Infer.mk_axioms_env () in
+  let env = mk_axioms_env () in
   let lctx = Hashtbl.create 16 in
   (* And : (A : Prop) -> (B : Prop) -> Prop *)
   let and_ty = inferType env lctx (Const "And") in
