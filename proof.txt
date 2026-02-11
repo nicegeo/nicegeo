@@ -1,12 +1,12 @@
-Axiom fake_prop1 : (a : Point) -> (b : Point) -> (ab : Point -> Empty) -> 
+Axiom fake_prop1 : 
+(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
 Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a)))
-
-Theorem test : Point -> Circle -> Prop := CenterCircle
-
+        
+(* Proof of proposition I.I from Euclid's Elements. *)
 Theorem prop1 :
-(a : Point) -> (b : Point) -> (ab : Point -> Empty) -> 
+(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
 Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a)))
