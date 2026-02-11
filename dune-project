@@ -1,6 +1,7 @@
 (lang dune 3.17)
 
 (name system-e-kernel)
+(using menhir 3.0)
 
 (generate_opam_files true)
 
