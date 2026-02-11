@@ -13,7 +13,11 @@ let getEnv =
   
   let env_decls : declaration list = Parser.main Lexer.token env_lexbuf in
   close_in env_ic;
-  List.fold_left (fun _ decl -> addDeclaration decl env) () env_decls;
+  let all_decls_good = List.fold_left (fun x decl -> try addDeclaration decl env; x with Failure msg -> print_endline ("Error adding declaration: " ^ msg); false) true env_decls in
+  if not all_decls_good then begin
+    print_endline "Error(s) encountered while processing env.txt. Exiting.";
+    exit 1
+  end;
 
   env
 
