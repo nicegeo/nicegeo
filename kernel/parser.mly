@@ -1,5 +1,4 @@
 %token <string> IDENT
-%token <string> CONST
 %token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF
 %token THEOREM AXIOM DEFEQ
 %start <Decl.declaration list> main
@@ -28,7 +27,6 @@ app_term:
 
 atomic_term:
   | x = IDENT { Term.Fvar x }
-  | c = CONST { Term.Const c }
   | TYPE { Term.Sort 1 }
   | PROP { Term.Sort 0 }
   | LPAREN t = term RPAREN { t }

@@ -1,6 +1,6 @@
-open System_e_kernel
-open Decl
-open Env
+(* open System_e_kernel *)
+(* open System_e_kernel.Decl *)
+open System_e_kernel.Env
 open Printexc
 
 let () =
@@ -15,9 +15,9 @@ let () =
   let ic = open_in filename in
   let lexbuf = Lexing.from_channel ic in
   
-  let decls : declaration list =
+  let decls : E_elab.Decl.declaration list =
     try
-      Parser.main Lexer.token lexbuf
+      E_elab.Parser.main E_elab.Lexer.token lexbuf
     with
     | Failure msg ->
         Printf.eprintf "Parsing error: %s\n" msg;
@@ -34,7 +34,7 @@ let () =
   let env = mk_axioms_env () in
 
   (* Process proof.txt *)
-  let all_decls_good = List.fold_left (fun x decl -> try addDeclaration decl env; x with Failure msg -> print_endline ("Error adding declaration: " ^ msg); false) true decls in
+  let all_decls_good = List.fold_left (fun x decl -> try System_e_kernel.Decl.addDeclaration (E_elab.Elab.elab_decl decl) env; x with Failure msg -> print_endline ("Error adding declaration: " ^ msg); false) true decls in
   if not all_decls_good then begin
     print_endline "Error(s) encountered while processing proof file. Exiting.";
     exit 1

@@ -1,5 +1,0 @@
-Claim:
-(A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a)
-
-Proof:
-fun (A: Type) => fun (a: A) => fun (b: A) => fun (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab

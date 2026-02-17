@@ -12,7 +12,7 @@ let application_multiple_arguments (func: term) (args: term list): term =
 let mk_axioms_env () =
   let env = Hashtbl.create 16 in
 
-  let envFilename = "lib/env.txt" in
+  let envFilename = "./kernel/env.txt" in
   let env_ic = open_in envFilename in
   let env_lexbuf = Lexing.from_channel env_ic in
   

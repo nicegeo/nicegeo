@@ -1,8 +1,8 @@
 Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
-	fun (A: Type) => fun (a: A) => fun (b: A) => fun (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab
+	fun (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab
 
 Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b -> False) -> (Eq A b a -> False) :=
-	fun (A: Type) => fun (a: A) => fun (b: A) => fun (ne_ab: Eq A a b -> False) => fun (eq_ba: Eq A b a) =>
+	fun (A: Type) (a b: A) (ne_ab: Eq A a b -> False) => fun (eq_ba: Eq A b a) =>
 		ne_ab (Eq.symm A b a eq_ba)
 
 (* Proof of proposition I.I from Euclid's Elements. *)
@@ -11,7 +11,7 @@ Theorem prop1 :
 Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a)))
-:= fun (a : Point) => fun (b : Point) => fun (ab : Eq Point a b -> False) =>
+:= fun (a b : Point) (ab : Eq Point a b -> False) =>
    (*
     We begin by calling `circle_of_ne a b ab`.
     We then use `Exists.elim` to get access to this circle.
