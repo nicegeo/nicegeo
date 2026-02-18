@@ -1,4 +1,5 @@
 open Term
+open Exceptions
 
 (* Substitute the bound variable at index `bvar_idx` (relative to the top level
 term, so what would have been at index `bvar_idx` in the localcontext stack for
@@ -141,7 +142,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
         | (Sort _, _) -> failwith "Return type of a Forall must be a sort"
         | (_, Sort _) -> failwith "Domain type of a Forall must be a sort"
         | _ -> 
-          let msg = 
+          (*let msg =  TODO move this 
             Printf.sprintf 
               "Domain and return types of a Forall must be sorts.\n\
                Local Context:\n%s\n\
@@ -151,10 +152,8 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
               (context_to_string localCtx)
               (term_to_string t)
               (term_to_string domainTypeType)
-              (term_to_string returnTypeType)
-          in
-          failwith msg
-    )
+              (term_to_string returnTypeType) 
+          in *) raise (TypeError (env, localCtx, t)))
   | Sort level -> Sort (level + 1)
 
 and isDefEq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term) : bool =
