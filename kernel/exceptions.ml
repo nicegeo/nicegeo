@@ -3,8 +3,6 @@ open Term
 
 (* --- Exception types --- *)
 
-exception TypeError of term (* TODO take other needed to print arguments *)
+exception TypeError of term (* TODO take other args needed to print *)
 
-(* --- Showing error messages --- *)
-
-(* TODO *)
+(* TODO any display of the error messages will happen in the elaborator, but maybe start here before that to separate the refactor into steps *)
