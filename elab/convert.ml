@@ -18,7 +18,14 @@ let rec conv_to_kterm1 (tm: term) : KTerm.term =
   | App (f, arg) -> KTerm.App (conv_to_kterm1 f, conv_to_kterm1 arg)
   | Sort n -> KTerm.Sort n
 
+let rec convertFvarToConst (tm: KTerm.term) : KTerm.term =
+  match tm with
+  | KTerm.Fvar x -> KTerm.Const x
+  | KTerm.Lam (ty, body) -> KTerm.Lam (convertFvarToConst ty, convertFvarToConst body)
+  | KTerm.Forall (ty, ret) -> KTerm.Forall (convertFvarToConst ty, convertFvarToConst ret)
+  | KTerm.App (f, arg) -> KTerm.App (convertFvarToConst f, convertFvarToConst arg)
+  | t -> t
+
 (* Converts an elaboration-level term to a kernel-level term. tm must not have any holes *)
 let conv_to_kterm (tm: term) : KTerm.term =
-  System_e_kernel.Decl.convertFvarToConst (conv_to_kterm1 tm)
-  (* convFvarToConst should be moved out of kernel at some point *)
+  convertFvarToConst (conv_to_kterm1 tm)
