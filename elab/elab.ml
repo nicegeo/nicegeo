@@ -41,8 +41,11 @@ let process_decl (e: t) (d: declaration) : unit =
         failwith ("axiom " ^ name ^ " already defined.\n")
       else
         let ty_k = conv_to_kterm (unify e ty) in
-        Hashtbl.add e.env name ty;
-        Hashtbl.add e.kenv name ty_k 
+        if isSort e.kenv ty_k then
+           (Hashtbl.add e.env name ty;
+            Hashtbl.add e.kenv name ty_k)
+        else
+          failwith ("axiom " ^ name ^ " has invalid type.\n")
 
 
 let create_with_env () : t = 

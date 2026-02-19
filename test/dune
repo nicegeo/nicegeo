@@ -1,3 +1,5 @@
-(test
- (name test_system_e_kernel)
+(tests
+ (names test_system_e_kernel test_kernel_adversarial)
+ (deps (file %{project_root}/elab/env.txt))
+ (action (chdir %{project_root} (run %{test})))
  (libraries system_e_kernel e_elab))

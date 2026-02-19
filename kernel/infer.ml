@@ -166,7 +166,7 @@ and reduce (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
   | App (Lam (domainType, body), arg) -> (* beta reduction i think *)
       let arg_type = inferType env localCtx arg in
-      if domainType = arg_type then
+      if isDefEq env localCtx domainType arg_type then
         let substed_body = subst_bvar body 0 arg in
         reduce env localCtx substed_body
       else
@@ -174,7 +174,10 @@ and reduce (env : environment) (localCtx : localcontext) (t : term) : term =
   | App (func, arg) -> 
       let reduced_func = reduce env localCtx func in
       let reduced_arg = reduce env localCtx arg in
-      App (reduced_func, reduced_arg)
+      let result = App (reduced_func, reduced_arg) in
+      (match result with
+       | App (Lam _, _) -> reduce env localCtx result
+       | _ -> result)
   | Lam (domainType, body) -> 
     (* need to subst fvar *)
     let new_fvar_name = gen_new_fvar_name () in

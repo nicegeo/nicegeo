@@ -72,12 +72,12 @@ let test_and_constants () =
   (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
   let intro_ty = inferType env.kenv lctx (Const "And.intro") in
   (match intro_ty with
-   | Forall (Sort 0, Forall (Sort 0, Forall (Bvar 1, Forall (Bvar 2, App (App (Const "And", Bvar 3), Bvar 2))))) -> ()
+   | Forall (Sort 0, Forall (Sort 0, Forall (Bvar 1, Forall (Bvar 1, App (App (Const "And", Bvar 3), Bvar 2))))) -> ()
    | _ -> assert false);
-  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Type) -> (f : A -> B -> C) -> (h : And A B) -> C *)
+  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Prop) -> (f : A -> B -> C) -> (h : And A B) -> C *)
   let elim_ty = inferType env.kenv lctx (Const "And.elim") in
   (match elim_ty with
-   | Forall (Sort 0, Forall (Sort 0, Forall (Sort 1, Forall (Forall (Bvar 4, Forall (Bvar 3, Bvar 2)), Forall (App (App (Const "And", Bvar 4), Bvar 3), Bvar 2))))) -> ()
+   | Forall (Sort 0, Forall (Sort 0, Forall (Sort 0, Forall (Forall (Bvar 2, Forall (Bvar 2, Bvar 2)), Forall (App (App (Const "And", Bvar 3), Bvar 2), Bvar 2))))) -> ()
    | _ -> assert false)
 
 let test_infer_function_type () =
@@ -268,7 +268,7 @@ let test_len_sanity () =
   assert (inferType env.kenv lctx (Const "AddZero") =
     Forall (Const "Len",
       App (App (App (Const "Eq", Const "Len"),
-        App (App (Const "Add", Const "Zero"), Bvar 0)),
+        App (App (Const "Add", Bvar 0), Const "Zero")),
         Bvar 0)))
 
 let test_len_app () =
