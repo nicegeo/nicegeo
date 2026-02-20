@@ -1,9 +1,18 @@
+(*
+ * This file contains the kernel-side exceptions.
+ * The goal is for this to contain just the relevant information to
+ * displaying exceptions related to kernel functionality like type
+ * errors and reduction, but no funny string business.
+ *)
 open Term
-(* TODO make .mli file, document this file, etc *)
 
 (* --- Exception types --- *)
 
-(* TODO document what all of these arguments are etc. *)
+(*
+ * Kinds of type errors
+ * (Note that the details of these may change in the future as we improve
+ * error messages, but this matches the old behavior for now)
+ *)
 type type_error_kind =
   | UnknownConstError of string
   | UnknownFreeVarError of string
@@ -13,6 +22,9 @@ type type_error_kind =
   | LamDomainError
   | ForallSortError of term * term
 
+(*
+ * Type error information
+ *)
 type type_error_info =
   {
     env : environment;
@@ -21,9 +33,17 @@ type type_error_info =
     err_kind : type_error_kind
   }
 
+(*
+ * Types of reduction errors
+ * (Note there is only one for now because the kernel does not raise others,
+ * but this will likely change.)
+ *)
 type red_error_kind =
   | AppArgRedError 
 
+(* 
+ * Reduction error information
+ *)
 type red_error_info =
   {
     env : environment;
@@ -32,16 +52,23 @@ type red_error_info =
     err_kind : red_error_kind
   }
 
-(* TODO revisit arguments later if all needed *)
+(* Exceptions that the kernel may raise, using the above information *)
 exception TypeError of type_error_info
 exception RedError of red_error_info
 
 (* --- Printing errors ---*)
 
-(* TODO any display of the error messages will happen in the elaborator, but will start here to divide work into steps. this is taken directly from the old printing code in infer.ml but I am using it to preserve old behavior while also figuring out what printing info is needed in the type_error_info *)
+(*
+ * In the long run, all of the funny string business here will move outside
+ * of the kernel, ideally into the elaborator. This will require interfacing
+ * with the yellow team. For now, for backwards compatibility, I include all
+ * of the old stirng conversion behavior here. Ideally, after interfacing
+ * with yellow, none of the below code will live in the kernel at all.
+ *)
 
-(* TODO machinery that actually does the printing needs to live somewhere, probably in the elaborator, maybe we want it somewhere here for intermediate steps for now though *)
-
+(*
+ * Convert a term to a string
+ *)
 let rec term_to_string (t : term) : string =
   match t with
   | Const name -> name
@@ -52,10 +79,15 @@ let rec term_to_string (t : term) : string =
   | Forall (dom, body) -> term_to_string dom ^ " -> " ^ term_to_string body
   | App (f, a) -> "(" ^ term_to_string f ^ " " ^ term_to_string a ^ ")"
 
+(*
+ * Convert a local context to a string
+ *)
 let context_to_string (ctx : localcontext) : string =
   Hashtbl.fold (fun k v acc -> acc ^ k ^ " : " ^ term_to_string v ^ "\n") ctx ""
 
-(* TODO do I ever actually need the env and so on? if not consider removing; see later. also, note this is strictly the old behavior, didn't bother improving messages, may need more info in err_kind if you want better messages for some of thesex *)
+(*
+ * Convert a type error to a string for printing
+ *)
 let type_err_to_string (info : type_error_info) : string =
   match info.err_kind with
   | UnknownConstError name -> "unknown constant: " ^ name
@@ -95,7 +127,9 @@ let type_err_to_string (info : type_error_info) : string =
         (term_to_string domainTypeType)
         (term_to_string returnTypeType)
 
-(* TODO very sparse right now because lacking error messages, I assume more can go wrong in reduction that warrants good error messages though? will see during testing *)
+(*
+ * Convert a reduction error to a string for printing
+ *)
 let red_err_to_string (info : red_error_info) : string =
   match info.err_kind with
   | AppArgRedError ->
