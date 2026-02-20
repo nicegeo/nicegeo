@@ -23,20 +23,26 @@ let unify (_e: t) (tm: term) : term =
 let process_decl (e: t) (d: declaration) : unit =
   match d with
   | Theorem (name, ty, proof) ->
-      let ty_k = conv_to_kterm (unify e ty) in
-      let proof_k = conv_to_kterm (unify e proof) in
-      let inferredType = inferType e.kenv (Hashtbl.create 0) proof_k in
-      let isValidProof = isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k in
-
-      if isValidProof then
-        (Hashtbl.add e.env name ty;
-        Hashtbl.add e.kenv name ty_k)
+      if Hashtbl.mem e.env name then
+        failwith ("theorem " ^ name ^ " already defined.\n")
       else
-        failwith ("invalid proof of " ^ name ^ "\n.")
+        let ty_k = conv_to_kterm (unify e ty) in
+        let proof_k = conv_to_kterm (unify e proof) in
+        let inferredType = inferType e.kenv (Hashtbl.create 0) proof_k in
+        let isValidProof = isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k in
+
+        if isValidProof then
+          (Hashtbl.add e.env name ty;
+          Hashtbl.add e.kenv name ty_k)
+        else
+          failwith ("invalid proof of " ^ name ^ ".\n")
   | Axiom (name, ty) ->
-      let ty_k = conv_to_kterm (unify e ty) in
-      Hashtbl.add e.env name ty;
-      Hashtbl.add e.kenv name ty_k 
+      if Hashtbl.mem e.env name then
+        failwith ("axiom " ^ name ^ " already defined.\n")
+      else
+        let ty_k = conv_to_kterm (unify e ty) in
+        Hashtbl.add e.env name ty;
+        Hashtbl.add e.kenv name ty_k 
 
 
 let create_with_env () : t = 

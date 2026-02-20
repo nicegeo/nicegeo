@@ -2,8 +2,8 @@
 open System_e_kernel
 open Term
 open Infer
-open Env
 open Printexc
+open E_elab
 
 let str_contains s sub =
   let n = String.length sub in
@@ -52,30 +52,30 @@ let test_const_unknown_fails () =
 
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
-  let env = mk_axioms_env () in
+  let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* Empty : Type (i.e. Sort 1) *)
-  let empty_ty = inferType env lctx (Const "Empty") in
+  let empty_ty = inferType env.kenv lctx (Const "Empty") in
   assert (empty_ty = Sort 1);
   (* Empty.elim : (C : Type) -> Empty -> C *)
-  let elim_ty = inferType env lctx (Const "Empty.elim") in
+  let elim_ty = inferType env.kenv lctx (Const "Empty.elim") in
   (match elim_ty with
    | Forall (Sort 1, Forall (Const "Empty", Bvar 1)) -> ()
    | _ -> assert false)
 
 let test_and_constants () =
-  let env = mk_axioms_env () in
+  let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* And : (A : Prop) -> (B : Prop) -> Prop *)
-  let and_ty = inferType env lctx (Const "And") in
+  let and_ty = inferType env.kenv lctx (Const "And") in
   assert (and_ty = Forall (Sort 0, Forall (Sort 0, Sort 0)));
   (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
-  let intro_ty = inferType env lctx (Const "And.intro") in
+  let intro_ty = inferType env.kenv lctx (Const "And.intro") in
   (match intro_ty with
    | Forall (Sort 0, Forall (Sort 0, Forall (Bvar 1, Forall (Bvar 2, App (App (Const "And", Bvar 3), Bvar 2))))) -> ()
    | _ -> assert false);
   (* And.elim : (A : Prop) -> (B : Prop) -> (C : Type) -> (f : A -> B -> C) -> (h : And A B) -> C *)
-  let elim_ty = inferType env lctx (Const "And.elim") in
+  let elim_ty = inferType env.kenv lctx (Const "And.elim") in
   (match elim_ty with
    | Forall (Sort 0, Forall (Sort 0, Forall (Sort 1, Forall (Forall (Bvar 4, Forall (Bvar 3, Bvar 2)), Forall (App (App (Const "And", Bvar 4), Bvar 3), Bvar 2))))) -> ()
    | _ -> assert false)
@@ -189,6 +189,12 @@ let test_subst_bvar () =
   assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 0 (Sort 5) = Forall (Sort 5, Sort 5));
   assert (subst_bvar (Forall (Bvar 0, Bvar 1)) 1 (Sort 5) = Forall (Bvar 0, Bvar 1))
 
+let application_multiple_arguments (func: term) (args: term list): term = 
+  List.fold_left
+    (fun application_so_far first_arg -> App (application_so_far, first_arg))
+    func
+    args
+
 let test_app_multiarg () =
   let t = application_multiple_arguments (Const "f") [Const "a"; Const "b"; Const "c"] in
   let expected = App (App (App (Const "f", Const "a"), Const "b"), Const "c") in
@@ -213,7 +219,7 @@ let test_rebind_bvar () =
 let eq ty a b = App (App (App (Const "Eq", ty), a), b)
 
 let test_eq_symm () = 
-  let env = mk_axioms_env () in
+  let env = Elab.create_with_env () in
   let local_ctx = Hashtbl.create 16 in
   let eq_symm_type = 
     Forall (Sort 1, (* A: Type *)
@@ -222,7 +228,7 @@ let test_eq_symm () =
     Forall (eq (Bvar 2) (Bvar 1) (Bvar 0), (* Eq a b *)
     eq (Bvar 3) (Bvar 1) (Bvar 2) (* Eq b a *)
   )))) in
-  assert (inferType env local_ctx eq_symm_type = Sort 0); (* make sure this is actually a Prop *)
+  assert (inferType env.kenv local_ctx eq_symm_type = Sort 0); (* make sure this is actually a Prop *)
   let eq_symm_term = 
     Lam (Sort 1, (* A: Type *)
     Lam (Bvar 0, (* a: A *)
@@ -238,53 +244,53 @@ let test_eq_symm () =
       ]
     )))) in
   (* print_endline ("eq_symm_term: " ^ (term_to_string eq_symm_term)); *)
-  let inferred_type = inferType env local_ctx eq_symm_term in
+  let inferred_type = inferType env.kenv local_ctx eq_symm_term in
   (* print_endline ("expected eq_symm_type: " ^ (term_to_string eq_symm_type));
   print_endline ("inferred eq_symm_type: " ^ (term_to_string inferred_type)); *)
-  assert (isDefEq env local_ctx inferred_type eq_symm_type)
+  assert (isDefEq env.kenv local_ctx inferred_type eq_symm_type)
 
 
-(* These two tests are made my AI so can remove or change them completely if wanted *)
-let test_axioms_sanity () =
-  let env = mk_axioms_env () in
+(* These two tests are made by AI so can remove or change them completely if wanted *)
+let test_len_sanity () =
+  let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* Base types are Sort 1 *)
-  assert (inferType env lctx (Const "Len") = Sort 1);
-  assert (inferType env lctx (Const "Point") = Sort 1);
+  assert (inferType env.kenv lctx (Const "Len") = Sort 1);
+  assert (inferType env.kenv lctx (Const "Point") = Sort 1);
   (* Zero is an element of Len *)
-  assert (inferType env lctx (Const "Zero") = Const "Len");
+  assert (inferType env.kenv lctx (Const "Zero") = Const "Len");
   (* Lt and Add have the right top-level shape *)
-  assert (inferType env lctx (Const "Lt") =
+  assert (inferType env.kenv lctx (Const "Lt") =
     Forall (Const "Len", Forall (Const "Len", Sort 0)));
-  assert (inferType env lctx (Const "Add") =
+  assert (inferType env.kenv lctx (Const "Add") =
     Forall (Const "Len", Forall (Const "Len", Const "Len")));
   (* AddZero is exact enough to check de Bruijn encoding *)
-  assert (inferType env lctx (Const "AddZero") =
+  assert (inferType env.kenv lctx (Const "AddZero") =
     Forall (Const "Len",
       App (App (App (Const "Eq", Const "Len"),
         App (App (Const "Add", Const "Zero"), Bvar 0)),
         Bvar 0)))
 
-let test_axioms_app () =
-  let env = mk_axioms_env () in
+let test_len_app () =
+  let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* Lt Zero Zero : Prop *)
-  assert (inferType env lctx (App (App (Const "Lt", Const "Zero"), Const "Zero")) = Sort 0);
+  assert (inferType env.kenv lctx (App (App (Const "Lt", Const "Zero"), Const "Zero")) = Sort 0);
   (* Add Zero Zero : Len *)
-  assert (inferType env lctx (App (App (Const "Add", Const "Zero"), Const "Zero")) = Const "Len");
+  assert (inferType env.kenv lctx (App (App (Const "Add", Const "Zero"), Const "Zero")) = Const "Len");
   (* LtTrans applied to 3 Len args gives Lt a b -> Lt b c -> Lt a c *)
   Hashtbl.add lctx "a" (Const "Len");
   Hashtbl.add lctx "b" (Const "Len");
   Hashtbl.add lctx "c" (Const "Len");
-  let ty = inferType env lctx (App (App (App (Const "LtTrans", Fvar "a"), Fvar "b"), Fvar "c") ) in
+  let ty = inferType env.kenv lctx (App (App (App (Const "LtTrans", Fvar "a"), Fvar "b"), Fvar "c") ) in
   assert (ty =
     Forall (App (App (Const "Lt", Fvar "a"), Fvar "b"),
     Forall (App (App (Const "Lt", Fvar "b"), Fvar "c"),
     App (App (Const "Lt", Fvar "a"), Fvar "c"))));
   (* Type mismatch: Lt applied to a Point should fail *)
-  Hashtbl.add env "p" (Const "Point");
+  Hashtbl.add lctx "p" (Const "Point");
   try
-    ignore (inferType env lctx (App (Const "Lt", Fvar "p")));
+    ignore (inferType env.kenv lctx (App (Const "Lt", Fvar "p")));
     assert false
   with Failure _ -> ()
 
@@ -306,8 +312,8 @@ let () =
   test_app_multiarg ();
   test_empty_constants ();
   test_and_constants ();
-  test_axioms_sanity ();
-  test_axioms_app ();
+  test_len_sanity ();
+  test_len_app ();
   test_eq_symm ();
 
   print_endline "All inferType tests passed."
