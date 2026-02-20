@@ -95,6 +95,7 @@ let type_err_to_string (info : type_error_info) : string =
         (term_to_string domainTypeType)
         (term_to_string returnTypeType)
 
+(* TODO very sparse right now because lacking error messages, I assume more can go wrong in reduction that warrants good error messages though? will see during testing *)
 let red_err_to_string (info : red_error_info) : string =
   match info.err_kind with
   | AppArgRedError ->
