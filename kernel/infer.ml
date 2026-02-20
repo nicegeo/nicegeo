@@ -45,6 +45,10 @@ let gen_new_fvar_name () : string =
   incr fvar_counter;
   name
 
+(*
+ * Core type inference algorithm.
+ * When this fails, throws a TypeError or a RedError.
+ *)
 let rec inferType (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
   | Const name -> (
