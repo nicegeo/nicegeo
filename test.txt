@@ -1,0 +1,3 @@
+Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
+	fun (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab
+

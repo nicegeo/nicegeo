@@ -250,8 +250,8 @@ let test_eq_symm () =
   assert (isDefEq env.kenv local_ctx inferred_type eq_symm_type)
 
 
-(* These two tests are made my AI so can remove or change them completely if wanted *)
-let test_axioms_sanity () =
+(* These two tests are made by AI so can remove or change them completely if wanted *)
+let test_len_sanity () =
   let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* Base types are Sort 1 *)
@@ -271,7 +271,7 @@ let test_axioms_sanity () =
         App (App (Const "Add", Const "Zero"), Bvar 0)),
         Bvar 0)))
 
-let test_axioms_app () =
+let test_len_app () =
   let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* Lt Zero Zero : Prop *)
@@ -312,8 +312,8 @@ let () =
   test_app_multiarg ();
   test_empty_constants ();
   test_and_constants ();
-  test_axioms_sanity ();
-  test_axioms_app ();
+  test_len_sanity ();
+  test_len_app ();
   test_eq_symm ();
 
   print_endline "All inferType tests passed."

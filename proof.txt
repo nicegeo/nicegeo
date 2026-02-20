@@ -7,19 +7,19 @@ Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b -> False) -> (Eq A 
 
 (* Proof of proposition I.I from Euclid's Elements. *)
 Theorem prop1 :
-(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
+(a : Point) -> (b : Point) -> (ab : Eq _ a b -> False) -> 
 Exists Point (fun (c : Point) =>
-    And (Eq Len (Length a b) (Length a c))
-        (Eq Len (Length b c) (Length b a)))
-:= fun (a b : Point) (ab : Eq Point a b -> False) =>
+    And (Eq _ (Length a b) (Length a c))
+        (Eq _ (Length b c) (Length b a)))
+:= fun (a b : Point) (ab : Eq _ a b -> False) =>
    (*
     We begin by calling `circle_of_ne a b ab`.
     We then use `Exists.elim` to get access to this circle.
    *)
-   Exists.elim Circle (fun (aa: Circle) => (And (CenterCircle a aa) (OnCircle b aa)))
+   Exists.elim _ (fun (aa: _) => (And (CenterCircle a aa) (OnCircle b aa)))
     (Exists Point (fun (c : Point) =>
-    And (Eq Len (Length a b) (Length a c))
-        (Eq Len (Length b c) (Length b a))))
+    And (Eq _ (Length a b) (Length a c))
+        (Eq _ (Length b c) (Length b a))))
     (circle_of_ne a b ab)
     (fun (aa : Circle) => (fun (center_and_on : (And (CenterCircle a aa) (OnCircle b aa))) =>
     (*
