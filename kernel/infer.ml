@@ -45,21 +45,6 @@ let gen_new_fvar_name () : string =
   incr fvar_counter;
   name
 
-(* TODO remove this from this file once fully refactored into exceptions.ml *)
-let rec term_to_string (t : term) : string =
-  match t with
-  | Const name -> name
-  | Sort level -> "Sort " ^ string_of_int level
-  | Fvar name -> name
-  | Bvar idx -> "Bvar " ^ string_of_int idx
-  | Lam (dom, body) -> "fun " ^ term_to_string dom ^ " => (" ^ term_to_string body ^ ")"
-  | Forall (dom, body) -> term_to_string dom ^ " -> " ^ term_to_string body
-  | App (f, a) -> "(" ^ term_to_string f ^ " " ^ term_to_string a ^ ")"
-
-(* TODO remove this from this file once fully refactored into exceptions.ml *)
-let context_to_string (ctx : localcontext) : string =
-  Hashtbl.fold (fun k v acc -> acc ^ k ^ " : " ^ term_to_string v ^ "\n") ctx ""
-
 let rec inferType (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
   | Const name -> (
