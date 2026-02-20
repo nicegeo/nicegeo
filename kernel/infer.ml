@@ -45,6 +45,7 @@ let gen_new_fvar_name () : string =
   incr fvar_counter;
   name
 
+(* TODO remove this from this file once fully refactored into exceptions.ml *)
 let rec term_to_string (t : term) : string =
   match t with
   | Const name -> name
@@ -55,6 +56,7 @@ let rec term_to_string (t : term) : string =
   | Forall (dom, body) -> term_to_string dom ^ " -> " ^ term_to_string body
   | App (f, a) -> "(" ^ term_to_string f ^ " " ^ term_to_string a ^ ")"
 
+(* TODO remove this from this file once fully refactored into exceptions.ml *)
 let context_to_string (ctx : localcontext) : string =
   Hashtbl.fold (fun k v acc -> acc ^ k ^ " : " ^ term_to_string v ^ "\n") ctx ""
 
@@ -142,18 +144,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
         | (Sort _, _) -> failwith "Return type of a Forall must be a sort"
         | (_, Sort _) -> failwith "Domain type of a Forall must be a sort"
         | _ -> 
-          (*let msg =  TODO move this. make a struct with an enum or something in the exception.ml file that contains the right information for each error kind
-            Printf.sprintf 
-              "Domain and return types of a Forall must be sorts.\n\
-               Local Context:\n%s\n\
-               Term: %s\n\
-               Domain Type Sort: %s\n\
-               Return Type Sort: %s\n\n"
-              (context_to_string localCtx)
-              (term_to_string t)
-              (term_to_string domainTypeType)
-              (term_to_string returnTypeType) 
-          in *) raise (TypeError {env; ctx = localCtx; trm = t; err_kind = ForallSortError}))
+          raise (TypeError {env; ctx = localCtx; trm = t; err_kind = ForallSortError (domainTypeType, returnTypeType)}))
   | Sort level -> Sort (level + 1)
 
 and isDefEq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term) : bool =
