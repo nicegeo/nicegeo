@@ -248,6 +248,7 @@ let rec replace_metas (e: t) (tm: term) : term =
 let process_decl (e: t) (d: declaration) : unit =
   match d with
   | Theorem (name, ty, proof) ->
+    if Hashtbl.mem e.env name then failwith ("theorem " ^ name ^ " already defined.\n") else
     check_is_type e ty;
     let ty_filled = replace_metas e ty in
     Hashtbl.clear e.metas;
@@ -263,9 +264,10 @@ let process_decl (e: t) (d: declaration) : unit =
       (Hashtbl.add e.env name ty_filled;
       Hashtbl.add e.kenv name ty_k)
     else
-      failwith ("invalid proof of " ^ name ^ "\n.")
+      failwith ("invalid proof of " ^ name ^ ".\n")
   | Axiom (name, ty) ->
     (* print_endline ("processing axiom " ^ name ^ " of type " ^ term_to_string e ty); *)
+    if Hashtbl.mem e.env name then failwith ("axiom " ^ name ^ " already defined.\n") else
     check_is_type e ty;
     let ty_filled = try replace_metas e ty with Failure msg -> failwith ("failed to replace metas in axiom " ^ name ^ " of type " ^ term_to_string e ty ^ ": " ^ msg) in
 
