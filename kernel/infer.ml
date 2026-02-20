@@ -50,18 +50,21 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
   | Const name -> (
       try Hashtbl.find env name
       with Not_found ->
+        (* Error: Unknown constant *)
         let err_kind = UnknownConstError name in
         raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
     )
   | Fvar name -> (
       try Hashtbl.find localCtx name
       with Not_found ->
+        (* Error: Unknown free variable *)
         let err_kind = UnknownFreeVarError name in
         raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
     )
-  | Bvar idx -> (
-      failwith ("bound variable index out of scope: " ^ string_of_int idx)
-    )
+  | Bvar idx ->
+     (* Error: Bound variable out of scope *)
+     let err_kind = BoundVarScopeError idx in
+     raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
   | App (func, arg) -> (
     let func_type = inferType env localCtx func in
     let inferred_arg_type = inferType env localCtx arg in
@@ -72,26 +75,13 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
           actual value that it's evaluated at so we need to substitute the arg
           for any bvars referring to this arg in the return_type. *)
           subst_bvar return_type 0 arg
-        else 
-          let msg = 
-            Printf.sprintf 
-              "Function called with invalid argument type.\n\
-               Local Context:\n%s\n\
-               Term: %s\n\
-               Func: %s\n\
-               Arg: %s\n\n\
-               Func Type: %s\n\
-               Expected Arg Type: %s\n\
-               Inferred Arg Type: %s\n"
-              (context_to_string localCtx)
-              (term_to_string t)
-              (term_to_string func)
-              (term_to_string arg)
-              (term_to_string func_type)
-              (term_to_string expected_arg_type)
-              (term_to_string inferred_arg_type)
+        else
+          (* Error: Invalid argument type *)
+          let err_kind =
+            AppArgTypeError
+              (func, arg, func_type, expected_arg_type, inferred_arg_type)
           in
-          failwith msg
+          raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
       | _ -> failwith "Tried to apply non-function to an argument"
   )
   | Lam (domainType, body) -> (

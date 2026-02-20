@@ -3,9 +3,12 @@ open Term
 
 (* --- Exception types --- *)
 
+(* TODO document what all of these arguments are etc. *)
 type type_error_kind =
   | UnknownConstError of string
   | UnknownFreeVarError of string
+  | BoundVarScopeError of int
+  | AppArgTypeError of term * term * term * term * term
   | ForallSortError of term * term
 
 type type_error_info =
@@ -43,14 +46,33 @@ let err_to_string (info : type_error_info) : string =
   match info.err_kind with
   | UnknownConstError name -> "unknown constant: " ^ name
   | UnknownFreeVarError name -> "unknown free variable: " ^ name
+  | BoundVarScopeError idx ->
+     "bound variable index out of scope: " ^ string_of_int idx
+  | AppArgTypeError (f, a, f_type, expected_a_type, inferred_a_type) ->
+      Printf.sprintf 
+        "Function called with invalid argument type.\n\
+         Local Context:\n%s\n\
+         Term: %s\n\
+         Func: %s\n\
+         Arg: %s\n\n\
+         Func Type: %s\n\
+         Expected Arg Type: %s\n\
+         Inferred Arg Type: %s\n"
+        (context_to_string info.ctx)
+        (term_to_string info.trm)
+        (term_to_string f)
+        (term_to_string a)
+        (term_to_string f_type)
+        (term_to_string expected_a_type)
+        (term_to_string inferred_a_type)
   | ForallSortError (domainTypeType, returnTypeType) ->
       Printf.sprintf 
-       "Domain and return types of a Forall must be sorts.\n\
-        Local Context:\n%s\n\
-        Term: %s\n\
-        Domain Type Sort: %s\n\
-        Return Type Sort: %s\n\n"
-       (context_to_string info.ctx)
-       (term_to_string info.trm)
-       (term_to_string domainTypeType)
-       (term_to_string returnTypeType)
+        "Domain and return types of a Forall must be sorts.\n\
+         Local Context:\n%s\n\
+         Term: %s\n\
+         Domain Type Sort: %s\n\
+         Return Type Sort: %s\n\n"
+        (context_to_string info.ctx)
+        (term_to_string info.trm)
+        (term_to_string domainTypeType)
+        (term_to_string returnTypeType)
