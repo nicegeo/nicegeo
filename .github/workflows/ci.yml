@@ -1,0 +1,29 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [main, testCI]
+  pull_request:
+    branches: [main, testCI]
+
+permissions: read-all
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tree
+        uses: actions/checkout@v6
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ocaml-base-compiler
+          dune-cache: true
+      
+      - run: opam install . --deps-only --with-test
+      - run: opam install menhir
+
+      - run: opam exec -- dune build
+
+      - run: opam exec -- dune runtest

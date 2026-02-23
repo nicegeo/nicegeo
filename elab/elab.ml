@@ -49,12 +49,13 @@ let process_decl (e: t) (d: declaration) : unit =
         Hashtbl.add e.env name ty;
         Hashtbl.add e.kenv name ty_k 
 
-
-let create_with_env () : t = 
+let create_with_env_path (path_to_env : string) : t =
   let e = create () in
-  let ic = open_in "elab/env.txt" in
+  let ic = open_in path_to_env in
   let lexbuf = Lexing.from_channel ic in
   let decls = Parser.main Lexer.token lexbuf in
   let _ = List.map (process_decl e) decls in
   e
 
+let create_with_env () : t = 
+  create_with_env_path "elab/env.txt"
