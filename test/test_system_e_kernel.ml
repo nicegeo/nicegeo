@@ -52,9 +52,11 @@ let test_const_unknown_fails () =
     | UnknownConstError _ -> ()
     | _ -> assert false)
 
+    let path_to_env = "../../../elab/env.txt"
+
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
-  let env = Elab.create_with_env () in
+  let env = Elab.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
   (* Empty : Type (i.e. Sort 1) *)
   let empty_ty = try_infer env.kenv lctx (Const "Empty") in
@@ -66,7 +68,7 @@ let test_empty_constants () =
    | _ -> assert false)
 
 let test_and_constants () =
-  let env = Elab.create_with_env () in
+  let env = Elab.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
   (* And : (A : Prop) -> (B : Prop) -> Prop *)
   let and_ty = try_infer env.kenv lctx (Const "And") in
@@ -74,12 +76,12 @@ let test_and_constants () =
   (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
   let intro_ty = try_infer env.kenv lctx (Const "And.intro") in
   (match intro_ty with
-   | Forall (Sort 0, Forall (Sort 0, Forall (Bvar 1, Forall (Bvar 2, App (App (Const "And", Bvar 3), Bvar 2))))) -> ()
+   | Forall (Sort 0, Forall (Sort 0, Forall (Bvar 1, Forall (Bvar 1, App (App (Const "And", Bvar 3), Bvar 2))))) -> ()
    | _ -> assert false);
-  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Type) -> (f : A -> B -> C) -> (h : And A B) -> C *)
+  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Prop) -> (f : A -> B -> C) -> (h : And A B) -> C *)
   let elim_ty = try_infer env.kenv lctx (Const "And.elim") in
   (match elim_ty with
-   | Forall (Sort 0, Forall (Sort 0, Forall (Sort 1, Forall (Forall (Bvar 4, Forall (Bvar 3, Bvar 2)), Forall (App (App (Const "And", Bvar 4), Bvar 3), Bvar 2))))) -> ()
+   | Forall (Sort 0, Forall (Sort 0, Forall (Sort 0, Forall (Forall (Bvar 2, Forall (Bvar 2, Bvar 2)), Forall (App (App (Const "And", Bvar 3), Bvar 2), Bvar 2))))) -> ()
    | _ -> assert false)
 
 let test_infer_function_type () =
@@ -237,7 +239,7 @@ let test_rebind_bvar () =
 let eq ty a b = App (App (App (Const "Eq", ty), a), b)
 
 let test_eq_symm () = 
-  let env = Elab.create_with_env () in
+  let env = Elab.create_with_env_path path_to_env in
   let local_ctx = Hashtbl.create 16 in
   let eq_symm_type = 
     Forall (Sort 1, (* A: Type *)
@@ -270,7 +272,7 @@ let test_eq_symm () =
 
 (* These two tests are made by AI so can remove or change them completely if wanted *)
 let test_len_sanity () =
-  let env = Elab.create_with_env () in
+  let env = Elab.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
   (* Base types are Sort 1 *)
   assert (try_infer env.kenv lctx (Const "Len") = Sort 1);
@@ -283,14 +285,15 @@ let test_len_sanity () =
   assert (try_infer env.kenv lctx (Const "Add") =
     Forall (Const "Len", Forall (Const "Len", Const "Len")));
   (* AddZero is exact enough to check de Bruijn encoding *)
-  assert (try_infer env.kenv lctx (Const "AddZero") =
-    Forall (Const "Len",
+  let inferred = (try_infer env.kenv lctx (Const "AddZero")) in
+  let expected = (Forall (Const "Len",
       App (App (App (Const "Eq", Const "Len"),
-        App (App (Const "Add", Const "Zero"), Bvar 0)),
-        Bvar 0)))
+        App (App (Const "Add", Bvar 0), Const "Zero")),
+        Bvar 0))) in
+  assert (isDefEq env.kenv lctx inferred expected)
 
 let test_len_app () =
-  let env = Elab.create_with_env () in
+  let env = Elab.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
   (* Lt Zero Zero : Prop *)
   assert (try_infer env.kenv lctx (App (App (Const "Lt", Const "Zero"), Const "Zero")) = Sort 0);
@@ -310,7 +313,7 @@ let test_len_app () =
   try
     ignore (try_infer env.kenv lctx (App (Const "Lt", Fvar "p")));
     assert false
-  with Failure _ -> ()
+  with TypeError _ -> ()
 
 
 let () =

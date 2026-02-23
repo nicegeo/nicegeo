@@ -45,9 +45,60 @@ let gen_new_fvar_name () : string =
   incr fvar_counter;
   name
 
+(* Reduce a term to normal form *)
+let rec reduce (env : environment) (localCtx : localcontext) (t : term) : term =
+  match t with
+  | App (func, arg) -> 
+    let reduced_func = reduce env localCtx func in
+    let reduced_arg = reduce env localCtx arg in
+    (match reduced_func with
+    | Lam (_, body) ->
+      (* beta reduction---substitute bound variable *)
+      let substed_body = subst_bvar body 0 reduced_arg in
+      reduce env localCtx substed_body
+    | _ ->
+      App (reduced_func, reduced_arg))
+  | Lam (domainType, body) -> 
+    (* substitute free variable in lambda *)
+    let new_fvar_name = gen_new_fvar_name () in
+    let domainTypeReduced = reduce env localCtx domainType in
+    let newLocalCtx = 
+      let t = Hashtbl.copy localCtx in
+      Hashtbl.replace t new_fvar_name domainTypeReduced;
+      t
+    in
+    let substed_body = subst_bvar body 0 (Fvar new_fvar_name) in
+    let bodyReduced = reduce env newLocalCtx substed_body in
+    Lam (domainTypeReduced, rebind_bvar bodyReduced 0 new_fvar_name)
+  | Forall (domainType, returnType) ->
+     (* substitute free variable in forall *)
+    let new_fvar_name = gen_new_fvar_name () in
+    let domainTypeReduced = reduce env localCtx domainType in
+    let newLocalCtx = 
+      let t = Hashtbl.copy localCtx in
+      Hashtbl.replace t new_fvar_name domainTypeReduced;
+      t
+    in
+    let substed_return_type = subst_bvar returnType 0 (Fvar new_fvar_name) in
+    let returnTypeReduced = reduce env newLocalCtx substed_return_type in
+    Forall (domainTypeReduced, rebind_bvar returnTypeReduced 0 new_fvar_name)
+  | _ -> t
+
+(* Determine if a term is a Sort *)
+let isSort (env : environment) (t : term) : bool =
+  match reduce env (Hashtbl.create 0) t with
+  | Sort _ -> true
+  | _ -> false
+
+(* Definitional equality: reduce and check exact equality *)
+let isDefEq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term) : bool =
+  let t1_reduced = reduce env localCtx t1 in
+  let t2_reduced = reduce env localCtx t2 in
+  t1_reduced = t2_reduced
+
 (*
  * Core type inference algorithm.
- * When this fails, throws a TypeError or a RedError.
+ * When this fails, throws a TypeError.
  *)
 let rec inferType (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
@@ -138,56 +189,5 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
           let err_kind = ForallSortError (domainTypeType, returnTypeType) in
           raise (TypeError {env; ctx; trm; err_kind}))
   | Sort level -> Sort (level + 1)
-
-and isDefEq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term) : bool =
-  let t1_reduced = reduce env localCtx t1 in
-  let t2_reduced = reduce env localCtx t2 in
-  t1_reduced = t2_reduced
-
-and reduce (env : environment) (localCtx : localcontext) (t : term) : term =
-  match t with
-  | App (func, arg) -> 
-      let reduced_func = reduce env localCtx func in
-      let reduced_arg = reduce env localCtx arg in
-      (match reduced_func with
-      | Lam (domainType, body) ->
-          let arg_type = inferType env localCtx reduced_arg in
-          if isDefEq env localCtx domainType arg_type then
-            let substed_body = subst_bvar body 0 reduced_arg in
-            reduce env localCtx substed_body
-          else
-            let err_kind = AppArgRedError in
-            raise (RedError {env; ctx = localCtx; trm = t; err_kind})
-      | _ ->
-        App (reduced_func, reduced_arg))
-  | Lam (domainType, body) -> 
-    (* need to subst fvar *)
-    let new_fvar_name = gen_new_fvar_name () in
-    let domainTypeReduced = reduce env localCtx domainType in
-    let newLocalCtx = 
-      let t = Hashtbl.copy localCtx in
-      Hashtbl.replace t new_fvar_name domainTypeReduced;
-      t
-    in
-    let substed_body = subst_bvar body 0 (Fvar new_fvar_name) in
-    let bodyReduced = reduce env newLocalCtx substed_body in
-    Lam (domainTypeReduced, rebind_bvar bodyReduced 0 new_fvar_name)
-  | Forall (domainType, returnType) -> 
-    let new_fvar_name = gen_new_fvar_name () in
-    let domainTypeReduced = reduce env localCtx domainType in
-    let newLocalCtx = 
-      let t = Hashtbl.copy localCtx in
-      Hashtbl.replace t new_fvar_name domainTypeReduced;
-      t
-    in
-    let substed_return_type = subst_bvar returnType 0 (Fvar new_fvar_name) in
-    let returnTypeReduced = reduce env newLocalCtx substed_return_type in
-    Forall (domainTypeReduced, rebind_bvar returnTypeReduced 0 new_fvar_name)
-  | _ -> t
-
-and isSort (env : environment) (t : term) : bool =
-  match reduce env (Hashtbl.create 0) t with
-  | Sort _ -> true
-  | _ -> false
 
 

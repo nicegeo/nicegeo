@@ -8,13 +8,16 @@ let create () : Types.ctx = {
   lctx = Hashtbl.create 16;
 }
 
-let create_with_env () : Types.ctx = 
+let create_with_env_path (path_to_env : string) : Types.ctx =
   let e = create () in
-  let ic = open_in "elab/env.txt" in
+  let ic = open_in path_to_env in
   let lexbuf = Lexing.from_channel ic in
   let decls = Parser.main Lexer.token lexbuf in
   let _ = List.map (Typecheck.process_decl e) decls in
   e
+
+let create_with_env () : Types.ctx = 
+  create_with_env_path "elab/env.txt"
 
 let process_decl (env: Types.ctx) (decl: Decl.declaration) : unit =
   Typecheck.process_decl env decl
