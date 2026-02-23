@@ -44,10 +44,28 @@ let process_decl (e: t) (d: declaration) : unit =
         Hashtbl.add e.env name ty;
         Hashtbl.add e.kenv name ty_k 
 
+let axiom_list = [ "Point"; "Line"; "Circle"; "Exist"; "Exists.intro"; "Exists.elim"; "And"; "And.intro"; "And.elim"; "Empty"; "Empty.elim"; "False"; "False.elim"; "Eq"; "Eq.intro"; "Eq.elim"; "Or"; "Or.inl"; "Or.inr"; "Or.elim"; "Len"; "Lt"; "LtTrans"; "LtTricot"; "Zero"; "ZeroLeast"; "Add"; "AddComm"; "AddAssoc"; "AddZero"; "LtAdd"; "Length"; "CenterCircle"; "OnCircle"; "InCircle"; "CirclesInter"; "circle_of_ne"; "circlesinter_of_inside_on_circle"; "inside_circle_of_center"; "PtsOfCirclesinter"; "OnCircleIffLengthE"]
+
+let rec term_to_string (t : term) : string = 
+  match t with 
+  | Name a -> if List.mem a axiom_list then a ^ ";" else ""
+  | Hole -> ""
+  | Fun (id, ty, bd) -> 
+    if List.mem id axiom_list then id ^ ";" ^ term_to_string ty ^ ";" ^ term_to_string bd ^ ";"
+    else term_to_string ty ^ ";" ^ term_to_string bd ^ ";"
+  | Arrow (id, ll, rr) -> 
+    if List.mem id axiom_list then id ^ ";" ^ term_to_string ll ^ ";" ^ term_to_string rr ^ ";"
+    else  term_to_string ll ^ ";" ^ term_to_string rr ^ ";"
+  | App (ll, rr) -> term_to_string ll ^ ";" ^ term_to_string rr ^ ";"
+  | Sort _ -> ""
+
 let decl_to_string (d : declaration) : string =
   match d with
   | Theorem (name, ty, proof) -> name ^ Term.term_to_string ty ^ "\n" ^ Term.term_to_string proof ^ "\n"
   | Axiom (name, body) -> name ^ Term.term_to_string body ^ "\n"
+
+let list_axioms (decls: declaration list) : string list = 
+  List.map (Str.global_replace (Str.regexp ";+") ";") (List.map (fun dec -> decl_to_string dec) decls) 
 
 let create_with_env () : t = 
   let e = create () in
