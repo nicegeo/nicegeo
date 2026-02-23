@@ -18,3 +18,11 @@ let create_with_env () : Types.ctx =
 
 let process_decl (env: Types.ctx) (decl: Decl.declaration) : unit =
   Typecheck.process_decl env decl
+
+let list_axioms (env: Types.ctx) (name: string) = 
+  match Hashtbl.find_opt env.env name with
+  | Some entry ->
+      (match entry.data with
+      | Types.Axiom -> failwith (name ^ " is an axiom")
+      | Types.Theorem axioms -> axioms)
+  | None -> failwith ("unknown declaration: " ^ name)

@@ -182,7 +182,7 @@ and infertype (e: ctx) (tm: term) : term =
   | Hole _ -> raise InferHole
   | Name name ->
     (match Hashtbl.find_opt e.env name with
-      | Some ty -> ty      
+      | Some entry -> entry.ty
       | None -> failwith ("unknown identifier: " ^ name))
   | Fun (arg, ty_arg, body) ->
     check_is_type e ty_arg;
@@ -233,7 +233,7 @@ and check_is_type (e: ctx) (tm: term) : unit =
     | _ -> ())
   | Name name ->
     (match Hashtbl.find_opt e.env name with
-      | Some ty -> if not (is_sort ty) then failwith ("expected " ^ name ^ " to be a type") else ()
+      | Some entry -> if not (is_sort entry.ty) then failwith ("expected " ^ name ^ " to be a type") else ()
       | None -> failwith ("unknown identifier: " ^ name))
   | Fun _ ->
     failwith "a function cannot be a type"
@@ -322,6 +322,23 @@ let rec hole_to_meta (e: ctx) (stack: term list) (tm: term): term =
     App (f_meta, arg_meta)
   | _ -> tm
 
+let union (l1: string list) (l2: string list) : string list =
+  let set = Hashtbl.create 0 in
+  List.iter (fun x -> Hashtbl.replace set x ()) l1;
+  List.iter (fun x -> Hashtbl.replace set x ()) l2;
+  Hashtbl.fold (fun key _ acc -> key :: acc) set []
+
+let rec list_axioms_used (e: ctx) (tm: term) : string list =
+  match tm with
+  | Name name -> 
+    (match Hashtbl.find_opt e.env name with
+    | Some {data = Theorem axioms; _} -> axioms
+    | Some {data = Axiom; _} -> [name]
+    | None -> failwith ("unknown identifier: " ^ name))
+  | Fun (_, ty_arg, body) -> union (list_axioms_used e ty_arg) (list_axioms_used e body)
+  | Arrow (_, ty_arg, ty_ret) -> union (list_axioms_used e ty_arg) (list_axioms_used e ty_ret)
+  | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
+  | _ -> []
 
 let process_decl (e: ctx) (d: declaration) : unit =
   match d with
@@ -341,7 +358,7 @@ let process_decl (e: ctx) (d: declaration) : unit =
     let isValidProof = KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k in
 
     if isValidProof then
-      (Hashtbl.add e.env name ty_filled;
+      (Hashtbl.add e.env name {name = name; ty = ty_filled; data = Theorem (list_axioms_used e proof_filled)};
       Hashtbl.add e.kenv name ty_k)
     else
       failwith ("invalid proof of " ^ name ^ ".\n")
@@ -354,5 +371,5 @@ let process_decl (e: ctx) (d: declaration) : unit =
 
     Hashtbl.clear e.metas;
     let ty_k = conv_to_kterm ty_filled in
-    Hashtbl.add e.env name ty_filled;
+    Hashtbl.add e.env name {name = name; ty = ty_filled; data = Axiom};
     Hashtbl.add e.kenv name ty_k 

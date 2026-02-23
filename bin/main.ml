@@ -40,4 +40,6 @@ let () =
     print_endline "Error(s) encountered while processing proof file. Exiting.";
     exit 1
   end;
+  print_endline "Axioms used in prop1:";
+  List.iter print_endline (Elab.list_axioms env "prop1");
   print_endline "Valid proofs!"

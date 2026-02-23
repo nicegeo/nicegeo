@@ -7,8 +7,18 @@ type metavar = {
   sol : term option; (* solution term, should not contain fvars *)
 }
 
+type enventry_data =
+  | Theorem of string list (* list of axiom names used *)
+  | Axiom
+
+type enventry = {
+  name: string;
+  ty : term;
+  data: enventry_data;
+}
+
 type ctx = {
-  env : (string, term) Hashtbl.t; (* elaboration-level environment *)
+  env : (string, enventry) Hashtbl.t; (* elaboration-level environment *)
   kenv : KTerm.environment; (* kernel-level environment (should be kept in sync with env) *)
 
   metas : (int, metavar) Hashtbl.t; (* mapping from hole IDs to values *)
