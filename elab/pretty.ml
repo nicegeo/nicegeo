@@ -3,10 +3,11 @@
 open Term
 open Decl
 
+(* Sort 0 = Prop, Sort 1 = Type; for n >= 2 display as "Sort n". *)
 let sort_to_string = function
   | 0 -> "Prop"
   | 1 -> "Type"
-  | n -> "Type" ^ string_of_int n
+  | n -> "Sort " ^ string_of_int n
 
 let is_atomic = function
   | Name _ | Hole | Sort _ -> true
