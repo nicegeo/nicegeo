@@ -2,8 +2,15 @@
 open System_e_kernel
 open Term
 open Infer
+open Exceptions
 open Printexc
 open E_elab
+
+(* For backwards compatibility during exception refactoring *)
+let try_infer env localCtx t =
+  try inferType env localCtx t with
+  | TypeError info -> failwith (type_err_to_string info)
+  | RedError info -> failwith (red_err_to_string info)
 
 let str_contains s sub =
   let n = String.length sub in
@@ -24,29 +31,29 @@ let mk_env () =
 
 let test_const_lookup () =
   let env = mk_env () in
-  let ty = inferType env (Hashtbl.create 0) (Const "Point") in
+  let ty = try_infer env (Hashtbl.create 0) (Const "Point") in
   assert (ty = Sort 1);
-  let ty_line = inferType env (Hashtbl.create 0) (Const "Line") in
+  let ty_line = try_infer env (Hashtbl.create 0) (Const "Line") in
   assert (ty_line = Sort 1)
 
 let test_fvar_lookup () =
   let env = mk_env () in
   let local_ctx = Hashtbl.create 16 in
   Hashtbl.add local_ctx "p1" (Const "Point");
-  let ty = inferType env local_ctx (Fvar "p1") in
+  let ty = try_infer env local_ctx (Fvar "p1") in
   assert (ty = Const "Point")
 
 let test_fvar_unknown_fails () =
   let env = mk_env () in
   try
-    ignore (inferType env (Hashtbl.create 0) (Fvar "nonexistent"));
+    ignore (try_infer env (Hashtbl.create 0) (Fvar "nonexistent"));
     assert false
   with Failure msg -> assert (str_contains msg "unknown free variable")
 
 let test_const_unknown_fails () =
   let env = mk_env () in
   try
-    ignore (inferType env (Hashtbl.create 0) (Const "Unknown"));
+    ignore (try_infer env (Hashtbl.create 0) (Const "Unknown"));
     assert false
   with Failure msg -> assert (str_contains msg "unknown constant")
 
@@ -55,10 +62,10 @@ let test_empty_constants () =
   let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* Empty : Type (i.e. Sort 1) *)
-  let empty_ty = inferType env.kenv lctx (Const "Empty") in
+  let empty_ty = try_infer env.kenv lctx (Const "Empty") in
   assert (empty_ty = Sort 1);
   (* Empty.elim : (C : Type) -> Empty -> C *)
-  let elim_ty = inferType env.kenv lctx (Const "Empty.elim") in
+  let elim_ty = try_infer env.kenv lctx (Const "Empty.elim") in
   (match elim_ty with
    | Forall (Sort 1, Forall (Const "Empty", Bvar 1)) -> ()
    | _ -> assert false)
@@ -67,15 +74,15 @@ let test_and_constants () =
   let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* And : (A : Prop) -> (B : Prop) -> Prop *)
-  let and_ty = inferType env.kenv lctx (Const "And") in
+  let and_ty = try_infer env.kenv lctx (Const "And") in
   assert (and_ty = Forall (Sort 0, Forall (Sort 0, Sort 0)));
   (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
-  let intro_ty = inferType env.kenv lctx (Const "And.intro") in
+  let intro_ty = try_infer env.kenv lctx (Const "And.intro") in
   (match intro_ty with
    | Forall (Sort 0, Forall (Sort 0, Forall (Bvar 1, Forall (Bvar 2, App (App (Const "And", Bvar 3), Bvar 2))))) -> ()
    | _ -> assert false);
   (* And.elim : (A : Prop) -> (B : Prop) -> (C : Type) -> (f : A -> B -> C) -> (h : And A B) -> C *)
-  let elim_ty = inferType env.kenv lctx (Const "And.elim") in
+  let elim_ty = try_infer env.kenv lctx (Const "And.elim") in
   (match elim_ty with
    | Forall (Sort 0, Forall (Sort 0, Forall (Sort 1, Forall (Forall (Bvar 4, Forall (Bvar 3, Bvar 2)), Forall (App (App (Const "And", Bvar 4), Bvar 3), Bvar 2))))) -> ()
    | _ -> assert false)
@@ -85,26 +92,26 @@ let test_infer_function_type () =
 
   (* environment used in test contains a variable "p" with type Point *)
   let const_func = Lam (Const "Point", Const "p") in
-  assert ((inferType env (Hashtbl.create 0) const_func) = Forall (Const "Point", Const "Point"));
+  assert ((try_infer env (Hashtbl.create 0) const_func) = Forall (Const "Point", Const "Point"));
   let identity_func = Lam (Const "Point", Bvar 0) in
-  assert ((inferType env (Hashtbl.create 0) identity_func) = Forall (Const "Point", Const "Point"));
+  assert ((try_infer env (Hashtbl.create 0) identity_func) = Forall (Const "Point", Const "Point"));
 
   let generic_func = Lam (Sort 1, Lam (Bvar 0, Bvar 0)) in
-  assert ((inferType env (Hashtbl.create 0) generic_func) = Forall (Sort 1, Forall (Bvar 0, Bvar 1)))
+  assert ((try_infer env (Hashtbl.create 0) generic_func) = Forall (Sort 1, Forall (Bvar 0, Bvar 1)))
 
 let test_infer_forall () = 
   let env = mk_env () in 
 
   (* functions Point -> Point should be Type *)
   let forall_term = Forall (Const "Point", Const "Point") in
-  assert ((inferType env (Hashtbl.create 0) forall_term) = Sort 1);
+  assert ((try_infer env (Hashtbl.create 0) forall_term) = Sort 1);
 
   (* fun T: Type => (fun (t: T) => t) *)
   let generic_func = Lam (Sort 1, Lam (Bvar 0, Bvar 0)) in
-  let generic_func_type = inferType env (Hashtbl.create 0) generic_func in
+  let generic_func_type = try_infer env (Hashtbl.create 0) generic_func in
   assert (generic_func_type = Forall (Sort 1, Forall (Bvar 0, Bvar 1)));
   (* (T: Type) -> (T -> T) should be Type 1 (= Sort 2) *)
-  let generic_func_type_type = inferType env (Hashtbl.create 0) generic_func_type in
+  let generic_func_type_type = try_infer env (Hashtbl.create 0) generic_func_type in
   assert (generic_func_type_type = Sort 2);
 
   (* predicate *)
@@ -113,28 +120,28 @@ let test_infer_forall () =
   (* for all points p, p isRed -> p isRed *)
   let pred_forall = Forall (Const "Point", Forall (App (Const "IsRed", Bvar 0), App (Const "IsRed", Bvar 1))) in
   (* the forall statement is a Prop by impredicativity *)
-  assert ((inferType env (Hashtbl.create 0) pred_forall) = Sort 0);
+  assert ((try_infer env (Hashtbl.create 0) pred_forall) = Sort 0);
   let bigger_pred_forall = Forall (Sort 67, App (Const "IsRed", Const "p")) in
-  assert ((inferType env (Hashtbl.create 0) bigger_pred_forall) = Sort 0);
+  assert ((try_infer env (Hashtbl.create 0) bigger_pred_forall) = Sort 0);
   (* not a prop, something like fun (p: Point) => p=p like what you might see as a motive in eliminators *)
   let motive = Forall (Const "Point", Sort 0) in
   (* (Point -> Prop) : Type *)
-  assert ((inferType env (Hashtbl.create 0) motive) = Sort 1);
+  assert ((try_infer env (Hashtbl.create 0) motive) = Sort 1);
 
   (* failure cases *)
   let return_type_not_sort = Forall (Const "Point", Const "p") in
   assert (try
-    ignore (inferType env (Hashtbl.create 0) return_type_not_sort);
+    ignore (try_infer env (Hashtbl.create 0) return_type_not_sort);
     false  
-  with Failure msg -> str_contains msg "Return type of a Forall must be a sort");
+  with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts");
   let domain_type_not_sort = Forall (Const "p", App (Const "IsRed", Const "p")) in
   assert (try
-    ignore (inferType env (Hashtbl.create 0) domain_type_not_sort);
+    ignore (try_infer env (Hashtbl.create 0) domain_type_not_sort);
     false  
-  with Failure msg -> str_contains msg "Domain type of a Forall must be a sort");
+  with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts");
   let domain_and_return_type_not_sort = Forall (Const "p", Const "p") in
   assert (try
-    ignore (inferType env (Hashtbl.create 0) domain_and_return_type_not_sort);
+    ignore (try_infer env (Hashtbl.create 0) domain_and_return_type_not_sort);
     false  
   with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts")
 
@@ -147,20 +154,20 @@ let test_infer_function_application () =
   let local_ctx = Hashtbl.create 16 in
   Hashtbl.add local_ctx "p1" (Const "Point");
   let const_func_app = App (Lam (Const "Point", Const "p"), Fvar "p1") in
-  assert ((inferType env local_ctx const_func_app) = Const "Point");
+  assert ((try_infer env local_ctx const_func_app) = Const "Point");
   Hashtbl.clear local_ctx;
   Hashtbl.add local_ctx "l1" (Const "Line");
   try
-    ignore (inferType env local_ctx const_func_app);
+    ignore (try_infer env local_ctx const_func_app);
     assert false
   with Failure msg -> assert (str_contains msg "unknown free variable");
   Hashtbl.clear local_ctx;
   let identity_func_app = App (Lam (Const "Point", Bvar 0), Const "p") in
-  assert ((inferType env local_ctx identity_func_app) = Const "Point");
+  assert ((try_infer env local_ctx identity_func_app) = Const "Point");
 
   let application_with_non_function = App (Const "p", Const "l") in
   try
-    ignore (inferType env local_ctx application_with_non_function);
+    ignore (try_infer env local_ctx application_with_non_function);
     assert false
   with Failure msg -> assert (str_contains msg "apply non-function to an argument");
 
@@ -168,7 +175,7 @@ let test_infer_function_application () =
   (* Corresponds to the expression `(fun (A: Type) -> fun (x: A) -> x) Point` which
   is equivalent to `fun (x: Point) -> x`, so we'd expect a type of `Point => Point` *)
   let generic_func_app = App (Lam (Sort 1, Lam (Bvar 0, Bvar 0)), Const "Point") in
-  let inferred_type = inferType env local_ctx generic_func_app in
+  let inferred_type = try_infer env local_ctx generic_func_app in
   assert (inferred_type = Forall (Const "Point", Const "Point"))
 
 let test_subst_bvar () = 
@@ -228,7 +235,7 @@ let test_eq_symm () =
     Forall (eq (Bvar 2) (Bvar 1) (Bvar 0), (* Eq a b *)
     eq (Bvar 3) (Bvar 1) (Bvar 2) (* Eq b a *)
   )))) in
-  assert (inferType env.kenv local_ctx eq_symm_type = Sort 0); (* make sure this is actually a Prop *)
+  assert (try_infer env.kenv local_ctx eq_symm_type = Sort 0); (* make sure this is actually a Prop *)
   let eq_symm_term = 
     Lam (Sort 1, (* A: Type *)
     Lam (Bvar 0, (* a: A *)
@@ -244,7 +251,7 @@ let test_eq_symm () =
       ]
     )))) in
   (* print_endline ("eq_symm_term: " ^ (term_to_string eq_symm_term)); *)
-  let inferred_type = inferType env.kenv local_ctx eq_symm_term in
+  let inferred_type = try_infer env.kenv local_ctx eq_symm_term in
   (* print_endline ("expected eq_symm_type: " ^ (term_to_string eq_symm_type));
   print_endline ("inferred eq_symm_type: " ^ (term_to_string inferred_type)); *)
   assert (isDefEq env.kenv local_ctx inferred_type eq_symm_type)
@@ -255,17 +262,17 @@ let test_len_sanity () =
   let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* Base types are Sort 1 *)
-  assert (inferType env.kenv lctx (Const "Len") = Sort 1);
-  assert (inferType env.kenv lctx (Const "Point") = Sort 1);
+  assert (try_infer env.kenv lctx (Const "Len") = Sort 1);
+  assert (try_infer env.kenv lctx (Const "Point") = Sort 1);
   (* Zero is an element of Len *)
-  assert (inferType env.kenv lctx (Const "Zero") = Const "Len");
+  assert (try_infer env.kenv lctx (Const "Zero") = Const "Len");
   (* Lt and Add have the right top-level shape *)
-  assert (inferType env.kenv lctx (Const "Lt") =
+  assert (try_infer env.kenv lctx (Const "Lt") =
     Forall (Const "Len", Forall (Const "Len", Sort 0)));
-  assert (inferType env.kenv lctx (Const "Add") =
+  assert (try_infer env.kenv lctx (Const "Add") =
     Forall (Const "Len", Forall (Const "Len", Const "Len")));
   (* AddZero is exact enough to check de Bruijn encoding *)
-  assert (inferType env.kenv lctx (Const "AddZero") =
+  assert (try_infer env.kenv lctx (Const "AddZero") =
     Forall (Const "Len",
       App (App (App (Const "Eq", Const "Len"),
         App (App (Const "Add", Const "Zero"), Bvar 0)),
@@ -275,14 +282,14 @@ let test_len_app () =
   let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* Lt Zero Zero : Prop *)
-  assert (inferType env.kenv lctx (App (App (Const "Lt", Const "Zero"), Const "Zero")) = Sort 0);
+  assert (try_infer env.kenv lctx (App (App (Const "Lt", Const "Zero"), Const "Zero")) = Sort 0);
   (* Add Zero Zero : Len *)
-  assert (inferType env.kenv lctx (App (App (Const "Add", Const "Zero"), Const "Zero")) = Const "Len");
+  assert (try_infer env.kenv lctx (App (App (Const "Add", Const "Zero"), Const "Zero")) = Const "Len");
   (* LtTrans applied to 3 Len args gives Lt a b -> Lt b c -> Lt a c *)
   Hashtbl.add lctx "a" (Const "Len");
   Hashtbl.add lctx "b" (Const "Len");
   Hashtbl.add lctx "c" (Const "Len");
-  let ty = inferType env.kenv lctx (App (App (App (Const "LtTrans", Fvar "a"), Fvar "b"), Fvar "c") ) in
+  let ty = try_infer env.kenv lctx (App (App (App (Const "LtTrans", Fvar "a"), Fvar "b"), Fvar "c") ) in
   assert (ty =
     Forall (App (App (Const "Lt", Fvar "a"), Fvar "b"),
     Forall (App (App (Const "Lt", Fvar "b"), Fvar "c"),
@@ -290,7 +297,7 @@ let test_len_app () =
   (* Type mismatch: Lt applied to a Point should fail *)
   Hashtbl.add lctx "p" (Const "Point");
   try
-    ignore (inferType env.kenv lctx (App (Const "Lt", Fvar "p")));
+    ignore (try_infer env.kenv lctx (App (Const "Lt", Fvar "p")));
     assert false
   with Failure _ -> ()
 

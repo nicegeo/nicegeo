@@ -35,6 +35,7 @@ let () =
   let env = Elab.create_with_env () in
 
   (* Process proof.txt *)
+
   let all_decls_good = List.fold_left (fun x decl -> try Elab.process_decl env decl; x with Failure msg -> print_endline ("Error adding declaration: " ^ msg); false) true decls in
   let strDecl = Elab.list_axioms decls in
   print_string_list strDecl;
