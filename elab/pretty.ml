@@ -3,10 +3,11 @@
 open Term
 open Decl
 
+(* Lean convention: Sort 0 = Prop, Sort 1 = Type (= Type 0), Sort n = Type (n-1); display level 0-based *)
 let sort_to_string = function
   | 0 -> "Prop"
   | 1 -> "Type"
-  | n -> "Type" ^ string_of_int n
+  | n -> "Sort " ^ string_of_int (n - 1)
 
 let is_atomic = function
   | Name _ | Hole | Sort _ -> true
