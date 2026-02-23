@@ -2,6 +2,7 @@ open Decl
 open Term
 open Convert
 module KInfer = System_e_kernel.Infer
+open System_e_kernel.Exceptions
 module KTerm = System_e_kernel.Term
 
 exception InferHole
@@ -388,23 +389,3 @@ let create_with_env () : t =
   let _ = List.map (process_decl e) decls in
   e
 
-let rec get_axiom_term (tm : term) (e : t) : string =
-  match tm with 
-  | Name nm -> 
-    if Hashtbl.mem e.env nm
-      then nm ^ ";" else ""
-  | Bvar _ -> ""
-  | Fvar _ -> ""
-  | Hole _ -> ""
-  | Fun (_, _, bd) -> get_axiom_term bd e ^ ";" 
-  | Arrow (_, ll, rr) -> get_axiom_term ll e ^ ";" ^ get_axiom_term rr e ^ ";"
-  | App (ll, rr) ->  get_axiom_term ll e ^ ";" ^ get_axiom_term rr e ^ ";"
-  | Sort _ -> ""
-
-let get_axiom_decl (dl : declaration) (e : t) : string = 
-  match dl with 
-  | Theorem (_, ty, proof) -> get_axiom_term ty e ^ "\n" ^ get_axiom_term proof e ^ "\n"
-  | Axiom (name, ty) -> name ^ get_axiom_term ty e ^ "\n"
-
-let list_axioms (decls: declaration list) (e : t): string list = 
-  List.map (Str.global_replace (Str.regexp ";+") ";") (List.map (fun dec -> get_axiom_decl dec e) decls) 

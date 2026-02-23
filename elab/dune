@@ -1,6 +1,6 @@
 (library
  (name e_elab)
- (libraries system_e_kernel str))
+ (libraries system_e_kernel))
 
  (ocamllex lexer)
  (menhir
