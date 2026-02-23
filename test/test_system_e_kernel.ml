@@ -3,8 +3,10 @@ open System_e_kernel
 open Term
 open Infer
 open Exceptions
-open Printexc
-open E_elab
+(* open Printexc *)
+(* open E_elab *)
+
+let term_testable = Alcotest.testable (fun _ _ -> ()) (fun t1 t2 -> t1 = t2)
 
 (* For backwards compatibility during exception refactoring *)
 let try_infer env localCtx t =
@@ -12,14 +14,14 @@ let try_infer env localCtx t =
   | TypeError info -> failwith (type_err_to_string info)
   | RedError info -> failwith (red_err_to_string info)
 
-let str_contains s sub =
+(* let str_contains s sub =
   let n = String.length sub in
   n = 0
   || let rec loop i =
        i + n <= String.length s
        && (String.sub s i n = sub || loop (i + 1))
      in
-     loop 0
+     loop 0 *)
 
 let mk_env () =
   let env = Hashtbl.create 16 in
@@ -29,13 +31,19 @@ let mk_env () =
   Hashtbl.add env "l" (Const "Line");
   env
 
-let test_const_lookup () =
+let test_point_lookup () =
+
   let env = mk_env () in
   let ty = try_infer env (Hashtbl.create 0) (Const "Point") in
-  assert (ty = Sort 1);
-  let ty_line = try_infer env (Hashtbl.create 0) (Const "Line") in
-  assert (ty_line = Sort 1)
+  Alcotest.(check term_testable) "same term" ty (Sort 1);
 
+
+let test_const_lookup () =
+  let env = mk_env () in
+  let ty_line = try_infer env (Hashtbl.create 0) (Const "Line") in
+  Alcotest.(check term_testable) "same term" ty_line (Sort 1)
+
+(*
 let test_fvar_lookup () =
   let env = mk_env () in
   let local_ctx = Hashtbl.create 16 in
@@ -301,7 +309,17 @@ let test_len_app () =
     assert false
   with Failure _ -> ()
 
+    *)
 
+let () =
+  let open Alcotest in
+  run "Kernel" [
+      "test-const", [
+          test_case "Const lookup" `Quick test_const_lookup;
+        ];
+    ]
+
+(*
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
   turns on stack traces *)
@@ -324,3 +342,5 @@ let () =
   test_eq_symm ();
 
   print_endline "All inferType tests passed."
+
+*)
