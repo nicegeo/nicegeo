@@ -44,12 +44,15 @@ let process_decl (e: t) (d: declaration) : unit =
         Hashtbl.add e.env name ty;
         Hashtbl.add e.kenv name ty_k 
 
+let decl_to_string (d : declaration) : string =
+  match d with
+  | Theorem (name, ty, proof) -> name ^ Term.term_to_string ty ^ "\n" ^ Term.term_to_string proof ^ "\n"
+  | Axiom (name, body) -> name ^ Term.term_to_string body ^ "\n"
 
 let create_with_env () : t = 
   let e = create () in
   let ic = open_in "elab/env.txt" in
   let lexbuf = Lexing.from_channel ic in
-  let decls = Parser.main Lexer.token lexbuf in
+  let decls = Parser.main Lexer.token lexbuf in 
   let _ = List.map (process_decl e) decls in
-  e
-
+    e

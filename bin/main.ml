@@ -1,9 +1,13 @@
-(* open System_e_kernel *)
-(* open System_e_kernel.Decl *)
-(* open System_e_kernel.Env *)
 open Printexc
-(* module Elab = E_elab.Elab *)
-open E_elab
+(* open E_elab.Elab *)
+module Elab = E_elab.Elab
+let print_string_list lst =
+  List.iter print_endline lst
+let remove_delimiter (delimiter : char) (s : string) : string =
+  s
+
+  |> String.split_on_char delimiter
+  |> String.concat ""
 
 let () =
   record_backtrace true;
@@ -37,6 +41,8 @@ let () =
 
   (* Process proof.txt *)
   let all_decls_good = List.fold_left (fun x decl -> try Elab.process_decl env decl; x with Failure msg -> print_endline ("Error adding declaration: " ^ msg); false) true decls in
+  let strDecl = List.map (remove_delimiter ';') (List.map (fun dec -> Elab.decl_to_string dec) decls) in 
+  print_string_list strDecl;
   if not all_decls_good then begin
     print_endline "Error(s) encountered while processing proof file. Exiting.";
     exit 1
