@@ -33,28 +33,8 @@ type type_error_info =
     err_kind : type_error_kind
   }
 
-(*
- * Types of reduction errors
- * (Note there is only one for now because the kernel does not raise others,
- * but this will likely change.)
- *)
-type red_error_kind =
-  | AppArgRedError 
-
-(* 
- * Reduction error information
- *)
-type red_error_info =
-  {
-    env : environment;
-    ctx : localcontext;
-    trm : term;
-    err_kind : red_error_kind
-  }
-
 (* Exceptions that the kernel may raise, using the above information *)
 exception TypeError of type_error_info
-exception RedError of red_error_info
 
 (* --- Printing errors ---*)
 
@@ -127,10 +107,3 @@ let type_err_to_string (info : type_error_info) : string =
         (term_to_string domainTypeType)
         (term_to_string returnTypeType)
 
-(*
- * Convert a reduction error to a string for printing
- *)
-let red_err_to_string (info : red_error_info) : string =
-  match info.err_kind with
-  | AppArgRedError ->
-     "Function called with invalid argument type during reduction"
