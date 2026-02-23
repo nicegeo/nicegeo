@@ -39,8 +39,7 @@ let process_decl (e: t) (d: declaration) : unit =
            else
              failwith ("invalid proof of " ^ name ^ ".\n"))
         with (* temporary for refactor; please replace with your error infra *)
-        | TypeError info -> failwith (type_err_to_string info)
-        | RedError info -> failwith (red_err_to_string info))
+        | TypeError info -> failwith (type_err_to_string info))
   | Axiom (name, ty) ->
       if Hashtbl.mem e.env name then
         failwith ("axiom " ^ name ^ " already defined.\n")

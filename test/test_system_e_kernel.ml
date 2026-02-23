@@ -10,7 +10,6 @@ open E_elab
 let try_infer env localCtx t =
   try inferType env localCtx t with
   | TypeError info -> failwith (type_err_to_string info)
-  | RedError info -> failwith (red_err_to_string info)
 
 let str_contains s sub =
   let n = String.length sub in

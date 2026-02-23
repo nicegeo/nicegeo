@@ -97,7 +97,7 @@ let isDefEq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term
 
 (*
  * Core type inference algorithm.
- * When this fails, throws a TypeError or a RedError.
+ * When this fails, throws a TypeError.
  *)
 let rec inferType (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
