@@ -94,7 +94,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
   | Lam (domainType, body) -> (
       let new_fvar_name = gen_new_fvar_name () in
       let domainTypeType = inferType env localCtx domainType in
-      if not (isSort env domainTypeType) then
+      if not (isSort env (reduce env localCtx domainTypeType)) then
         (* Invalid domain type for lambda *)
         let err_kind = LamDomainError in
         raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
@@ -124,6 +124,8 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
         in
         let substed_return_type = subst_bvar returnType 0 (Fvar new_fvar_name) in
         inferType env newLocalCtx substed_return_type in
+      let domainTypeType = reduce env localCtx domainTypeType in
+      let returnTypeType = reduce env localCtx returnTypeType in
       match (domainTypeType, returnTypeType) with
         | (Sort u, Sort v) -> (
           if v = 0 then Sort 0  (* Prop is impredicative *)
@@ -144,19 +146,20 @@ and isDefEq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term
 
 and reduce (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
-  | App (Lam (domainType, body), arg) -> (* beta reduction i think *)
-      let arg_type = inferType env localCtx arg in
-      if domainType = arg_type then
-        let substed_body = subst_bvar body 0 arg in
-        reduce env localCtx substed_body
-      else
-        (* Error: Invalid argument type *)
-        let err_kind = AppArgRedError in
-        raise (RedError {env; ctx = localCtx; trm = t; err_kind})
   | App (func, arg) -> 
       let reduced_func = reduce env localCtx func in
       let reduced_arg = reduce env localCtx arg in
-      App (reduced_func, reduced_arg)
+      (match reduced_func with
+      | Lam (domainType, body) ->
+          let arg_type = inferType env localCtx reduced_arg in
+          if isDefEq env localCtx domainType arg_type then
+            let substed_body = subst_bvar body 0 reduced_arg in
+            reduce env localCtx substed_body
+          else
+            let err_kind = AppArgRedError in
+            raise (RedError {env; ctx = localCtx; trm = t; err_kind})
+      | _ ->
+        App (reduced_func, reduced_arg))
   | Lam (domainType, body) -> 
     (* need to subst fvar *)
     let new_fvar_name = gen_new_fvar_name () in
