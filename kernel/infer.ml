@@ -1,4 +1,5 @@
 open Term
+open Exceptions
 
 (* Substitute the bound variable at index `bvar_idx` (relative to the top level
 term, so what would have been at index `bvar_idx` in the localcontext stack for
@@ -44,32 +45,30 @@ let gen_new_fvar_name () : string =
   incr fvar_counter;
   name
 
-let rec term_to_string (t : term) : string =
-  match t with
-  | Const name -> name
-  | Sort level -> "Sort " ^ string_of_int level
-  | Fvar name -> name
-  | Bvar idx -> "Bvar " ^ string_of_int idx
-  | Lam (dom, body) -> "fun " ^ term_to_string dom ^ " => (" ^ term_to_string body ^ ")"
-  | Forall (dom, body) -> term_to_string dom ^ " -> " ^ term_to_string body
-  | App (f, a) -> "(" ^ term_to_string f ^ " " ^ term_to_string a ^ ")"
-
-let context_to_string (ctx : localcontext) : string =
-  Hashtbl.fold (fun k v acc -> acc ^ k ^ " : " ^ term_to_string v ^ "\n") ctx ""
-
+(*
+ * Core type inference algorithm.
+ * When this fails, throws a TypeError or a RedError.
+ *)
 let rec inferType (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
   | Const name -> (
       try Hashtbl.find env name
-      with Not_found -> failwith ("unknown constant: " ^ name)
+      with Not_found ->
+        (* Error: Unknown constant *)
+        let err_kind = UnknownConstError name in
+        raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
     )
   | Fvar name -> (
       try Hashtbl.find localCtx name
-      with Not_found -> failwith ("unknown free variable: " ^ name)
+      with Not_found ->
+        (* Error: Unknown free variable *)
+        let err_kind = UnknownFreeVarError name in
+        raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
     )
-  | Bvar idx -> (
-      failwith ("bound variable index out of scope: " ^ string_of_int idx)
-    )
+  | Bvar idx ->
+     (* Error: Bound variable out of scope *)
+     let err_kind = BoundVarScopeError idx in
+     raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
   | App (func, arg) -> (
     let func_type = inferType env localCtx func in
     let inferred_arg_type = inferType env localCtx arg in
@@ -80,34 +79,25 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
           actual value that it's evaluated at so we need to substitute the arg
           for any bvars referring to this arg in the return_type. *)
           subst_bvar return_type 0 arg
-        else 
-          let msg = 
-            Printf.sprintf 
-              "Function called with invalid argument type.\n\
-               Local Context:\n%s\n\
-               Term: %s\n\
-               Func: %s\n\
-               Arg: %s\n\n\
-               Func Type: %s\n\
-               Expected Arg Type: %s\n\
-               Inferred Arg Type: %s\n"
-              (context_to_string localCtx)
-              (term_to_string t)
-              (term_to_string func)
-              (term_to_string arg)
-              (term_to_string func_type)
-              (term_to_string expected_arg_type)
-              (term_to_string inferred_arg_type)
+        else
+          (* Error: Invalid argument type *)
+          let err_kind =
+            AppArgTypeError
+              (func, arg, func_type, expected_arg_type, inferred_arg_type)
           in
-          failwith msg
-      | _ -> failwith "Tried to apply non-function to an argument"
+          raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
+      | _ ->
+         (* Error: Tried to apply non-function to an argument *)
+         let err_kind = AppNonFuncError in
+         raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
   )
   | Lam (domainType, body) -> (
       let new_fvar_name = gen_new_fvar_name () in
       let domainTypeType = inferType env localCtx domainType in
       if not (isSort env (reduce env localCtx domainTypeType)) then
-        (print_endline ("lambda domain type is not a sort: " ^ term_to_string domainTypeType);
-        failwith "invalid domain type for lambda")
+        (* Invalid domain type for lambda *)
+        let err_kind = LamDomainError in
+        raise (TypeError {env; ctx = localCtx; trm = t; err_kind})
       else
       (* add mapping new_fvar_name -> domainType to localCtx in recursive call *)
       (* this is fine because domainType won't have any unresolved BVars *)
@@ -141,23 +131,12 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
           if v = 0 then Sort 0  (* Prop is impredicative *)
           else Sort (max u v)
         )
-        | (Sort _, _) -> failwith "Return type of a Forall must be a sort"
-        | (_, Sort _) -> failwith "Domain type of a Forall must be a sort"
-        | _ -> 
-          let msg = 
-            Printf.sprintf 
-              "Domain and return types of a Forall must be sorts.\n\
-               Local Context:\n%s\n\
-               Term: %s\n\
-               Domain Type Sort: %s\n\
-               Return Type Sort: %s\n\n"
-              (context_to_string localCtx)
-              (term_to_string t)
-              (term_to_string domainTypeType)
-              (term_to_string returnTypeType)
-          in
-          failwith msg
-    )
+        | _ ->
+          (* Error: domain and return type of forall both need to be sorts *)
+          let ctx = localCtx in
+          let trm = t in
+          let err_kind = ForallSortError (domainTypeType, returnTypeType) in
+          raise (TypeError {env; ctx; trm; err_kind}))
   | Sort level -> Sort (level + 1)
 
 and isDefEq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term) : bool =
@@ -167,13 +146,6 @@ and isDefEq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term
 
 and reduce (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
-  (* | App (Lam (domainType, body), arg) -> (* beta reduction i think *)
-      let arg_type = inferType env localCtx arg in
-      if domainType = arg_type then
-        let substed_body = subst_bvar body 0 arg in
-        reduce env localCtx substed_body
-      else
-        failwith "Function called with invalid argument type during reduction" *)
   | App (func, arg) -> 
       let reduced_func = reduce env localCtx func in
       let reduced_arg = reduce env localCtx arg in
@@ -184,7 +156,8 @@ and reduce (env : environment) (localCtx : localcontext) (t : term) : term =
             let substed_body = subst_bvar body 0 reduced_arg in
             reduce env localCtx substed_body
           else
-            failwith "Function called with invalid argument type during reduction"
+            let err_kind = AppArgRedError in
+            raise (RedError {env; ctx = localCtx; trm = t; err_kind})
       | _ ->
         App (reduced_func, reduced_arg))
   | Lam (domainType, body) -> 
