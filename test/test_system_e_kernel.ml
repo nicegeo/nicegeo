@@ -8,18 +8,7 @@ open E_elab
 
 (* For backwards compatibility during exception refactoring *)
 let try_infer env localCtx t =
-  try inferType env localCtx t with
-  | TypeError info -> failwith (type_err_to_string info)
-  | RedError info -> failwith (red_err_to_string info)
-
-let str_contains s sub =
-  let n = String.length sub in
-  n = 0
-  || let rec loop i =
-       i + n <= String.length s
-       && (String.sub s i n = sub || loop (i + 1))
-     in
-     loop 0
+  inferType env localCtx t
 
 let mk_env () =
   let env = Hashtbl.create 16 in
@@ -48,14 +37,20 @@ let test_fvar_unknown_fails () =
   try
     ignore (try_infer env (Hashtbl.create 0) (Fvar "nonexistent"));
     assert false
-  with Failure msg -> assert (str_contains msg "unknown free variable")
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | UnknownFreeVarError _ -> ()
+    | _ -> assert false)
 
 let test_const_unknown_fails () =
   let env = mk_env () in
   try
     ignore (try_infer env (Hashtbl.create 0) (Const "Unknown"));
     assert false
-  with Failure msg -> assert (str_contains msg "unknown constant")
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | UnknownConstError _ -> ()
+    | _ -> assert false)
 
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
@@ -133,17 +128,26 @@ let test_infer_forall () =
   assert (try
     ignore (try_infer env (Hashtbl.create 0) return_type_not_sort);
     false  
-  with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts");
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | ForallSortError _ -> true
+    | _ -> false));
   let domain_type_not_sort = Forall (Const "p", App (Const "IsRed", Const "p")) in
   assert (try
     ignore (try_infer env (Hashtbl.create 0) domain_type_not_sort);
     false  
-  with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts");
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | ForallSortError _ -> true
+    | _ -> false));
   let domain_and_return_type_not_sort = Forall (Const "p", Const "p") in
   assert (try
     ignore (try_infer env (Hashtbl.create 0) domain_and_return_type_not_sort);
     false  
-  with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts")
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | ForallSortError _ -> true
+    | _ -> false))
 
 
 let test_infer_function_application () =
@@ -160,7 +164,11 @@ let test_infer_function_application () =
   try
     ignore (try_infer env local_ctx const_func_app);
     assert false
-  with Failure msg -> assert (str_contains msg "unknown free variable");
+  with 
+  TypeError { err_kind; _} -> 
+    (match err_kind with
+    | UnknownFreeVarError _ -> ()
+    | _ -> assert false);
   Hashtbl.clear local_ctx;
   let identity_func_app = App (Lam (Const "Point", Bvar 0), Const "p") in
   assert ((try_infer env local_ctx identity_func_app) = Const "Point");
@@ -169,7 +177,10 @@ let test_infer_function_application () =
   try
     ignore (try_infer env local_ctx application_with_non_function);
     assert false
-  with Failure msg -> assert (str_contains msg "apply non-function to an argument");
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | AppNonFuncError -> ()
+    | _ -> assert false);
 
   (* TODO: should Point be a Sort 0 or a Sort 1? *)
   (* Corresponds to the expression `(fun (A: Type) -> fun (x: A) -> x) Point` which

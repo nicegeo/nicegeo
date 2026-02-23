@@ -2,7 +2,7 @@
 
     Elaborator terms now contain [Bvar] and [Fvar]s and only optional
     binder names. To print readable names we consult the elaborator context
-    stored in [Elab.t] (notably [lctx] and [metas]). *)
+    stored in [Types.ctx] (notably [lctx] and [metas]). *)
 
 open Term
 open Decl
@@ -32,12 +32,12 @@ let opt_name_to_string = function
 let bvar_to_string (bctx : string list) (idx : int) : string =
   if idx < List.length bctx then List.nth bctx idx else "_" ^ string_of_int idx
 
-let fvar_to_string (e : Elab.t) (idx : int) : string =
+let fvar_to_string (e : Types.ctx) (idx : int) : string =
   match Hashtbl.find_opt e.lctx idx with
   | Some (Some name, _) -> name
   | _ -> "f" ^ string_of_int idx
 
-let rec term_to_string_with (e : Elab.t) (bctx : string list) (t : term) : string =
+let rec term_to_string_with (e : Types.ctx) (bctx : string list) (t : term) : string =
   match t with
   | Name x -> x
   | Bvar idx -> bvar_to_string bctx idx
@@ -71,9 +71,9 @@ let rec term_to_string_with (e : Elab.t) (bctx : string list) (t : term) : strin
       in
       (match args_s with [] -> head_s | _ -> head_s ^ " " ^ String.concat " " args_s)
 
-let term_to_string (e : Elab.t) (t : term) : string = term_to_string_with e [] t
+let term_to_string (e : Types.ctx) (t : term) : string = term_to_string_with e [] t
 
-let decl_to_string (e : Elab.t) = function
+let decl_to_string (e : Types.ctx) = function
   | Axiom (name, ty) -> "Axiom " ^ name ^ " : " ^ term_to_string e ty
   | Theorem (name, ty, proof) ->
       "Theorem " ^ name ^ " : " ^ term_to_string e ty ^ " := " ^ term_to_string e proof
