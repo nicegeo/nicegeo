@@ -1,7 +1,6 @@
 (lang dune 3.17)
 
 (name system-e-kernel)
-
 (using menhir 3.0)
 
 (generate_opam_files true)
@@ -21,11 +20,8 @@
  (name system-e-kernel)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends
-  ocaml
-  (alcotest :with-test))
+ (depends ocaml)
  (tags
   ("add topics" "to describe" your project)))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
-
