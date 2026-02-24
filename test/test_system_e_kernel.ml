@@ -52,7 +52,7 @@ let test_const_unknown_fails () =
     | UnknownConstError _ -> ()
     | _ -> assert false)
 
-    let path_to_env = "../../../elab/env.txt"
+let path_to_env = "../../../elab/env.txt"
 
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
