@@ -3,11 +3,10 @@ open Term
 module KExceptions = System_e_kernel.Exceptions
 
 (*comment label*)
-type loc = { file :string; line :int; column :int }
 
 (*error context*)
 type error_context = { 
-  loc: loc option; (*loc - where the error is happening*)
+  loc: range option; (*loc - where the error is happening*)
   decl_name: string option; (*decl_name - name of the declaration that caused the error*)
 }
 
@@ -45,9 +44,8 @@ type elab_error_info = {
 
 exception ElabError of elab_error_info
 
-let pp_loc = function
-  | None -> ""
-  | Some {file; line; column} -> Printf.sprintf "%s:%d:%d" file line column
+let pp_loc (r: range) =
+  Printf.sprintf "%s:%d:%d-%d:%d" r.start.pos_fname r.start.pos_lnum (r.start.pos_cnum - r.start.pos_bol) r.end_.pos_lnum (r.end_.pos_cnum - r.end_.pos_bol)
 
 let pp_kv k = function
   | None -> ""
@@ -63,6 +61,13 @@ let pp_locals locals =
     in
     "locals:\n" ^ lines ^ "\n"
 
-let pp_exn (_e: elab_error_info) : string =
-  failwith "todo"
+let pp_exn (e: elab_error_info) : string =
+  match e.error_type with
+  | ParseError { input; error_msg } ->
+      let loc_str = match e.context.loc with
+        | Some r -> pp_loc r
+        | None -> "unknown location"
+      in
+      Printf.sprintf "Parse error at %s: %s (input: '%s')" loc_str error_msg input
+  | _ -> failwith "todo"
 

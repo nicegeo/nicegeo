@@ -21,6 +21,23 @@ let create_with_env_path (path_to_env : string) : Types.ctx =
 let create_with_env () : Types.ctx = 
   create_with_env_path "elab/env.txt"
 
+let parse_decls (ic: in_channel) (filename: string) : Decl.declaration list =
+  let lexbuf = Lexing.from_channel ic in
+  Lexing.set_filename lexbuf filename;
+  let decls = try
+    Parser.main Lexer.token lexbuf
+  with exn -> 
+    let msg = match exn with
+    | Failure msg -> msg
+    | _ -> Printexc.to_string exn in
+    let pos1 = lexbuf.lex_start_p in
+    let pos2 = lexbuf.lex_curr_p in
+    raise (Error.ElabError {
+      context = { loc = Some { start = pos1; end_ = pos2 }; decl_name = None };
+      error_type = Error.ParseError { input = Lexing.lexeme lexbuf; error_msg = msg }
+    }) in
+  decls
+
 (* Type-checks and adds a parsed axiom or theorem to the environment. *)
 let process_decl (env: Types.ctx) (decl: Decl.declaration) : unit =
   Typecheck.process_decl env decl
