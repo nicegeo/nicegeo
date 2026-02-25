@@ -8,9 +8,9 @@ main:
   | decls = list(declaration) EOF { decls }
 
 declaration:
-  | AXIOM name = IDENT COLON ty = term { Decl.Axiom (name, ty) }
+  | AXIOM name = IDENT COLON ty = term { Decl.Axiom (name, { Term.start = $startpos(name); Term.end_ = $endpos(name) }, ty) }
   | THEOREM name = IDENT COLON ty = term DEFEQ proof = term
-    { Decl.Theorem (name, ty, proof) }
+    { Decl.Theorem (name, { Term.start = $startpos(name); Term.end_ = $endpos(name) }, ty, proof) }
 
 term:
   | t = app_term { t }

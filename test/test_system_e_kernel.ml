@@ -355,6 +355,7 @@ let () =
   turns on stack traces *)
   record_backtrace true;
 
+  (* try *)
   test_kernel_reduce ();
   test_const_lookup ();
   test_fvar_lookup ();
@@ -371,5 +372,7 @@ let () =
   test_len_sanity ();
   test_len_app ();
   test_eq_symm ();
+  (* with E_elab.Error.ElabError x ->
+    print_endline ("Elaboration error: " ^ (E_elab.Error.pp_exn (E_elab.Elab.create ()) x)); *)
 
   print_endline "All inferType tests passed."

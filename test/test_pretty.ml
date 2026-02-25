@@ -57,11 +57,11 @@ let () =
 
 (* Example 6: Declaration pretty-printing *)
 let () =
-  let d = Axiom ("Point", ETerm.(Sort 1, l)) in
+  let d = Axiom ("Point", l, ETerm.(Sort 1, l)) in
   Printf.printf "Axiom Point : Type  =>  %s\n" (decl_to_string e d);
   let d2 =
     Theorem
-      ( "id",
+      ( "id", l,
         ETerm.((Arrow (Some "A", (Sort 1, l), (Arrow (Some "x", (Name "A", l), (Bvar 1, l)), l)), l)),
         ETerm.(Fun (Some "A", (Sort 1, l), (Fun (Some "x", (Name "A", l), (Bvar 0, l)), l)), l) )
   in

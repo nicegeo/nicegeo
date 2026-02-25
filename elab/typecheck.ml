@@ -3,8 +3,13 @@ open Term
 open Convert
 open Types
 module KInfer = System_e_kernel.Infer
+module KExceptions = System_e_kernel.Exceptions
 
 exception InferHole
+
+let raise_at (tm: term) (e: Error.error_type) : 'a =
+  let loc = Some (snd tm) in
+  raise (Error.ElabError { context = { loc; decl_name = None }; error_type = e })
 
 type normterm =
   | Fun of string option * term * term
@@ -58,8 +63,9 @@ let rec to_norm (e: ctx) (tm : term) : normterm =
     (match f_norm with
     | VarSpine (head, args) -> VarSpine (head, args @ [arg])
     | MetaSpine (head, args) -> MetaSpine (head, args @ [arg])
-    | Fun _ | Arrow _ -> failwith "to_norm input should already be in whnf"
-    | Sort _ -> failwith "to_norm: cannot apply a sort")
+    | Fun _ -> raise_at tm (Error.InternalError "to_norm input should already be in whnf")
+    | Arrow (n, ty_arg, ty_ret) -> raise_at tm (Error.FunctionExpected { not_func = tm; not_func_type = (Arrow (n, ty_arg, ty_ret), snd tm); arg = arg })
+    | Sort n -> raise_at tm (Error.FunctionExpected { not_func = tm; not_func_type = (Sort n, snd tm); arg = arg }))
   | Name _ | Bvar _ | Fvar _ -> VarSpine (tm, [])
   | Sort n -> Sort n
   | Hole _ -> MetaSpine (tm, [])
@@ -98,9 +104,9 @@ let rec pattern_match_meta (e: ctx) (m: int) (args: term list) (tm: term) : unit
   (* uhh get rid of the last matching args? *)
   if List.length (Hashtbl.find e.metas m).vartypes < List.length args then
     match fst tm with
-    | App (f, arg) when last args = arg -> 
+    | App (f, arg) when fst (last args) = fst arg -> 
       pattern_match_meta e m (List.rev (List.tl (List.rev args))) f
-    | _ -> failwith "too many arguments in pattern match for meta"
+    | _ -> () (* we could like, infer the type of the rest of the args *)
   else
   if not (valid_pattern_args args) then print_endline "invalid arguments for pattern matching" else
   if not (valid_pattern e m args tm) then (*print_endline "invalid solution for meta";*) () else
@@ -167,14 +173,19 @@ let rec checktype (e: ctx) (tm: term) (ty: term) : unit =
       (match ty1 with
       | Some ty1 -> unify e ty ty1
       | None -> Hashtbl.replace e.metas m {ty = Some ty; vartypes; sol})
-    | None -> failwith "unknown metavar in checktype")
+    | None -> raise_at tm (Error.InternalError ("unknown meta: " ^ string_of_int m)))
   | App (f, arg) ->
-    (try unify e ty (infertype e tm) with InferHole ->
+    (try (let tm_type = infertype e tm in
+      try unify e ty tm_type
+      with Failure _ -> raise_at tm (Error.TypeMismatch { term = tm; inferred_type = tm_type; expected_type = ty }))
+    with InferHole ->
       let argtype = infertype e arg in
       checktype e f (Arrow (None, argtype, ty), snd ty))
   | Name _ | Fun _ | Arrow _ | Sort _ | Fvar _ ->
-    unify e ty (infertype e tm)
-  | Bvar _ -> failwith "unexpected bound variable in checktype"
+    let infer_ty = infertype e tm in
+    (try unify e infer_ty ty with
+    | Failure _ -> raise_at tm (Error.TypeMismatch { term = tm; inferred_type = infer_ty; expected_type = ty }))
+  | Bvar _ -> raise_at tm (Error.InternalError "unexpected bound variable in checktype")
   
 and infertype (e: ctx) (tm: term) : term =
   (* print_endline ("inferring type of " ^ term_to_string e tm); *)
@@ -183,7 +194,7 @@ and infertype (e: ctx) (tm: term) : term =
   | Name name ->
     (match Hashtbl.find_opt e.env name with
       | Some entry -> entry.ty
-      | None -> failwith ("unknown identifier: " ^ name))
+      | None -> raise_at tm (Error.UnknownName { name }))
   | Fun (arg, ty_arg, (body, l)) ->
     check_is_type e ty_arg;
     let x = gen_fvar_id () in
@@ -204,7 +215,8 @@ and infertype (e: ctx) (tm: term) : term =
     Hashtbl.remove e.lctx x;
     (match fst ty_arg_ty, fst ty_ret_ty with
     | Sort n1, Sort n2 -> (Sort (max n1 n2), snd tm)
-    | _ -> failwith "expected types of arrow to be sorts")
+    | Sort _, _ -> raise_at (ty_ret, l) (Error.TypeExpected { not_type = (ty_ret, l); not_type_infer = ty_ret_ty })
+    | _ -> raise_at ty_arg (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty }))
   | App (f, arg) ->
     let f_type = infertype e f in
     (match fst f_type with
@@ -212,12 +224,12 @@ and infertype (e: ctx) (tm: term) : term =
       check_is_type e ty_arg;
       checktype e arg ty_arg;
       replace_bvar ty_ret 0 arg
-    | _ -> failwith "expected a function type in application")
-  | Bvar _ -> failwith "unexpected bound variable in infertype"
+    | _ -> raise_at f (Error.FunctionExpected { not_func = f; not_func_type = f_type; arg }))
+  | Bvar _ -> raise_at tm (Error.InternalError "unexpected bound variable in infertype")
   | Fvar fvar ->
     (match Hashtbl.find_opt e.lctx fvar with
     | Some (_, ty) -> ty
-    | None -> failwith "unknown free variable in infertype")
+    | None -> raise_at tm (Error.InternalError "unknown free variable in infertype"))
   | Sort n -> (Sort (n + 1), snd tm)
   in 
   (* print_endline ("inferred type " ^ term_to_string e res ^ " for term " ^ term_to_string e tm); *)
@@ -229,14 +241,14 @@ and check_is_type (e: ctx) (tm: term) : unit =
   match fst tm with
   | Hole m ->
     (match Hashtbl.find_opt e.metas m with
-    | Some {ty=Some ty; _} -> if not (is_sort ty) then failwith "expected hole to be a sort" else ()
+    | Some {ty=Some ty; _} -> if not (is_sort ty) then raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = ty }) else ()
     | _ -> ())
   | Name name ->
     (match Hashtbl.find_opt e.env name with
-      | Some entry -> if not (is_sort entry.ty) then failwith ("expected " ^ name ^ " to be a type") else ()
-      | None -> failwith ("unknown identifier: " ^ name))
+      | Some entry -> if not (is_sort entry.ty) then raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = entry.ty }) else ()
+      | None -> raise_at tm (Error.UnknownName { name }))
   | Fun _ ->
-    failwith "a function cannot be a type"
+    raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = tm })
   | Arrow (arg, ty_arg, ty_ret) ->
     check_is_type e ty_arg;
     let x = gen_fvar_id () in
@@ -252,17 +264,17 @@ and check_is_type (e: ctx) (tm: term) : unit =
       (* print_endline ("app checktype: checking that " ^ term_to_string e arg ^ " has type " ^ term_to_string e ty_arg);
       print_endline ("because f is " ^ term_to_string e f ^ " and has type " ^ term_to_string e f_type); *)
       checktype e arg ty_arg;
-      if not (is_sort ty_ret) then failwith "expected return type of function to be a sort"
-    | Some _ -> failwith "expected a function type in application"
+      if not (is_sort ty_ret) then raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = ty_ret }) else ()
+    | Some v -> raise_at f (Error.FunctionExpected { not_func = f; not_func_type = v; arg })
     | None -> ())
   | Sort _ -> ()
-  | Bvar _ -> failwith "unexpected bound variable in check_is_type"
+  | Bvar _ -> raise_at tm (Error.InternalError "unexpected bound variable in check_is_type")
   | Fvar fvar ->
     (match Hashtbl.find_opt e.lctx fvar with
     | Some (_, ty) -> 
       let ty = whnf_beta e ty in
-      if not (is_sort ty || match fst ty with | Hole _ -> true | _ -> false) then failwith ("expected type " ^ (term_to_string e ty) ^ " of free variable to be a sort") else ()
-    | None -> failwith "unknown free variable in check_is_type")
+      if not (is_sort ty || match fst ty with | Hole _ -> true | _ -> false) then raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = ty }) else ()
+    | None -> raise_at tm (Error.InternalError "unknown free variable in check_is_type"))
 
 
 let rec contains_fvar (tm: term) : bool =
@@ -279,9 +291,9 @@ let rec replace_metas (e: ctx) (tm: term) : term =
   match fst tm with
   | Hole m -> (match Hashtbl.find_opt e.metas m with
     | Some {sol=Some tm_sol; _} -> 
-      if contains_fvar tm_sol then failwith "hole contains free variables, should have been bound" else
+      if contains_fvar tm_sol then raise_at tm (Error.InternalError "hole contains free variables, should have been bound") else
       replace_metas e tm_sol
-    | _ -> failwith ("unfilled hole in replace_metas: " ^ term_to_string e tm))
+    | _ -> raise_at tm (Error.CannotInferHole))
   | Fun (arg, ty_arg, body) ->
     let ty_arg_filled = replace_metas e ty_arg in
     let body_filled = replace_metas e body in
@@ -338,7 +350,7 @@ let rec list_axioms_used (e: ctx) (tm: term) : string list =
     (match Hashtbl.find_opt e.env name with
     | Some {data = Theorem axioms; _} -> axioms
     | Some {data = Axiom; _} -> [name]
-    | None -> failwith ("unknown identifier: " ^ name))
+    | None -> raise_at tm (Error.UnknownName { name }))
   | Fun (_, ty_arg, body) -> union (list_axioms_used e ty_arg) (list_axioms_used e body)
   | Arrow (_, ty_arg, ty_ret) -> union (list_axioms_used e ty_arg) (list_axioms_used e ty_ret)
   | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
@@ -346,9 +358,9 @@ let rec list_axioms_used (e: ctx) (tm: term) : string list =
 
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e: ctx) (d: declaration) : unit =
-  match d with
-  | Theorem (name, ty, proof) ->
-    if Hashtbl.mem e.env name then failwith ("theorem " ^ name ^ " already defined.\n") else
+  try match d with
+  | Theorem (name, nameloc, ty, proof) ->
+    if Hashtbl.mem e.env name then raise (Error.ElabError { context = { loc = Some nameloc; decl_name = Some name }; error_type = Error.AlreadyDefined name }) else
     (* hole_to_meta only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
     let ty_meta = hole_to_meta e [] ty in
     check_is_type e ty_meta;
@@ -363,16 +375,19 @@ let process_decl (e: ctx) (d: declaration) : unit =
     let ty_k = conv_to_kterm ty_filled in
     let proof_k = conv_to_kterm proof_filled in
 
-    let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
-    let isValidProof = KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k in
+    (try 
+      let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
+      let isValidProof = KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k in
 
-    if isValidProof then
-      (Hashtbl.add e.env name {name = name; ty = ty_filled; data = Theorem (list_axioms_used e proof_filled)};
-      Hashtbl.add e.kenv name ty_k)
-    else
-      failwith ("invalid proof of " ^ name ^ ".\n")
-  | Axiom (name, ty) ->
-    if Hashtbl.mem e.env name then failwith ("axiom " ^ name ^ " already defined.\n") else
+      if isValidProof then
+        (Hashtbl.add e.env name {name = name; ty = ty_filled; data = Theorem (list_axioms_used e proof_filled)};
+        Hashtbl.add e.kenv name ty_k)
+      else
+        raise (Error.ElabError { context = { loc = Some nameloc; decl_name = Some name }; error_type = Error.InternalError ("kernel did not accept proof\n") })
+    with KExceptions.TypeError msg ->
+      raise (Error.ElabError { context = { loc = Some nameloc; decl_name = Some name }; error_type = Error.KernelError { kernel_exn = msg } }))
+  | Axiom (name, nameloc, ty) ->
+    if Hashtbl.mem e.env name then raise (Error.ElabError { context = { loc = Some nameloc; decl_name = Some name }; error_type = Error.AlreadyDefined name }) else
     (* hole_to_meta only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
     let ty_meta = hole_to_meta e [] ty in
     check_is_type e ty_meta;
@@ -383,3 +398,5 @@ let process_decl (e: ctx) (d: declaration) : unit =
     let ty_k = conv_to_kterm ty_filled in
     Hashtbl.add e.env name {name = name; ty = ty_filled; data = Axiom};
     Hashtbl.add e.kenv name ty_k 
+  with Error.ElabError x ->
+    raise (Error.ElabError { x with context = { x.context with decl_name = Some (decl_name d) } })
