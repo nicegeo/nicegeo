@@ -1,40 +1,7 @@
-(*
- * This file contains the kernel-side exceptions.
- * The goal is for this to contain just the relevant information to
- * displaying exceptions related to kernel functionality like type
- * errors and reduction, but no funny string business.
- *)
-open Term
 
-(* --- Exception types --- *)
 
-(*
- * Kinds of type errors
- * (Note that the details of these may change in the future as we improve
- * error messages, but this matches the old behavior for now)
- *)
-type type_error_kind =
-  | UnknownConstError of string
-  | UnknownFreeVarError of string
-  | BoundVarScopeError of int
-  | AppArgTypeError of term * term * term * term * term
-  | AppNonFuncError
-  | LamDomainError
-  | ForallSortError of term * term
-
-(*
- * Type error information
- *)
-type type_error_info =
-  {
-    env : environment;
-    ctx : localcontext;
-    trm : term;
-    err_kind : type_error_kind
-  }
-
-(* Exceptions that the kernel may raise, using the above information *)
-exception TypeError of type_error_info
+module KExceptions = System_e_kernel.Exceptions
+module KTerm = System_e_kernel.Term
 
 (* --- Printing errors ---*)
 
@@ -49,7 +16,7 @@ exception TypeError of type_error_info
 (*
  * Convert a term to a string
  *)
-let rec term_to_string (t : term) : string =
+let rec term_to_string (t : KTerm.term) : string =
   match t with
   | Const name -> name
   | Sort level -> "Sort " ^ string_of_int level
@@ -62,13 +29,13 @@ let rec term_to_string (t : term) : string =
 (*
  * Convert a local context to a string
  *)
-let context_to_string (ctx : localcontext) : string =
+let context_to_string (ctx : KTerm.localcontext) : string =
   Hashtbl.fold (fun k v acc -> acc ^ k ^ " : " ^ term_to_string v ^ "\n") ctx ""
 
 (*
  * Convert a type error to a string for printing
  *)
-let type_err_to_string (info : type_error_info) : string =
+let type_err_to_string (info : KExceptions.type_error_info) : string =
   match info.err_kind with
   | UnknownConstError name -> "unknown constant: " ^ name
   | UnknownFreeVarError name -> "unknown free variable: " ^ name
@@ -107,3 +74,10 @@ let type_err_to_string (info : type_error_info) : string =
         (term_to_string domainTypeType)
         (term_to_string returnTypeType)
 
+(*
+ * Convert a reduction error to a string for printing
+ *)
+let red_err_to_string (info : KExceptions.red_error_info) : string =
+  match info.err_kind with
+  | AppArgRedError ->
+     "Function called with invalid argument type during reduction"
