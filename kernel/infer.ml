@@ -48,15 +48,17 @@ let gen_new_fvar_name () : string =
 (* Reduce a term to normal form *)
 let rec reduce (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
-  | App (Lam (_, body), arg) ->
-     (* beta reduction---substitute bound variable *)
-     let substed_body = subst_bvar body 0 arg in
-     reduce env localCtx substed_body
-  | App (func, arg) ->
-     (* reduce function and argument to get a lambda *)
-     let reduced_func = reduce env localCtx func in
-     let reduced_arg = reduce env localCtx arg in
-     App (reduced_func, reduced_arg)
+  | App (func, arg) -> 
+    (* we need to reduce the func before matching if it's a Lam in the case of nested applications *)
+    let reduced_func = reduce env localCtx func in
+    let reduced_arg = reduce env localCtx arg in
+    (match reduced_func with
+    | Lam (_, body) ->
+      (* beta reduction---substitute bound variable *)
+      let substed_body = subst_bvar body 0 reduced_arg in
+      reduce env localCtx substed_body
+    | _ ->
+      App (reduced_func, reduced_arg))
   | Lam (domainType, body) -> 
     (* substitute free variable in lambda *)
     let new_fvar_name = gen_new_fvar_name () in
@@ -174,6 +176,8 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
         in
         let substed_return_type = subst_bvar returnType 0 (Fvar new_fvar_name) in
         inferType env newLocalCtx substed_return_type in
+      let domainTypeType = reduce env localCtx domainTypeType in
+      let returnTypeType = reduce env localCtx returnTypeType in
       match (domainTypeType, returnTypeType) with
         | (Sort u, Sort v) -> (
           if v = 0 then Sort 0  (* Prop is impredicative *)

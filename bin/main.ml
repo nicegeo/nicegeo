@@ -1,8 +1,4 @@
-(* open System_e_kernel *)
-(* open System_e_kernel.Decl *)
-(* open System_e_kernel.Env *)
 open Printexc
-(* module Elab = E_elab.Elab *)
 open E_elab
 
 let () =
@@ -36,9 +32,11 @@ let () =
   let env = Elab.create_with_env () in
 
   (* Process proof.txt *)
-  let all_decls_good = List.fold_left (fun x decl -> try Elab.process_decl env decl; x with Failure msg -> print_endline ("Error adding declaration: " ^ msg); false) true decls in
+  let all_decls_good = List.fold_left (fun x decl -> try Elab.process_decl env decl; x with Failure msg -> print_endline ("Error adding declaration " ^   Decl.decl_name decl ^ ": " ^ msg); false) true decls in
   if not all_decls_good then begin
     print_endline "Error(s) encountered while processing proof file. Exiting.";
     exit 1
   end;
+  print_endline "Axioms used in prop1:";
+  List.iter print_endline (Elab.list_axioms env "prop1");
   print_endline "Valid proofs!"

@@ -8,17 +8,7 @@ open E_elab
 
 (* For backwards compatibility during exception refactoring *)
 let try_infer env localCtx t =
-  try inferType env localCtx t with
-  | TypeError info -> failwith (type_err_to_string info)
-
-let str_contains s sub =
-  let n = String.length sub in
-  n = 0
-  || let rec loop i =
-       i + n <= String.length s
-       && (String.sub s i n = sub || loop (i + 1))
-     in
-     loop 0
+  inferType env localCtx t
 
 let mk_env () =
   let env = Hashtbl.create 16 in
@@ -47,14 +37,20 @@ let test_fvar_unknown_fails () =
   try
     ignore (try_infer env (Hashtbl.create 0) (Fvar "nonexistent"));
     assert false
-  with Failure msg -> assert (str_contains msg "unknown free variable")
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | UnknownFreeVarError _ -> ()
+    | _ -> assert false)
 
 let test_const_unknown_fails () =
   let env = mk_env () in
   try
     ignore (try_infer env (Hashtbl.create 0) (Const "Unknown"));
     assert false
-  with Failure msg -> assert (str_contains msg "unknown constant")
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | UnknownConstError _ -> ()
+    | _ -> assert false)
 
 let path_to_env = "../../../elab/env.txt"
 
@@ -134,17 +130,26 @@ let test_infer_forall () =
   assert (try
     ignore (try_infer env (Hashtbl.create 0) return_type_not_sort);
     false  
-  with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts");
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | ForallSortError _ -> true
+    | _ -> false));
   let domain_type_not_sort = Forall (Const "p", App (Const "IsRed", Const "p")) in
   assert (try
     ignore (try_infer env (Hashtbl.create 0) domain_type_not_sort);
     false  
-  with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts");
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | ForallSortError _ -> true
+    | _ -> false));
   let domain_and_return_type_not_sort = Forall (Const "p", Const "p") in
   assert (try
     ignore (try_infer env (Hashtbl.create 0) domain_and_return_type_not_sort);
     false  
-  with Failure msg -> str_contains msg "Domain and return types of a Forall must be sorts")
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | ForallSortError _ -> true
+    | _ -> false))
 
 
 let test_infer_function_application () =
@@ -161,7 +166,11 @@ let test_infer_function_application () =
   try
     ignore (try_infer env local_ctx const_func_app);
     assert false
-  with Failure msg -> assert (str_contains msg "unknown free variable");
+  with 
+  TypeError { err_kind; _} -> 
+    (match err_kind with
+    | UnknownFreeVarError _ -> ()
+    | _ -> assert false);
   Hashtbl.clear local_ctx;
   let identity_func_app = App (Lam (Const "Point", Bvar 0), Const "p") in
   assert ((try_infer env local_ctx identity_func_app) = Const "Point");
@@ -170,7 +179,10 @@ let test_infer_function_application () =
   try
     ignore (try_infer env local_ctx application_with_non_function);
     assert false
-  with Failure msg -> assert (str_contains msg "apply non-function to an argument");
+  with TypeError { err_kind; _} -> 
+    (match err_kind with
+    | AppNonFuncError -> ()
+    | _ -> assert false);
 
   (* TODO: should Point be a Sort 0 or a Sort 1? *)
   (* Corresponds to the expression `(fun (A: Type) -> fun (x: A) -> x) Point` which
@@ -273,11 +285,12 @@ let test_len_sanity () =
   assert (try_infer env.kenv lctx (Const "Add") =
     Forall (Const "Len", Forall (Const "Len", Const "Len")));
   (* AddZero is exact enough to check de Bruijn encoding *)
-  assert (try_infer env.kenv lctx (Const "AddZero") =
-    Forall (Const "Len",
+  let inferred = (try_infer env.kenv lctx (Const "AddZero")) in
+  let expected = (Forall (Const "Len",
       App (App (App (Const "Eq", Const "Len"),
         App (App (Const "Add", Bvar 0), Const "Zero")),
-        Bvar 0)))
+        Bvar 0))) in
+  assert (isDefEq env.kenv lctx inferred expected)
 
 let test_len_app () =
   let env = Elab.create_with_env_path path_to_env in
@@ -300,14 +313,49 @@ let test_len_app () =
   try
     ignore (try_infer env.kenv lctx (App (Const "Lt", Fvar "p")));
     assert false
-  with Failure _ -> ()
+  with TypeError _ -> ()
 
+let test_kernel_reduce () = 
+  (* (fun (p1: Point) => (fun (p2: Point) => p2)) p) l *)
+  (* should be reduced to (fun (p2: Point) => p2) l then to l *)
+  let env = mk_env () in
+  let lctx = Hashtbl.create 16 in
+  let term = App (App (Lam (Const "Point", Lam (Const "Point", Bvar 0)), Const "p"), Const "l") in
+  let reduced = reduce env lctx term in
+  assert (reduced = Const "l");
+
+  (* fun (x: (fun a => Point) p) => x is well-typed and should not fail inference *)
+  (* (reduces to fun (x: Point) => x) *)
+  let term = Lam (App (Lam (Const "Point", Const "Point"), Const "p"), Bvar 0) in
+  assert (isDefEq env lctx (inferType env lctx term) (Forall (Const "Point", Const "Point")));
+  (* (fun a => Point) p -> Point is well-typed and should not fail inference *)
+  (* (reduces to Point -> Point) *)
+  let term = Forall (App (Lam (Const "Point", Const "Point"), Const "p"), Const "Point") in
+  assert (isDefEq env lctx (inferType env lctx term) (Sort 1));
+  (* Point -> (fun a => Point) p *)
+  let term = Forall (Const "Point", App (Lam (Const "Point", Const "Point"), Const "p")) in
+  assert (isDefEq env lctx (inferType env lctx term) (Sort 1));
+  (* (fun a => Point) p -> (fun a => Point) p *)
+  let term = Forall (App (Lam (Const "Point", Const "Point"), Const "p"), App (Lam (Const "Point", Const "Point"), Const "p")) in
+  assert (isDefEq env lctx (inferType env lctx term) (Sort 1));
+
+  (* f: Point -> (fun a => Type) p *)
+  (* (reduces to f: Point -> Type) *)
+  Hashtbl.add env "f" (Forall (Const "Point", App (Lam (Const "Point", Sort 1), Const "p")));
+  (* f p -> Point should not fail *)
+  let term = Forall(App (Const "f", Const "p"), Const "Point") in
+  assert (isDefEq env lctx (inferType env lctx term) (Sort 1));
+  let term = Forall(Const "Point", App (Const "f", Const "p")) in
+  assert (isDefEq env lctx (inferType env lctx term) (Sort 1));
+  let term = Forall(App (Const "f", Const "p"), App (Const "f", Const "p")) in
+  assert (isDefEq env lctx (inferType env lctx term) (Sort 1))
 
 let () =
   (* Taken from https://stackoverflow.com/questions/65868770/lack-of-information-when-ocaml-crashes#comment128358969_65873074,
   turns on stack traces *)
   record_backtrace true;
 
+  test_kernel_reduce ();
   test_const_lookup ();
   test_fvar_lookup ();
   test_fvar_unknown_fails ();

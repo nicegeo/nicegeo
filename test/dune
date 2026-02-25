@@ -1,3 +1,7 @@
 (test
  (name test_system_e_kernel)
  (libraries system_e_kernel e_elab))
+
+(test
+ (name test_pretty)
+ (libraries system_e_kernel e_elab))
