@@ -10,7 +10,6 @@ permissions: read-all
 
 jobs:
   build-and-test:
-    name: "ocaml test"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tree
