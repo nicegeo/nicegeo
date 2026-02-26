@@ -10,6 +10,7 @@ permissions: read-all
 
 jobs:
   build-and-test:
+    name: "dune runtest"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tree
