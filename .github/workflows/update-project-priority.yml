@@ -10,6 +10,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.PROJECT_TOKEN }}
       PROJECT_NUMBER: 1
       OWNER: "nicegeo"
+      ISSUE_NUMBER: ${{github.event.issue.number}}
       LABEL: ${{github.event.label.name}}
     if: |
       github.event.label.name == 'Priority: High' || 
@@ -21,7 +22,7 @@ jobs:
         run: |
           PROJECT_ID=$(gh project view $PROJECT_NUMBER --owner "$OWNER" --format json -q '.id')
           ITEM_ID=$(gh project item-list $PROJECT_NUMBER --owner "$OWNER" --format json -L 500 \
-            -q ".items[] | select(.id == \"$ISSUE_ID\") | .id")
+            -q ".items[] | select(.content.number == \"$ISSUE_NUMBER\") | .id")
           
           PRIORITY=$(echo "$LABEL" | sed 's/Priority: //')
 
