@@ -7,7 +7,7 @@ jobs:
   sync_priority:
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.PROJECT_TOKEN }}
       PROJECT_NUMBER: 1
       OWNER: "nicegeo"
       LABEL: ${{github.event.label.name}}
