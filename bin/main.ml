@@ -31,8 +31,21 @@ let () =
 
   let env = Elab.create_with_env () in
 
-  (* Process proof.txt *)
-  let all_decls_good = List.fold_left (fun x decl -> try Elab.process_decl env decl; x with Failure msg -> print_endline ("Error adding declaration " ^   Decl.decl_name decl ^ ": " ^ msg); false) true decls in
+  let tone = Nice_messages.tone_from_env () in
+  let all_decls_good =
+    List.fold_left
+      (fun ok_so_far decl ->
+        try
+          Elab.process_decl env decl;
+          ok_so_far
+        with Failure msg ->
+          Printf.printf "Error adding declaration %s: %s\n" (Decl.decl_name decl) msg;
+          (match Nice_messages.pick_message tone Nice_messages.After_error with
+          | Some extra -> Printf.printf "%s" (Nice_messages.format_for_output extra)
+          | None -> ());
+          false)
+      true decls
+  in
   if not all_decls_good then begin
     print_endline "Error(s) encountered while processing proof file. Exiting.";
     exit 1
