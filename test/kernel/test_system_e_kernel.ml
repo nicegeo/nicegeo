@@ -422,41 +422,41 @@ let test_eq_symm () =
     ~expected:eq_symm_type
 
 (* These two tests are made by AI so can remove or change them completely if wanted *)
-let test_len_sanity () =
+let test_measure_sanity () =
   let env = Elab.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
 
   (* Base types are Sort 1 *)
-  Alcotest.check' Testable.term ~msg:"Len is of Sort 1"
-    ~actual:(try_infer env.kenv lctx (Const "Len"))
+  Alcotest.check' Testable.term ~msg:"Measure is of Sort 1"
+    ~actual:(try_infer env.kenv lctx (Const "Measure"))
     ~expected:(Sort 1);
 
   Alcotest.check' Testable.term ~msg:"Point is of Sort 1"
     ~actual:(try_infer env.kenv lctx (Const "Point"))
     ~expected:(Sort 1);
 
-  (* Zero is an element of Len *)
-  Alcotest.check' Testable.term ~msg:"Zero is of type Len"
+  (* Zero is an element of Measure *)
+  Alcotest.check' Testable.term ~msg:"Zero is of type Measure"
     ~actual:(try_infer env.kenv lctx (Const "Zero"))
-    ~expected:(Const "Len");
+    ~expected:(Const "Measure");
 
   (* Lt and Add have the right top-level shape *)
   Alcotest.check' Testable.term ~msg:"Lt has correct type"
     ~actual:(try_infer env.kenv lctx (Const "Lt"))
-    ~expected:(Forall (Const "Len", Forall (Const "Len", Sort 0)));
+    ~expected:(Forall (Const "Measure", Forall (Const "Measure", Sort 0)));
 
   Alcotest.check' Testable.term ~msg:"Add has correct type"
     ~actual:(try_infer env.kenv lctx (Const "Add"))
-    ~expected:(Forall (Const "Len", Forall (Const "Len", Const "Len")));
+    ~expected:(Forall (Const "Measure", Forall (Const "Measure", Const "Measure")));
 
   (* AddZero is exact enough to check de Bruijn encoding *)
   let inferred = try_infer env.kenv lctx (Const "AddZero") in
   let expected =
     Forall
-      ( Const "Len",
+      ( Const "Measure",
         App
           ( App
-              ( App (Const "Eq", Const "Len"),
+              ( App (Const "Eq", Const "Measure"),
                 App (App (Const "Add", Bvar 0), Const "Zero") ),
             Bvar 0 ) )
   in
@@ -464,7 +464,7 @@ let test_len_sanity () =
     (Testable.termDefEq env.kenv lctx)
     ~msg:"AddZero has correct type" ~actual:inferred ~expected
 
-let test_len_app () =
+let test_measure_app () =
   let env = Elab.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
 
@@ -475,17 +475,17 @@ let test_len_app () =
          (App (App (Const "Lt", Const "Zero"), Const "Zero")))
     ~expected:(Sort 0);
 
-  (* Add Zero Zero : Len *)
-  Alcotest.check' Testable.term ~msg:"Add Zero Zero is of type Len"
+  (* Add Zero Zero : Measure *)
+  Alcotest.check' Testable.term ~msg:"Add Zero Zero is of type Measure"
     ~actual:
       (try_infer env.kenv lctx
          (App (App (Const "Add", Const "Zero"), Const "Zero")))
-    ~expected:(Const "Len");
+    ~expected:(Const "Measure");
 
-  (* LtTrans applied to 3 Len args gives Lt a b -> Lt b c -> Lt a c *)
-  Hashtbl.add lctx "a" (Const "Len");
-  Hashtbl.add lctx "b" (Const "Len");
-  Hashtbl.add lctx "c" (Const "Len");
+  (* LtTrans applied to 3 Measure args gives Lt a b -> Lt b c -> Lt a c *)
+  Hashtbl.add lctx "a" (Const "Measure");
+  Hashtbl.add lctx "b" (Const "Measure");
+  Hashtbl.add lctx "c" (Const "Measure");
 
   Alcotest.check' Testable.term ~msg:"LtTrans has correct type"
     ~actual:
@@ -601,7 +601,7 @@ let suite =
       test_case "Substitution of bound variables" `Quick test_subst_bvar;
       test_case "Rebinding bound variables" `Quick test_rebind_bvar;
       test_case "Symmetry of equality" `Quick test_eq_symm;
-      test_case "Len sanity checks" `Quick test_len_sanity;
-      test_case "Len application" `Quick test_len_app;
+      test_case "Measure sanity checks" `Quick test_measure_sanity;
+      test_case "Measure application" `Quick test_measure_app;
       test_case "Kernel reduction" `Quick test_kernel_reduce;
     ] )
