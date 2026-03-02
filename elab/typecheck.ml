@@ -214,7 +214,7 @@ and infertype (e: ctx) (tm: term) : term =
     let ty_ret_ty = infertype e ty_ret_fvar in
     Hashtbl.remove e.lctx x;
     (match fst ty_arg_ty, fst ty_ret_ty with
-    | Sort n1, Sort n2 -> (Sort (max n1 n2), snd tm)
+    | Sort n1, Sort n2 -> (Sort (if n2 = 0 then 0 else max n1 n2), snd tm)
     | Sort _, _ -> raise_at (ty_ret, l) (Error.TypeExpected { not_type = (ty_ret, l); not_type_infer = ty_ret_ty })
     | _ -> raise_at ty_arg (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty }))
   | App (f, arg) ->

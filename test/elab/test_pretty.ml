@@ -4,7 +4,6 @@
 open E_elab.Kernel_pretty
 open E_elab.Decl
 open E_elab.Pretty
-
 module KTerm = System_e_kernel.Term
 module ETerm = E_elab.Term
 module Elab = E_elab.Elab
@@ -21,9 +20,7 @@ let () =
 (* Example 2: Bound variables become _0, _1 instead of Bvar 0, Bvar 1 *)
 let () =
   (* (A : Type) -> (B : Prop) -> And A B  with bvars in body *)
-  let body =
-    KTerm.(App (App (Const "And", Bvar 1), Bvar 0))
-  in
+  let body = KTerm.(App (App (Const "And", Bvar 1), Bvar 0)) in
   let t = KTerm.(Forall (Sort 1, Forall (Sort 0, body))) in
   Printf.printf "Kernel term with Bvars: (A : Type) -> (B : Prop) -> And A B\n";
   Printf.printf "  Pretty: %s\n\n" (term_to_string_pretty t)
@@ -34,7 +31,7 @@ let () =
   Printf.printf "With default names: %s\n" (term_to_string_pretty t);
   (* ~names supplies names for Bvar indices: 0 -> "A", 1 -> "B". Binders still _0,_1. *)
   Printf.printf "With custom names (for Bvars): %s\n\n"
-    (term_to_string_pretty ~names:["A"; "B"] t)
+    (term_to_string_pretty ~names:[ "A"; "B" ] t)
 
 (* Example 4: Application flattening *)
 let () =
@@ -45,7 +42,6 @@ let () =
   Printf.printf "  Pretty: %s\n\n" (term_to_string_pretty t)
 
 let () = Printf.printf "=== Elaborator term pretty-printing ===\n\n"
-
 let e = Elab.create ()
 let l = ETerm.dummy_range
 
@@ -68,20 +64,30 @@ let () =
   Printf.printf "Theorem id : (A : Type) -> (x : A) -> A := ...  => \n%s\n\n"
     (decl_to_string e d2)
 
-let () = Printf.printf "=== Sanity checks (assertions) ===\n"
-
 let test_kernel_sort_names () =
-  assert (term_to_string_pretty (KTerm.Sort 0) = "Prop");
-  assert (term_to_string_pretty (KTerm.Sort 1) = "Type")
+  Alcotest.check' Alcotest.string ~msg:"Sort 0 pretty-prints as Prop"
+    ~expected:"Prop"
+    ~actual:(term_to_string_pretty (KTerm.Sort 0));
 
-let test_elab_hole () = assert (term_to_string e (ETerm.Hole 0, l) = "?m0")
+  Alcotest.check' Alcotest.string ~msg:"Sort 1 pretty-prints as Type"
+    ~expected:"Type"
+    ~actual:(term_to_string_pretty (KTerm.Sort 1))
+
+let test_elab_hole () =
+  Alcotest.check' Alcotest.string ~msg:"Hole 0 pretty-prints as ?m0"
+    ~expected:"?m0"
+    ~actual:(term_to_string e (ETerm.Hole 0, l))
 
 let test_elab_arrow_no_name () =
   let t = ETerm.(Arrow (None, (Sort 1, l), (Sort 0, l)), l) in
-  assert (term_to_string e t = "Type -> Prop")
+  Alcotest.check' Alcotest.string ~msg:"arrow pretty-prints sorts"
+    ~expected:"Type -> Prop" ~actual:(term_to_string e t)
 
-let () =
-  test_kernel_sort_names ();
-  test_elab_hole ();
-  test_elab_arrow_no_name ();
-  Printf.printf "All assertions passed.\n"
+let suite =
+  let open Alcotest in
+  ( "Pretty-printing",
+    [
+      test_case "Kernel sort names" `Quick test_kernel_sort_names;
+      test_case "Elab hole" `Quick test_elab_hole;
+      test_case "Elab arrow no name" `Quick test_elab_arrow_no_name;
+    ] )
