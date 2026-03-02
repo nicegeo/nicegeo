@@ -23,7 +23,8 @@
  (description "A longer description")
  (depends
   ocaml
-  (alcotest :with-test))
+  (alcotest :with-test)
+  (odoc :with-doc))
  (tags
   ("add topics" "to describe" your project)))
 
