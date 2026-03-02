@@ -67,7 +67,12 @@ let test_lam_flattening () =
   Alcotest.check' Alcotest.string ~msg:"Lambda args pretty-prints flattened"
     ~expected:"fun (x : A) (y : B) => x"
     ~actual:(term_to_string e
-      ETerm.(Fun (Some "x", Name "A", Fun (Some "y", Name "B", Bvar 1))))
+      ETerm.(Fun (Some "x", Name "A", Fun (Some "y", Name "B", Bvar 1))));
+
+  Alcotest.check' Alcotest.string ~msg:"Dependent lambda arg flattening"
+    ~expected:"fun (x : A) (y : B x) => y"
+    ~actual:(term_to_string e
+      ETerm.(Fun (Some "x", Name "A", Fun (Some "y", App (Name "B", Bvar 0), Bvar 0))))
 
 let test_kernel_sort_names () =
   Alcotest.check' Alcotest.string ~msg:"Sort 0 pretty-prints as Prop"
