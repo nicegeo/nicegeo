@@ -5,6 +5,9 @@ Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b -> False) -> (Eq A 
 	fun (A: Type) (a b: A) (ne_ab: Eq A a b -> False) => fun (eq_ba: Eq A b a) =>
 		ne_ab (Eq.symm A b a eq_ba)
 
+Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> And A B -> (f: A -> B -> C) -> C :=
+    fun A B C h f => And.elim A B C f h
+
 (* Proof of proposition I.I from Euclid's Elements. *)
 Theorem prop1 :
 (a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
@@ -264,3 +267,61 @@ Exists Point (fun (c : Point) =>
     ))
     center_and_on
     ))
+
+
+Theorem prop1_mini :
+(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
+Exists Point (fun (c : Point) =>
+    And (Eq Len (Length a b) (Length a c))
+        (Eq Len (Length b c) (Length b a)))
+:= fun (a b : Point) (ab : Eq Point a b -> False) =>
+   	Exists.elim _ _ _ (circle_of_ne a b ab)
+    (fun (aa : Circle) (center_and_on : (And (CenterCircle a aa) (OnCircle b aa))) =>
+
+    And.elim1 _ _ _ center_and_on
+    (fun (aaa : CenterCircle a aa) => fun (baa : OnCircle b aa) =>
+
+    Exists.elim _ _ _ (circle_of_ne b a (Ne.symm _ _ _ ab))
+    (fun (bb : Circle) => fun (b_center_and_on : And (CenterCircle b bb) (OnCircle a bb)) =>
+
+    And.elim1 _ _ _ b_center_and_on
+    (fun (bbb : CenterCircle b bb) (abb : OnCircle a bb) =>
+
+   	Exists.elim _ _ _ (pt_of_circlesinter aa bb (circlesinter_of_inside_on_circle a b aa bb baa abb
+        (inside_circle_of_center a aa aaa) 
+		(inside_circle_of_center b bb bbb)
+	))
+    (fun (c : Point) (facts : And (OnCircle c aa) (OnCircle c bb)) =>
+
+    And.elim1 _ _ _ facts
+    (fun (caa : OnCircle c aa) (cbb : OnCircle c bb) =>
+
+    And.elim1 _ _ _ (OnCircleIffLengthEq b c a bb bbb cbb)
+    (fun u1 (rtl_bc_ba : (OnCircle a bb -> Eq Len (Length b c) (Length b a))) =>
+
+    And.elim1 _ _ _ (OnCircleIffLengthEq a b c aa aaa baa) 
+    (fun u2 (rtl_ab_ac : (OnCircle c aa -> Eq Len (Length a b) (Length a c))) =>
+
+    Exists.intro Point (fun (c : Point) =>
+		And (Eq Len (Length a b) (Length a c))
+			(Eq Len (Length b c) (Length b a)))
+    c (And.intro _ _ (rtl_ab_ac caa) (rtl_bc_ba abb))
+	))))))))
+
+
+Theorem AddCancel : (x: Len) -> (y: Len) -> (z: Len) -> Eq _ (Add x z) (Add y z) -> Eq _ x y :=
+    fun x y z h =>
+    (* by cases LtTricot x y *)
+    Or.elim _ _ _ (LtTricot x y)
+    (fun (xly : Lt x y) => 
+    (* LtAdd x y z xly : Lt (Add x z) (Add y z) *)
+    (* LtNe _ _ (LtAdd x y z xly) h : False *)
+    False.elim (Eq _ x y) (LtNe _ _ (LtAdd x y z xly) h)
+    )
+    (fun rest =>
+    Or.elim _ _ _ rest
+    (fun (ylx: Lt y x) =>
+    False.elim (Eq _ x y) (LtNe _ _ (LtAdd y x z ylx) (Eq.symm _ _ _ h))
+    )
+    (fun (eqxy : Eq _ x y) => eqxy)
+    )

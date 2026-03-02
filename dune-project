@@ -1,6 +1,7 @@
 (lang dune 3.17)
 
 (name system-e-kernel)
+
 (using menhir 3.0)
 
 (generate_opam_files true)
@@ -20,7 +21,10 @@
  (name system-e-kernel)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml)
+ (depends
+  ocaml
+  (alcotest :with-test)
+  (odoc :with-doc))
  (tags
   ("add topics" "to describe" your project)))
 
