@@ -10,13 +10,13 @@ A typechecker kernel for a proof system based on the formal system **E** (Euclid
 First, install OCaml and opam and then create a switch for the project.
 ```bash
 opam init
-opam switch create nicegeo 4.14.0
+opam switch create nicegeo 5.4.1
 eval $(opam env --switch=nicegeo)
 ```
 
 Install the dependency:
 ```bash
-opam install . --deps-only
+opam install --deps-only --with-test .
 ```
 
 Build the project:
