@@ -59,7 +59,10 @@ type elab_error_info = {
 exception ElabError of elab_error_info
 
 let pp_loc (r: range) =
-  Printf.sprintf "%s:%d:%d-%d:%d" r.start.pos_fname r.start.pos_lnum (r.start.pos_cnum - r.start.pos_bol) r.end_.pos_lnum (r.end_.pos_cnum - r.end_.pos_bol)
+  if r.start.pos_lnum = r.end_.pos_lnum then
+    Printf.sprintf "%s:%d:%d-%d" r.start.pos_fname r.start.pos_lnum (r.start.pos_cnum - r.start.pos_bol+1) (r.end_.pos_cnum - r.end_.pos_bol+1)
+  else
+    Printf.sprintf "%s:%d:%d to %d:%d" r.start.pos_fname r.start.pos_lnum (r.start.pos_cnum - r.start.pos_bol+1) r.end_.pos_lnum (r.end_.pos_cnum - r.end_.pos_bol+1)
 
 let pp_kv k = function
   | None -> ""
