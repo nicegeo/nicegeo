@@ -112,6 +112,9 @@ let pp_loc (r: range) =
     Printf.sprintf "%s:%d:%d to %d:%d" r.start.pos_fname r.start.pos_lnum (r.start.pos_cnum - r.start.pos_bol+1) r.end_.pos_lnum (r.end_.pos_cnum - r.end_.pos_bol+1)
 
 
+let pp_local_ctx (e: Types.ctx) : string =
+  Hashtbl.fold (fun k v acc -> acc ^ Pretty.term_to_string e (Term.Fvar k, dummy_range) ^ " : " ^ Pretty.term_to_string e (snd v) ^ "\n") e.lctx ""
+
 let pp_exn (e: Types.ctx) (info: elab_error_info) : string =
   let loc_str = match info.context.loc with
     | Some r -> pp_loc r
@@ -121,23 +124,24 @@ let pp_exn (e: Types.ctx) (info: elab_error_info) : string =
     | Some n -> Printf.sprintf "declaration '%s'" n
     | None -> "a declaration"
    in
+  let local_ctx = pp_local_ctx e in
   match info.error_type with
   | ParseError { input; error_msg } ->
       Printf.sprintf "Parse error in %s at %s: %s (input: '%s')" decl_str loc_str error_msg input
   | AlreadyDefined name ->
       Printf.sprintf "Error in %s: %s is already defined" decl_str name
   | TypeMismatch { term; inferred_type; expected_type } ->
-      Printf.sprintf "Type mismatch in %s at %s: term\n%s\nhas type\n%s\nbut expected\n%s\n" decl_str loc_str (Pretty.term_to_string e term) (Pretty.term_to_string e inferred_type) (Pretty.term_to_string e expected_type)
+      Printf.sprintf "Local context:\n%s\nType mismatch in %s at %s: term\n%s\nhas type\n%s\nbut expected\n%s\n" local_ctx decl_str loc_str (Pretty.term_to_string e term) (Pretty.term_to_string e inferred_type) (Pretty.term_to_string e expected_type)
   | CannotInferHole ->
-      Printf.sprintf "Cannot infer type of hole in %s at %s" decl_str loc_str
+      Printf.sprintf "Local context:\n%s\nCannot infer type of hole in %s at %s" local_ctx decl_str loc_str
   | KernelError { kernel_exn } ->
       Printf.sprintf "Kernel error in %s at %s: %s" decl_str loc_str (ktype_err_to_string kernel_exn)
   | UnknownName { name } ->
       Printf.sprintf "Unknown name '%s' in %s at %s" name decl_str loc_str
   | InternalError msg ->
-      Printf.sprintf "Internal error in %s at %s: %s" decl_str loc_str msg
+      Printf.sprintf "Local context:\n%s\nInternal error in %s at %s: %s" local_ctx decl_str loc_str msg
   | FunctionExpected { not_func; not_func_type; arg } ->
-      Printf.sprintf "Expected a function in %s at %s, but got\n%s\nof type\n%s\nwhen applying to argument\n%s\n" decl_str loc_str (Pretty.term_to_string e not_func) (Pretty.term_to_string e not_func_type) (Pretty.term_to_string e arg)
+      Printf.sprintf "Local context:\n%s\nExpected a function in %s at %s, but got\n%s\nof type\n%s\nwhen applying to argument\n%s\n" local_ctx decl_str loc_str (Pretty.term_to_string e not_func) (Pretty.term_to_string e not_func_type) (Pretty.term_to_string e arg)
   | TypeExpected { not_type; not_type_infer } ->
-      Printf.sprintf "Expected a type in %s at %s, but got\n%s\nwhich has type\n%s\n" decl_str loc_str (Pretty.term_to_string e not_type) (Pretty.term_to_string e not_type_infer)
+      Printf.sprintf "Local context:\n%s\nExpected a type in %s at %s, but got\n%s\nwhich has type\n%s\n" local_ctx decl_str loc_str (Pretty.term_to_string e not_type) (Pretty.term_to_string e not_type_infer)
 
