@@ -1,5 +1,5 @@
 open Term
-module KTerm = System_e_kernel.Term
+module KTerm = Nicegeo.Term
 
 type metavar = {
   ty : term option;

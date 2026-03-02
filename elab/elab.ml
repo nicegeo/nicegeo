@@ -1,4 +1,4 @@
-module KTerm = System_e_kernel.Term
+module KTerm = Nicegeo.Term
 
 let create () : Types.ctx = {
   env = Hashtbl.create 16;

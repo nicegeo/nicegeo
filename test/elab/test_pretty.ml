@@ -4,7 +4,7 @@
 open E_elab.Kernel_pretty
 open E_elab.Decl
 open E_elab.Pretty
-module KTerm = System_e_kernel.Term
+module KTerm = Nicegeo.Term
 module ETerm = E_elab.Term
 module Elab = E_elab.Elab
 

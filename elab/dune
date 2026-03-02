@@ -1,6 +1,6 @@
 (library
  (name e_elab)
- (libraries system_e_kernel))
+ (libraries nicegeo))
 
  (ocamllex lexer)
  (menhir

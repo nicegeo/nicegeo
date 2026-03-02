@@ -1,7 +1,7 @@
 
 
-module KExceptions = System_e_kernel.Exceptions
-module KTerm = System_e_kernel.Term
+module KExceptions = Nicegeo.Exceptions
+module KTerm = Nicegeo.Term
 
 (* --- Printing errors ---*)
 

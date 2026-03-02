@@ -7,5 +7,5 @@ let () =
 
   Alcotest.run "kernel" 
     [
-      Test_system_e_kernel.suite;
+      Test_nicegeo.suite;
     ]

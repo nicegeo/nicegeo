@@ -2,7 +2,7 @@ open Decl
 open Term
 open Convert
 open Types
-module KInfer = System_e_kernel.Infer
+module KInfer = Nicegeo.Infer
 
 exception InferHole
 

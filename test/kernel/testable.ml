@@ -1,5 +1,5 @@
 open Alcotest
-open System_e_kernel
+open Nicegeo
 
 let term : Term.term testable =
   Alcotest.testable

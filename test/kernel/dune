@@ -1,3 +1,3 @@
 (test
  (name tests)
- (libraries system_e_kernel e_elab alcotest))
+ (libraries nicegeo e_elab alcotest))

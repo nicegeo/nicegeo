@@ -1,5 +1,5 @@
 open Alcotest
-open System_e_kernel
+open Nicegeo
 
 val term : Term.term testable
 val termDefEq : Term.environment -> Term.localcontext -> Term.term testable

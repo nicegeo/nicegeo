@@ -1,6 +1,6 @@
 open Kernel_exn_format
-module KExceptions = System_e_kernel.Exceptions
-module KTerm = System_e_kernel.Term
+module KExceptions = Nicegeo.Exceptions
+module KTerm = Nicegeo.Term
 module E = Error
 
 

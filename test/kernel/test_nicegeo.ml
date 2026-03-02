@@ -1,5 +1,5 @@
 (* Tests for inferType with stack-based local context *)
-open System_e_kernel
+open Nicegeo
 open Term
 open Infer
 open Exceptions
@@ -585,7 +585,7 @@ let test_kernel_reduce () =
 
 let suite =
   let open Alcotest in
-  ( "system_e_kernel",
+  ( "nicegeo",
     [
       test_case "Constant lookup" `Quick test_const_lookup;
       test_case "Free variable lookup" `Quick test_fvar_lookup;
