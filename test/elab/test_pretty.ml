@@ -47,7 +47,7 @@ let l = ETerm.dummy_range
 
 (* Example 5: Elaborator terms have names already *)
 let () =
-  let t = Elab.parse_term "(A : Type) -> (B : Prop) -> B" in
+  let t = Testterm.(nfun "A" (sort 1) (nfun "B" (sort 0) (bvar 0))) in
   Printf.printf "Elab term (A : Type) -> (B : Prop) -> B:\n";
   Printf.printf "  %s\n\n" (term_to_string e t)
 
@@ -58,8 +58,8 @@ let () =
   let d2 =
     Theorem
       ( "id", l,
-        (Elab.parse_term "(A : Type) -> (x : A) -> A"),
-        (Elab.parse_term "fun (A : Type) (x : A) => x"))
+        Testterm.(narrow "A" (sort 1) (narrow "x" (bvar 0) (bvar 1))),
+         Testterm.(ufun (sort 1) (ufun (bvar 0) (bvar 0))))
   in
   Printf.printf "Theorem id : (A : Type) -> (x : A) -> A := ...  => \n%s\n\n"
     (decl_to_string e d2)
@@ -67,11 +67,11 @@ let () =
 let test_lam_flattening () =
   Alcotest.check' Alcotest.string ~msg:"Lambda args pretty-prints flattened"
     ~expected:"fun (x : A) (y : B) => x"
-    ~actual:(term_to_string e (Elab.parse_term "fun (x : A) => fun (y : B) => x"));
+    ~actual:(term_to_string e Testterm.(nfun "x" (name "A") (nfun "y" (name "B") (bvar 1))));
 
   Alcotest.check' Alcotest.string ~msg:"Dependent lambda arg flattening"
     ~expected:"fun (x : A) (y : B x) => y"
-    ~actual:(term_to_string e (Elab.parse_term "fun (x : A) => fun (y : B x) => y"))
+    ~actual:(term_to_string e Testterm.(nfun "x" (name "A") (nfun "y" (app (name "B") (bvar 0)) (bvar 0))))
 
 let test_kernel_sort_names () =
   Alcotest.check' Alcotest.string ~msg:"Sort 0 pretty-prints as Prop"
@@ -88,7 +88,7 @@ let test_elab_hole () =
     ~actual:(term_to_string e {ETerm.inner=Hole 0; loc=l})
 
 let test_elab_arrow_no_name () =
-  let t = Elab.parse_term "Type -> Prop" in
+  let t = Testterm.(uarrow (sort 1) (sort 0)) in
   Alcotest.check' Alcotest.string ~msg:"arrow pretty-prints sorts"
     ~expected:"Type -> Prop" ~actual:(term_to_string e t)
 
