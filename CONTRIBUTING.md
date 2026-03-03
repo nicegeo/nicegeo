@@ -9,12 +9,12 @@ When working on an issue, please assign yourself to the issue and move the issue
 Do not push directly to main; work on an appropriately named branch and submit PRs (pull requests) instead. 
 
 Try to separate individual features into individual PRs, rather than combining everything into a single large PR. 
-
-If there are features that depend on other ones, e.g. feature Y depends on feature X, 
-- create a branch and make a PR for feature X
-- create another branch based on feature X's branch for feature Y
-- create a PR with the base as feature X's branch. 
-- Feature X should be merged before feature Y's PR, at which point the base for feature Y's PR can be switched to main.
+If a feature Y depends on another unimplemented feature X:
+- ensure feature X has a branch (and ideally a PR)
+- create another branch based on feature X's branch for feature Y (and ideally a draft PR)
+- ensure feature X is merged before feature Y
+- run `git merge main` in feature Y's branch (optional; GitHub will generally deal with this automatically when making PRs)
+- remove the draft status from the PR for feature Y
 
 Don't squash commits when merging; it is easier to track changes this way. Prefer to commit more often rather than less often on feature branches.
 
