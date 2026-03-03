@@ -47,7 +47,7 @@ let l = ETerm.dummy_range
 
 (* Example 5: Elaborator terms have names already *)
 let () =
-  let t = {ETerm.inner=Arrow (Some "A", {ETerm.inner=Sort 1; loc=l}, {ETerm.inner=Arrow (Some "B", {ETerm.inner=Sort 0; loc=l}, {ETerm.inner=Bvar 0; loc=l}); loc=l}); loc=l} in
+  let t = Elab.parse_term "(A : Type) -> (B : Prop) -> B" in
   Printf.printf "Elab term (A : Type) -> (B : Prop) -> B:\n";
   Printf.printf "  %s\n\n" (term_to_string e t)
 
@@ -58,8 +58,8 @@ let () =
   let d2 =
     Theorem
       ( "id", l,
-        {ETerm.inner=Arrow (Some "A", {ETerm.inner=Sort 1; loc=l}, {ETerm.inner=Arrow (Some "x", {ETerm.inner=Name "A"; loc=l}, {ETerm.inner=Bvar 1; loc=l}); loc=l}); loc=l},
-        {ETerm.inner=Fun (Some "A", {ETerm.inner=Sort 1; loc=l}, {ETerm.inner=Fun (Some "x", {ETerm.inner=Name "A"; loc=l}, {ETerm.inner=Bvar 0; loc=l}); loc=l}); loc=l} )
+        (Elab.parse_term "(A : Type) -> (x : A) -> A"),
+        (Elab.parse_term "fun (A : Type) (x : A) => x"))
   in
   Printf.printf "Theorem id : (A : Type) -> (x : A) -> A := ...  => \n%s\n\n"
     (decl_to_string e d2)
@@ -67,13 +67,11 @@ let () =
 let test_lam_flattening () =
   Alcotest.check' Alcotest.string ~msg:"Lambda args pretty-prints flattened"
     ~expected:"fun (x : A) (y : B) => x"
-    ~actual:(term_to_string e
-      ETerm.(Fun (Some "x", Name "A", Fun (Some "y", Name "B", Bvar 1))));
+    ~actual:(term_to_string e (Elab.parse_term "fun (x : A) => fun (y : B) => x"));
 
   Alcotest.check' Alcotest.string ~msg:"Dependent lambda arg flattening"
     ~expected:"fun (x : A) (y : B x) => y"
-    ~actual:(term_to_string e
-      ETerm.(Fun (Some "x", Name "A", Fun (Some "y", App (Name "B", Bvar 0), Bvar 0))))
+    ~actual:(term_to_string e (Elab.parse_term "fun (x : A) => fun (y : B x) => y"))
 
 let test_kernel_sort_names () =
   Alcotest.check' Alcotest.string ~msg:"Sort 0 pretty-prints as Prop"
@@ -90,7 +88,7 @@ let test_elab_hole () =
     ~actual:(term_to_string e {ETerm.inner=Hole 0; loc=l})
 
 let test_elab_arrow_no_name () =
-  let t = {ETerm.inner=Arrow (None, {ETerm.inner=Sort 1; loc=l}, {ETerm.inner=Sort 0; loc=l}); loc=l} in
+  let t = Elab.parse_term "Type -> Prop" in
   Alcotest.check' Alcotest.string ~msg:"arrow pretty-prints sorts"
     ~expected:"Type -> Prop" ~actual:(term_to_string e t)
 

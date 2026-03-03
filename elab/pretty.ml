@@ -44,7 +44,7 @@ let fmt_binder (name : string) (ty : string) : string =
 *)
 let rec flatten_fun (t : term) (bctx : string list) (fmt : string list -> term -> string) :
     string list * term * string list =
-  match t with
+  match t.inner with
   | Fun (x, ty, body) ->
     let x_s : string = opt_name_to_string x in
     let ty_s : string = fmt bctx ty in

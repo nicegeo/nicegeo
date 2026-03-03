@@ -2,10 +2,14 @@
 %token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE
 %token THEOREM AXIOM DEFEQ
 %start <Decl.declaration list> main
+%start <Term.term> single_term
 %%
 
 main:
   | decls = list(declaration) EOF { decls }
+
+single_term:
+  | t = term EOF { t }
 
 declaration:
   | AXIOM name = IDENT COLON ty = term { Decl.Axiom (name, { Term.start = $startpos(name); Term.end_ = $endpos(name) }, ty) }
