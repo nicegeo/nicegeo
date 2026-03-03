@@ -64,6 +64,17 @@ let () =
   Printf.printf "Theorem id : (A : Type) -> (x : A) -> A := ...  => \n%s\n\n"
     (decl_to_string e d2)
 
+let test_lam_flattening () =
+  Alcotest.check' Alcotest.string ~msg:"Lambda args pretty-prints flattened"
+    ~expected:"fun (x : A) (y : B) => x"
+    ~actual:(term_to_string e
+      ETerm.(Fun (Some "x", Name "A", Fun (Some "y", Name "B", Bvar 1))));
+
+  Alcotest.check' Alcotest.string ~msg:"Dependent lambda arg flattening"
+    ~expected:"fun (x : A) (y : B x) => y"
+    ~actual:(term_to_string e
+      ETerm.(Fun (Some "x", Name "A", Fun (Some "y", App (Name "B", Bvar 0), Bvar 0))))
+
 let test_kernel_sort_names () =
   Alcotest.check' Alcotest.string ~msg:"Sort 0 pretty-prints as Prop"
     ~expected:"Prop"
@@ -90,4 +101,5 @@ let suite =
       test_case "Kernel sort names" `Quick test_kernel_sort_names;
       test_case "Elab hole" `Quick test_elab_hole;
       test_case "Elab arrow no name" `Quick test_elab_arrow_no_name;
+      test_case "Function args flattened" `Quick test_lam_flattening
     ] )

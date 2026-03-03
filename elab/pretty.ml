@@ -36,6 +36,23 @@ let opt_name_to_string = function
   | Some x -> x
   | None -> gen_fresh_name ()
 
+let fmt_binder (name : string) (ty : string) : string =
+  "(" ^ name ^ " : " ^ ty ^ ")"
+
+(* Return a list of formatted arguments to the lambdas,
+  the remaining body to format, and the new `bctx` after processing them all.
+*)
+let rec flatten_fun (t : term) (bctx : string list) (fmt : string list -> term -> string) :
+    string list * term * string list =
+  match t with
+  | Fun (x, ty, body) ->
+    let x_s : string = opt_name_to_string x in
+    let ty_s : string = fmt bctx ty in
+    let binder = fmt_binder x_s ty_s in
+    let binders, new_body, new_bctx = flatten_fun body (x_s :: bctx) fmt in
+    (binder :: binders, new_body, new_bctx)
+  | _ -> ([], t, bctx)
+
 let bvar_to_string (bctx : string list) (idx : int) : string =
   if idx < List.length bctx then List.nth bctx idx else "_" ^ string_of_int idx
 
@@ -82,11 +99,11 @@ let rec term_to_string_with (e : Types.ctx) (bctx : string list) (t : term) : st
       | _ -> "?m" ^ string_of_int idx
     )
   | Sort n -> sort_to_string n
-  | Fun (x, ty, body) ->
-      let x_s = opt_name_to_string x in
-      let ty_s = term_to_string_with e bctx ty in
-      let body_s = term_to_string_with e (x_s :: bctx) body in
-      "fun (" ^ x_s ^ " : " ^ ty_s ^ ") => " ^ body_s
+  | Fun _ ->
+      let (binders : string list), (new_body : term), (new_bctx : string list) =
+        flatten_fun t bctx (term_to_string_with e) in
+      let body_s = term_to_string_with e new_bctx new_body in
+      "fun " ^ String.concat " " binders ^ " => " ^ body_s
   | Arrow (x, ty, ret) ->
       let x_s = opt_name_to_string x in
       let ty_s = term_to_string_with e bctx ty in
