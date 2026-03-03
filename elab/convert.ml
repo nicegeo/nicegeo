@@ -3,8 +3,8 @@ open Term
 module KTerm = System_e_kernel.Term
 
 (* Converts an elaboration-level term to a kernel-level term. tm must not have any holes *)
-let rec conv_to_kterm ({inner=tm'; _}: term) : KTerm.term =
-  match tm' with
+let rec conv_to_kterm (tm: term) : KTerm.term =
+  match tm.inner with
   | Name x -> KTerm.Const x
   | Hole _ -> failwith "hole in conv_to_kterm input"
   | Fun (_, ty, body) -> KTerm.Lam (conv_to_kterm ty, conv_to_kterm body)
