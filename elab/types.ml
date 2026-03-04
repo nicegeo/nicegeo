@@ -3,7 +3,7 @@ module KTerm = System_e_kernel.Term
 
 type metavar = {
   ty : term option;
-  vartypes : term list; (* types of the free variables in the solution, in order *)
+  vartypes : term list; (* types of the free variables in the solution, in order (later entries may have bvars referring to previous entries) *)
   sol : term option; (* solution term, should not contain fvars *)
 }
 

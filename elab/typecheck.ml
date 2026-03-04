@@ -166,7 +166,7 @@ let rec unify (e: ctx) (t1: term) (t2: term) : unit =
     if List.length args1 != List.length args2 then print_endline "tried to unify different length meta spines" else
     if m1 = m2 then () else
     (* Have the hole with the smaller ID point to the larger ID to ensure that there aren't any holes that refer to each other
-    in a cycle? *)
+    in a cycle *)
     let (m1, m2) = if m1 < m2 then (m1, m2) else (m2, m1) in
     Hashtbl.replace e.metas m1 { (Hashtbl.find e.metas m1) with sol = Some {inner=Hole m2; loc=l2} };
     List.iter2 (fun arg1 arg2 -> unify e arg1 arg2) args1 args2
@@ -318,7 +318,7 @@ let rec contains_fvar (tm: term) : bool =
   | _ -> false
 
 (** Needs to be trusted for faithfulness of meaning. This returns tm unchanged
-except for replacing metavariables (holes) with terms with the solutions that we solved for for each hole. *)
+except for replacing metavariables (holes) with their solutions. *)
 let rec replace_metas (e: ctx) (tm: term) : term =
   match tm.inner with
   | Hole m -> (match Hashtbl.find_opt e.metas m with
