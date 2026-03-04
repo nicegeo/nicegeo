@@ -328,3 +328,17 @@ Theorem AddCancel : (x: Len) -> (y: Len) -> (z: Len) -> Eq _ (Add x z) (Add y z)
     )
     (fun (eqxy : Eq _ x y) => eqxy)
     )
+
+Axiom sorry : (P: Prop) -> P
+
+Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point) 
+    -> (bc : Eq _ b c -> False) -> (ab : Eq _ a b -> False)
+    -> Exists Point (fun f => Eq _ (Length a f) (Length b c)) :=
+    fun (a: Point) (b: Point) (c: Point) (bc: Eq _ b c -> False) (ab: Eq _ a b -> False) =>
+
+    Exists.elim _ _ _ (prop1 a b ab)
+    (fun (d: Point) (eqtri: And (Eq _ (Length a b) (Length a d)) (Eq _ (Length b d) (Length b a))) =>
+
+    sorry (Exists Point (fun (f: Point) => Eq _ (Length a f) (Length b c)))
+
+    )
