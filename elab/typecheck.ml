@@ -346,23 +346,29 @@ and check_is_type (e : ctx) (tm : term) : unit =
       | None -> raise_at tm (Error.UnknownName { name }))
   | Fun _ -> raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = tm })
   | Arrow (arg, ty_arg, ty_ret) ->
-    check_is_type e ty_arg;
-    let x = gen_fvar_id () in
-    let ty_ret_fvar = replace_bvar ty_ret 0 {inner=Fvar x; loc=tm.loc} in
-    Hashtbl.add e.lctx x (arg, ty_arg);
-    check_is_type e ty_ret_fvar;
-    Hashtbl.remove e.lctx x
-  | App (f, arg) ->
-    let f_type = try Some (whnf_beta e (infertype e f)) with Error.ElabError {error_type = Error.CannotInferHole; _} -> None in
-    
-    (match f_type with
-    | Some {inner=Arrow (_, ty_arg, ty_ret); _} -> 
-      (* print_endline ("app checktype: checking that " ^ Pretty.term_to_string e arg ^ " has type " ^ Pretty.term_to_string e ty_arg);
+      check_is_type e ty_arg;
+      let x = gen_fvar_id () in
+      let ty_ret_fvar = replace_bvar ty_ret 0 { inner = Fvar x; loc = tm.loc } in
+      Hashtbl.add e.lctx x (arg, ty_arg);
+      check_is_type e ty_ret_fvar;
+      Hashtbl.remove e.lctx x
+  | App (f, arg) -> (
+      let f_type =
+        try Some (whnf_beta e (infertype e f))
+        with Error.ElabError { error_type = Error.CannotInferHole; _ } -> None
+      in
+
+      match f_type with
+      | Some { inner = Arrow (_, ty_arg, ty_ret); _ } ->
+          (* print_endline ("app checktype: checking that " ^ Pretty.term_to_string e arg ^ " has type " ^ Pretty.term_to_string e ty_arg);
       print_endline ("because f is " ^ Pretty.term_to_string e f ^ " and has type " ^ Pretty.term_to_string e f_type); *)
-      checktype e arg ty_arg;
-      if not (is_sort ty_ret) then raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = ty_ret }) else ()
-    | Some v -> raise_at f (Error.FunctionExpected { not_func = f; not_func_type = v; arg })
-    | None -> ())
+          checktype e arg ty_arg;
+          if not (is_sort ty_ret) then
+            raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = ty_ret })
+          else ()
+      | Some v ->
+          raise_at f (Error.FunctionExpected { not_func = f; not_func_type = v; arg })
+      | None -> ())
   | Sort _ -> ()
   | Bvar _ ->
       raise_at tm (Error.InternalError "unexpected bound variable in check_is_type")

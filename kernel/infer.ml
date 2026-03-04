@@ -125,12 +125,12 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
       let err_kind = BoundVarScopeError idx in
       raise (TypeError { env; ctx = localCtx; trm = t; err_kind })
   | App (func, arg) -> (
-    let func_type = reduce env localCtx (inferType env localCtx func) in
-    let inferred_arg_type = inferType env localCtx arg in
-    match func_type with
-      | Forall (expected_arg_type, return_type) -> 
-        if isDefEq env localCtx expected_arg_type inferred_arg_type then
-          (* The actual type of the function application can depend on the
+      let func_type = reduce env localCtx (inferType env localCtx func) in
+      let inferred_arg_type = inferType env localCtx arg in
+      match func_type with
+      | Forall (expected_arg_type, return_type) ->
+          if isDefEq env localCtx expected_arg_type inferred_arg_type then
+            (* The actual type of the function application can depend on the
           actual value that it's evaluated at so we need to substitute the arg
           for any bvars referring to this arg in the return_type. *)
             subst_bvar return_type 0 arg
