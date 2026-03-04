@@ -2,884 +2,2176 @@
 
 open Term
 
-let get_env add_axiom =
-  add_axiom "Empty" (Sort 1);
-  add_axiom "Empty.elim" (Forall (Sort 1, Forall (Const "Empty", Bvar 1)));
-  add_axiom "False" (Sort 0);
-  add_axiom "False.elim" (Forall (Sort 0, Forall (Const "False", Bvar 1)));
-  add_axiom "Exists" (Forall (Sort 1, Forall (Forall (Bvar 0, Sort 0), Sort 0)));
-  add_axiom
-    "Exists.intro"
-    (Forall
-       ( Sort 1,
-         Forall
-           ( Forall (Bvar 0, Sort 0),
-             Forall
-               ( Bvar 1,
-                 Forall (App (Bvar 1, Bvar 0), App (App (Const "Exists", Bvar 3), Bvar 2))
-               ) ) ));
-  add_axiom
-    "Exists.elim"
-    (Forall
-       ( Sort 1,
-         Forall
-           ( Forall (Bvar 0, Sort 0),
-             Forall
-               ( Sort 0,
-                 Forall
-                   ( App (App (Const "Exists", Bvar 2), Bvar 1),
-                     Forall
-                       (Forall (Bvar 3, Forall (App (Bvar 3, Bvar 0), Bvar 3)), Bvar 2) )
-               ) ) ));
-  add_axiom "Forall" (Forall (Sort 1, Forall (Forall (Bvar 0, Sort 0), Sort 0)));
-  add_axiom
-    "Forall.intro"
-    (Forall
-       ( Sort 1,
-         Forall
-           ( Forall (Bvar 0, Sort 0),
-             Forall
-               ( Forall (Bvar 1, App (Bvar 1, Bvar 0)),
-                 App (App (Const "Forall", Bvar 2), Bvar 1) ) ) ));
-  add_axiom
-    "Forall.elim"
-    (Forall
-       ( Sort 1,
-         Forall
-           ( Forall (Bvar 0, Sort 0),
-             Forall
-               ( App (App (Const "Forall", Bvar 1), Bvar 0),
-                 Forall (Bvar 2, App (Bvar 2, Bvar 0)) ) ) ));
-  add_axiom "And" (Forall (Sort 0, Forall (Sort 0, Sort 0)));
-  add_axiom
-    "And.intro"
-    (Forall
-       ( Sort 0,
-         Forall
-           ( Sort 0,
-             Forall (Bvar 1, Forall (Bvar 1, App (App (Const "And", Bvar 3), Bvar 2))) )
-       ));
-  add_axiom
-    "And.elim"
-    (Forall
-       ( Sort 0,
-         Forall
-           ( Sort 0,
-             Forall
-               ( Sort 0,
-                 Forall
-                   ( Forall (Bvar 2, Forall (Bvar 2, Bvar 2)),
-                     Forall (App (App (Const "And", Bvar 3), Bvar 2), Bvar 2) ) ) ) ));
-  add_axiom "Or" (Forall (Sort 0, Forall (Sort 0, Sort 0)));
-  add_axiom
-    "Or.inl"
-    (Forall
-       (Sort 0, Forall (Sort 0, Forall (Bvar 1, App (App (Const "Or", Bvar 2), Bvar 1)))));
-  add_axiom
-    "Or.inr"
-    (Forall
-       (Sort 0, Forall (Sort 0, Forall (Bvar 0, App (App (Const "Or", Bvar 2), Bvar 1)))));
-  add_axiom
-    "Or.elim"
-    (Forall
-       ( Sort 0,
-         Forall
-           ( Sort 0,
-             Forall
-               ( Sort 0,
-                 Forall
-                   ( App (App (Const "Or", Bvar 2), Bvar 1),
-                     Forall
-                       (Forall (Bvar 3, Bvar 2), Forall (Forall (Bvar 3, Bvar 3), Bvar 3))
-                   ) ) ) ));
-  add_axiom "Eq" (Forall (Sort 1, Forall (Bvar 0, Forall (Bvar 1, Sort 0))));
-  add_axiom
-    "Eq.intro"
-    (Forall (Sort 1, Forall (Bvar 0, App (App (App (Const "Eq", Bvar 1), Bvar 0), Bvar 0))));
-  add_axiom
-    "Eq.elim"
-    (Forall
-       ( Sort 1,
-         Forall
-           ( Bvar 0,
-             Forall
-               ( Forall (Bvar 1, Sort 0),
-                 Forall
-                   ( App (Bvar 0, Bvar 1),
-                     Forall
-                       ( Bvar 3,
-                         Forall
-                           ( App (App (App (Const "Eq", Bvar 4), Bvar 3), Bvar 0),
-                             App (Bvar 3, Bvar 1) ) ) ) ) ) ));
-  add_axiom "Point" (Sort 1);
-  add_axiom "Line" (Sort 1);
-  add_axiom "Circle" (Sort 1);
-  add_axiom "Len" (Sort 1);
-  add_axiom "Lt" (Forall (Const "Len", Forall (Const "Len", Sort 0)));
-  add_axiom
-    "LtTrans"
-    (Forall
-       ( Const "Len",
-         Forall
-           ( Const "Len",
-             Forall
-               ( Const "Len",
-                 Forall
-                   ( App (App (Const "Lt", Bvar 2), Bvar 1),
-                     Forall
-                       ( App (App (Const "Lt", Bvar 2), Bvar 1),
-                         App (App (Const "Lt", Bvar 4), Bvar 2) ) ) ) ) ));
-  add_axiom
-    "LtTricot"
-    (Forall
-       ( Const "Len",
-         Forall
-           ( Const "Len",
-             App
-               ( App (Const "Or", App (App (Const "Lt", Bvar 1), Bvar 0)),
-                 App
-                   ( App (Const "Or", App (App (Const "Lt", Bvar 0), Bvar 1)),
-                     App (App (App (Const "Eq", Const "Len"), Bvar 1), Bvar 0) ) ) ) ));
-  add_axiom
-    "LtAntisymm"
-    (Forall
-       ( Const "Len",
-         Forall
-           ( Const "Len",
-             Forall
-               ( App (App (Const "Lt", Bvar 1), Bvar 0),
-                 Forall (App (App (Const "Lt", Bvar 1), Bvar 2), Const "False") ) ) ));
-  add_axiom "Zero" (Const "Len");
-  add_axiom
-    "ZeroLeast"
-    (Forall
-       ( Const "Len",
-         App
-           ( App (Const "Or", App (App (Const "Lt", Const "Zero"), Bvar 0)),
-             App (App (App (Const "Eq", Const "Len"), Const "Zero"), Bvar 0) ) ));
-  add_axiom "Add" (Forall (Const "Len", Forall (Const "Len", Const "Len")));
-  add_axiom
-    "AddComm"
-    (Forall
-       ( Const "Len",
-         Forall
-           ( Const "Len",
-             App
-               ( App
-                   (App (Const "Eq", Const "Len"), App (App (Const "Add", Bvar 1), Bvar 0)),
-                 App (App (Const "Add", Bvar 0), Bvar 1) ) ) ));
-  add_axiom
-    "AddAssoc"
-    (Forall
-       ( Const "Len",
-         Forall
-           ( Const "Len",
-             Forall
-               ( Const "Len",
-                 App
-                   ( App
-                       ( App (Const "Eq", Const "Len"),
-                         App
-                           ( App (Const "Add", App (App (Const "Add", Bvar 2), Bvar 1)),
-                             Bvar 0 ) ),
-                     App
-                       (App (Const "Add", Bvar 2), App (App (Const "Add", Bvar 1), Bvar 0))
-                   ) ) ) ));
-  add_axiom
-    "AddZero"
-    (Forall
-       ( Const "Len",
-         App
-           ( App
-               ( App (Const "Eq", Const "Len"),
-                 App (App (Const "Add", Bvar 0), Const "Zero") ),
-             Bvar 0 ) ));
-  add_axiom
-    "LtAdd"
-    (Forall
-       ( Const "Len",
-         Forall
-           ( Const "Len",
-             Forall
-               ( Const "Len",
-                 Forall
-                   ( App (App (Const "Lt", Bvar 2), Bvar 1),
-                     App
-                       ( App (Const "Lt", App (App (Const "Add", Bvar 3), Bvar 1)),
-                         App (App (Const "Add", Bvar 2), Bvar 1) ) ) ) ) ));
-  add_axiom "OnLine" (Forall (Const "Point", Forall (Const "Line", Sort 0)));
-  add_axiom
-    "SameSide"
-    (Forall (Const "Point", Forall (Const "Point", Forall (Const "Line", Sort 0))));
-  add_axiom
-    "Between"
-    (Forall (Const "Point", Forall (Const "Point", Forall (Const "Point", Sort 0))));
-  add_axiom "OnCircle" (Forall (Const "Point", Forall (Const "Circle", Sort 0)));
-  add_axiom "InCircle" (Forall (Const "Point", Forall (Const "Circle", Sort 0)));
-  add_axiom "CenterCircle" (Forall (Const "Point", Forall (Const "Circle", Sort 0)));
-  add_axiom "LinesInter" (Forall (Const "Line", Forall (Const "Line", Sort 0)));
-  add_axiom "LineCircleInter" (Forall (Const "Line", Forall (Const "Circle", Sort 0)));
-  add_axiom "CirclesInter" (Forall (Const "Circle", Forall (Const "Circle", Sort 0)));
-  add_axiom "Length" (Forall (Const "Point", Forall (Const "Point", Const "Len")));
-  add_axiom
-    "Angle"
-    (Forall (Const "Point", Forall (Const "Point", Forall (Const "Point", Const "Len"))));
-  add_axiom
-    "Area"
-    (Forall (Const "Point", Forall (Const "Point", Forall (Const "Point", Const "Len"))));
-  add_axiom "RightAngle" (Const "Len");
-  add_axiom
-    "pt_on_line"
-    (Forall
-       ( Const "Line",
-         App
-           ( App (Const "Exists", Const "Point"),
-             Lam (Const "Point", App (App (Const "OnLine", Bvar 0), Bvar 1)) ) ));
-  add_axiom
-    "pt_between_on_line"
-    (Forall
-       ( Const "Line",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Const "Point",
-                 Forall
-                   ( App (App (Const "OnLine", Bvar 1), Bvar 2),
-                     Forall
-                       ( App (App (Const "OnLine", Bvar 1), Bvar 3),
-                         Forall
-                           ( Forall
-                               ( App
-                                   (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
-                                 Const "False" ),
-                             App
-                               ( App (Const "Exists", Const "Point"),
-                                 Lam
-                                   ( Const "Point",
-                                     App
-                                       ( App
-                                           ( Const "And",
-                                             App (App (Const "OnLine", Bvar 0), Bvar 6) ),
-                                         App
-                                           ( App (App (Const "Between", Bvar 5), Bvar 0),
-                                             Bvar 4 ) ) ) ) ) ) ) ) ) ));
-  add_axiom
-    "pt_extension_on_line"
-    (Forall
-       ( Const "Line",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Const "Point",
-                 Forall
-                   ( App (App (Const "OnLine", Bvar 1), Bvar 2),
-                     Forall
-                       ( App (App (Const "OnLine", Bvar 1), Bvar 3),
-                         Forall
-                           ( Forall
-                               ( App
-                                   (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
-                                 Const "False" ),
-                             App
-                               ( App (Const "Exists", Const "Point"),
-                                 Lam
-                                   ( Const "Point",
-                                     App
-                                       ( App
-                                           ( Const "And",
-                                             App (App (Const "OnLine", Bvar 0), Bvar 6) ),
-                                         App
-                                           ( App (App (Const "Between", Bvar 5), Bvar 4),
-                                             Bvar 0 ) ) ) ) ) ) ) ) ) ));
-  add_axiom
-    "pt_sameside_of_not_online"
-    (Forall
-       ( Const "Line",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Forall (App (App (Const "OnLine", Bvar 0), Bvar 1), Const "False"),
-                 App
-                   ( App (Const "Exists", Const "Point"),
-                     Lam
-                       ( Const "Point",
-                         App (App (App (Const "SameSide", Bvar 0), Bvar 2), Bvar 3) ) ) )
-           ) ));
-  add_axiom
-    "pt_oppositeside_of_not_online"
-    (Forall
-       ( Const "Line",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Forall (App (App (Const "OnLine", Bvar 0), Bvar 1), Const "False"),
-                 App
-                   ( App (Const "Exists", Const "Point"),
-                     Lam
-                       ( Const "Point",
-                         App
-                           ( App
-                               ( Const "And",
-                                 Forall
-                                   ( App (App (Const "OnLine", Bvar 0), Bvar 3),
-                                     Const "False" ) ),
-                             Forall
-                               ( App (App (App (Const "SameSide", Bvar 0), Bvar 2), Bvar 3),
-                                 Const "False" ) ) ) ) ) ) ));
-  add_axiom
-    "pt_on_circle"
-    (Forall
-       ( Const "Circle",
-         App
-           ( App (Const "Exists", Const "Point"),
-             Lam (Const "Point", App (App (Const "OnCircle", Bvar 0), Bvar 1)) ) ));
-  add_axiom
-    "pt_inside_circle"
-    (Forall
-       ( Const "Circle",
-         App
-           ( App (Const "Exists", Const "Point"),
-             Lam (Const "Point", App (App (Const "InCircle", Bvar 0), Bvar 1)) ) ));
-  add_axiom
-    "pt_outside_circle"
-    (Forall
-       ( Const "Circle",
-         App
-           ( App (Const "Exists", Const "Point"),
-             Lam
-               ( Const "Point",
-                 App
-                   ( App
-                       ( Const "And",
-                         Forall
-                           (App (App (Const "OnCircle", Bvar 0), Bvar 1), Const "False")
-                       ),
-                     Forall (App (App (Const "InCircle", Bvar 0), Bvar 1), Const "False")
-                   ) ) ) ));
-  add_axiom
-    "line_of_pts"
-    (Forall
-       ( Const "Point",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Forall
-                   ( App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
-                     Const "False" ),
-                 App
-                   ( App (Const "Exists", Const "Line"),
-                     Lam
-                       ( Const "Line",
-                         App
-                           ( App (Const "And", App (App (Const "OnLine", Bvar 3), Bvar 0)),
-                             App (App (Const "OnLine", Bvar 2), Bvar 0) ) ) ) ) ) ));
-  add_axiom
-    "circle_of_ne"
-    (Forall
-       ( Const "Point",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Forall
-                   ( App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
-                     Const "False" ),
-                 App
-                   ( App (Const "Exists", Const "Circle"),
-                     Lam
-                       ( Const "Circle",
-                         App
-                           ( App
-                               ( Const "And",
-                                 App (App (Const "CenterCircle", Bvar 3), Bvar 0) ),
-                             App (App (Const "OnCircle", Bvar 2), Bvar 0) ) ) ) ) ) ));
-  add_axiom
-    "pt_of_linesinter"
-    (Forall
-       ( Const "Line",
-         Forall
-           ( Const "Line",
-             Forall
-               ( App (App (Const "LinesInter", Bvar 1), Bvar 0),
-                 App
-                   ( App (Const "Exists", Const "Point"),
-                     Lam
-                       ( Const "Point",
-                         App
-                           ( App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 3)),
-                             App (App (Const "OnLine", Bvar 0), Bvar 2) ) ) ) ) ) ));
-  add_axiom
-    "pt_of_linecircleinter"
-    (Forall
-       ( Const "Line",
-         Forall
-           ( Const "Circle",
-             Forall
-               ( App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
-                 App
-                   ( App (Const "Exists", Const "Point"),
-                     Lam
-                       ( Const "Point",
-                         App
-                           ( App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 3)),
-                             App (App (Const "OnCircle", Bvar 0), Bvar 2) ) ) ) ) ) ));
-  add_axiom
-    "pts_of_linecircleinter"
-    (Forall
-       ( Const "Line",
-         Forall
-           ( Const "Circle",
-             Forall
-               ( App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
-                 App
-                   ( App (Const "Exists", Const "Point"),
-                     Lam
-                       ( Const "Point",
-                         App
-                           ( App (Const "Exists", Const "Point"),
-                             Lam
-                               ( Const "Point",
-                                 App
-                                   ( App
-                                       ( Const "And",
-                                         Forall
-                                           ( App
-                                               ( App
-                                                   ( App (Const "Eq", Const "Point"),
-                                                     Bvar 1 ),
-                                                 Bvar 0 ),
-                                             Const "False" ) ),
-                                     App
-                                       ( App
-                                           ( Const "And",
-                                             App (App (Const "OnLine", Bvar 1), Bvar 4) ),
-                                         App
-                                           ( App
-                                               ( Const "And",
-                                                 App (App (Const "OnLine", Bvar 0), Bvar 4)
-                                               ),
-                                             App
-                                               ( App
-                                                   ( Const "And",
-                                                     App
-                                                       ( App (Const "OnCircle", Bvar 1),
-                                                         Bvar 3 ) ),
-                                                 App
-                                                   (App (Const "OnCircle", Bvar 0), Bvar 3)
-                                               ) ) ) ) ) ) ) ) ) ) ));
-  add_axiom
-    "pt_oncircle_between_inside_outside"
-    (Forall
-       ( Const "Line",
-         Forall
-           ( Const "Circle",
-             Forall
-               ( Const "Point",
-                 Forall
-                   ( Const "Point",
-                     Forall
-                       ( App (App (Const "OnLine", Bvar 1), Bvar 3),
-                         Forall
-                           ( App (App (Const "OnLine", Bvar 1), Bvar 4),
-                             Forall
-                               ( App (App (Const "InCircle", Bvar 3), Bvar 4),
-                                 Forall
-                                   ( Forall
-                                       ( App (App (Const "OnCircle", Bvar 3), Bvar 5),
-                                         Const "False" ),
-                                     Forall
-                                       ( Forall
-                                           ( App (App (Const "InCircle", Bvar 4), Bvar 6),
-                                             Const "False" ),
-                                         App
-                                           ( App (Const "Exists", Const "Point"),
-                                             Lam
-                                               ( Const "Point",
-                                                 App
-                                                   ( App
-                                                       ( Const "And",
-                                                         App
-                                                           ( App (Const "OnLine", Bvar 0),
-                                                             Bvar 9 ) ),
-                                                     App
-                                                       ( App
-                                                           ( Const "And",
-                                                             App
-                                                               ( App
-                                                                   ( Const "OnCircle",
-                                                                     Bvar 0 ),
-                                                                 Bvar 8 ) ),
-                                                         App
-                                                           ( App
-                                                               ( App
-                                                                   ( Const "Between",
-                                                                     Bvar 7 ),
-                                                                 Bvar 0 ),
-                                                             Bvar 6 ) ) ) ) ) ) ) ) ) ) )
-               ) ) ));
-  add_axiom
-    "pt_oncircle_extension_from_inside"
-    (Forall
-       ( Const "Line",
-         Forall
-           ( Const "Circle",
-             Forall
-               ( Const "Point",
-                 Forall
-                   ( Const "Point",
-                     Forall
-                       ( App (App (Const "OnLine", Bvar 1), Bvar 3),
-                         Forall
-                           ( App (App (Const "OnLine", Bvar 1), Bvar 4),
-                             Forall
-                               ( App (App (Const "InCircle", Bvar 3), Bvar 4),
-                                 Forall
-                                   ( Forall
-                                       ( App
-                                           ( App (App (Const "Eq", Const "Point"), Bvar 3),
-                                             Bvar 4 ),
-                                         Const "False" ),
-                                     App
-                                       ( App (Const "Exists", Const "Point"),
-                                         Lam
-                                           ( Const "Point",
-                                             App
-                                               ( App
-                                                   ( Const "And",
-                                                     App
-                                                       ( App (Const "OnLine", Bvar 0),
-                                                         Bvar 8 ) ),
-                                                 App
-                                                   ( App
-                                                       ( Const "And",
-                                                         App
-                                                           ( App (Const "OnCircle", Bvar 0),
-                                                             Bvar 7 ) ),
-                                                     App
-                                                       ( App
-                                                           ( App (Const "Between", Bvar 0),
-                                                             Bvar 6 ),
-                                                         Bvar 5 ) ) ) ) ) ) ) ) ) ) ) ) ));
-  add_axiom
-    "pt_of_circlesinter"
-    (Forall
-       ( Const "Circle",
-         Forall
-           ( Const "Circle",
-             Forall
-               ( App (App (Const "CirclesInter", Bvar 1), Bvar 0),
-                 App
-                   ( App (Const "Exists", Const "Point"),
-                     Lam
-                       ( Const "Point",
-                         App
-                           ( App
-                               (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 3)),
-                             App (App (Const "OnCircle", Bvar 0), Bvar 2) ) ) ) ) ) ));
-  add_axiom
-    "pts_of_circlesinter"
-    (Forall
-       ( Const "Circle",
-         Forall
-           ( Const "Circle",
-             Forall
-               ( App (App (Const "CirclesInter", Bvar 1), Bvar 0),
-                 App
-                   ( App (Const "Exists", Const "Point"),
-                     Lam
-                       ( Const "Point",
-                         App
-                           ( App (Const "Exists", Const "Point"),
-                             Lam
-                               ( Const "Point",
-                                 App
-                                   ( App
-                                       ( Const "And",
-                                         Forall
-                                           ( App
-                                               ( App
-                                                   ( App (Const "Eq", Const "Point"),
-                                                     Bvar 1 ),
-                                                 Bvar 0 ),
-                                             Const "False" ) ),
-                                     App
-                                       ( App
-                                           ( Const "And",
-                                             App (App (Const "OnCircle", Bvar 1), Bvar 4)
-                                           ),
-                                         App
-                                           ( App
-                                               ( Const "And",
-                                                 App
-                                                   (App (Const "OnCircle", Bvar 1), Bvar 3)
-                                               ),
-                                             App
-                                               ( App
-                                                   ( Const "And",
-                                                     App
-                                                       ( App (Const "OnCircle", Bvar 0),
-                                                         Bvar 4 ) ),
-                                                 App
-                                                   (App (Const "OnCircle", Bvar 0), Bvar 3)
-                                               ) ) ) ) ) ) ) ) ) ) ));
-  add_axiom
-    "pt_sameside_of_circlesinter"
-    (Forall
-       ( Const "Point",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Const "Point",
-                 Forall
-                   ( Const "Line",
-                     Forall
-                       ( Const "Circle",
-                         Forall
-                           ( Const "Circle",
-                             Forall
-                               ( App (App (Const "OnLine", Bvar 4), Bvar 2),
-                                 Forall
-                                   ( App (App (Const "OnLine", Bvar 4), Bvar 3),
-                                     Forall
-                                       ( Forall
-                                           ( App (App (Const "OnLine", Bvar 7), Bvar 4),
-                                             Const "False" ),
-                                         Forall
-                                           ( App
-                                               (App (Const "CenterCircle", Bvar 7), Bvar 4),
-                                             Forall
-                                               ( App
-                                                   ( App (Const "CenterCircle", Bvar 7),
-                                                     Bvar 4 ),
-                                                 Forall
-                                                   ( App
-                                                       ( App (Const "CirclesInter", Bvar 6),
-                                                         Bvar 5 ),
-                                                     App
-                                                       ( App
-                                                           (Const "Exists", Const "Point"),
-                                                         Lam
-                                                           ( Const "Point",
-                                                             App
-                                                               ( App
-                                                                   ( Const "And",
-                                                                     App
-                                                                       ( App
-                                                                           ( App
-                                                                               ( Const
-                                                                                   "SameSide",
-                                                                                 Bvar 0 ),
-                                                                             Bvar 12 ),
-                                                                         Bvar 9 ) ),
-                                                                 App
-                                                                   ( App
-                                                                       ( Const "And",
-                                                                         App
-                                                                           ( App
-                                                                               ( Const
-                                                                                   "OnCircle",
-                                                                                 Bvar 0 ),
-                                                                             Bvar 8 ) ),
-                                                                     App
-                                                                       ( App
-                                                                           ( Const
-                                                                               "OnCircle",
-                                                                             Bvar 0 ),
-                                                                         Bvar 7 ) ) ) ) )
-                                                   ) ) ) ) ) ) ) ) ) ) ) ));
-  add_axiom
-    "pt_oppositeside_of_circlesinter"
-    (Forall
-       ( Const "Point",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Const "Point",
-                 Forall
-                   ( Const "Line",
-                     Forall
-                       ( Const "Circle",
-                         Forall
-                           ( Const "Circle",
-                             Forall
-                               ( App (App (Const "OnLine", Bvar 4), Bvar 2),
-                                 Forall
-                                   ( App (App (Const "OnLine", Bvar 4), Bvar 3),
-                                     Forall
-                                       ( Forall
-                                           ( App (App (Const "OnLine", Bvar 7), Bvar 4),
-                                             Const "False" ),
-                                         Forall
-                                           ( App
-                                               (App (Const "CenterCircle", Bvar 7), Bvar 4),
-                                             Forall
-                                               ( App
-                                                   ( App (Const "CenterCircle", Bvar 7),
-                                                     Bvar 4 ),
-                                                 Forall
-                                                   ( App
-                                                       ( App (Const "CirclesInter", Bvar 6),
-                                                         Bvar 5 ),
-                                                     App
-                                                       ( App
-                                                           (Const "Exists", Const "Point"),
-                                                         Lam
-                                                           ( Const "Point",
-                                                             App
-                                                               ( App
-                                                                   ( Const "And",
-                                                                     Forall
-                                                                       ( App
-                                                                           ( App
-                                                                               ( Const
-                                                                                   "OnLine",
-                                                                                 Bvar 0 ),
-                                                                             Bvar 9 ),
-                                                                         Const "False" )
-                                                                   ),
-                                                                 App
-                                                                   ( App
-                                                                       ( Const "And",
-                                                                         Forall
-                                                                           ( App
-                                                                               ( App
-                                                                                   ( App
-                                                                                       ( Const
-                                                                                          "SameSide",
-                                                                                         Bvar
-                                                                                          0
-                                                                                       ),
-                                                                                     Bvar
-                                                                                       12
-                                                                                   ),
-                                                                                 Bvar 9 ),
-                                                                             Const "False"
-                                                                           ) ),
-                                                                     App
-                                                                       ( App
-                                                                           ( Const "And",
-                                                                             App
-                                                                               ( App
-                                                                                   ( Const
-                                                                                       "OnCircle",
-                                                                                     Bvar
-                                                                                       0
-                                                                                   ),
-                                                                                 Bvar 8 )
-                                                                           ),
-                                                                         App
-                                                                           ( App
-                                                                               ( Const
-                                                                                   "OnCircle",
-                                                                                 Bvar 0 ),
-                                                                             Bvar 7 ) ) )
-                                                               ) ) ) ) ) ) ) ) ) ) ) ) )
-           ) ));
-  add_axiom
-    "circlesinter_of_inside_on_circle"
-    (Forall
-       ( Const "Point",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Const "Circle",
-                 Forall
-                   ( Const "Circle",
-                     Forall
-                       ( App (App (Const "OnCircle", Bvar 2), Bvar 1),
-                         Forall
-                           ( App (App (Const "OnCircle", Bvar 4), Bvar 1),
-                             Forall
-                               ( App (App (Const "InCircle", Bvar 5), Bvar 3),
-                                 Forall
-                                   ( App (App (Const "InCircle", Bvar 5), Bvar 3),
-                                     App (App (Const "CirclesInter", Bvar 5), Bvar 4) ) )
-                           ) ) ) ) ) ));
-  add_axiom
-    "inside_circle_of_center"
-    (Forall
-       ( Const "Point",
-         Forall
-           ( Const "Circle",
-             Forall
-               ( App (App (Const "CenterCircle", Bvar 1), Bvar 0),
-                 App (App (Const "InCircle", Bvar 2), Bvar 1) ) ) ));
-  add_axiom
-    "PtsOfCirclesinter"
-    (Forall
-       ( Const "Circle",
-         Forall
-           ( Const "Circle",
-             Forall
-               ( App (App (Const "CirclesInter", Bvar 1), Bvar 0),
-                 App
-                   ( App (Const "Exists", Const "Point"),
-                     Lam
-                       ( Const "Point",
-                         App
-                           ( App (Const "Exists", Const "Point"),
-                             Lam
-                               ( Const "Point",
-                                 App
-                                   ( App
-                                       ( Const "And",
-                                         Forall
-                                           ( App
-                                               ( App
-                                                   ( App (Const "Eq", Const "Point"),
-                                                     Bvar 1 ),
-                                                 Bvar 0 ),
-                                             Const "False" ) ),
-                                     App
-                                       ( App
-                                           ( Const "And",
-                                             App (App (Const "OnCircle", Bvar 1), Bvar 4)
-                                           ),
-                                         App
-                                           ( App
-                                               ( Const "And",
-                                                 App
-                                                   (App (Const "OnCircle", Bvar 1), Bvar 3)
-                                               ),
-                                             App
-                                               ( App
-                                                   ( Const "And",
-                                                     App
-                                                       ( App (Const "OnCircle", Bvar 0),
-                                                         Bvar 4 ) ),
-                                                 App
-                                                   (App (Const "OnCircle", Bvar 0), Bvar 3)
-                                               ) ) ) ) ) ) ) ) ) ) ));
-  add_axiom
-    "OnCircleIffLengthEq"
-    (Forall
-       ( Const "Point",
-         Forall
-           ( Const "Point",
-             Forall
-               ( Const "Point",
-                 Forall
-                   ( Const "Circle",
-                     Forall
-                       ( App (App (Const "CenterCircle", Bvar 3), Bvar 0),
-                         Forall
-                           ( App (App (Const "OnCircle", Bvar 3), Bvar 1),
-                             App
-                               ( App
-                                   ( Const "And",
-                                     Forall
-                                       ( App
-                                           ( App
-                                               ( App (Const "Eq", Const "Len"),
-                                                 App (App (Const "Length", Bvar 5), Bvar 4)
-                                               ),
-                                             App (App (Const "Length", Bvar 5), Bvar 3) ),
-                                         App (App (Const "OnCircle", Bvar 4), Bvar 3) ) ),
-                                 Forall
-                                   ( App (App (Const "OnCircle", Bvar 3), Bvar 2),
-                                     App
-                                       ( App
-                                           ( App (Const "Eq", Const "Len"),
-                                             App (App (Const "Length", Bvar 6), Bvar 5) ),
-                                         App (App (Const "Length", Bvar 6), Bvar 4) ) ) )
-                           ) ) ) ) ) ));
-  ()
+let get_env (add_axiom) =
+add_axiom "Empty" (Sort 1);
+add_axiom "Empty.elim" (Forall (
+Sort 1,
+  Forall (
+  Const "Empty",
+    Bvar 1
+  )
+));
+add_axiom "False" (Sort 0);
+add_axiom "False.elim" (Forall (
+Sort 0,
+  Forall (
+  Const "False",
+    Bvar 1
+  )
+));
+add_axiom "Exists" (Forall (
+Sort 1,
+  Forall (
+  Forall (
+  Bvar 0,
+    Sort 0
+  ),
+    Sort 0
+  )
+));
+add_axiom "Exists.intro" (Forall (
+Sort 1,
+  Forall (
+  Forall (
+  Bvar 0,
+    Sort 0
+  ),
+    Forall (
+    Bvar 1,
+      Forall (
+      App (
+      Bvar 1,
+      Bvar 0
+      ),
+        App (
+        App (
+        Const "Exists",
+        Bvar 3
+        ),
+        Bvar 2
+        )
+      )
+    )
+  )
+));
+add_axiom "Exists.elim" (Forall (
+Sort 1,
+  Forall (
+  Forall (
+  Bvar 0,
+    Sort 0
+  ),
+    Forall (
+    Sort 0,
+      Forall (
+      App (
+      App (
+      Const "Exists",
+      Bvar 2
+      ),
+      Bvar 1
+      ),
+        Forall (
+        Forall (
+        Bvar 3,
+          Forall (
+          App (
+          Bvar 3,
+          Bvar 0
+          ),
+            Bvar 3
+          )
+        ),
+          Bvar 2
+        )
+      )
+    )
+  )
+));
+add_axiom "Forall" (Forall (
+Sort 1,
+  Forall (
+  Forall (
+  Bvar 0,
+    Sort 0
+  ),
+    Sort 0
+  )
+));
+add_axiom "Forall.intro" (Forall (
+Sort 1,
+  Forall (
+  Forall (
+  Bvar 0,
+    Sort 0
+  ),
+    Forall (
+    Forall (
+    Bvar 1,
+      App (
+      Bvar 1,
+      Bvar 0
+      )
+    ),
+      App (
+      App (
+      Const "Forall",
+      Bvar 2
+      ),
+      Bvar 1
+      )
+    )
+  )
+));
+add_axiom "Forall.elim" (Forall (
+Sort 1,
+  Forall (
+  Forall (
+  Bvar 0,
+    Sort 0
+  ),
+    Forall (
+    App (
+    App (
+    Const "Forall",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      Forall (
+      Bvar 2,
+        App (
+        Bvar 2,
+        Bvar 0
+        )
+      )
+    )
+  )
+));
+add_axiom "And" (Forall (
+Sort 0,
+  Forall (
+  Sort 0,
+    Sort 0
+  )
+));
+add_axiom "And.intro" (Forall (
+Sort 0,
+  Forall (
+  Sort 0,
+    Forall (
+    Bvar 1,
+      Forall (
+      Bvar 1,
+        App (
+        App (
+        Const "And",
+        Bvar 3
+        ),
+        Bvar 2
+        )
+      )
+    )
+  )
+));
+add_axiom "And.elim" (Forall (
+Sort 0,
+  Forall (
+  Sort 0,
+    Forall (
+    Sort 0,
+      Forall (
+      Forall (
+      Bvar 2,
+        Forall (
+        Bvar 2,
+          Bvar 2
+        )
+      ),
+        Forall (
+        App (
+        App (
+        Const "And",
+        Bvar 3
+        ),
+        Bvar 2
+        ),
+          Bvar 2
+        )
+      )
+    )
+  )
+));
+add_axiom "Or" (Forall (
+Sort 0,
+  Forall (
+  Sort 0,
+    Sort 0
+  )
+));
+add_axiom "Or.inl" (Forall (
+Sort 0,
+  Forall (
+  Sort 0,
+    Forall (
+    Bvar 1,
+      App (
+      App (
+      Const "Or",
+      Bvar 2
+      ),
+      Bvar 1
+      )
+    )
+  )
+));
+add_axiom "Or.inr" (Forall (
+Sort 0,
+  Forall (
+  Sort 0,
+    Forall (
+    Bvar 0,
+      App (
+      App (
+      Const "Or",
+      Bvar 2
+      ),
+      Bvar 1
+      )
+    )
+  )
+));
+add_axiom "Or.elim" (Forall (
+Sort 0,
+  Forall (
+  Sort 0,
+    Forall (
+    Sort 0,
+      Forall (
+      App (
+      App (
+      Const "Or",
+      Bvar 2
+      ),
+      Bvar 1
+      ),
+        Forall (
+        Forall (
+        Bvar 3,
+          Bvar 2
+        ),
+          Forall (
+          Forall (
+          Bvar 3,
+            Bvar 3
+          ),
+            Bvar 3
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "Eq" (Forall (
+Sort 1,
+  Forall (
+  Bvar 0,
+    Forall (
+    Bvar 1,
+      Sort 0
+    )
+  )
+));
+add_axiom "Eq.intro" (Forall (
+Sort 1,
+  Forall (
+  Bvar 0,
+    App (
+    App (
+    App (
+    Const "Eq",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+    Bvar 0
+    )
+  )
+));
+add_axiom "Eq.elim" (Forall (
+Sort 1,
+  Forall (
+  Bvar 0,
+    Forall (
+    Forall (
+    Bvar 1,
+      Sort 0
+    ),
+      Forall (
+      App (
+      Bvar 0,
+      Bvar 1
+      ),
+        Forall (
+        Bvar 3,
+          Forall (
+          App (
+          App (
+          App (
+          Const "Eq",
+          Bvar 4
+          ),
+          Bvar 3
+          ),
+          Bvar 0
+          ),
+            App (
+            Bvar 3,
+            Bvar 1
+            )
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "Point" (Sort 1);
+add_axiom "Line" (Sort 1);
+add_axiom "Circle" (Sort 1);
+add_axiom "Len" (Sort 1);
+add_axiom "Lt" (Forall (
+Const "Len",
+  Forall (
+  Const "Len",
+    Sort 0
+  )
+));
+add_axiom "LtTrans" (Forall (
+Const "Len",
+  Forall (
+  Const "Len",
+    Forall (
+    Const "Len",
+      Forall (
+      App (
+      App (
+      Const "Lt",
+      Bvar 2
+      ),
+      Bvar 1
+      ),
+        Forall (
+        App (
+        App (
+        Const "Lt",
+        Bvar 2
+        ),
+        Bvar 1
+        ),
+          App (
+          App (
+          Const "Lt",
+          Bvar 4
+          ),
+          Bvar 2
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "LtTricot" (Forall (
+Const "Len",
+  Forall (
+  Const "Len",
+    App (
+    App (
+    Const "Or",
+    App (
+    App (
+    Const "Lt",
+    Bvar 1
+    ),
+    Bvar 0
+    )
+    ),
+    App (
+    App (
+    Const "Or",
+    App (
+    App (
+    Const "Lt",
+    Bvar 0
+    ),
+    Bvar 1
+    )
+    ),
+    App (
+    App (
+    App (
+    Const "Eq",
+    Const "Len"
+    ),
+    Bvar 1
+    ),
+    Bvar 0
+    )
+    )
+    )
+  )
+));
+add_axiom "LtAntisymm" (Forall (
+Const "Len",
+  Forall (
+  Const "Len",
+    Forall (
+    App (
+    App (
+    Const "Lt",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      Forall (
+      App (
+      App (
+      Const "Lt",
+      Bvar 1
+      ),
+      Bvar 2
+      ),
+        Const "False"
+      )
+    )
+  )
+));
+add_axiom "Zero" (Const "Len");
+add_axiom "ZeroLeast" (Forall (
+Const "Len",
+  App (
+  App (
+  Const "Or",
+  App (
+  App (
+  Const "Lt",
+  Const "Zero"
+  ),
+  Bvar 0
+  )
+  ),
+  App (
+  App (
+  App (
+  Const "Eq",
+  Const "Len"
+  ),
+  Const "Zero"
+  ),
+  Bvar 0
+  )
+  )
+));
+add_axiom "Add" (Forall (
+Const "Len",
+  Forall (
+  Const "Len",
+    Const "Len"
+  )
+));
+add_axiom "AddComm" (Forall (
+Const "Len",
+  Forall (
+  Const "Len",
+    App (
+    App (
+    App (
+    Const "Eq",
+    Const "Len"
+    ),
+    App (
+    App (
+    Const "Add",
+    Bvar 1
+    ),
+    Bvar 0
+    )
+    ),
+    App (
+    App (
+    Const "Add",
+    Bvar 0
+    ),
+    Bvar 1
+    )
+    )
+  )
+));
+add_axiom "AddAssoc" (Forall (
+Const "Len",
+  Forall (
+  Const "Len",
+    Forall (
+    Const "Len",
+      App (
+      App (
+      App (
+      Const "Eq",
+      Const "Len"
+      ),
+      App (
+      App (
+      Const "Add",
+      App (
+      App (
+      Const "Add",
+      Bvar 2
+      ),
+      Bvar 1
+      )
+      ),
+      Bvar 0
+      )
+      ),
+      App (
+      App (
+      Const "Add",
+      Bvar 2
+      ),
+      App (
+      App (
+      Const "Add",
+      Bvar 1
+      ),
+      Bvar 0
+      )
+      )
+      )
+    )
+  )
+));
+add_axiom "AddZero" (Forall (
+Const "Len",
+  App (
+  App (
+  App (
+  Const "Eq",
+  Const "Len"
+  ),
+  App (
+  App (
+  Const "Add",
+  Bvar 0
+  ),
+  Const "Zero"
+  )
+  ),
+  Bvar 0
+  )
+));
+add_axiom "LtAdd" (Forall (
+Const "Len",
+  Forall (
+  Const "Len",
+    Forall (
+    Const "Len",
+      Forall (
+      App (
+      App (
+      Const "Lt",
+      Bvar 2
+      ),
+      Bvar 1
+      ),
+        App (
+        App (
+        Const "Lt",
+        App (
+        App (
+        Const "Add",
+        Bvar 3
+        ),
+        Bvar 1
+        )
+        ),
+        App (
+        App (
+        Const "Add",
+        Bvar 2
+        ),
+        Bvar 1
+        )
+        )
+      )
+    )
+  )
+));
+add_axiom "OnLine" (Forall (
+Const "Point",
+  Forall (
+  Const "Line",
+    Sort 0
+  )
+));
+add_axiom "SameSide" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Line",
+      Sort 0
+    )
+  )
+));
+add_axiom "Between" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Point",
+      Sort 0
+    )
+  )
+));
+add_axiom "OnCircle" (Forall (
+Const "Point",
+  Forall (
+  Const "Circle",
+    Sort 0
+  )
+));
+add_axiom "InCircle" (Forall (
+Const "Point",
+  Forall (
+  Const "Circle",
+    Sort 0
+  )
+));
+add_axiom "CenterCircle" (Forall (
+Const "Point",
+  Forall (
+  Const "Circle",
+    Sort 0
+  )
+));
+add_axiom "LinesInter" (Forall (
+Const "Line",
+  Forall (
+  Const "Line",
+    Sort 0
+  )
+));
+add_axiom "LineCircleInter" (Forall (
+Const "Line",
+  Forall (
+  Const "Circle",
+    Sort 0
+  )
+));
+add_axiom "CirclesInter" (Forall (
+Const "Circle",
+  Forall (
+  Const "Circle",
+    Sort 0
+  )
+));
+add_axiom "Length" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Const "Len"
+  )
+));
+add_axiom "Angle" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Point",
+      Const "Len"
+    )
+  )
+));
+add_axiom "Area" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Point",
+      Const "Len"
+    )
+  )
+));
+add_axiom "RightAngle" (Const "Len");
+add_axiom "pt_on_line" (Forall (
+Const "Line",
+  App (
+  App (
+  Const "Exists",
+  Const "Point"
+  ),
+  Lam (
+  Const "Point",
+    App (
+    App (
+    Const "OnLine",
+    Bvar 0
+    ),
+    Bvar 1
+    )
+  )
+  )
+));
+add_axiom "pt_between_on_line" (Forall (
+Const "Line",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Point",
+      Forall (
+      App (
+      App (
+      Const "OnLine",
+      Bvar 1
+      ),
+      Bvar 2
+      ),
+        Forall (
+        App (
+        App (
+        Const "OnLine",
+        Bvar 1
+        ),
+        Bvar 3
+        ),
+          Forall (
+          Forall (
+          App (
+          App (
+          App (
+          Const "Eq",
+          Const "Point"
+          ),
+          Bvar 3
+          ),
+          Bvar 2
+          ),
+            Const "False"
+          ),
+            App (
+            App (
+            Const "Exists",
+            Const "Point"
+            ),
+            Lam (
+            Const "Point",
+              App (
+              App (
+              Const "And",
+              App (
+              App (
+              Const "OnLine",
+              Bvar 0
+              ),
+              Bvar 6
+              )
+              ),
+              App (
+              App (
+              App (
+              Const "Between",
+              Bvar 5
+              ),
+              Bvar 0
+              ),
+              Bvar 4
+              )
+              )
+            )
+            )
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "pt_extension_on_line" (Forall (
+Const "Line",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Point",
+      Forall (
+      App (
+      App (
+      Const "OnLine",
+      Bvar 1
+      ),
+      Bvar 2
+      ),
+        Forall (
+        App (
+        App (
+        Const "OnLine",
+        Bvar 1
+        ),
+        Bvar 3
+        ),
+          Forall (
+          Forall (
+          App (
+          App (
+          App (
+          Const "Eq",
+          Const "Point"
+          ),
+          Bvar 3
+          ),
+          Bvar 2
+          ),
+            Const "False"
+          ),
+            App (
+            App (
+            Const "Exists",
+            Const "Point"
+            ),
+            Lam (
+            Const "Point",
+              App (
+              App (
+              Const "And",
+              App (
+              App (
+              Const "OnLine",
+              Bvar 0
+              ),
+              Bvar 6
+              )
+              ),
+              App (
+              App (
+              App (
+              Const "Between",
+              Bvar 5
+              ),
+              Bvar 4
+              ),
+              Bvar 0
+              )
+              )
+            )
+            )
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "pt_sameside_of_not_online" (Forall (
+Const "Line",
+  Forall (
+  Const "Point",
+    Forall (
+    Forall (
+    App (
+    App (
+    Const "OnLine",
+    Bvar 0
+    ),
+    Bvar 1
+    ),
+      Const "False"
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Point"
+      ),
+      Lam (
+      Const "Point",
+        App (
+        App (
+        App (
+        Const "SameSide",
+        Bvar 0
+        ),
+        Bvar 2
+        ),
+        Bvar 3
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "pt_oppositeside_of_not_online" (Forall (
+Const "Line",
+  Forall (
+  Const "Point",
+    Forall (
+    Forall (
+    App (
+    App (
+    Const "OnLine",
+    Bvar 0
+    ),
+    Bvar 1
+    ),
+      Const "False"
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Point"
+      ),
+      Lam (
+      Const "Point",
+        App (
+        App (
+        Const "And",
+        Forall (
+        App (
+        App (
+        Const "OnLine",
+        Bvar 0
+        ),
+        Bvar 3
+        ),
+          Const "False"
+        )
+        ),
+        Forall (
+        App (
+        App (
+        App (
+        Const "SameSide",
+        Bvar 0
+        ),
+        Bvar 2
+        ),
+        Bvar 3
+        ),
+          Const "False"
+        )
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "pt_on_circle" (Forall (
+Const "Circle",
+  App (
+  App (
+  Const "Exists",
+  Const "Point"
+  ),
+  Lam (
+  Const "Point",
+    App (
+    App (
+    Const "OnCircle",
+    Bvar 0
+    ),
+    Bvar 1
+    )
+  )
+  )
+));
+add_axiom "pt_inside_circle" (Forall (
+Const "Circle",
+  App (
+  App (
+  Const "Exists",
+  Const "Point"
+  ),
+  Lam (
+  Const "Point",
+    App (
+    App (
+    Const "InCircle",
+    Bvar 0
+    ),
+    Bvar 1
+    )
+  )
+  )
+));
+add_axiom "pt_outside_circle" (Forall (
+Const "Circle",
+  App (
+  App (
+  Const "Exists",
+  Const "Point"
+  ),
+  Lam (
+  Const "Point",
+    App (
+    App (
+    Const "And",
+    Forall (
+    App (
+    App (
+    Const "OnCircle",
+    Bvar 0
+    ),
+    Bvar 1
+    ),
+      Const "False"
+    )
+    ),
+    Forall (
+    App (
+    App (
+    Const "InCircle",
+    Bvar 0
+    ),
+    Bvar 1
+    ),
+      Const "False"
+    )
+    )
+  )
+  )
+));
+add_axiom "line_of_pts" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Forall (
+    App (
+    App (
+    App (
+    Const "Eq",
+    Const "Point"
+    ),
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      Const "False"
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Line"
+      ),
+      Lam (
+      Const "Line",
+        App (
+        App (
+        Const "And",
+        App (
+        App (
+        Const "OnLine",
+        Bvar 3
+        ),
+        Bvar 0
+        )
+        ),
+        App (
+        App (
+        Const "OnLine",
+        Bvar 2
+        ),
+        Bvar 0
+        )
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "circle_of_ne" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Forall (
+    App (
+    App (
+    App (
+    Const "Eq",
+    Const "Point"
+    ),
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      Const "False"
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Circle"
+      ),
+      Lam (
+      Const "Circle",
+        App (
+        App (
+        Const "And",
+        App (
+        App (
+        Const "CenterCircle",
+        Bvar 3
+        ),
+        Bvar 0
+        )
+        ),
+        App (
+        App (
+        Const "OnCircle",
+        Bvar 2
+        ),
+        Bvar 0
+        )
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "pt_of_linesinter" (Forall (
+Const "Line",
+  Forall (
+  Const "Line",
+    Forall (
+    App (
+    App (
+    Const "LinesInter",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Point"
+      ),
+      Lam (
+      Const "Point",
+        App (
+        App (
+        Const "And",
+        App (
+        App (
+        Const "OnLine",
+        Bvar 0
+        ),
+        Bvar 3
+        )
+        ),
+        App (
+        App (
+        Const "OnLine",
+        Bvar 0
+        ),
+        Bvar 2
+        )
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "pt_of_linecircleinter" (Forall (
+Const "Line",
+  Forall (
+  Const "Circle",
+    Forall (
+    App (
+    App (
+    Const "LineCircleInter",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Point"
+      ),
+      Lam (
+      Const "Point",
+        App (
+        App (
+        Const "And",
+        App (
+        App (
+        Const "OnLine",
+        Bvar 0
+        ),
+        Bvar 3
+        )
+        ),
+        App (
+        App (
+        Const "OnCircle",
+        Bvar 0
+        ),
+        Bvar 2
+        )
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "pts_of_linecircleinter" (Forall (
+Const "Line",
+  Forall (
+  Const "Circle",
+    Forall (
+    App (
+    App (
+    Const "LineCircleInter",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Point"
+      ),
+      Lam (
+      Const "Point",
+        App (
+        App (
+        Const "Exists",
+        Const "Point"
+        ),
+        Lam (
+        Const "Point",
+          App (
+          App (
+          Const "And",
+          Forall (
+          App (
+          App (
+          App (
+          Const "Eq",
+          Const "Point"
+          ),
+          Bvar 1
+          ),
+          Bvar 0
+          ),
+            Const "False"
+          )
+          ),
+          App (
+          App (
+          Const "And",
+          App (
+          App (
+          Const "OnLine",
+          Bvar 1
+          ),
+          Bvar 4
+          )
+          ),
+          App (
+          App (
+          Const "And",
+          App (
+          App (
+          Const "OnLine",
+          Bvar 0
+          ),
+          Bvar 4
+          )
+          ),
+          App (
+          App (
+          Const "And",
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 1
+          ),
+          Bvar 3
+          )
+          ),
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 0
+          ),
+          Bvar 3
+          )
+          )
+          )
+          )
+          )
+        )
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "pt_oncircle_between_inside_outside" (Forall (
+Const "Line",
+  Forall (
+  Const "Circle",
+    Forall (
+    Const "Point",
+      Forall (
+      Const "Point",
+        Forall (
+        App (
+        App (
+        Const "OnLine",
+        Bvar 1
+        ),
+        Bvar 3
+        ),
+          Forall (
+          App (
+          App (
+          Const "OnLine",
+          Bvar 1
+          ),
+          Bvar 4
+          ),
+            Forall (
+            App (
+            App (
+            Const "InCircle",
+            Bvar 3
+            ),
+            Bvar 4
+            ),
+              Forall (
+              Forall (
+              App (
+              App (
+              Const "OnCircle",
+              Bvar 3
+              ),
+              Bvar 5
+              ),
+                Const "False"
+              ),
+                Forall (
+                Forall (
+                App (
+                App (
+                Const "InCircle",
+                Bvar 4
+                ),
+                Bvar 6
+                ),
+                  Const "False"
+                ),
+                  App (
+                  App (
+                  Const "Exists",
+                  Const "Point"
+                  ),
+                  Lam (
+                  Const "Point",
+                    App (
+                    App (
+                    Const "And",
+                    App (
+                    App (
+                    Const "OnLine",
+                    Bvar 0
+                    ),
+                    Bvar 9
+                    )
+                    ),
+                    App (
+                    App (
+                    Const "And",
+                    App (
+                    App (
+                    Const "OnCircle",
+                    Bvar 0
+                    ),
+                    Bvar 8
+                    )
+                    ),
+                    App (
+                    App (
+                    App (
+                    Const "Between",
+                    Bvar 7
+                    ),
+                    Bvar 0
+                    ),
+                    Bvar 6
+                    )
+                    )
+                    )
+                  )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "pt_oncircle_extension_from_inside" (Forall (
+Const "Line",
+  Forall (
+  Const "Circle",
+    Forall (
+    Const "Point",
+      Forall (
+      Const "Point",
+        Forall (
+        App (
+        App (
+        Const "OnLine",
+        Bvar 1
+        ),
+        Bvar 3
+        ),
+          Forall (
+          App (
+          App (
+          Const "OnLine",
+          Bvar 1
+          ),
+          Bvar 4
+          ),
+            Forall (
+            App (
+            App (
+            Const "InCircle",
+            Bvar 3
+            ),
+            Bvar 4
+            ),
+              Forall (
+              Forall (
+              App (
+              App (
+              App (
+              Const "Eq",
+              Const "Point"
+              ),
+              Bvar 3
+              ),
+              Bvar 4
+              ),
+                Const "False"
+              ),
+                App (
+                App (
+                Const "Exists",
+                Const "Point"
+                ),
+                Lam (
+                Const "Point",
+                  App (
+                  App (
+                  Const "And",
+                  App (
+                  App (
+                  Const "OnLine",
+                  Bvar 0
+                  ),
+                  Bvar 8
+                  )
+                  ),
+                  App (
+                  App (
+                  Const "And",
+                  App (
+                  App (
+                  Const "OnCircle",
+                  Bvar 0
+                  ),
+                  Bvar 7
+                  )
+                  ),
+                  App (
+                  App (
+                  App (
+                  Const "Between",
+                  Bvar 0
+                  ),
+                  Bvar 6
+                  ),
+                  Bvar 5
+                  )
+                  )
+                  )
+                )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "pt_of_circlesinter" (Forall (
+Const "Circle",
+  Forall (
+  Const "Circle",
+    Forall (
+    App (
+    App (
+    Const "CirclesInter",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Point"
+      ),
+      Lam (
+      Const "Point",
+        App (
+        App (
+        Const "And",
+        App (
+        App (
+        Const "OnCircle",
+        Bvar 0
+        ),
+        Bvar 3
+        )
+        ),
+        App (
+        App (
+        Const "OnCircle",
+        Bvar 0
+        ),
+        Bvar 2
+        )
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "pts_of_circlesinter" (Forall (
+Const "Circle",
+  Forall (
+  Const "Circle",
+    Forall (
+    App (
+    App (
+    Const "CirclesInter",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Point"
+      ),
+      Lam (
+      Const "Point",
+        App (
+        App (
+        Const "Exists",
+        Const "Point"
+        ),
+        Lam (
+        Const "Point",
+          App (
+          App (
+          Const "And",
+          Forall (
+          App (
+          App (
+          App (
+          Const "Eq",
+          Const "Point"
+          ),
+          Bvar 1
+          ),
+          Bvar 0
+          ),
+            Const "False"
+          )
+          ),
+          App (
+          App (
+          Const "And",
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 1
+          ),
+          Bvar 4
+          )
+          ),
+          App (
+          App (
+          Const "And",
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 1
+          ),
+          Bvar 3
+          )
+          ),
+          App (
+          App (
+          Const "And",
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 0
+          ),
+          Bvar 4
+          )
+          ),
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 0
+          ),
+          Bvar 3
+          )
+          )
+          )
+          )
+          )
+        )
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "pt_sameside_of_circlesinter" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Point",
+      Forall (
+      Const "Line",
+        Forall (
+        Const "Circle",
+          Forall (
+          Const "Circle",
+            Forall (
+            App (
+            App (
+            Const "OnLine",
+            Bvar 4
+            ),
+            Bvar 2
+            ),
+              Forall (
+              App (
+              App (
+              Const "OnLine",
+              Bvar 4
+              ),
+              Bvar 3
+              ),
+                Forall (
+                Forall (
+                App (
+                App (
+                Const "OnLine",
+                Bvar 7
+                ),
+                Bvar 4
+                ),
+                  Const "False"
+                ),
+                  Forall (
+                  App (
+                  App (
+                  Const "CenterCircle",
+                  Bvar 7
+                  ),
+                  Bvar 4
+                  ),
+                    Forall (
+                    App (
+                    App (
+                    Const "CenterCircle",
+                    Bvar 7
+                    ),
+                    Bvar 4
+                    ),
+                      Forall (
+                      App (
+                      App (
+                      Const "CirclesInter",
+                      Bvar 6
+                      ),
+                      Bvar 5
+                      ),
+                        App (
+                        App (
+                        Const "Exists",
+                        Const "Point"
+                        ),
+                        Lam (
+                        Const "Point",
+                          App (
+                          App (
+                          Const "And",
+                          App (
+                          App (
+                          App (
+                          Const "SameSide",
+                          Bvar 0
+                          ),
+                          Bvar 12
+                          ),
+                          Bvar 9
+                          )
+                          ),
+                          App (
+                          App (
+                          Const "And",
+                          App (
+                          App (
+                          Const "OnCircle",
+                          Bvar 0
+                          ),
+                          Bvar 8
+                          )
+                          ),
+                          App (
+                          App (
+                          Const "OnCircle",
+                          Bvar 0
+                          ),
+                          Bvar 7
+                          )
+                          )
+                          )
+                        )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "pt_oppositeside_of_circlesinter" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Point",
+      Forall (
+      Const "Line",
+        Forall (
+        Const "Circle",
+          Forall (
+          Const "Circle",
+            Forall (
+            App (
+            App (
+            Const "OnLine",
+            Bvar 4
+            ),
+            Bvar 2
+            ),
+              Forall (
+              App (
+              App (
+              Const "OnLine",
+              Bvar 4
+              ),
+              Bvar 3
+              ),
+                Forall (
+                Forall (
+                App (
+                App (
+                Const "OnLine",
+                Bvar 7
+                ),
+                Bvar 4
+                ),
+                  Const "False"
+                ),
+                  Forall (
+                  App (
+                  App (
+                  Const "CenterCircle",
+                  Bvar 7
+                  ),
+                  Bvar 4
+                  ),
+                    Forall (
+                    App (
+                    App (
+                    Const "CenterCircle",
+                    Bvar 7
+                    ),
+                    Bvar 4
+                    ),
+                      Forall (
+                      App (
+                      App (
+                      Const "CirclesInter",
+                      Bvar 6
+                      ),
+                      Bvar 5
+                      ),
+                        App (
+                        App (
+                        Const "Exists",
+                        Const "Point"
+                        ),
+                        Lam (
+                        Const "Point",
+                          App (
+                          App (
+                          Const "And",
+                          Forall (
+                          App (
+                          App (
+                          Const "OnLine",
+                          Bvar 0
+                          ),
+                          Bvar 9
+                          ),
+                            Const "False"
+                          )
+                          ),
+                          App (
+                          App (
+                          Const "And",
+                          Forall (
+                          App (
+                          App (
+                          App (
+                          Const "SameSide",
+                          Bvar 0
+                          ),
+                          Bvar 12
+                          ),
+                          Bvar 9
+                          ),
+                            Const "False"
+                          )
+                          ),
+                          App (
+                          App (
+                          Const "And",
+                          App (
+                          App (
+                          Const "OnCircle",
+                          Bvar 0
+                          ),
+                          Bvar 8
+                          )
+                          ),
+                          App (
+                          App (
+                          Const "OnCircle",
+                          Bvar 0
+                          ),
+                          Bvar 7
+                          )
+                          )
+                          )
+                          )
+                        )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "circlesinter_of_inside_on_circle" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Circle",
+      Forall (
+      Const "Circle",
+        Forall (
+        App (
+        App (
+        Const "OnCircle",
+        Bvar 2
+        ),
+        Bvar 1
+        ),
+          Forall (
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 4
+          ),
+          Bvar 1
+          ),
+            Forall (
+            App (
+            App (
+            Const "InCircle",
+            Bvar 5
+            ),
+            Bvar 3
+            ),
+              Forall (
+              App (
+              App (
+              Const "InCircle",
+              Bvar 5
+              ),
+              Bvar 3
+              ),
+                App (
+                App (
+                Const "CirclesInter",
+                Bvar 5
+                ),
+                Bvar 4
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+));
+add_axiom "inside_circle_of_center" (Forall (
+Const "Point",
+  Forall (
+  Const "Circle",
+    Forall (
+    App (
+    App (
+    Const "CenterCircle",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      App (
+      App (
+      Const "InCircle",
+      Bvar 2
+      ),
+      Bvar 1
+      )
+    )
+  )
+));
+add_axiom "PtsOfCirclesinter" (Forall (
+Const "Circle",
+  Forall (
+  Const "Circle",
+    Forall (
+    App (
+    App (
+    Const "CirclesInter",
+    Bvar 1
+    ),
+    Bvar 0
+    ),
+      App (
+      App (
+      Const "Exists",
+      Const "Point"
+      ),
+      Lam (
+      Const "Point",
+        App (
+        App (
+        Const "Exists",
+        Const "Point"
+        ),
+        Lam (
+        Const "Point",
+          App (
+          App (
+          Const "And",
+          Forall (
+          App (
+          App (
+          App (
+          Const "Eq",
+          Const "Point"
+          ),
+          Bvar 1
+          ),
+          Bvar 0
+          ),
+            Const "False"
+          )
+          ),
+          App (
+          App (
+          Const "And",
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 1
+          ),
+          Bvar 4
+          )
+          ),
+          App (
+          App (
+          Const "And",
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 1
+          ),
+          Bvar 3
+          )
+          ),
+          App (
+          App (
+          Const "And",
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 0
+          ),
+          Bvar 4
+          )
+          ),
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 0
+          ),
+          Bvar 3
+          )
+          )
+          )
+          )
+          )
+        )
+        )
+      )
+      )
+    )
+  )
+));
+add_axiom "OnCircleIffLengthEq" (Forall (
+Const "Point",
+  Forall (
+  Const "Point",
+    Forall (
+    Const "Point",
+      Forall (
+      Const "Circle",
+        Forall (
+        App (
+        App (
+        Const "CenterCircle",
+        Bvar 3
+        ),
+        Bvar 0
+        ),
+          Forall (
+          App (
+          App (
+          Const "OnCircle",
+          Bvar 3
+          ),
+          Bvar 1
+          ),
+            App (
+            App (
+            Const "And",
+            Forall (
+            App (
+            App (
+            App (
+            Const "Eq",
+            Const "Len"
+            ),
+            App (
+            App (
+            Const "Length",
+            Bvar 5
+            ),
+            Bvar 4
+            )
+            ),
+            App (
+            App (
+            Const "Length",
+            Bvar 5
+            ),
+            Bvar 3
+            )
+            ),
+              App (
+              App (
+              Const "OnCircle",
+              Bvar 4
+              ),
+              Bvar 3
+              )
+            )
+            ),
+            Forall (
+            App (
+            App (
+            Const "OnCircle",
+            Bvar 3
+            ),
+            Bvar 2
+            ),
+              App (
+              App (
+              App (
+              Const "Eq",
+              Const "Len"
+              ),
+              App (
+              App (
+              Const "Length",
+              Bvar 6
+              ),
+              Bvar 5
+              )
+              ),
+              App (
+              App (
+              Const "Length",
+              Bvar 6
+              ),
+              Bvar 4
+              )
+              )
+            )
+            )
+          )
+        )
+      )
+    )
+  )
+));
+()

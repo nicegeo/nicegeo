@@ -560,7 +560,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
           (* conv_to_kterm does a straightforward variant-to-variant conversion *)
           let ty_k = conv_to_kterm ty_filled in
           KInfer.addaxiom e.kenv d.name ty_k;
-          Hashtbl.add e.kenv d.name ty_k
+          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom }
   with Error.ElabError x ->
     raise
       (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })

@@ -47,7 +47,12 @@ let () =
 
   List.iter
     (fun decl ->
-      Typecheck.process_decl e decl;
+      (try
+         Typecheck.process_decl e decl
+       with Error.ElabError info ->
+         let msg = Error.pp_exn e info in
+         print_endline ("Error processing declaration " ^ decl.name ^ ": " ^ msg);
+         exit 1);
       match decl.kind with
       | Theorem _ -> failwith "env.txt has a theorem, should only have axioms"
       | Axiom ->
