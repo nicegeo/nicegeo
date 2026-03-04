@@ -529,7 +529,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
           let proof_k = conv_to_kterm proof_filled in
 
           try
-            KInfer.addtheorem e.kenv d.name ty_k proof_k;
+            KInfer.add_theorem e.kenv d.name ty_k proof_k;
             Hashtbl.add
               e.env
               d.name
@@ -559,7 +559,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
           Hashtbl.clear e.metas;
           (* conv_to_kterm does a straightforward variant-to-variant conversion *)
           let ty_k = conv_to_kterm ty_filled in
-          KInfer.addaxiom e.kenv d.name ty_k;
+          KInfer.add_axiom e.kenv d.name ty_k;
           Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom }
   with Error.ElabError x ->
     raise

@@ -2,36 +2,37 @@ open E_elab
 open E_elab.Decl
 module Kterm = System_e_kernel.Term
 
-let rec kterm_to_ocaml' (kterm : Kterm.term) (indent : int) =
-  let indent_str = String.make (indent * 2) ' ' in
-  match kterm with
-  | Kterm.Const s -> Printf.sprintf "%sConst \"%s\"" indent_str s
-  | Kterm.Bvar n -> Printf.sprintf "%sBvar %d" indent_str n
-  | Kterm.Fvar s -> Printf.sprintf "%sFvar \"%s\"" indent_str s
-  | Kterm.Lam (ty, body) ->
-      Printf.sprintf
-        "%sLam (\n%s,\n%s\n%s)"
-        indent_str
-        (kterm_to_ocaml' ty indent)
-        (kterm_to_ocaml' body (indent + 1))
-        indent_str
-  | Kterm.Forall (ty, body) ->
-      Printf.sprintf
-        "%sForall (\n%s,\n%s\n%s)"
-        indent_str
-        (kterm_to_ocaml' ty indent)
-        (kterm_to_ocaml' body (indent + 1))
-        indent_str
-  | Kterm.App (f, arg) ->
-      Printf.sprintf
-        "%sApp (\n%s,\n%s\n%s)"
-        indent_str
-        (kterm_to_ocaml' f indent)
-        (kterm_to_ocaml' arg indent)
-        indent_str
-  | Kterm.Sort n -> Printf.sprintf "%sSort %d" indent_str n
-
-let kterm_to_ocaml (kterm : Kterm.term) = kterm_to_ocaml' kterm 0
+let kterm_to_ocaml (kterm : Kterm.term) =
+  let rec kterm_to_ocaml_helper (kterm : Kterm.term) (indent : int) =
+    let indent_str = String.make (indent * 2) ' ' in
+    match kterm with
+    | Kterm.Const s -> Printf.sprintf "%sConst \"%s\"" indent_str s
+    | Kterm.Bvar n -> Printf.sprintf "%sBvar %d" indent_str n
+    | Kterm.Fvar s -> Printf.sprintf "%sFvar \"%s\"" indent_str s
+    | Kterm.Lam (ty, body) ->
+        Printf.sprintf
+          "%sLam (\n%s,\n%s\n%s)"
+          indent_str
+          (kterm_to_ocaml_helper ty indent)
+          (kterm_to_ocaml_helper body (indent + 1))
+          indent_str
+    | Kterm.Forall (ty, body) ->
+        Printf.sprintf
+          "%sForall (\n%s,\n%s\n%s)"
+          indent_str
+          (kterm_to_ocaml_helper ty indent)
+          (kterm_to_ocaml_helper body (indent + 1))
+          indent_str
+    | Kterm.App (f, arg) ->
+        Printf.sprintf
+          "%sApp (\n%s,\n%s\n%s)"
+          indent_str
+          (kterm_to_ocaml_helper f indent)
+          (kterm_to_ocaml_helper arg indent)
+          indent_str
+    | Kterm.Sort n -> Printf.sprintf "%sSort %d" indent_str n
+  in
+  kterm_to_ocaml_helper kterm 0
 
 let () =
   let decls = Elab.parse_decls "env/env.txt" in
