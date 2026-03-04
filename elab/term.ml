@@ -11,7 +11,12 @@ type term = {inner: termkind; loc: range}
 and termkind =
   | Name of string (* a name in the code (refers to a const or the nearest bound variable of the same name during parsing) *)
   | Bvar of int (* de Bruijn index *)
-  | Fvar of int (* unique index *)
+  (* Free variable (where int is a unique index for that specific free variable) introduced during internal processing of
+   term *)
+  | Fvar of int 
+  (* Part of a term that we need to fill in for the user (where the user can use an underscore to specify that they want
+  something to be inferred). The int is a unique index for that specific hole  
+  *)
   | Hole of int
   | Fun of string option * term * term  (* argument name, type, body *)
   | Arrow of string option * term * term  (* argument name, type, return type *)
@@ -28,6 +33,8 @@ let gen_hole_id () =
 
 let gen_fvar_id = gen_hole_id
 
+(** Find all occurrences of `pat` in `tm` and replace them with a reference to
+bound variable `bvar_idx`*)
 let rec bind_bvar (tm: term) (bvar_idx: int) (pat: term) : term =
   match tm.inner with
   | Fun (x, ty_arg, body) ->
@@ -46,6 +53,8 @@ let rec bind_bvar (tm: term) (bvar_idx: int) (pat: term) : term =
   | _ -> tm
 
 
+(** Replace the bound variable corresponding to index `bvar_idx` (from the point of view
+of the top level term) with the expression `replacement` *)
 let rec replace_bvar (tm: term) (bvar_idx: int) (replacement: term) : term =
   match tm.inner with
   | Fun (x, ty, body) ->
