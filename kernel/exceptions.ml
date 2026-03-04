@@ -25,13 +25,12 @@ type type_error_kind =
 (*
  * Type error information
  *)
-type type_error_info =
-  {
-    env : environment;
-    ctx : localcontext;
-    trm : term;
-    err_kind : type_error_kind
-  }
+type type_error_info = {
+  env : environment;
+  ctx : localcontext;
+  trm : term;
+  err_kind : type_error_kind;
+}
 
 (* Exceptions that the kernel may raise, using the above information *)
 exception TypeError of type_error_info
