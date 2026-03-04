@@ -65,10 +65,10 @@ let rec reduce (e: Types.ctx) (tm: term) : term =
   match tm.inner with
   | App (f, arg) -> 
     let fn = reduce e f in
+    let arg = reduce e arg in
     (match fn.inner with
     | Fun (_, _, body) -> reduce e (replace_bvar body 0 arg)
     | _ -> {inner=App (fn, arg); loc=tm.loc})
-  (* do we need to recurse into holes? possibly *)
   | Hole m -> (match Hashtbl.find_opt e.metas m with
     | Some {sol=Some tm_sol; _} -> reduce e tm_sol
     | _ -> tm)

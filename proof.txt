@@ -339,6 +339,18 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     Exists.elim _ _ _ (prop1 a b ab)
     (fun (d: Point) (eqtri: And (Eq _ (Length a b) (Length a d)) (Eq _ (Length b d) (Length b a))) =>
 
-    sorry (Exists Point (fun (f: Point) => Eq _ (Length a f) (Length b c)))
+    Exists.elim _ _ _ (circle_of_ne b c bc)
+    (fun (aa: Circle) (baacaa : And (CenterCircle b aa) (OnCircle c aa)) =>
 
+    And.elim1 _ _ _ baacaa
+    (fun (baa : CenterCircle b aa) (caa : OnCircle c aa) =>
+
+    have _ (Eq _ (Length b a) Zero -> False) (fun bazero => Ne.symm _ _ _ ab (fst _ _ (length_eq_zero_iff b a) bazero)) (fun lenba =>
+    
+    
+    
+    sorry (Exists Point (fun (f: Point) => Eq _ (Length a f) (Length b c)))
+    
     )
+    )
+    ))

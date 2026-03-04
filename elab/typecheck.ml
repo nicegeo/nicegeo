@@ -45,10 +45,34 @@ let rec whnf_beta (e: ctx) (tm: term) : term =
     (match fn.inner with
     | Fun (_, _, body) -> whnf_beta e (replace_bvar body 0 arg)
     | _ -> {inner=App (fn, arg); loc=tm.loc})
-  (* do we need to recurse into holes? possibly *)
   | Hole m -> (match Hashtbl.find_opt e.metas m with
     | Some {sol=Some tm_sol; _} -> whnf_beta e tm_sol
     | _ -> tm)
+  | _ -> tm
+
+let rec reduce (e: Types.ctx) (tm: term) : term =
+  match tm.inner with
+  | App (f, arg) -> 
+    let fn = reduce e f in
+    let arg = reduce e arg in
+    (match fn.inner with
+    | Fun (_, _, body) -> reduce e (replace_bvar body 0 arg)
+    | _ -> {inner=App (fn, arg); loc=tm.loc})
+  | Hole m -> (match Hashtbl.find_opt e.metas m with
+    | Some {sol=Some tm_sol; _} -> reduce e tm_sol
+    | _ -> tm)
+  | Fun (arg, ty, body) -> 
+    let x = gen_fvar_id () in 
+    let ty' = reduce e ty in
+    let body' = reduce e (replace_bvar body 0 {inner=Fvar x; loc=tm.loc}) in
+    let body'' = bind_bvar body' 0 {inner=Fvar x; loc=tm.loc} in
+    {inner=Fun (arg, ty', body''); loc=tm.loc}
+  | Arrow (arg, ty, ret) ->
+    let x = gen_fvar_id () in
+    let ty' = reduce e ty in
+    let ret' = reduce e (replace_bvar ret 0 {inner=Fvar x; loc=tm.loc}) in
+    let ret'' = bind_bvar ret' 0 {inner=Fvar x; loc=tm.loc} in
+    {inner=Arrow (arg, ty', ret''); loc=tm.loc}
   | _ -> tm
 
 (* precondition: tm is already in whnf (call whnf_beta) *)
@@ -82,6 +106,7 @@ let valid_pattern_args (args: term list) : bool =
   in check_args [] args
 
 let rec valid_pattern (e: ctx) (m: int) (args: term list) (tm: term) : bool =
+  (* print_endline ("checking if term " ^ term_to_string e tm ^ " is a valid pattern for meta " ^ string_of_int m ^ " with args " ^ String.concat " " (List.map (term_to_string e) args)); *)
   match tm.inner with
   | Hole m' -> if m = m' then ((*print_endline "hole contains itself";*) false) else (match Hashtbl.find_opt e.metas m' with
     | Some {sol=Some tm_sol; _} -> valid_pattern e m args tm_sol
@@ -98,16 +123,17 @@ let rec last = function
 | _ :: xs -> last xs
 
 let rec pattern_match_meta (e: ctx) (m: int) (args: term list) (tm: term) : unit =
-  (* print_endline ("pattern matching meta " ^ string_of_int m ^ " with args " ^ String.concat " " (List.map (term_to_string e) args) ^ " against term " ^ term_to_string e tm); *)
+  let tm = reduce e tm in
+  (* print_endline ("pattern matching meta " ^ string_of_int m ^ " with args " ^ String.concat " " (List.map (Pretty.term_to_string e) args) ^ " against term " ^ Pretty.term_to_string e tm); *)
   (* uhh get rid of the last matching args? *)
   if List.length (Hashtbl.find e.metas m).vartypes < List.length args then
     match tm.inner with
     | App (f, arg) when (last args).inner = arg.inner -> 
       pattern_match_meta e m (List.rev (List.tl (List.rev args))) f
-    | _ -> () (* we could like, infer the type of the rest of the args *)
+    | _ -> (* print_endline "too long args" *) () (* we could like, infer the type of the rest of the args *)
   else
-  if not (valid_pattern_args args) then print_endline "invalid arguments for pattern matching" else
-  if not (valid_pattern e m args tm) then (*print_endline "invalid solution for meta";*) () else
+  if not (valid_pattern_args args) then (* print_endline "invalid arguments for pattern matching" *) () else
+  if not (valid_pattern e m args tm) then (*print_endline "invalid solution for meta"*) () else
 
   (* just need to bind them now how hard can it be clueless *)
   (* could basically walk down term,  *)
@@ -120,7 +146,7 @@ let rec pattern_match_meta (e: ctx) (m: int) (args: term list) (tm: term) : unit
       let tm_fun = Term.Fun (None, List.hd types, tm_with_arg) in
       fold {inner=tm_fun; loc=tm.loc} rest (List.tl types)
   in
-
+  (* print_endline ("final solution for meta " ^ string_of_int m ^ ": " ^ Pretty.term_to_string e (fold tm (List.rev args) (List.rev (Hashtbl.find e.metas m).vartypes))); *)
   Hashtbl.replace e.metas m { (Hashtbl.find e.metas m) with sol = Some (fold tm (List.rev args) (List.rev (Hashtbl.find e.metas m).vartypes)) }
 
 let rec unify (e: ctx) (t1: term) (t2: term) : unit =
@@ -291,7 +317,7 @@ let rec replace_metas (e: ctx) (tm: term) : term =
     | Some {sol=Some tm_sol; _} -> 
       if contains_fvar tm_sol then raise_at tm (Error.InternalError "hole contains free variables, should have been bound") else
       replace_metas e tm_sol
-    | _ -> raise_at tm (Error.CannotInferHole))
+    | _ -> print_endline ("Cannot infer hole " ^ string_of_int m); raise_at tm (Error.CannotInferHole))
   | Fun (arg, ty_arg, body) ->
     let ty_arg_filled = replace_metas e ty_arg in
     let body_filled = replace_metas e body in
