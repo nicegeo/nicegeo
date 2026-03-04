@@ -56,11 +56,9 @@ let test_const_unknown_fails () =
       | _ -> false)
     (fun () -> ignore (try_infer env (Hashtbl.create 0) (Const "Unknown")))
 
-let path_to_env = "../../../../elab/env.txt"
-
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
 
   (* Empty : Type (i.e. Sort 1) *)
@@ -75,7 +73,7 @@ let test_empty_constants () =
     ~expected:(Forall (Sort 1, Forall (Const "Empty", Bvar 1)))
 
 let test_and_constants () =
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
   (* And : (A : Prop) -> (B : Prop) -> Prop *)
   let and_ty = try_infer env.kenv lctx (Const "And") in
@@ -362,7 +360,7 @@ let test_eq_symm () =
 
   let eq ty a b = App (App (App (Const "Eq", ty), a), b) in
 
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.create_with_env () in
   let local_ctx = Hashtbl.create 16 in
 
   let eq_symm_type =
@@ -423,7 +421,7 @@ let test_eq_symm () =
 
 (* These two tests are made by AI so can remove or change them completely if wanted *)
 let test_len_sanity () =
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
 
   (* Base types are Sort 1 *)
@@ -465,7 +463,7 @@ let test_len_sanity () =
     ~msg:"AddZero has correct type" ~actual:inferred ~expected
 
 let test_len_app () =
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.create_with_env () in
   let lctx = Hashtbl.create 16 in
 
   (* Lt Zero Zero : Prop *)
