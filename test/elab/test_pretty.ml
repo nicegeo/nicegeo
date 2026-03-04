@@ -7,6 +7,7 @@ open E_elab.Pretty
 module KTerm = System_e_kernel.Term
 module ETerm = E_elab.Term
 module Elab = E_elab.Elab
+module Nice = E_elab.Nice_messages
 
 let () = Printf.printf "=== Kernel term pretty-printing ===\n\n"
 
@@ -90,6 +91,24 @@ let test_elab_arrow_no_name () =
   Alcotest.check' Alcotest.string ~msg:"arrow pretty-prints sorts"
     ~expected:"Type -> Prop" ~actual:(term_to_string e t)
 
+let test_nice_default_tone_calm () =
+  (* OCaml versions vary on [Unix.unsetenv]. Simulate “unset/unknown” by using an unrecognized value. *)
+  Unix.putenv "NICEGEO_TONE" "unknown";
+  match Nice.tone_from_env () with
+  | Nice.Calm -> ()
+  | _ -> Alcotest.fail "Expected Calm when NICEGEO_TONE is unset/unknown"
+
+let test_nice_tone_from_env_cheerful () =
+  Unix.putenv "NICEGEO_TONE" "cheerful";
+  match Nice.tone_from_env () with
+  | Nice.Cheerful -> ()
+  | _ -> Alcotest.fail "Expected Cheerful when NICEGEO_TONE=cheerful"
+
+let test_nice_pick_message_after_error () =
+  match Nice.pick_message Nice.Calm Nice.After_error with
+  | Some msg when msg <> "" -> ()
+  | _ -> Alcotest.fail "Expected a non-empty encouragement message"
+
 let suite =
   let open Alcotest in
   ( "Pretty-printing",
@@ -97,5 +116,8 @@ let suite =
       test_case "Kernel sort names" `Quick test_kernel_sort_names;
       test_case "Elab hole" `Quick test_elab_hole;
       test_case "Elab arrow no name" `Quick test_elab_arrow_no_name;
-      test_case "Function args flattened" `Quick test_lam_flattening
+      test_case "Function args flattened" `Quick test_lam_flattening;
+      test_case "Nice messages: default tone" `Quick test_nice_default_tone_calm;
+      test_case "Nice messages: env cheerful" `Quick test_nice_tone_from_env_cheerful;
+      test_case "Nice messages: pick after error" `Quick test_nice_pick_message_after_error;
     ] )
