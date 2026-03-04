@@ -1,0 +1,5 @@
+profile=default
+margin=90
+wrap-comments=false
+wrap-fun-args=false
+type-decl=sparse

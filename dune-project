@@ -23,6 +23,7 @@
  (description "A longer description")
  (depends
   ocaml
+  (ocamlformat :with-test)
   (alcotest :with-test)
   (odoc :with-doc))
  (tags
