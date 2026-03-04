@@ -18,6 +18,7 @@
   an expression at a point where `x: A` and `y: B` have already been defined then we'd convert the term to `?H x y` where `?H`
   is the hole we want to solve for, at which point we'd expect that `?H` to be a function `A -> B -> T` for some type `T`).
   
+  TODO: maybe add example of unification for Eq _ a b here?
 
   See lecture 3 of https://github.com/andrejbauer/faux-type-theory for more information on the algorithm
 *)
@@ -35,10 +36,10 @@ let raise_at (tm: term) (e: Error.error_type) : 'a =
 type normterm =
   | Fun of string option * term * term
   | Arrow of string option * term * term
-  (* (variable, args) where variable is a variable of some kind (either a name, a bound variable, or a free variable), and that variable
+  (** (variable, args) where variable is a variable of some kind (either a name, a bound variable, or a free variable), and that variable
     is applied to all arguments in `args` from first to last (so this represents the expressions `variable arg0 arg1 ... argN`) *)
   | VarSpine of term * term list
-  (* (hole, args) that represents the expression `hole arg0 arg1 ... argN` where `hole` is a hole that we need to solve for
+  (** (hole, args) that represents the expression `hole arg0 arg1 ... argN` where `hole` is a hole that we need to solve for
     and args are arbitrary terms *)
   | MetaSpine of term * term list
   | Sort of int
@@ -97,12 +98,15 @@ let rec to_norm (e: ctx) (tm : term) : normterm =
 
 
 let valid_pattern_args (args: term list) : bool =
+  (* TODO: replace this with contains_fvar? *)
   if List.exists (fun arg -> match arg.inner with | Fvar _ -> false | _ -> true) args then false else
   let rec check_args seen_args args =
     match args with
     | [] -> true
     | arg :: rest ->
       if List.exists (fun seen_arg -> match (seen_arg, arg.inner) with
+        (* TODO: why do we care about whether multiple arguments in `args` have
+          the same Fvar index? *)
         | (Fvar idx1, Fvar idx2) when idx1 = idx2 -> true
         | _ -> false) seen_args then false
       else check_args (arg.inner :: seen_args) rest
@@ -124,17 +128,23 @@ let rec last = function
 | [x] -> x
 | _ :: xs -> last xs
 
-(** Find the value for the hole `m` given that that hole, when applied to all the arguments in `args`, is equal to the term `tm`.
+(** Find the value for the hole `m` given a constraint equation of the form `m args = tm` (meaning that we'd expect `m` to become
+  a function that has at least `List.length args` arguments)
+  
   Stores the computed solution for that hole in the `e.metas` hash table *)
 let rec pattern_match_meta (e: ctx) (m: int) (args: term list) (tm: term) : unit =
   (* print_endline ("pattern matching meta " ^ string_of_int m ^ " with args " ^ String.concat " " (List.map (term_to_string e) args) ^ " against term " ^ term_to_string e tm); *)
   (* uhh get rid of the last matching args? *)
+  (* `vartypes` are all of the externally defined bound variables that we're using as arguments for the hole's expression, so
+    if `m` has more arguments than we inserted ourselves, so we'd expect the value of `m` to become a function value *)
   if List.length (Hashtbl.find e.metas m).vartypes < List.length args then
     match tm.inner with
+    (* If `m most_args last_arg = f arg` then we can just make sure that `m most_args = f` and `last_arg = arg`*)
     | App (f, arg) when (last args).inner = arg.inner -> 
       pattern_match_meta e m (List.rev (List.tl (List.rev args))) f
     | _ -> () (* we could like, infer the type of the rest of the args *)
   else
+  (* TODO: maybe make these actually crash early instead of just printing a message and/or returning *)
   if not (valid_pattern_args args) then print_endline "invalid arguments for pattern matching" else
   if not (valid_pattern e m args tm) then (*print_endline "invalid solution for meta";*) () else
 
@@ -161,6 +171,8 @@ let rec unify (e: ctx) (t1: term) (t2: term) : unit =
   let nt2 = to_norm e t2 in
   (* t1 and t2 should be closed under the current e *)
   match (nt1, nt2) with
+  (* Have `m1 args1 = m2 args2` so just assume `m1` and `m2` should be the same thing and
+    `args1 = args2` *)
   | MetaSpine ({inner=Hole m1; _}, args1), MetaSpine ({inner=Hole m2; loc=l2}, args2) -> 
     (* could theoretically do some freaky stuff here *)
     if List.length args1 != List.length args2 then print_endline "tried to unify different length meta spines" else
@@ -340,8 +352,12 @@ let rec replace_metas (e: ctx) (tm: term) : term =
     {inner=App (f_filled, arg_filled); loc=tm.loc}
   | _ -> tm
 
-(* Needs to be trusted for faithfulness of meaning. This returns tm unchanged
-except for replacing holes with metavariable spines. *)
+(** Needs to be trusted for faithfulness of meaning. This returns tm unchanged
+except for replacing holes with metavariable spines.
+
+`stack` is all of the bound variables introduced outside of the term, where the first
+element is the innermost definition (i.e. what `Bvar 0` would correspond to)
+*)
 let rec hole_to_meta (e: ctx) (stack: term list) (tm: term): term = 
   match tm.inner with
   | Hole m ->
@@ -355,6 +371,8 @@ let rec hole_to_meta (e: ctx) (stack: term list) (tm: term): term =
       | n ->
         fold {inner=App (tm, {inner=Bvar (n - 1); loc=tm.loc}); loc=tm.loc} (n - 1))
     in
+    (* Apply the hole to all of the bound variables defined in the expression at this point so that
+      the hole that we're solving for is a closed term (see the comment at the top of this file for why) *)
     fold {inner=Hole m; loc=tm.loc} (List.length stack)
   | Fun (arg, ty_arg, body) ->
     let ty_arg_meta = hole_to_meta e stack ty_arg in
