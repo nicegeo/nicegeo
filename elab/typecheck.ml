@@ -1,16 +1,17 @@
 (**
-  The general strategy for filling in user-specified holes essentially boils down to creating unique
-  variables each time we encounter a hole, generating equations that a correctly typed program would have
-  to satisfy, and then use that to find solutions (i.e. specific terms to place at that hole) for each variable.
+  The general strategy for filling in user-specified holes essentially boils down to creating unique variables each time 
+  we encounter a hole, generating constraints (equations) that a correctly typed program would have to satisfy with 
+  bidirectional type checking, and then using pattern unification to find solutions (i.e. specific terms to place at that 
+  hole) for each variable.
 
-  In order to simplify the unification algorithm, we require that solutions to holes will always be a closed term,
+  In order to simplify the unification algorithm, we want solutions to holes to be closed terms, 
   meaning that all variables used in that term are also introduced inside that term (e.g. `fun c => fun d => c d` is a
   closed term but `fun d => c d` isn't since the latter uses `c` without defining it), although references to previously
   defined theorems/axioms are still allowed. The reasoning for that is that as we traverse the term that we're type
-  checking, the specific values of each bound variable and each free variable might change (since a given Bvar index
+  checking, the de Bruijn indices of each bound variable and the local context might change (since a given Bvar index
   points to different definitions depending on how many surrounding function definitions there are, and free variables
-  get introduced/removed as necessary when type checking functions). If we require that holes are always closed terms
-  though, interpreting a closed term doesn't require looking at any external Bvars or Fvars, so we don't have to
+  get introduced/removed as necessary when type checking functions). By requiring that holes are always closed terms, 
+  interpreting a closed term doesn't require looking at any external Bvars or Fvars, so we don't have to
   remember what Bvar/Fvar mapping to use for each hole.
 
   The way we ensure that holes only ever need to be closed terms is that we automatically convert holes into functions
@@ -18,9 +19,9 @@
   an expression at a point where `x: A` and `y: B` have already been defined then we'd convert the term to `?H x y` where `?H`
   is the hole we want to solve for, at which point we'd expect that `?H` to be a function `A -> B -> T` for some type `T`).
   
-  TODO: maybe add example of unification for Eq _ a b here?
+  You can uncomment the print statements in this file to see how the algorithm works in more detail.
 
-  See lecture 3 of https://github.com/andrejbauer/faux-type-theory for more information on the algorithm
+  See lecture 3 of https://github.com/andrejbauer/faux-type-theory for more information on the algorithm.
 *)
 open Decl
 open Term
@@ -43,28 +44,6 @@ type normterm =
     and args are arbitrary terms *)
   | MetaSpine of term * term list
   | Sort of int
-
-let rec term_to_string (e: ctx) (tm: term) : string =
-  match tm.inner with
-  | Name name -> name
-  | Bvar idx -> "Bvar(" ^ string_of_int idx ^ ")"
-  | Fvar idx -> 
-    Hashtbl.find_opt e.lctx idx |> (function
-      | Some (Some name, _) -> name
-      | _ -> "Fvar(" ^ string_of_int idx ^ ")")
-  | Hole idx -> 
-    (match Hashtbl.find_opt e.metas idx with
-    | Some {sol=Some tm_sol; _} -> "(hole " ^ string_of_int idx ^ " = " ^ term_to_string e tm_sol ^ ")"
-    | _ -> "Hole(" ^ string_of_int idx ^ ")" )
-  | Fun (arg, ty_arg, body) ->
-      let arg_str = match arg with Some a -> a | None -> "_" in
-      "(fun (" ^ arg_str ^ " : " ^ term_to_string e ty_arg ^ ") => " ^ term_to_string e body ^ ")"
-  | Arrow (arg, ty_arg, ty_ret) ->
-      let arg_str = match arg with Some a -> a | None -> "_" in
-      "(" ^ arg_str ^ " : " ^ term_to_string e ty_arg ^ " -> " ^ term_to_string e ty_ret ^ ")"
-  | App (f, arg) ->
-      "(" ^ term_to_string e f ^ " " ^ term_to_string e arg ^ ")"
-  | Sort n -> "Sort(" ^ string_of_int n ^ ")"
 
 let rec whnf_beta (e: ctx) (tm: term) : term =
   match tm.inner with
@@ -97,21 +76,22 @@ let rec to_norm (e: ctx) (tm : term) : normterm =
   | Hole _ -> MetaSpine (tm, [])
 
 
+(* checks that a list of arguments that appears in a metavariable spine can be used for pattern matching.
+  checks that all arguments are unique free variables *)
 let valid_pattern_args (args: term list) : bool =
-  (* TODO: replace this with contains_fvar? *)
   if List.exists (fun arg -> match arg.inner with | Fvar _ -> false | _ -> true) args then false else
   let rec check_args seen_args args =
     match args with
     | [] -> true
     | arg :: rest ->
       if List.exists (fun seen_arg -> match (seen_arg, arg.inner) with
-        (* TODO: why do we care about whether multiple arguments in `args` have
-          the same Fvar index? *)
         | (Fvar idx1, Fvar idx2) when idx1 = idx2 -> true
         | _ -> false) seen_args then false
       else check_args (arg.inner :: seen_args) rest
   in check_args [] args
 
+(* checks that a term is a valid pattern for a metavariable. checks that it does not contain any 
+  free variables that are not in the argument list and it does not contain the hole being solved itself *)
 let rec valid_pattern (e: ctx) (m: int) (args: term list) (tm: term) : bool =
   match tm.inner with
   | Hole m' -> if m = m' then ((*print_endline "hole contains itself";*) false) else (match Hashtbl.find_opt e.metas m' with
@@ -128,15 +108,14 @@ let rec last = function
 | [x] -> x
 | _ :: xs -> last xs
 
-(** Find the value for the hole `m` given a constraint equation of the form `m args = tm` (meaning that we'd expect `m` to become
+(** Tries to find the value for the hole `m` given a constraint equation of the form `m args = tm` (meaning that we'd expect `m` to become
   a function that has at least `List.length args` arguments). args must be unique free variables and term must not have any
   non-matching free variables. 
   
   Stores the computed solution m = lambda args => term (replacing the free variables in term with the corresponding bvar indices)
-  for that hole in the `e.metas` hash table *)
+  for that hole in the `e.metas` hash table. Does nothing if the constraint cannot be solved by pattern matching. *)
 let rec pattern_match_meta (e: ctx) (m: int) (args: term list) (tm: term) : unit =
-  (* print_endline ("pattern matching meta " ^ string_of_int m ^ " with args " ^ String.concat " " (List.map (term_to_string e) args) ^ " against term " ^ term_to_string e tm); *)
-  (* uhh get rid of the last matching args? *)
+  (* print_endline ("pattern matching meta " ^ string_of_int m ^ " with args " ^ String.concat " " (List.map (Pretty.term_to_string e) args) ^ " against term " ^ Pretty.term_to_string e tm); *)
   (* `vartypes` are all of the externally defined bound variables that we're using as arguments for the hole's expression, so
     if `m` has more arguments than we inserted ourselves, so we'd expect the value of `m` to become a function value *)
   if List.length (Hashtbl.find e.metas m).vartypes < List.length args then
@@ -150,9 +129,7 @@ let rec pattern_match_meta (e: ctx) (m: int) (args: term list) (tm: term) : unit
   if not (valid_pattern_args args) then print_endline "invalid arguments for pattern matching" else
   if not (valid_pattern e m args tm) then (*print_endline "invalid solution for meta";*) () else
 
-  (* just need to bind them now how hard can it be clueless *)
-  (* could basically walk down term,  *)
-  (* actually let's just do the args one at a time. for each arg, do fun arg => (replace tm with bvar) *)
+  (* for each arg, do fun arg => (replace tm with bvar) *)
   let rec fold (tm: term) (args: term list) (types: term list) : term = (* args and types in reverse order lol *)
     match args with
     | [] -> tm
@@ -168,7 +145,7 @@ let rec pattern_match_meta (e: ctx) (m: int) (args: term list) (tm: term) : unit
 let rec unify (e: ctx) (t1: term) (t2: term) : unit =
   let t1 = whnf_beta e t1 in
   let t2 = whnf_beta e t2 in
-  (* print_endline ("unifying " ^ term_to_string e t1 ^ " and " ^ term_to_string e t2); *)
+  (* print_endline ("unifying " ^ Pretty.term_to_string e t1 ^ " and " ^ Pretty.term_to_string e t2); *)
   let nt1 = to_norm e t1 in
   let nt2 = to_norm e t2 in
   (* t1 and t2 should be closed under the current e *)
@@ -204,12 +181,12 @@ let rec unify (e: ctx) (t1: term) (t2: term) : unit =
     let body2_fvar = replace_bvar body2 0 {inner=Fvar x; loc=body2.loc} in
     unify e body1_fvar body2_fvar
   | Sort n1, Sort n2 when n1 = n2 -> ()
-  | _ -> failwith ("failed to unify non-matching terms " ^ term_to_string e t1 ^ " and " ^ term_to_string e t2)
+  | _ -> failwith ("failed to unify non-matching terms " ^ Pretty.term_to_string e t1 ^ " and " ^ Pretty.term_to_string e t2)
 
 (** checks that tm has expected type ty, trying to fill in metavariables (holes).
-  If it fails it throws an exception. todo: use actual exceptions *)
+  If it fails it throws an ElabError. *)
 let rec checktype (e: ctx) (tm: term) (ty: term) : unit =
-  (* print_endline ("checking " ^ term_to_string e tm ^ " has type " ^ term_to_string e ty); *)
+  (* print_endline ("checking " ^ Pretty.term_to_string e tm ^ " has type " ^ Pretty.term_to_string e ty); *)
   match tm.inner with 
   | Hole m ->
     (match Hashtbl.find_opt e.metas m with
@@ -231,9 +208,9 @@ let rec checktype (e: ctx) (tm: term) (ty: term) : unit =
     | Failure _ -> raise_at tm (Error.TypeMismatch { term = tm; inferred_type = infer_ty; expected_type = ty }))
   | Bvar _ -> raise_at tm (Error.InternalError "unexpected bound variable in checktype")
   
-(** Infer the type of the term `tm` in the context `e`, raising the exception InferHole if any unfilled holes are found *)
+(** Infer the type of the term `tm` in the context `e`, possibly throwing an ElabError *)
 and infertype (e: ctx) (tm: term) : term =
-  (* print_endline ("inferring type of " ^ term_to_string e tm); *)
+  (* print_endline ("inferring type of " ^ Pretty.term_to_string e tm); *)
   let res = match tm.inner with
   | Hole _ -> raise_at tm (Error.CannotInferHole)
   | Name name ->
@@ -277,12 +254,12 @@ and infertype (e: ctx) (tm: term) : term =
     | None -> raise_at tm (Error.InternalError "unknown free variable in infertype"))
   | Sort n -> {inner=Sort (n + 1); loc=tm.loc}
   in 
-  (* print_endline ("inferred type " ^ term_to_string e res ^ " for term " ^ term_to_string e tm); *)
+  (* print_endline ("inferred type " ^ Pretty.term_to_string e res ^ " for term " ^ Pretty.term_to_string e tm); *)
   res
 
 
 and check_is_type (e: ctx) (tm: term) : unit =
-  (* print_endline ("checking " ^ term_to_string e tm ^ " is a type"); *)
+  (* print_endline ("checking " ^ Pretty.term_to_string e tm ^ " is a type"); *)
   match tm.inner with
   | Hole m ->
     (match Hashtbl.find_opt e.metas m with
@@ -306,8 +283,8 @@ and check_is_type (e: ctx) (tm: term) : unit =
 
     (match f_type with
     | Some {inner=Arrow (_, ty_arg, ty_ret); _} -> 
-      (* print_endline ("app checktype: checking that " ^ term_to_string e arg ^ " has type " ^ term_to_string e ty_arg);
-      print_endline ("because f is " ^ term_to_string e f ^ " and has type " ^ term_to_string e f_type); *)
+      (* print_endline ("app checktype: checking that " ^ Pretty.term_to_string e arg ^ " has type " ^ Pretty.term_to_string e ty_arg);
+      print_endline ("because f is " ^ Pretty.term_to_string e f ^ " and has type " ^ Pretty.term_to_string e f_type); *)
       checktype e arg ty_arg;
       if not (is_sort ty_ret) then raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = ty_ret }) else ()
     | Some v -> raise_at f (Error.FunctionExpected { not_func = f; not_func_type = v; arg })
@@ -357,7 +334,7 @@ let rec replace_metas (e: ctx) (tm: term) : term =
 (** Needs to be trusted for faithfulness of meaning. This returns tm unchanged
 except for replacing holes with metavariable spines.
 
-`stack` is all of the bound variables introduced outside of the term, where the first
+`stack` is the types of all of the bound variables introduced outside of the term, where the first
 element is the innermost definition (i.e. what `Bvar 0` would correspond to)
 *)
 let rec hole_to_meta (e: ctx) (stack: term list) (tm: term): term = 
