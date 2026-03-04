@@ -2,6 +2,7 @@
  (name e_elab)
  (libraries system_e_kernel))
 
- (ocamllex lexer)
- (menhir
-  (modules parser))
+(ocamllex lexer)
+
+(menhir
+ (modules parser))
