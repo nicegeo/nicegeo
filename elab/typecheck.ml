@@ -54,42 +54,44 @@ type normterm =
   | MetaSpine of term * term list
   | Sort of int
 
-let rec whnf_beta (e: ctx) (tm: term) : term =
+let rec whnf_beta (e : ctx) (tm : term) : term =
   match tm.inner with
-  | App (f, arg) -> 
-    let fn = whnf_beta e f in
-    (match fn.inner with
-    | Fun (_, _, body) -> whnf_beta e (replace_bvar body 0 arg)
-    | _ -> {inner=App (fn, arg); loc=tm.loc})
+  | App (f, arg) -> (
+      let fn = whnf_beta e f in
+      match fn.inner with
+      | Fun (_, _, body) -> whnf_beta e (replace_bvar body 0 arg)
+      | _ -> { inner = App (fn, arg); loc = tm.loc })
   (* do we need to recurse into holes? possibly *)
-  | Hole m -> (match Hashtbl.find_opt e.metas m with
-    | Some {sol=Some tm_sol; _} -> whnf_beta e tm_sol
-    | _ -> tm)
+  | Hole m -> (
+      match Hashtbl.find_opt e.metas m with
+      | Some { sol = Some tm_sol; _ } -> whnf_beta e tm_sol
+      | _ -> tm)
   | _ -> tm
 
-let rec reduce (e: Types.ctx) (tm: term) : term =
+let rec reduce (e : Types.ctx) (tm : term) : term =
   match tm.inner with
-  | App (f, arg) -> 
-    let fn = reduce e f in
-    let arg = reduce e arg in
-    (match fn.inner with
-    | Fun (_, _, body) -> reduce e (replace_bvar body 0 arg)
-    | _ -> {inner=App (fn, arg); loc=tm.loc})
-  | Hole m -> (match Hashtbl.find_opt e.metas m with
-    | Some {sol=Some tm_sol; _} -> reduce e tm_sol
-    | _ -> tm)
-  | Fun (arg, ty, body) -> 
-    let x = gen_fvar_id () in 
-    let ty' = reduce e ty in
-    let body' = reduce e (replace_bvar body 0 {inner=Fvar x; loc=tm.loc}) in
-    let body'' = bind_bvar body' 0 {inner=Fvar x; loc=tm.loc} in
-    {inner=Fun (arg, ty', body''); loc=tm.loc}
+  | App (f, arg) -> (
+      let fn = reduce e f in
+      let arg = reduce e arg in
+      match fn.inner with
+      | Fun (_, _, body) -> reduce e (replace_bvar body 0 arg)
+      | _ -> { inner = App (fn, arg); loc = tm.loc })
+  | Hole m -> (
+      match Hashtbl.find_opt e.metas m with
+      | Some { sol = Some tm_sol; _ } -> reduce e tm_sol
+      | _ -> tm)
+  | Fun (arg, ty, body) ->
+      let x = gen_fvar_id () in
+      let ty' = reduce e ty in
+      let body' = reduce e (replace_bvar body 0 { inner = Fvar x; loc = tm.loc }) in
+      let body'' = bind_bvar body' 0 { inner = Fvar x; loc = tm.loc } in
+      { inner = Fun (arg, ty', body''); loc = tm.loc }
   | Arrow (arg, ty, ret) ->
-    let x = gen_fvar_id () in
-    let ty' = reduce e ty in
-    let ret' = reduce e (replace_bvar ret 0 {inner=Fvar x; loc=tm.loc}) in
-    let ret'' = bind_bvar ret' 0 {inner=Fvar x; loc=tm.loc} in
-    {inner=Arrow (arg, ty', ret''); loc=tm.loc}
+      let x = gen_fvar_id () in
+      let ty' = reduce e ty in
+      let ret' = reduce e (replace_bvar ret 0 { inner = Fvar x; loc = tm.loc }) in
+      let ret'' = bind_bvar ret' 0 { inner = Fvar x; loc = tm.loc } in
+      { inner = Arrow (arg, ty', ret''); loc = tm.loc }
   | _ -> tm
 
 (* precondition: tm is already in whnf (call whnf_beta) *)
@@ -499,41 +501,66 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
   | _ -> []
 
-let fill_holes (e: ctx) (tm: term) (ty: term option) : term =
+let fill_holes (e : ctx) (tm : term) (ty : term option) : term =
   let tm_meta = hole_to_meta e [] tm in
-  (match ty with
-  | Some ty -> checktype e tm_meta ty
-  | None -> check_is_type e tm_meta);
+  (match ty with Some ty -> checktype e tm_meta ty | None -> check_is_type e tm_meta);
   let tm_filled = replace_metas e tm_meta in
   Hashtbl.clear e.metas;
   tm_filled
 
 (* Needs to be trusted for faithfulness of meaning *)
-let process_decl (e: ctx) (d: declaration) : unit =
-  try match d.kind with
-  | Theorem proof ->
-    if Hashtbl.mem e.env d.name then raise (Error.ElabError { context = { loc = Some d.name_loc; decl_name = Some d.name }; error_type = Error.AlreadyDefined d.name }) else
-    (* fill_holes only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
-    let ty_filled = fill_holes e d.ty None in
-    let proof_filled = fill_holes e proof (Some ty_filled) in
-    (* conv_to_kterm does a straightforward variant-to-variant conversion *)
-    let ty_k = conv_to_kterm ty_filled in
-    let proof_k = conv_to_kterm proof_filled in
+let process_decl (e : ctx) (d : declaration) : unit =
+  try
+    match d.kind with
+    | Theorem proof -> (
+        if Hashtbl.mem e.env d.name then
+          raise
+            (Error.ElabError
+               {
+                 context = { loc = Some d.name_loc; decl_name = Some d.name };
+                 error_type = Error.AlreadyDefined d.name;
+               })
+        else
+          (* fill_holes only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
+          let ty_filled = fill_holes e d.ty None in
+          let proof_filled = fill_holes e proof (Some ty_filled) in
+          (* conv_to_kterm does a straightforward variant-to-variant conversion *)
+          let ty_k = conv_to_kterm ty_filled in
+          let proof_k = conv_to_kterm proof_filled in
 
-    (try
-      KInfer.addtheorem e.kenv d.name ty_k proof_k;
-      Hashtbl.add e.env d.name {name = d.name; ty = ty_filled; data = Theorem (list_axioms_used e proof_filled)};
-    with KExceptions.TypeError msg ->
-      raise (Error.ElabError { context = { loc = Some d.name_loc; decl_name = Some d.name }; error_type = Error.KernelError { kernel_exn = msg } }))
-  | Axiom -> 
-    if Hashtbl.mem e.env d.name then raise (Error.ElabError { context = { loc = Some d.name_loc; decl_name = Some d.name }; error_type = Error.AlreadyDefined d.name }) else
-    (* fill_holes only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
-    let ty_filled = fill_holes e d.ty None in
-    Hashtbl.clear e.metas;
-    (* conv_to_kterm does a straightforward variant-to-variant conversion *)
-    let ty_k = conv_to_kterm ty_filled in
-    KInfer.addaxiom e.kenv d.name ty_k;
-    Hashtbl.add e.kenv d.name ty_k 
+          try
+            KInfer.addtheorem e.kenv d.name ty_k proof_k;
+            Hashtbl.add
+              e.env
+              d.name
+              {
+                name = d.name;
+                ty = ty_filled;
+                data = Theorem (list_axioms_used e proof_filled);
+              }
+          with KExceptions.TypeError msg ->
+            raise
+              (Error.ElabError
+                 {
+                   context = { loc = Some d.name_loc; decl_name = Some d.name };
+                   error_type = Error.KernelError { kernel_exn = msg };
+                 }))
+    | Axiom ->
+        if Hashtbl.mem e.env d.name then
+          raise
+            (Error.ElabError
+               {
+                 context = { loc = Some d.name_loc; decl_name = Some d.name };
+                 error_type = Error.AlreadyDefined d.name;
+               })
+        else
+          (* fill_holes only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
+          let ty_filled = fill_holes e d.ty None in
+          Hashtbl.clear e.metas;
+          (* conv_to_kterm does a straightforward variant-to-variant conversion *)
+          let ty_k = conv_to_kterm ty_filled in
+          KInfer.addaxiom e.kenv d.name ty_k;
+          Hashtbl.add e.kenv d.name ty_k
   with Error.ElabError x ->
     raise
       (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })

@@ -11,11 +11,11 @@ let create () : Types.ctx =
   }
 
 (* Creates an elaborator environment with the default environment path. *)
-let create_with_env () : Types.ctx = 
+let create_with_env () : Types.ctx =
   let e = create () in
   let add_axiom name ty_k =
     KInfer.addaxiom e.kenv name ty_k;
-    Hashtbl.add e.env name {name; ty = Convert.conv_to_term ty_k; data = Types.Axiom};
+    Hashtbl.add e.env name { name; ty = Convert.conv_to_term ty_k; data = Types.Axiom }
   in
   KEnv.get_env add_axiom;
   e

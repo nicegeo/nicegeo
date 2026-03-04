@@ -102,13 +102,10 @@ let ktype_err_to_string (info : KExceptions.type_error_info) : string =
         (Kernel_pretty.term_to_string_pretty info.trm)
         (Kernel_pretty.term_to_string_pretty domainTypeType)
         (Kernel_pretty.term_to_string_pretty returnTypeType)
-  | AlreadyDefined name ->
-      "Name already defined: " ^ name
+  | AlreadyDefined name -> "Name already defined: " ^ name
   | TypeMismatchError (expected, inferred) ->
-      Printf.sprintf 
-        "Type mismatch.\n\
-         Expected Type: %s\n\
-         Inferred Type: %s\n"
+      Printf.sprintf
+        "Type mismatch.\nExpected Type: %s\nInferred Type: %s\n"
         (Kernel_pretty.term_to_string_pretty expected)
         (Kernel_pretty.term_to_string_pretty inferred)
 
