@@ -35,7 +35,7 @@ Exists Point (fun (c : Point) =>
     (Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a))))
-    (fun (aaa : CenterCircle a aa) => fun (baa : OnCircle b aa) =>
+    (fun (aaa : CenterCircle a aa) (baa : OnCircle b aa) =>
     (*
         Inside of here, we have access to the two facts
         `aaa : CenterCircle a aa` and `baa : OnCircle b aa`.
@@ -50,7 +50,7 @@ Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a))))
     (circle_of_ne b a (Ne.symm Point a b ab))
-    (fun (bb : Circle) => fun (b_center_and_on : And (CenterCircle b bb) (OnCircle a bb)) =>
+    (fun (bb : Circle) (b_center_and_on : And (CenterCircle b bb) (OnCircle a bb)) =>
     (*
         Inside of here, we have access to the circle `bb`
         and also the fact `b_center_and_on` about the circle `bb`.
@@ -61,7 +61,7 @@ Exists Point (fun (c : Point) =>
     (Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a))))
-    (fun (bbb : CenterCircle b bb) => fun (abb : OnCircle a bb) =>
+    (fun (bbb : CenterCircle b bb) (abb : OnCircle a bb) =>
     (*
         Inside of here, we have access to two facts:
         `bbb : CenterCircle b bb` and `abb : OnCircle a bb`.
@@ -93,7 +93,7 @@ Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a)))) 
    (PtsOfCirclesinter aa bb aabb)
-   (fun (c : Point) => fun (next_point_and_facts : (Exists Point (fun (d : Point) =>
+   (fun (c : Point) (next_point_and_facts : (Exists Point (fun (d : Point) =>
     And (Eq Point c d -> False) (
     And (OnCircle c aa) (
     And (OnCircle c bb) (
@@ -118,7 +118,7 @@ Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a))))
     next_point_and_facts
-    (fun (d : Point) => fun (many_facts : (And (Eq Point c d -> False) (
+    (fun (d : Point) (many_facts : (And (Eq Point c d -> False) (
     And (OnCircle c aa) (
     And (OnCircle c bb) (
     And (OnCircle d aa) (OnCircle d bb)))))) =>
@@ -136,7 +136,7 @@ Exists Point (fun (c : Point) =>
     (Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a)))) 
-    (fun (ne_c_d : (Eq Point c d -> False)) => fun (four_facts_left : (
+    (fun (ne_c_d : (Eq Point c d -> False)) (four_facts_left : (
     And (OnCircle c aa) (
     And (OnCircle c bb) (
     And (OnCircle d aa) (OnCircle d bb))))) =>
@@ -153,7 +153,7 @@ Exists Point (fun (c : Point) =>
     (Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a)))) 
-    (fun (caa : OnCircle c aa) => fun (three_facts_left : (
+    (fun (caa : OnCircle c aa) (three_facts_left : (
     And (OnCircle c bb) (
     And (OnCircle d aa) (OnCircle d bb)))) =>
 
@@ -169,7 +169,7 @@ Exists Point (fun (c : Point) =>
     (Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a))))
-    (fun (cbb : OnCircle c bb) => fun (two_facts_left : (
+    (fun (cbb : OnCircle c bb) (two_facts_left : (
     And (OnCircle d aa) (OnCircle d bb))) =>
 
     (*
@@ -185,8 +185,8 @@ Exists Point (fun (c : Point) =>
     (Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a))))
-    (fun (_ltr_bc_ba : (Eq Len (Length b c) (Length b a) -> OnCircle a bb)) =>
-        fun (rtl_bc_ba : (OnCircle a bb -> Eq Len (Length b c) (Length b a))) =>
+    (fun (_ltr_bc_ba : (Eq Len (Length b c) (Length b a) -> OnCircle a bb))
+        (rtl_bc_ba : (OnCircle a bb -> Eq Len (Length b c) (Length b a))) =>
 
 
     (*
@@ -207,8 +207,8 @@ Exists Point (fun (c : Point) =>
     (Exists Point (fun (c : Point) =>
     And (Eq Len (Length a b) (Length a c))
         (Eq Len (Length b c) (Length b a)))) 
-    (fun (_ltr_ab_ac : (Eq Len (Length a b) (Length a c) -> OnCircle c aa)) =>
-        fun (rtl_ab_ac : (OnCircle c aa -> Eq Len (Length a b) (Length a c))) =>
+    (fun (_ltr_ab_ac : (Eq Len (Length a b) (Length a c) -> OnCircle c aa))
+         (rtl_ab_ac : (OnCircle c aa -> Eq Len (Length a b) (Length a c))) =>
 
     (*
         Inside of here, we have access to `rtl_ab_ac : (OnCircle c aa -> Eq Len (Length a b) (Length a c))`.
