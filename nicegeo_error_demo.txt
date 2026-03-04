@@ -1,0 +1,4 @@
+(* Demo file: intentionally fails, to show NiceGeo encouraging messages. *)
+
+Theorem nicegeo_error_demo : Prop := does_not_exist
+
