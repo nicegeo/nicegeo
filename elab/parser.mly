@@ -2,37 +2,73 @@
 %token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE
 %token THEOREM AXIOM DEFEQ
 %start <Decl.declaration list> main
+%start <Term.term> single_term
 %%
 
 main:
   | decls = list(declaration) EOF { decls }
 
+single_term:
+  | t = term EOF { t }
+
 declaration:
-  | AXIOM name = IDENT COLON ty = term { Decl.Axiom (name, ty) }
+  | AXIOM name = IDENT COLON ty = term { Decl.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Axiom} }
   | THEOREM name = IDENT COLON ty = term DEFEQ proof = term
-    { Decl.Theorem (name, ty, proof) }
+    { Decl.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem proof} }
 
 term:
   | t = app_term { t }
   | FUN params = list(param_group) ARROW body = term
     {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
       let params_flat = List.concat params in
-      List.fold_right (fun (x,ty) acc -> Term.Fun (Some x, ty, Term.bind_bvar acc 0 (Term.Name x))) params_flat body
+      List.fold_right
+        (fun (x, ty) acc ->
+           let pat = {Term.inner=Term.Name x; loc} in
+           {Term.inner=Term.Fun (Some x, ty, Term.bind_bvar acc 0 pat); loc})
+        params_flat body
     }
   | LPAREN x = IDENT COLON ty = term RPAREN FORALL rettype = term
-    { Term.Arrow (Some x, ty, Term.bind_bvar rettype 0 (Term.Name x)) }
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      let pat = {Term.inner=Term.Name x; loc} in
+      {Term.inner=Term.Arrow (Some x, ty, Term.bind_bvar rettype 0 pat); loc}
+    }
   | ty = app_term FORALL rettype = term
-    { Term.Arrow (None, ty, rettype) }
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      {Term.inner=Term.Arrow (None, ty, rettype); loc}
+    }
 
 app_term:
   | t = atomic_term { t }
-  | f = app_term arg = atomic_term { Term.App (f, arg) }
+  | f = app_term arg = atomic_term
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      {Term.inner=Term.App (f, arg); loc}
+    }
 
 atomic_term:
-  | UNDERSCORE { Term.Hole (Term.gen_hole_id ()) }
-  | x = IDENT { Term.Name x }
-  | TYPE { Term.Sort 1 }
-  | PROP { Term.Sort 0 }
+  | UNDERSCORE
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      {Term.inner=Term.Hole (Term.gen_hole_id ()); loc}
+    }
+  | x = IDENT
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      {Term.inner=Term.Name x; loc}
+    }
+  | TYPE
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      {Term.inner=Term.Sort 1; loc}
+    }
+  | PROP
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      {Term.inner=Term.Sort 0; loc}
+    }
   | LPAREN t = term RPAREN { t }
 
 idlist:
@@ -41,4 +77,8 @@ idlist:
 
 param_group:
   | LPAREN xs = idlist COLON ty = term RPAREN { List.map (fun x -> (x, ty)) xs }
-  | x = IDENT { [(x, Term.Hole (Term.gen_hole_id ()))] }
+  | x = IDENT
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      [(x, {Term.inner=Term.Hole (Term.gen_hole_id ()); loc})]
+    }

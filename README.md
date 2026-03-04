@@ -6,17 +6,17 @@ A typechecker kernel for a proof system based on the formal system **E** (Euclid
 - All the built-in types and rules from System E
 (like Point and Circle)
 
-## Using the kernel
-First, install OCaml and opam.
-Initialize opam with
+## Build the project and run tests
+First, install OCaml and opam and then create a switch for the project.
 ```bash
 opam init
-eval $(opam env)
+opam switch create nicegeo 5.4.1
+eval $(opam env --switch=nicegeo)
 ```
 
 Install the dependency:
 ```bash
-opam install dune menhir
+opam install --deps-only --with-test .
 ```
 
 Build the project:
@@ -27,6 +27,12 @@ dune build
 Run the kernel on the test file:
 ```bash
 dune exec system-e-kernel proof.txt
+```
+
+## Running Tests
+
+```bash
+dune runtest
 ```
 
 ## Project Structure
