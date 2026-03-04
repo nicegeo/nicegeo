@@ -2,11 +2,13 @@
 open Parser
 }
 
-let white = [' ' '\t' '\n' '\r']+
+let white = [' ' '\t' '\r']+
+let newline = '\n'
 let ident = ['a'-'z' 'A'-'Z' '_' '.']['a'-'z' 'A'-'Z' '0'-'9' '_' '.']*
 
 rule token = parse
   | white       { token lexbuf }
+  | newline     { Lexing.new_line lexbuf; token lexbuf }
   | "(*"        { comment lexbuf; token lexbuf }
   | "fun"       { FUN }
   | "Axiom"     { AXIOM }
@@ -29,4 +31,5 @@ and comment = parse
   | "*)"        { () }
   | "(*"        { comment lexbuf; comment lexbuf }
   | eof         { failwith "Unterminated comment" }
+  | newline     { Lexing.new_line lexbuf; comment lexbuf }
   | _           { comment lexbuf }

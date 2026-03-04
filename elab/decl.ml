@@ -1,10 +1,12 @@
 open Term
 
-type declaration =
-  | Theorem of string * term * term
-  | Axiom of string * term
+type decl_type =
+| Theorem of term
+| Axiom
 
-let decl_name (decl: declaration) : string =
-  match decl with
-  | Theorem (name, _, _) -> name
-  | Axiom (name, _) -> name
+type declaration = {
+  name: string;
+  name_loc: range;
+  ty: term;
+  kind: decl_type;
+}
