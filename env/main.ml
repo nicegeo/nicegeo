@@ -6,31 +6,29 @@ let kterm_to_ocaml (kterm : Kterm.term) =
   let rec kterm_to_ocaml_helper (kterm : Kterm.term) (indent : int) =
     let indent_str = String.make (indent * 2) ' ' in
     match kterm with
-    | Kterm.Const s -> Printf.sprintf "%sConst \"%s\"" indent_str s
-    | Kterm.Bvar n -> Printf.sprintf "%sBvar %d" indent_str n
-    | Kterm.Fvar s -> Printf.sprintf "%sFvar \"%s\"" indent_str s
+    | Kterm.Const s -> Printf.sprintf "Const \"%s\"" s
+    | Kterm.Bvar n -> Printf.sprintf "Bvar %d" n
+    | Kterm.Fvar s -> Printf.sprintf "Fvar \"%s\"" s
     | Kterm.Lam (ty, body) ->
         Printf.sprintf
-          "%sLam (\n%s,\n%s\n%s)"
-          indent_str
+          "Lam (%s,\n%s  %s\n%s)"
           (kterm_to_ocaml_helper ty indent)
+          indent_str
           (kterm_to_ocaml_helper body (indent + 1))
           indent_str
     | Kterm.Forall (ty, body) ->
         Printf.sprintf
-          "%sForall (\n%s,\n%s\n%s)"
-          indent_str
+          "Forall (%s,\n%s  %s\n%s)"
           (kterm_to_ocaml_helper ty indent)
+          indent_str
           (kterm_to_ocaml_helper body (indent + 1))
           indent_str
     | Kterm.App (f, arg) ->
         Printf.sprintf
-          "%sApp (\n%s,\n%s\n%s)"
-          indent_str
+          "App (%s, %s)"
           (kterm_to_ocaml_helper f indent)
           (kterm_to_ocaml_helper arg indent)
-          indent_str
-    | Kterm.Sort n -> Printf.sprintf "%sSort %d" indent_str n
+    | Kterm.Sort n -> Printf.sprintf "Sort %d" n
   in
   kterm_to_ocaml_helper kterm 0
 
@@ -61,7 +59,7 @@ let () =
           Buffer.add_string
             buf
             (Printf.sprintf
-               "add_axiom \"%s\" (%s);\n"
+               "add_axiom \"%s\" (\n%s\n);\n"
                decl.name
                (kterm_to_ocaml (Convert.conv_to_kterm elab_type))))
     decls;
