@@ -1,5 +1,5 @@
 open Term
-module KTerm = System_e_kernel.Term
+module KTerm = Kernel.Term
 
 type metavar = {
   ty : term option;

@@ -1,6 +1,6 @@
-open E_elab
-open E_elab.Decl
-module Kterm = System_e_kernel.Term
+open Elab
+open Elab.Decl
+module Kterm = Kernel.Term
 
 let kterm_to_ocaml (kterm : Kterm.term) =
   let rec kterm_to_ocaml_helper (kterm : Kterm.term) (indent : int) =
@@ -33,8 +33,8 @@ let kterm_to_ocaml (kterm : Kterm.term) =
   kterm_to_ocaml_helper kterm 0
 
 let () =
-  let decls = Elab.parse_decls "env/env.txt" in
-  let e = Elab.create () in
+  let decls = Elab.Interface.parse_decls "env/env.txt" in
+  let e = Elab.Interface.create () in
   let buf = Buffer.create 4096 in
 
   Buffer.add_string

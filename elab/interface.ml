@@ -1,6 +1,6 @@
-module KTerm = System_e_kernel.Term
-module KInfer = System_e_kernel.Infer
-module KEnv = System_e_kernel.Env
+module KTerm = Kernel.Term
+module KInfer = Kernel.Infer
+module KEnv = Kernel.Env
 
 let create () : Types.ctx =
   {

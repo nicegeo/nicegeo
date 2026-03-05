@@ -5,4 +5,4 @@ let () =
   turns on stack traces *)
   record_backtrace true;
 
-  Alcotest.run "kernel" [ Test_system_e_kernel.suite ]
+  Alcotest.run "kernel" [ Test_kernel.suite ]

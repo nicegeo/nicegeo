@@ -1,13 +1,13 @@
 (* Tests and examples for the pretty-printing feature.
    Run with: dune exec test/test_pretty.exe *)
 
-open E_elab.Kernel_pretty
-open E_elab.Decl
-open E_elab.Pretty
-module KTerm = System_e_kernel.Term
-module ETerm = E_elab.Term
-module Elab = E_elab.Elab
-module Nice = E_elab.Nice_messages
+open Elab.Kernel_pretty
+open Elab.Decl
+open Elab.Pretty
+module KTerm = Kernel.Term
+module ETerm = Elab.Term
+module Nice = Elab.Nice_messages
+module ElabIf = Elab.Interface
 
 let () = Printf.printf "=== Kernel term pretty-printing ===\n\n"
 
@@ -42,7 +42,7 @@ let () =
   Printf.printf "  Pretty: %s\n\n" (term_to_string_pretty t)
 
 let () = Printf.printf "=== Elaborator term pretty-printing ===\n\n"
-let e = Elab.create ()
+let e = ElabIf.create ()
 let l = ETerm.dummy_range
 
 (* Example 5: Elaborator terms have names already *)
