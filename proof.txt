@@ -329,6 +329,27 @@ Theorem AddCancel : (x: Len) -> (y: Len) -> (z: Len) -> Eq _ (Add x z) (Add y z)
     (fun (eqxy : Eq _ x y) => eqxy)
     )
 
+
+Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) -> 
+    (Eq _ a b -> False) -> InCircle b aa -> Exists _ (fun (c: Point) => And (Between a b c) (OnCircle c aa)) :=
+
+    fun (a: Point) (b: Point) (aa: Circle) (ab: Eq _ a b -> False) (baa: InCircle b aa) =>
+
+    Exists.elim _ _ _ (line_of_pts a b ab)
+    (fun (L : Line) (abL : And (OnLine a L) (OnLine b L)) =>
+
+    And.elim1 _ _ _ abL
+    (fun (aL: OnLine a L) (bL: OnLine b L) =>
+    
+    Exists.elim _ _ _ (pt_oncircle_extension_from_inside L aa b a bL aL baa ab)
+    (fun (c: Point) (h: And (OnLine c L) (And (OnCircle c aa) (Between c b a))) =>
+
+    Exists.intro Point (fun (c: Point) => And (Between a b c) (OnCircle c aa)) c
+    (And.intro (Between a b c) (OnCircle c aa)
+    (between_symm c b a (snd _ _ (snd _ _ h)))
+    (fst _ _ (snd _ _ h))
+    ))))
+
 Axiom sorry : (P: Prop) -> P
 
 Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point) 
@@ -345,12 +366,18 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     And.elim1 _ _ _ baacaa
     (fun (baa : CenterCircle b aa) (caa : OnCircle c aa) =>
 
-    have _ (Eq _ (Length b a) Zero -> False) (fun bazero => Ne.symm _ _ _ ab (fst _ _ (length_eq_zero_iff b a) bazero)) (fun lenba =>
+    have _ _ (fun bazero => Ne.symm _ _ _ ab (fst _ _ (length_eq_zero_iff b a) bazero)) 
+    (fun (lenba : (Eq _ (Length b a) Zero -> False)) =>
     
-    
+    have _ _ (fun db => lenba (Eq.elim Len (Length b d) (fun x => Eq Len x Zero) (snd _ _ (length_eq_zero_iff b d) (Eq.symm _ _ _ db)) (Length b a) (snd _ _ eqtri))) 
+    (fun (db : (Eq _ d b -> False)) =>
+
+    Exists.elim _ _ _ (pt_oncircle_of_inside_ne _ _ _ db (inside_circle_of_center b aa baa))
+    (fun (e: Point) (h: And (Between d b e) (OnCircle e aa)) =>
     
     sorry (Exists Point (fun (f: Point) => Eq _ (Length a f) (Length b c)))
-    
+    )
+    )
     )
     )
     ))
