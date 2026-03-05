@@ -687,7 +687,21 @@ let test_kernel_reduce () =
     (Testable.termDefEq env lctx)
     ~msg:"application with defined const in both input and output type"
     ~actual:(inferType env lctx term)
-    ~expected:(Sort 1)
+    ~expected:(Sort 1);
+
+  (* g: (fun p => (Point -> Point)) p *)
+  (* (reduces to g: Point -> Point) *)
+  Hashtbl.add
+    env
+    "g"
+    (App (Lam (Const "Point", Forall (Const "Point", Const "Point")), Const "p"));
+
+  (* g p should not fail *)
+  Alcotest.check'
+    (Testable.termDefEq env lctx)
+    ~msg:"application in function type is well-typed"
+    ~actual:(inferType env lctx (App (Const "g", Const "p")))
+    ~expected:(Const "Point")
 
 let suite =
   let open Alcotest in
