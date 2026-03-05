@@ -66,42 +66,42 @@ let context_to_string (ctx : KTerm.localcontext) : string =
  * Convert a type error to a string for printing
  *)
 let ktype_err_to_string (info : KExceptions.type_error_info) : string =
-  match info.err_kind with
-  | UnknownConstError name -> "unknown constant: " ^ name
-  | UnknownFreeVarError name -> "unknown free variable: " ^ name
-  | BoundVarScopeError idx -> "bound variable index out of scope: " ^ string_of_int idx
-  | AppArgTypeError (f, a, f_type, expected_a_type, inferred_a_type) ->
-      Printf.sprintf
-        "Function called with invalid argument type.\n\
-         Local Context:\n\
-         %s\n\
-         Term: %s\n\
-         Func: %s\n\
-         Arg: %s\n\n\
-         Func Type: %s\n\
-         Expected Arg Type: %s\n\
-         Inferred Arg Type: %s\n"
-        (context_to_string info.ctx)
-        (Kernel_pretty.term_to_string_pretty info.trm)
-        (Kernel_pretty.term_to_string_pretty f)
-        (Kernel_pretty.term_to_string_pretty a)
-        (Kernel_pretty.term_to_string_pretty f_type)
-        (Kernel_pretty.term_to_string_pretty expected_a_type)
-        (Kernel_pretty.term_to_string_pretty inferred_a_type)
-  | AppNonFuncError -> "Tried to apply non-function to an argument"
-  | LamDomainError -> "Invalid domain type for lambda"
-  | ForallSortError (domainTypeType, returnTypeType) ->
-      Printf.sprintf
-        "Domain and return types of a Forall must be sorts.\n\
-         Local Context:\n\
-         %s\n\
-         Term: %s\n\
-         Domain Type Sort: %s\n\
-         Return Type Sort: %s\n\n"
-        (context_to_string info.ctx)
-        (Kernel_pretty.term_to_string_pretty info.trm)
-        (Kernel_pretty.term_to_string_pretty domainTypeType)
-        (Kernel_pretty.term_to_string_pretty returnTypeType)
+  let specific_err =
+    match info.err_kind with
+    | UnknownConstError name -> "unknown constant: " ^ name
+    | UnknownFreeVarError name -> "unknown free variable: " ^ name
+    | BoundVarScopeError idx -> "bound variable index out of scope: " ^ string_of_int idx
+    | AppArgTypeError (f, a, f_type, expected_a_type, inferred_a_type) ->
+        Printf.sprintf
+          "Function called with invalid argument type.\n\
+           Func: %s\n\
+           Arg: %s\n\n\
+           Func Type: %s\n\
+           Expected Arg Type: %s\n\
+           Inferred Arg Type: %s\n"
+          (Kernel_pretty.term_to_string_pretty f)
+          (Kernel_pretty.term_to_string_pretty a)
+          (Kernel_pretty.term_to_string_pretty f_type)
+          (Kernel_pretty.term_to_string_pretty expected_a_type)
+          (Kernel_pretty.term_to_string_pretty inferred_a_type)
+    | AppNonFuncError func_type ->
+        "Tried to apply non-function of type "
+        ^ Kernel_pretty.term_to_string_pretty func_type
+        ^ " to an argument"
+    | LamDomainError domainTypeType ->
+        "Invalid domain type for lambda, domain type type: "
+        ^ Kernel_pretty.term_to_string_pretty domainTypeType
+    | ForallSortError (domainTypeType, returnTypeType) ->
+        Printf.sprintf
+          "Domain and return types of a Forall must be sorts.\n\
+           Domain Type Sort: %s\n\
+           Return Type Sort: %s\n\n"
+          (Kernel_pretty.term_to_string_pretty domainTypeType)
+          (Kernel_pretty.term_to_string_pretty returnTypeType)
+  in
+  "Kernel Type Error:\nLocal Context:\n" ^ context_to_string info.ctx ^ "\nTerm: "
+  ^ Kernel_pretty.term_to_string_pretty info.trm
+  ^ "\n" ^ specific_err
 
 let pp_loc (r : range) =
   if r.start.pos_lnum = r.end_.pos_lnum then
