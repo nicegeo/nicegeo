@@ -1,9 +1,8 @@
-
 open Term
 module KTerm = Kernel.Term
 
 (* Converts an elaboration-level term to a kernel-level term. tm must not have any holes *)
-let rec conv_to_kterm (tm: term) : KTerm.term =
+let rec conv_to_kterm (tm : term) : KTerm.term =
   match tm.inner with
   | Name x -> KTerm.Const x
   | Hole _ -> failwith "hole in conv_to_kterm input"
