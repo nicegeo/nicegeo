@@ -352,6 +352,27 @@ Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) ->
 
 Axiom sorry : (P: Prop) -> P
 
+Theorem length_pts_eq : (a: Point) -> (b: Point) -> (c: Point) -> Eq _ (Length a b) (Length a c) -> 
+    Eq _ a b -> Eq _ a c :=
+    fun a b c (h: Eq _ (Length a b) (Length a c)) (ab: Eq _ a b) =>
+    have _ _ (Eq.elim Len (Length a b) (fun x => Eq _ (Length a c) x) 
+    (Eq.symm _ _ _ h) Zero 
+    (snd _ _ (length_eq_zero_iff a b) ab))
+    (fun (lac : Eq _ (Length a c) Zero) =>
+    fst _ _ (length_eq_zero_iff a c) lac)
+
+Theorem length_pts_ne : (a: Point) -> (b: Point) -> (c: Point) -> Eq _ (Length a b) (Length a c) ->
+    (Eq _ a b -> False) -> (Eq _ a c -> False) :=
+    fun a b c (h: Eq _ (Length a b) (Length a c)) (ab: Eq _ a b -> False) (ac: Eq _ a c) =>
+    ab (length_pts_eq a c b (Eq.symm _ _ _ h) ac)
+
+Theorem ZeroAdd : (a: Len) -> Eq _ (Add Zero a) a :=
+    fun (a: Len) => Eq.elim _ _ (fun x => Eq _ x a) (AddZero a) _ (AddComm a Zero)
+
+Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> Eq T a b -> Eq T b c -> Eq T a c :=
+    fun T a b c h1 h2 =>
+    Eq.elim T b (fun x => Eq T a x) h1 c h2
+
 Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point) 
     -> (bc : Eq _ b c -> False) -> (ab : Eq _ a b -> False)
     -> Exists Point (fun f => Eq _ (Length a f) (Length b c)) :=
@@ -366,16 +387,63 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     And.elim1 _ _ _ baacaa
     (fun (baa : CenterCircle b aa) (caa : OnCircle c aa) =>
 
-    have _ _ (fun bazero => Ne.symm _ _ _ ab (fst _ _ (length_eq_zero_iff b a) bazero)) 
-    (fun (lenba : (Eq _ (Length b a) Zero -> False)) =>
-    
-    have _ _ (fun db => lenba (Eq.elim Len (Length b d) (fun x => Eq Len x Zero) (snd _ _ (length_eq_zero_iff b d) (Eq.symm _ _ _ db)) (Length b a) (snd _ _ eqtri))) 
+    have _ _ (Ne.symm _ _ _ (length_pts_ne b a d (Eq.symm _ _ _ (snd _ _ eqtri)) (Ne.symm _ _ _ ab)))
     (fun (db : (Eq _ d b -> False)) =>
 
     Exists.elim _ _ _ (pt_oncircle_of_inside_ne _ _ _ db (inside_circle_of_center b aa baa))
     (fun (e: Point) (h: And (Between d b e) (OnCircle e aa)) =>
+
+    And.elim1 _ _ _ h
+    (fun (Bdbe : Between d b e) (eaa : OnCircle e aa) =>
+
+    have _ _ (ne_13_of_between d b e Bdbe)
+    (fun (de : Eq _ d e -> False) =>
+    
+    Exists.elim _ _ _ (circle_of_ne d e de)
+    (fun (bb : Circle) (debb : And (CenterCircle d bb) (OnCircle e bb)) =>
+
+    And.elim1 _ _ _ debb
+    (fun (dbb : CenterCircle d bb) (ebb: OnCircle e bb) =>
+    
+    have _ _ (Ne.symm _ _ _ (length_pts_ne a b d (fst _ _ eqtri) ab))
+    (fun (da : (Eq _ d a -> False)) =>
+
+    have _ _ (
+        have _ _ (length_sum_of_between d b e Bdbe)
+        (fun (sum : Eq _ (Add (Length d b) (Length b e)) (Length d e)) =>
+        Or.elim _ _ _ (ZeroLeast (Length b e))
+        (fun (lbe: Lt Zero (Length b e)) =>
+        (* LtAdd Zero (Length b e) (Length d b) lbe : 0 + length d b < length b e + length d b *)
+        have _ _ (
+            Eq.elim Len (Add (Length b e) (Length d b)) (fun x => Lt (Length d a) x)
+            (Eq.elim Len (Add Zero (Length d b)) (fun x => Lt x (Add (Length b e) (Length d b))) (LtAdd Zero (Length b e) (Length d b) lbe) (Length d a) 
+                (EqTrans _ _ _ _ (ZeroAdd (Length d b)) (EqTrans _ _ _ _ (length_symm d b) (EqTrans _ _ _ _ (snd _ _ eqtri) (EqTrans _ _ _ _ (length_symm b a) (EqTrans _ _ _ _ (fst _ _ eqtri) (length_symm a d)))))))
+            (Length d e) (EqTrans _ _ _ _ (AddComm (Length b e) (Length d b)) sum)
+        )
+        (fun (ineq : Lt (Length d a) (Length d e)) =>
+        fst _ _ (in_circle_iff_length_lt d e a bb dbb ebb) ineq
+        )
+        )
+        (fun (lbe: Eq _ Zero (Length b e)) =>
+        False.elim (InCircle a bb) (ne_23_of_between d b e Bdbe (fst _ _ (length_eq_zero_iff b e) (Eq.symm _ _ _ lbe)))
+        )
+        )
+    )
+    (fun (abb : InCircle a bb) =>
+
+    Exists.elim _ _ _ (pt_oncircle_of_inside_ne d a bb da abb)
+    (fun (f: Point) (h1: And (Between d a f) (OnCircle f bb)) =>
+
     
     sorry (Exists Point (fun (f: Point) => Eq _ (Length a f) (Length b c)))
+    
+    )
+    
+    )
+    )    
+    )
+    )
+    )
     )
     )
     )
