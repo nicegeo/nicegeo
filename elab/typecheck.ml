@@ -68,30 +68,30 @@ let rec whnf_beta (e : ctx) (tm : term) : term =
       | _ -> tm)
   | _ -> tm
 
-
-let rec reduce (e: Types.ctx) (tm: term) : term =
+let rec reduce (e : Types.ctx) (tm : term) : term =
   match tm.inner with
-  | App (f, arg) -> 
-    let fn = reduce e f in
-    let arg = reduce e arg in
-    (match fn.inner with
-    | Fun (_, _, body) -> reduce e (replace_bvar body 0 arg)
-    | _ -> {inner=App (fn, arg); loc=tm.loc})
-  | Hole m -> (match Hashtbl.find_opt e.metas m with
-    | Some {sol=Some tm_sol; _} -> reduce e tm_sol
-    | _ -> tm)
-  | Fun (arg, ty, body) -> 
-    let x = gen_fvar_id () in 
-    let ty' = reduce e ty in
-    let body' = reduce e (replace_bvar body 0 {inner=Fvar x; loc=tm.loc}) in
-    let body'' = bind_bvar body' 0 {inner=Fvar x; loc=tm.loc} in
-    {inner=Fun (arg, ty', body''); loc=tm.loc}
+  | App (f, arg) -> (
+      let fn = reduce e f in
+      let arg = reduce e arg in
+      match fn.inner with
+      | Fun (_, _, body) -> reduce e (replace_bvar body 0 arg)
+      | _ -> { inner = App (fn, arg); loc = tm.loc })
+  | Hole m -> (
+      match Hashtbl.find_opt e.metas m with
+      | Some { sol = Some tm_sol; _ } -> reduce e tm_sol
+      | _ -> tm)
+  | Fun (arg, ty, body) ->
+      let x = gen_fvar_id () in
+      let ty' = reduce e ty in
+      let body' = reduce e (replace_bvar body 0 { inner = Fvar x; loc = tm.loc }) in
+      let body'' = bind_bvar body' 0 { inner = Fvar x; loc = tm.loc } in
+      { inner = Fun (arg, ty', body''); loc = tm.loc }
   | Arrow (arg, ty, ret) ->
-    let x = gen_fvar_id () in
-    let ty' = reduce e ty in
-    let ret' = reduce e (replace_bvar ret 0 {inner=Fvar x; loc=tm.loc}) in
-    let ret'' = bind_bvar ret' 0 {inner=Fvar x; loc=tm.loc} in
-    {inner=Arrow (arg, ty', ret''); loc=tm.loc}
+      let x = gen_fvar_id () in
+      let ty' = reduce e ty in
+      let ret' = reduce e (replace_bvar ret 0 { inner = Fvar x; loc = tm.loc }) in
+      let ret'' = bind_bvar ret' 0 { inner = Fvar x; loc = tm.loc } in
+      { inner = Arrow (arg, ty', ret''); loc = tm.loc }
   | _ -> tm
 
 (* precondition: tm is already in whnf (call whnf_beta) *)
@@ -201,7 +201,7 @@ let rec pattern_match_meta (e : ctx) (m : int) (args : term list) (tm : term) : 
           let tm_fun = Term.Fun (None, List.hd types, tm_with_arg) in
           fold { inner = tm_fun; loc = tm.loc } rest (List.tl types)
     in
-  (* print_endline ("final solution for meta " ^ string_of_int m ^ ": " ^ Pretty.term_to_string e (fold tm (List.rev args) (List.rev (Hashtbl.find e.metas m).vartypes))); *)
+    (* print_endline ("final solution for meta " ^ string_of_int m ^ ": " ^ Pretty.term_to_string e (fold tm (List.rev args) (List.rev (Hashtbl.find e.metas m).vartypes))); *)
 
     Hashtbl.replace
       e.metas
