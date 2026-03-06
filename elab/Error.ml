@@ -51,6 +51,48 @@ type elab_error_info = {
 
 exception ElabError of elab_error_info
 
+(*
+ * Suggestions and pretty-printing helpers
+ *)
+
+let levenshtein_distance (s : string) (t : string) : int =
+  let m = String.length s in
+  let n = String.length t in
+  let dp = Array.make_matrix (m + 1) (n + 1) 0 in
+  for i = 0 to m do
+    dp.(i).(0) <- i
+  done;
+  for j = 0 to n do
+    dp.(0).(j) <- j
+  done;
+  for i = 1 to m do
+    for j = 1 to n do
+      let cost = if s.[i - 1] = t.[j - 1] then 0 else 1 in
+      dp.(i).(j) <-
+        min (min (dp.(i - 1).(j) + 1) (dp.(i).(j - 1) + 1)) (dp.(i - 1).(j - 1) + cost)
+    done
+  done;
+  dp.(m).(n)
+
+let suggest_similar_names (unknown : string) (env : Types.ctx) : string list =
+  let candidates = ref [] in
+  Hashtbl.iter
+    (fun name _entry ->
+      let dist = levenshtein_distance unknown name in
+      let score =
+        if String.length unknown > 0 && String.length name > 0 && unknown.[0] = name.[0]
+        then dist - 1
+        else dist
+      in
+      candidates := (name, score) :: !candidates)
+    env.env;
+  let sorted = List.sort (fun (_, d1) (_, d2) -> compare d1 d2) !candidates in
+  sorted |> List.filter (fun (_, d) -> d <= 3) |> List.map fst |> fun names ->
+  let rec take k xs =
+    match (k, xs) with 0, _ | _, [] -> [] | k, x :: xs' -> x :: take (k - 1) xs'
+  in
+  take 3 names
+
 (* kernel error handling *)
 
 (*
@@ -179,8 +221,14 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         decl_str
         loc_str
         (ktype_err_to_string kernel_exn)
-  | UnknownName { name } ->
-      Printf.sprintf "Unknown name '%s' in %s at %s" name decl_str loc_str
+  | UnknownName { name } -> (
+      let base = Printf.sprintf "Unknown name '%s' in %s at %s" name decl_str loc_str in
+      let suggestions = suggest_similar_names name e in
+      match suggestions with
+      | [] -> base
+      | _ ->
+          let sugg_str = String.concat ", " suggestions in
+          base ^ Printf.sprintf "\nDid you mean: %s?" sugg_str)
   | InternalError msg ->
       Printf.sprintf
         "Local context:\n%s\nInternal error in %s at %s: %s"
