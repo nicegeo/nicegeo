@@ -463,4 +463,42 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     (fun (equality : Eq _ (Add (Length d a) (Length b c)) (Add (Length d a) (Length a f))) =>
     Eq.symm _ _ _ (CancelAdd (Length b c) (Length a f) (Length d a) equality)
     ))))))))))))))))
-    
+
+
+(* maybe we want general excluded middle as an axiom? *)
+Theorem point_eq_em : (a: Point) -> (b: Point) -> Or (Eq _ a b) (Eq _ a b -> False) :=
+    fun (a: Point) (b: Point) =>
+    Or.elim _ _ _ (ZeroLeast (Length a b))
+    (fun (h: Lt Zero (Length a b)) =>
+    Or.inr (Eq _ a b) (Eq _ a b -> False) (
+    fun (ab : Eq _ a b) =>
+    (Ne.symm _ _ _ (LtNe Zero (Length a b) h)) (snd _ _ (length_eq_zero_iff a b) ab))
+    )
+    (fun (h: Eq _ Zero (Length a b)) => Or.inl (Eq _ a b) (Eq _ a b -> False) (fst _ _ (length_eq_zero_iff a b) (Eq.symm _ _ _ h)))
+
+Theorem prop2 : (a : Point) -> (b: Point) -> (c: Point)
+    -> Exists Point (fun f => Eq _ (Length a f) (Length b c)) :=
+    fun (a: Point) (b: Point) (c: Point) =>
+
+    Or.elim _ _ _ (point_eq_em b c)
+    (fun (bc: Eq _ b c) =>
+
+    Exists.intro Point (fun f => Eq _ (Length a f) (Length b c)) a (
+        EqTrans _ _ _ _
+        (snd _ _ (length_eq_zero_iff a a) (Eq.intro _ a))
+        (Eq.symm _ _ _ (snd _ _ (length_eq_zero_iff b c) bc))
+    ))
+
+    (fun (bc: Eq _ b c -> False) =>
+
+    Or.elim _ _ _ (point_eq_em a b)
+    (fun (ab : Eq _ a b) =>
+
+    Exists.intro Point (fun f => Eq _ (Length a f) (Length b c)) c (
+        Eq.elim Point a (fun x => Eq _ (Length a c) (Length x c))
+        (Eq.intro _ (Length a c))
+        b ab
+    )
+    )
+    (fun (ab : Eq _ a b -> False) => prop2_ne a b c bc ab)
+    )
