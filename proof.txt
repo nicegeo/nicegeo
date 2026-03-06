@@ -176,7 +176,7 @@ Exists Point (fun (c : Point) =>
         Inside of here, we have access to the fact `cbb : OnCircle c bb`.
         We also care about this fact!
 
-        Now, we can move on to using `OnCircleIffLengthEq b c bb bbb cbb`.
+        Now, we can move on to using `on_circle_iff_length_eq b c bb bbb cbb`.
         We then use `And.elim` to get access to the right to left direction.
     *)
     
@@ -198,7 +198,7 @@ Exists Point (fun (c : Point) =>
 
     (*
         Inside of here, we have access to `bc_ba : (Eq Len (Length b c) (Length b a))`.
-        Next, we use `OnCircleIffLengthEq a b c aa aaa baa` and then use
+        Next, we use `on_circle_iff_length_eq a b c aa aaa baa` and then use
         `And.elim` to get the right to left direction.
     *) 
     
@@ -243,11 +243,11 @@ Exists Point (fun (c : Point) =>
     (rtl_ab_ac caa)
     )
 
-    (OnCircleIffLengthEq a b c aa aaa baa) 
+    (on_circle_iff_length_eq a b c aa aaa baa) 
     )
     (rtl_bc_ba abb)
     ) 
-    (OnCircleIffLengthEq b c a bb bbb cbb)
+    (on_circle_iff_length_eq b c a bb bbb cbb)
     ) 
     three_facts_left
     ) 
@@ -308,7 +308,7 @@ Exists Point (fun (c : Point) =>
     Exists.intro Point (fun (c : Point) =>
 		And (Eq Len (Length a b) (Length a c))
 			(Eq Len (Length b c) (Length b a)))
-    c (And.intro _ _ (snd _ _ (OnCircleIffLengthEq a b c aa aaa baa) caa) (snd _ _ (OnCircleIffLengthEq b c a bb bbb cbb) abb))
+    c (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
 	))))))
 
 
@@ -328,6 +328,15 @@ Theorem AddCancel : (x: Len) -> (y: Len) -> (z: Len) -> Eq _ (Add x z) (Add y z)
     )
     (fun (eqxy : Eq _ x y) => eqxy)
     )
+
+
+Theorem CancelAdd : (x: Len) -> (y: Len) -> (z: Len) -> Eq _ (Add z x) (Add z y) -> Eq _ x y :=
+    fun x y z h =>
+    AddCancel x y z (
+        Eq.elim Len (Add z y) (fun a => Eq _ (Add x z) a)
+        (Eq.elim Len (Add z x) (fun a => Eq _ a (Add z y)) h (Add x z) (AddComm z x))
+        (Add y z) (AddComm z y)
+        )
 
 
 Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) -> 
@@ -408,6 +417,9 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     have _ _ (Ne.symm _ _ _ (length_pts_ne a b d (fst _ _ eqtri) ab))
     (fun (da : (Eq _ d a -> False)) =>
 
+    have _ _ (EqTrans _ _ _ _ (length_symm d b) (EqTrans _ _ _ _ (snd _ _ eqtri) (EqTrans _ _ _ _ (length_symm b a) (EqTrans _ _ _ _ (fst _ _ eqtri) (length_symm a d)))))
+    (fun (dbda : Eq _ (Length d b) (Length d a)) =>
+
     have _ _ (
         have _ _ (length_sum_of_between d b e Bdbe)
         (fun (sum : Eq _ (Add (Length d b) (Length b e)) (Length d e)) =>
@@ -417,7 +429,7 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
         have _ _ (
             Eq.elim Len (Add (Length b e) (Length d b)) (fun x => Lt (Length d a) x)
             (Eq.elim Len (Add Zero (Length d b)) (fun x => Lt x (Add (Length b e) (Length d b))) (LtAdd Zero (Length b e) (Length d b) lbe) (Length d a) 
-                (EqTrans _ _ _ _ (ZeroAdd (Length d b)) (EqTrans _ _ _ _ (length_symm d b) (EqTrans _ _ _ _ (snd _ _ eqtri) (EqTrans _ _ _ _ (length_symm b a) (EqTrans _ _ _ _ (fst _ _ eqtri) (length_symm a d)))))))
+                (EqTrans _ _ _ _ (ZeroAdd (Length d b)) dbda))
             (Length d e) (EqTrans _ _ _ _ (AddComm (Length b e) (Length d b)) sum)
         )
         (fun (ineq : Lt (Length d a) (Length d e)) =>
@@ -434,18 +446,23 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     Exists.elim _ _ _ (pt_oncircle_of_inside_ne d a bb da abb)
     (fun (f: Point) (h1: And (Between d a f) (OnCircle f bb)) =>
 
+    And.elim1 _ _ _ h1
+    (fun (Bdaf : Between d a f) (fbb : OnCircle f bb) =>
     
-    sorry (Exists Point (fun (f: Point) => Eq _ (Length a f) (Length b c)))
+    Exists.intro Point (fun (f: Point) => Eq _ (Length a f) (Length b c)) f (
+
+    have _ _ (
+        Eq.elim Len (Length d f) (fun x => Eq _ (Add (Length d a) (Length b c)) x)
+        (Eq.elim Len (Length b e) (fun x => Eq _ (Add (Length d a) x) (Length d f))
+        (Eq.elim Len (Length d b) (fun x => Eq _ (Add x (Length b e)) (Length d f))
+        (Eq.elim Len (Length d e) (fun x => Eq _ x (Length d f))
+        (snd _ _ (on_circle_iff_length_eq d e f bb dbb ebb) fbb)
+        (Add (Length d b) (Length b e)) (Eq.symm _ _ _ (length_sum_of_between d b e Bdbe)))
+        (Length d a) dbda)
+        (Length b c) (snd _ _ (on_circle_iff_length_eq b e c aa baa eaa) caa))
+        (Add (Length d a) (Length a f)) (Eq.symm _ _ _ (length_sum_of_between d a f Bdaf))
+    )
+    (fun (equality : Eq _ (Add (Length d a) (Length b c)) (Add (Length d a) (Length a f))) =>
+    Eq.symm _ _ _ (CancelAdd (Length b c) (Length a f) (Length d a) equality)
+    ))))))))))))))))
     
-    )
-    
-    )
-    )    
-    )
-    )
-    )
-    )
-    )
-    )
-    )
-    ))
