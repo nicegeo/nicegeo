@@ -336,7 +336,7 @@ Theorem CancelAdd : (x: Len) -> (y: Len) -> (z: Len) -> Eq _ (Add z x) (Add z y)
         Eq.elim Len (Add z y) (fun a => Eq _ (Add x z) a)
         (Eq.elim Len (Add z x) (fun a => Eq _ a (Add z y)) h (Add x z) (AddComm z x))
         (Add y z) (AddComm z y)
-        )
+    )
 
 
 Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) -> 
@@ -358,8 +358,6 @@ Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) ->
     (between_symm c b a (snd _ _ (snd _ _ h)))
     (fst _ _ (snd _ _ h))
     ))))
-
-Axiom sorry : (P: Prop) -> P
 
 Theorem length_pts_eq : (a: Point) -> (b: Point) -> (c: Point) -> Eq _ (Length a b) (Length a c) -> 
     Eq _ a b -> Eq _ a c :=
