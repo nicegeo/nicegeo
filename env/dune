@@ -1,0 +1,4 @@
+(executable
+ (public_name generate-env)
+ (name main)
+ (libraries kernel elab))

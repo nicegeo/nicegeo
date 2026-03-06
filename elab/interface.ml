@@ -1,4 +1,6 @@
 module KTerm = Kernel.Term
+module KInfer = Kernel.Infer
+module KEnv = Kernel.Env
 
 let create () : Types.ctx =
   {
@@ -8,17 +10,15 @@ let create () : Types.ctx =
     lctx = Hashtbl.create 16;
   }
 
-(* Creates an elaborator environment by parsing the environment file at `path_to_env`. *)
-let create_with_env_path (path_to_env : string) : Types.ctx =
-  let e = create () in
-  let ic = open_in path_to_env in
-  let lexbuf = Lexing.from_channel ic in
-  let decls = Parser.main Lexer.token lexbuf in
-  let _ = List.map (Typecheck.process_decl e) decls in
-  e
-
 (* Creates an elaborator environment with the default environment path. *)
-let create_with_env () : Types.ctx = create_with_env_path "elab/env.txt"
+let create_with_env () : Types.ctx =
+  let e = create () in
+  let add_axiom name ty_k =
+    KInfer.add_axiom e.kenv name ty_k;
+    Hashtbl.add e.env name { name; ty = Convert.conv_to_term ty_k; data = Types.Axiom }
+  in
+  KEnv.get_env add_axiom;
+  e
 
 let parse_term (s : string) : Term.term =
   let lexbuf = Lexing.from_string s in
