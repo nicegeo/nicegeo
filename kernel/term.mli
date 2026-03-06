@@ -3,13 +3,13 @@
 
 (** Kernel representation of terms *)
 type term =
-  | Const of string (** constants *)
-  | Bvar of int (** bound variables *)
-  | Fvar of string (** free variables *)
-  | Lam of term * term (** functions *)
-  | Forall of term * term (** function types *)
-  | App of term * term (** function application *)
-  | Sort of int (** sorts *)
+  | Const of string  (** constants *)
+  | Bvar of int  (** bound variables *)
+  | Fvar of string  (** free variables *)
+  | Lam of term * term  (** functions *)
+  | Forall of term * term  (** function types *)
+  | App of term * term  (** function application *)
+  | Sort of int  (** sorts *)
 
 type environment = (string, term) Hashtbl.t
 (** Maps constants to their types *)
