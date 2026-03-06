@@ -26,7 +26,7 @@ dune build
 
 Run the kernel on the test file:
 ```bash
-dune exec system-e-kernel proof.txt
+dune exec nicegeo proof.txt
 ```
 
 ## Running Tests
@@ -43,7 +43,7 @@ dune runtest
 - `elab/` is a layer on top of the kernel with many usability features separate from the kernel. It handles
   parsing, automatically filling holes inserted by the user, and has its own typechecking logic. It ultimately
   produces a kernel-level term (that should represent what the user intended to some degree) for the kernel to check. 
-	- `elab/elab.ml` contains the main interface of the layer: creating a context, adding the axioms in `env.txt`,
+	- `elab/interface.ml` contains the main interface of the layer: creating a context, adding the axioms in `env.txt`,
 	  and checking parsed proofs. 
 	- `elab/typecheck.ml` contains the type checking and unification logic for automatically filling holes, and
 	  calls the kernel to check the final produced term.

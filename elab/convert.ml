@@ -1,5 +1,5 @@
 open Term
-module KTerm = System_e_kernel.Term
+module KTerm = Kernel.Term
 
 (* Converts an elaboration-level term to a kernel-level term. tm must not have any holes *)
 let rec conv_to_kterm (tm : term) : KTerm.term =

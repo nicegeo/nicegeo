@@ -1,6 +1,6 @@
 (* For constructing elaborator-level terms in tests *)
 
-open E_elab.Term
+open Elab.Term
 
 let l = dummy_range
 let name s = { inner = Name s; loc = l }

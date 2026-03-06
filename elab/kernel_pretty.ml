@@ -1,7 +1,7 @@
 (** Pretty-printing for kernel terms. Lives outside the kernel: we pass kernel terms here
     and get back strings. Hides raw [Bvar] indices and uses readable Sort names. *)
 
-module KTerm = System_e_kernel.Term
+module KTerm = Kernel.Term
 
 let sort_to_string = function 0 -> "Prop" | 1 -> "Type" | n -> "Sort" ^ string_of_int n
 

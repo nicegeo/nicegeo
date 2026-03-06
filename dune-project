@@ -1,6 +1,6 @@
 (lang dune 3.17)
 
-(name system-e-kernel)
+(name nicegeo)
 
 (using menhir 3.0)
 
@@ -13,12 +13,12 @@
 
 (maintainers "Maintainer Name <maintainer@example.com>")
 
-(license LICENSE)
+(license MIT)
 
 (documentation https://url/to/documentation)
 
 (package
- (name system-e-kernel)
+ (name nicegeo)
  (synopsis "A short synopsis")
  (description "A longer description")
  (depends

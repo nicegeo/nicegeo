@@ -1,4 +1,4 @@
-module KTerm = System_e_kernel.Term
+module KTerm = Kernel.Term
 
 let create () : Types.ctx =
   {

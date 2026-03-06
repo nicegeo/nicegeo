@@ -34,8 +34,8 @@ open Decl
 open Term
 open Convert
 open Types
-module KInfer = System_e_kernel.Infer
-module KExceptions = System_e_kernel.Exceptions
+module KInfer = Kernel.Infer
+module KExceptions = Kernel.Exceptions
 
 let raise_at (tm : term) (e : Error.error_type) : 'a =
   let loc = Some tm.loc in
