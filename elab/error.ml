@@ -64,6 +64,48 @@ type elab_error_info = {
 
 exception ElabError of elab_error_info
 
+(*
+ * Suggestions and pretty-printing helpers
+ *)
+
+let levenshtein_distance (s : string) (t : string) : int =
+  let m = String.length s in
+  let n = String.length t in
+  let dp = Array.make_matrix (m + 1) (n + 1) 0 in
+  for i = 0 to m do
+    dp.(i).(0) <- i
+  done;
+  for j = 0 to n do
+    dp.(0).(j) <- j
+  done;
+  for i = 1 to m do
+    for j = 1 to n do
+      let cost = if s.[i - 1] = t.[j - 1] then 0 else 1 in
+      dp.(i).(j) <-
+        min (min (dp.(i - 1).(j) + 1) (dp.(i).(j - 1) + 1)) (dp.(i - 1).(j - 1) + cost)
+    done
+  done;
+  dp.(m).(n)
+
+let suggest_similar_names (unknown : string) (env : Types.ctx) : string list =
+  let candidates = ref [] in
+  Hashtbl.iter
+    (fun name _entry ->
+      let dist = levenshtein_distance unknown name in
+      let score =
+        if String.length unknown > 0 && String.length name > 0 && unknown.[0] = name.[0]
+        then dist - 1
+        else dist
+      in
+      candidates := (name, score) :: !candidates)
+    env.env;
+  let sorted = List.sort (fun (_, d1) (_, d2) -> compare d1 d2) !candidates in
+  sorted |> List.filter (fun (_, d) -> d <= 3) |> List.map fst |> fun names ->
+  let rec take k xs =
+    match (k, xs) with 0, _ | _, [] -> [] | k, x :: xs' -> x :: take (k - 1) xs'
+  in
+  take 3 names
+
 (* kernel error handling *)
 
 (*
@@ -207,7 +249,7 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
       | None -> ""
     in
     Printf.sprintf
-      "Parse error in %s at %s:%s\n%s (input: '%s')"
+      "Parse error%s:%s\n%s (input: '%s')"
       ctx_str
       snippet
       error_msg
@@ -221,7 +263,8 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
       Printf.sprintf
         "Local context:\n\
          %s\n\
-         Type mismatch%s: term\n\
+         Type mismatch%s: %s\n\
+         term\n\
          %s\n\
          has type\n\
          %s\n\
@@ -235,7 +278,7 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         (Pretty.term_to_string e expected_type)
   | CannotInferHole ->
       Printf.sprintf
-        "Local context:\n%s\nCannot infer hole%s"
+        "Local context:\n%s\nCannot infer hole%s%s"
         local_ctx_str
         ctx_str
         snippet
@@ -245,22 +288,32 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         ctx_str
         (ktype_err_to_string kernel_exn)
   | UnknownName { name } ->
-      Printf.sprintf
-        "Unknown name '%s'%s"
-        name
-        ctx_str
-        snippet
+      let base =
+        Printf.sprintf
+          "Unknown name '%s'%s%s"
+          name
+          ctx_str
+          snippet
+      in
+      let suggestions = suggest_similar_names name e in
+      (match suggestions with
+       | [] -> base
+       | _ ->
+           let sugg_str = String.concat ", " suggestions in
+           base ^ Printf.sprintf "\nDid you mean: %s?" sugg_str)
   | InternalError msg ->
       Printf.sprintf
-        "Local context:\n%s\nInternal error%s: %s"
+        "Local context:\n%s\nInternal error%s%s: %s"
         local_ctx_str
-        ctx_str
+        ctx_str 
+        snippet
         msg
   | FunctionExpected { not_func; not_func_type; arg } ->
       Printf.sprintf
         "Local context:\n\
          %s\n\
-         Expected a function%s, but got\n\
+         Expected a function%s:%s\n\
+         but got\n\
          %s\n\
          of type\n\
          %s\n\
@@ -276,7 +329,8 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
       Printf.sprintf
         "Local context:\n\
          %s\n\
-         Expected a type%s, but got\n\
+         Expected a type%s:%s\n\
+         but got\n\
          %s\n\
          which has type\n\
          %s\n"
@@ -289,20 +343,18 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
       Printf.sprintf
         "Local context:\n\
          %s\n\
-         Failed to unify in %s at %s:\n\
+         Failed to unify%s:%s\n\
          %s\n\
          with\n\
          %s\n"
         local_ctx_str
-        decl_str
-        loc_str
+        ctx_str
         snippet
         (Pretty.term_to_string e left)
         (Pretty.term_to_string e right)
   | ExpectedTheorem { name; actual } ->
       Printf.sprintf
-        "Error in %s at %s: expected theorem '%s', but it is %s"
-        decl_str
-        loc_str
+        "Error%s: expected theorem '%s', but it is %s"
+        ctx_str
         name
         actual
