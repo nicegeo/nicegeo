@@ -6,6 +6,6 @@
     terms are then verified by the trusted kernel before being committed to the
     environment. *)
 
-(** Type-check and add a single declaration to the elaboration context. Raises
-    [Error.ElabError] on any error. *)
+(** [process_decl ctx decl] type-checks and adds a single declaration to the elaboration
+    context. Raises [Error.ElabError] on any error. *)
 val process_decl : Types.ctx -> Decl.declaration -> unit

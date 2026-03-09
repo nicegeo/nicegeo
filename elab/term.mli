@@ -9,14 +9,13 @@ type range = {
 (** A dummy range for when no location information is available. *)
 val dummy_range : range
 
-(** Elaboration-level terms. Contains location information for precision in error
-    messages. *)
+(** Elaboration-level terms. *)
 type term = {
-  inner : termkind;
-  loc : range;
+  inner : termkind;  (** The kind of a term, along with its data. *)
+  loc : range;  (** The source location (for precision in error messages). *)
 }
 
-(** Actual term variants. *)
+(** The kind of a term. *)
 and termkind =
   | Name of string
       (** A name as written in source code (resolved to a constant or the nearest bound
@@ -26,16 +25,19 @@ and termkind =
       (** Free variable introduced during internal processing; the int is a unique id. *)
   | Hole of int
       (** A hole (underscore) to be filled by elaboration; the int is a unique id. *)
-  | Fun of string option * term * term  (** [Fun(name, ty, body)]: lambda abstraction. *)
+  | Fun of string option * term * term
+      (** A lambda abstraction, containing an optional parameter name, the input type, and
+          the body. *)
   | Arrow of string option * term * term
-      (** [Arrow(name, ty, ret)]: dependent function type. *)
-  | App of term * term  (** [App (f, arg)]: Function application. *)
+      (** A dependent function type, containing an optional parameter name, the input
+          type, and the return type. *)
+  | App of term * term  (** Apply a term (ideally a function) to an argument. *)
   | Sort of int  (** Universe level. Sort 0 = Prop, Sort 1 = Type. *)
 
-(** Generate a fresh unique hole id. *)
+(** [gen_hole_id ()] generates a fresh hole id. *)
 val gen_hole_id : unit -> int
 
-(** Generate a fresh unique free-variable id. Alias for [gen_hole_id]. *)
+(** [gen_fvar_id ()] generates a fresh free-variable id. Alias for [gen_hole_id]. *)
 val gen_fvar_id : unit -> int
 
 (** [bind_bvar tm bvar_idx pat] replaces all occurrences of [pat] in [tm] with a reference
@@ -46,5 +48,5 @@ val bind_bvar : term -> int -> term -> term
     index [bvar_idx] (relative to the top of [tm]) with [replacement]. *)
 val replace_bvar : term -> int -> term -> term
 
-(** Returns [true] if the term is literally a [Sort _]. *)
+(** [is_sort] returns [true] if the term is literally a [Sort _]. *)
 val is_sort : term -> bool

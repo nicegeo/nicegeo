@@ -1,6 +1,6 @@
 (** Top-level elaborator API. *)
 
-(** Create an empty elaboration context. *)
+(** [create ()] creates an empty elaboration context. *)
 val create : unit -> Types.ctx
 
 (** [create_with_env_path path] creates an elaboration context pre-populated by
