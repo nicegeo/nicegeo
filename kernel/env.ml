@@ -3,9 +3,11 @@
 open Term
 
 let get_env (add_axiom) =
+(* Empty : Type *)
 add_axiom "Empty" (
 Sort 1
 );
+(* Empty.elim : (C : Type) -> Empty -> C *)
 add_axiom "Empty.elim" (
 Forall (Sort 1,
   Forall (Const "Empty",
@@ -13,9 +15,11 @@ Forall (Sort 1,
   )
 )
 );
+(* False : Prop *)
 add_axiom "False" (
 Sort 0
 );
+(* False.elim : (P : Prop) -> False -> P *)
 add_axiom "False.elim" (
 Forall (Sort 0,
   Forall (Const "False",
@@ -23,6 +27,7 @@ Forall (Sort 0,
   )
 )
 );
+(* Exists : (A : Type) -> A -> Prop -> Prop *)
 add_axiom "Exists" (
 Forall (Sort 1,
   Forall (Forall (Bvar 0,
@@ -32,6 +37,7 @@ Forall (Sort 1,
   )
 )
 );
+(* Exists.intro : (A : Type) -> (p : A -> Prop) -> (a : A) -> (h : p a) -> Exists A p *)
 add_axiom "Exists.intro" (
 Forall (Sort 1,
   Forall (Forall (Bvar 0,
@@ -45,6 +51,7 @@ Forall (Sort 1,
   )
 )
 );
+(* Exists.elim : (A : Type) -> (p : A -> Prop) -> (b : Prop) -> (e : Exists A p) -> (a : A) -> p a -> b -> b *)
 add_axiom "Exists.elim" (
 Forall (Sort 1,
   Forall (Forall (Bvar 0,
@@ -64,6 +71,7 @@ Forall (Sort 1,
   )
 )
 );
+(* Forall : (A : Type) -> A -> Prop -> Prop *)
 add_axiom "Forall" (
 Forall (Sort 1,
   Forall (Forall (Bvar 0,
@@ -73,6 +81,7 @@ Forall (Sort 1,
   )
 )
 );
+(* Forall.intro : (A : Type) -> (p : A -> Prop) -> (a : A) -> p a -> Forall A p *)
 add_axiom "Forall.intro" (
 Forall (Sort 1,
   Forall (Forall (Bvar 0,
@@ -86,6 +95,7 @@ Forall (Sort 1,
   )
 )
 );
+(* Forall.elim : (A : Type) -> (p : A -> Prop) -> Forall A p -> (a : A) -> p a *)
 add_axiom "Forall.elim" (
 Forall (Sort 1,
   Forall (Forall (Bvar 0,
@@ -99,6 +109,7 @@ Forall (Sort 1,
   )
 )
 );
+(* And : Prop -> Prop -> Prop *)
 add_axiom "And" (
 Forall (Sort 0,
   Forall (Sort 0,
@@ -106,6 +117,7 @@ Forall (Sort 0,
   )
 )
 );
+(* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
 add_axiom "And.intro" (
 Forall (Sort 0,
   Forall (Sort 0,
@@ -117,6 +129,7 @@ Forall (Sort 0,
   )
 )
 );
+(* And.elim : (A : Prop) -> (B : Prop) -> (C : Prop) -> (f : A -> B -> C) -> And A B -> C *)
 add_axiom "And.elim" (
 Forall (Sort 0,
   Forall (Sort 0,
@@ -134,6 +147,7 @@ Forall (Sort 0,
   )
 )
 );
+(* Or : Prop -> Prop -> Prop *)
 add_axiom "Or" (
 Forall (Sort 0,
   Forall (Sort 0,
@@ -141,6 +155,7 @@ Forall (Sort 0,
   )
 )
 );
+(* Or.inl : (A : Prop) -> (B : Prop) -> A -> Or A B *)
 add_axiom "Or.inl" (
 Forall (Sort 0,
   Forall (Sort 0,
@@ -150,6 +165,7 @@ Forall (Sort 0,
   )
 )
 );
+(* Or.inr : (A : Prop) -> (B : Prop) -> B -> Or A B *)
 add_axiom "Or.inr" (
 Forall (Sort 0,
   Forall (Sort 0,
@@ -159,6 +175,7 @@ Forall (Sort 0,
   )
 )
 );
+(* Or.elim : (A : Prop) -> (B : Prop) -> (C : Prop) -> Or A B -> A -> C -> B -> C -> C *)
 add_axiom "Or.elim" (
 Forall (Sort 0,
   Forall (Sort 0,
@@ -178,6 +195,7 @@ Forall (Sort 0,
   )
 )
 );
+(* Eq : (T : Type) -> T -> T -> Prop *)
 add_axiom "Eq" (
 Forall (Sort 1,
   Forall (Bvar 0,
@@ -187,6 +205,7 @@ Forall (Sort 1,
   )
 )
 );
+(* Eq.intro : (T : Type) -> (t : T) -> Eq T t t *)
 add_axiom "Eq.intro" (
 Forall (Sort 1,
   Forall (Bvar 0,
@@ -194,6 +213,7 @@ Forall (Sort 1,
   )
 )
 );
+(* Eq.elim : (T : Type) -> (t : T) -> (motive : T -> Prop) -> (rfl : motive t) -> (t1 : T) -> Eq T t t1 -> motive t1 *)
 add_axiom "Eq.elim" (
 Forall (Sort 1,
   Forall (Bvar 0,
@@ -211,18 +231,23 @@ Forall (Sort 1,
   )
 )
 );
+(* Point : Type *)
 add_axiom "Point" (
 Sort 1
 );
+(* Line : Type *)
 add_axiom "Line" (
 Sort 1
 );
+(* Circle : Type *)
 add_axiom "Circle" (
 Sort 1
 );
+(* Len : Type *)
 add_axiom "Len" (
 Sort 1
 );
+(* Lt : Len -> Len -> Prop *)
 add_axiom "Lt" (
 Forall (Const "Len",
   Forall (Const "Len",
@@ -230,6 +255,7 @@ Forall (Const "Len",
   )
 )
 );
+(* LtTrans : (a : Len) -> (b : Len) -> (c : Len) -> Lt a b -> Lt b c -> Lt a c *)
 add_axiom "LtTrans" (
 Forall (Const "Len",
   Forall (Const "Len",
@@ -243,6 +269,7 @@ Forall (Const "Len",
   )
 )
 );
+(* LtTricot : (a : Len) -> (b : Len) -> Or (Lt a b) (Or (Lt b a) (Eq Len a b)) *)
 add_axiom "LtTricot" (
 Forall (Const "Len",
   Forall (Const "Len",
@@ -250,6 +277,7 @@ Forall (Const "Len",
   )
 )
 );
+(* LtAntisymm : (a : Len) -> (b : Len) -> Lt a b -> Lt b a -> False *)
 add_axiom "LtAntisymm" (
 Forall (Const "Len",
   Forall (Const "Len",
@@ -261,14 +289,17 @@ Forall (Const "Len",
   )
 )
 );
+(* Zero : Len *)
 add_axiom "Zero" (
 Const "Len"
 );
+(* ZeroLeast : (a : Len) -> Or (Lt Zero a) (Eq Len Zero a) *)
 add_axiom "ZeroLeast" (
 Forall (Const "Len",
   App (App (Const "Or", App (App (Const "Lt", Const "Zero"), Bvar 0)), App (App (App (Const "Eq", Const "Len"), Const "Zero"), Bvar 0))
 )
 );
+(* Add : Len -> Len -> Len *)
 add_axiom "Add" (
 Forall (Const "Len",
   Forall (Const "Len",
@@ -276,6 +307,7 @@ Forall (Const "Len",
   )
 )
 );
+(* AddComm : (a : Len) -> (b : Len) -> Eq Len (Add a b) (Add b a) *)
 add_axiom "AddComm" (
 Forall (Const "Len",
   Forall (Const "Len",
@@ -283,6 +315,7 @@ Forall (Const "Len",
   )
 )
 );
+(* AddAssoc : (a : Len) -> (b : Len) -> (c : Len) -> Eq Len (Add (Add a b) c) (Add a (Add b c)) *)
 add_axiom "AddAssoc" (
 Forall (Const "Len",
   Forall (Const "Len",
@@ -292,11 +325,13 @@ Forall (Const "Len",
   )
 )
 );
+(* AddZero : (a : Len) -> Eq Len (Add a Zero) a *)
 add_axiom "AddZero" (
 Forall (Const "Len",
   App (App (App (Const "Eq", Const "Len"), App (App (Const "Add", Bvar 0), Const "Zero")), Bvar 0)
 )
 );
+(* LtAdd : (a : Len) -> (b : Len) -> (c : Len) -> Lt a b -> Lt (Add a c) (Add b c) *)
 add_axiom "LtAdd" (
 Forall (Const "Len",
   Forall (Const "Len",
@@ -308,6 +343,7 @@ Forall (Const "Len",
   )
 )
 );
+(* OnLine : Point -> Line -> Prop *)
 add_axiom "OnLine" (
 Forall (Const "Point",
   Forall (Const "Line",
@@ -315,6 +351,7 @@ Forall (Const "Point",
   )
 )
 );
+(* SameSide : Point -> Point -> Line -> Prop *)
 add_axiom "SameSide" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -324,6 +361,7 @@ Forall (Const "Point",
   )
 )
 );
+(* Between : Point -> Point -> Point -> Prop *)
 add_axiom "Between" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -333,6 +371,7 @@ Forall (Const "Point",
   )
 )
 );
+(* OnCircle : Point -> Circle -> Prop *)
 add_axiom "OnCircle" (
 Forall (Const "Point",
   Forall (Const "Circle",
@@ -340,6 +379,7 @@ Forall (Const "Point",
   )
 )
 );
+(* InCircle : Point -> Circle -> Prop *)
 add_axiom "InCircle" (
 Forall (Const "Point",
   Forall (Const "Circle",
@@ -347,6 +387,7 @@ Forall (Const "Point",
   )
 )
 );
+(* CenterCircle : Point -> Circle -> Prop *)
 add_axiom "CenterCircle" (
 Forall (Const "Point",
   Forall (Const "Circle",
@@ -354,6 +395,7 @@ Forall (Const "Point",
   )
 )
 );
+(* LinesInter : Line -> Line -> Prop *)
 add_axiom "LinesInter" (
 Forall (Const "Line",
   Forall (Const "Line",
@@ -361,6 +403,7 @@ Forall (Const "Line",
   )
 )
 );
+(* LineCircleInter : Line -> Circle -> Prop *)
 add_axiom "LineCircleInter" (
 Forall (Const "Line",
   Forall (Const "Circle",
@@ -368,6 +411,7 @@ Forall (Const "Line",
   )
 )
 );
+(* CirclesInter : Circle -> Circle -> Prop *)
 add_axiom "CirclesInter" (
 Forall (Const "Circle",
   Forall (Const "Circle",
@@ -375,6 +419,7 @@ Forall (Const "Circle",
   )
 )
 );
+(* Length : (a : Point) -> (b : Point) -> Len *)
 add_axiom "Length" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -382,6 +427,7 @@ Forall (Const "Point",
   )
 )
 );
+(* Angle : (a : Point) -> (b : Point) -> (c : Point) -> Len *)
 add_axiom "Angle" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -391,6 +437,7 @@ Forall (Const "Point",
   )
 )
 );
+(* Area : (a : Point) -> (b : Point) -> (c : Point) -> Len *)
 add_axiom "Area" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -400,9 +447,11 @@ Forall (Const "Point",
   )
 )
 );
+(* RightAngle : Len *)
 add_axiom "RightAngle" (
 Const "Len"
 );
+(* pt_on_line : (L : Line) -> Exists Point (fun (a : Point) => OnLine a L) *)
 add_axiom "pt_on_line" (
 Forall (Const "Line",
   App (App (Const "Exists", Const "Point"), Lam (Const "Point",
@@ -410,6 +459,7 @@ Forall (Const "Line",
   ))
 )
 );
+(* pt_between_on_line : (L : Line) -> (b : Point) -> (c : Point) -> OnLine b L -> OnLine c L -> Eq Point b c -> False -> Exists Point (fun (a : Point) => And (OnLine a L) (Between b a c)) *)
 add_axiom "pt_between_on_line" (
 Forall (Const "Line",
   Forall (Const "Point",
@@ -429,6 +479,7 @@ Forall (Const "Line",
   )
 )
 );
+(* pt_extension_on_line : (L : Line) -> (b : Point) -> (c : Point) -> OnLine b L -> OnLine c L -> Eq Point b c -> False -> Exists Point (fun (a : Point) => And (OnLine a L) (Between b c a)) *)
 add_axiom "pt_extension_on_line" (
 Forall (Const "Line",
   Forall (Const "Point",
@@ -448,6 +499,7 @@ Forall (Const "Line",
   )
 )
 );
+(* pt_sameside_of_not_online : (L : Line) -> (b : Point) -> OnLine b L -> False -> Exists Point (fun (a : Point) => SameSide a b L) *)
 add_axiom "pt_sameside_of_not_online" (
 Forall (Const "Line",
   Forall (Const "Point",
@@ -461,6 +513,7 @@ Forall (Const "Line",
   )
 )
 );
+(* pt_oppositeside_of_not_online : (L : Line) -> (b : Point) -> OnLine b L -> False -> Exists Point (fun (a : Point) => And (OnLine a L -> False) (SameSide a b L -> False)) *)
 add_axiom "pt_oppositeside_of_not_online" (
 Forall (Const "Line",
   Forall (Const "Point",
@@ -478,6 +531,7 @@ Forall (Const "Line",
   )
 )
 );
+(* pt_on_circle : (aa : Circle) -> Exists Point (fun (a : Point) => OnCircle a aa) *)
 add_axiom "pt_on_circle" (
 Forall (Const "Circle",
   App (App (Const "Exists", Const "Point"), Lam (Const "Point",
@@ -485,6 +539,7 @@ Forall (Const "Circle",
   ))
 )
 );
+(* pt_inside_circle : (aa : Circle) -> Exists Point (fun (a : Point) => InCircle a aa) *)
 add_axiom "pt_inside_circle" (
 Forall (Const "Circle",
   App (App (Const "Exists", Const "Point"), Lam (Const "Point",
@@ -492,6 +547,7 @@ Forall (Const "Circle",
   ))
 )
 );
+(* pt_outside_circle : (aa : Circle) -> Exists Point (fun (a : Point) => And (OnCircle a aa -> False) (InCircle a aa -> False)) *)
 add_axiom "pt_outside_circle" (
 Forall (Const "Circle",
   App (App (Const "Exists", Const "Point"), Lam (Const "Point",
@@ -503,6 +559,7 @@ Forall (Const "Circle",
   ))
 )
 );
+(* line_of_pts : (a : Point) -> (b : Point) -> Eq Point a b -> False -> Exists Line (fun (L : Line) => And (OnLine a L) (OnLine b L)) *)
 add_axiom "line_of_pts" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -516,6 +573,7 @@ Forall (Const "Point",
   )
 )
 );
+(* circle_of_ne : (a : Point) -> (b : Point) -> Eq Point a b -> False -> Exists Circle (fun (aa : Circle) => And (CenterCircle a aa) (OnCircle b aa)) *)
 add_axiom "circle_of_ne" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -529,6 +587,7 @@ Forall (Const "Point",
   )
 )
 );
+(* pt_of_linesinter : (L : Line) -> (M : Line) -> LinesInter L M -> Exists Point (fun (a : Point) => And (OnLine a L) (OnLine a M)) *)
 add_axiom "pt_of_linesinter" (
 Forall (Const "Line",
   Forall (Const "Line",
@@ -540,6 +599,7 @@ Forall (Const "Line",
   )
 )
 );
+(* pt_of_linecircleinter : (L : Line) -> (aa : Circle) -> LineCircleInter L aa -> Exists Point (fun (a : Point) => And (OnLine a L) (OnCircle a aa)) *)
 add_axiom "pt_of_linecircleinter" (
 Forall (Const "Line",
   Forall (Const "Circle",
@@ -551,6 +611,7 @@ Forall (Const "Line",
   )
 )
 );
+(* pts_of_linecircleinter : (L : Line) -> (aa : Circle) -> LineCircleInter L aa -> Exists Point (fun (a : Point) => Exists Point (fun (b : Point) => And (Eq Point a b -> False) (And (OnLine a L) (And (OnLine b L) (And (OnCircle a aa) (OnCircle b aa)))))) *)
 add_axiom "pts_of_linecircleinter" (
 Forall (Const "Line",
   Forall (Const "Circle",
@@ -566,6 +627,7 @@ Forall (Const "Line",
   )
 )
 );
+(* pt_oncircle_between_inside_outside : (L : Line) -> (aa : Circle) -> (b : Point) -> (c : Point) -> OnLine b L -> OnLine c L -> InCircle b aa -> OnCircle c aa -> False -> InCircle c aa -> False -> Exists Point (fun (a : Point) => And (OnLine a L) (And (OnCircle a aa) (Between b a c))) *)
 add_axiom "pt_oncircle_between_inside_outside" (
 Forall (Const "Line",
   Forall (Const "Circle",
@@ -593,6 +655,7 @@ Forall (Const "Line",
   )
 )
 );
+(* pt_oncircle_extension_from_inside : (L : Line) -> (aa : Circle) -> (b : Point) -> (c : Point) -> OnLine b L -> OnLine c L -> InCircle b aa -> Eq Point c b -> False -> Exists Point (fun (a : Point) => And (OnLine a L) (And (OnCircle a aa) (Between a b c))) *)
 add_axiom "pt_oncircle_extension_from_inside" (
 Forall (Const "Line",
   Forall (Const "Circle",
@@ -616,6 +679,7 @@ Forall (Const "Line",
   )
 )
 );
+(* pt_of_circlesinter : (aa : Circle) -> (bb : Circle) -> CirclesInter aa bb -> Exists Point (fun (a : Point) => And (OnCircle a aa) (OnCircle a bb)) *)
 add_axiom "pt_of_circlesinter" (
 Forall (Const "Circle",
   Forall (Const "Circle",
@@ -627,6 +691,7 @@ Forall (Const "Circle",
   )
 )
 );
+(* pts_of_circlesinter : (aa : Circle) -> (bb : Circle) -> CirclesInter aa bb -> Exists Point (fun (a : Point) => Exists Point (fun (b : Point) => And (Eq Point a b -> False) (And (OnCircle a aa) (And (OnCircle a bb) (And (OnCircle b aa) (OnCircle b bb)))))) *)
 add_axiom "pts_of_circlesinter" (
 Forall (Const "Circle",
   Forall (Const "Circle",
@@ -642,6 +707,7 @@ Forall (Const "Circle",
   )
 )
 );
+(* pt_sameside_of_circlesinter : (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (aa : Circle) -> (bb : Circle) -> OnLine c L -> OnLine d L -> OnLine b L -> False -> CenterCircle c aa -> CenterCircle d bb -> CirclesInter aa bb -> Exists Point (fun (a : Point) => And (SameSide a b L) (And (OnCircle a aa) (OnCircle a bb))) *)
 add_axiom "pt_sameside_of_circlesinter" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -673,6 +739,7 @@ Forall (Const "Point",
   )
 )
 );
+(* pt_oppositeside_of_circlesinter : (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (aa : Circle) -> (bb : Circle) -> OnLine c L -> OnLine d L -> OnLine b L -> False -> CenterCircle c aa -> CenterCircle d bb -> CirclesInter aa bb -> Exists Point (fun (a : Point) => And (OnLine a L -> False) (And (SameSide a b L -> False) (And (OnCircle a aa) (OnCircle a bb)))) *)
 add_axiom "pt_oppositeside_of_circlesinter" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -708,6 +775,7 @@ Forall (Const "Point",
   )
 )
 );
+(* circlesinter_of_inside_on_circle : (a : Point) -> (b : Point) -> (aa : Circle) -> (bb : Circle) -> OnCircle b aa -> OnCircle a bb -> InCircle a aa -> InCircle b bb -> CirclesInter aa bb *)
 add_axiom "circlesinter_of_inside_on_circle" (
 Forall (Const "Point",
   Forall (Const "Point",
@@ -727,6 +795,7 @@ Forall (Const "Point",
   )
 )
 );
+(* inside_circle_of_center : (a : Point) -> (aa : Circle) -> CenterCircle a aa -> InCircle a aa *)
 add_axiom "inside_circle_of_center" (
 Forall (Const "Point",
   Forall (Const "Circle",
@@ -736,6 +805,7 @@ Forall (Const "Point",
   )
 )
 );
+(* PtsOfCirclesinter : (a : Circle) -> (b : Circle) -> CirclesInter a b -> Exists Point (fun (c : Point) => Exists Point (fun (d : Point) => And (Eq Point c d -> False) (And (OnCircle c a) (And (OnCircle c b) (And (OnCircle d a) (OnCircle d b)))))) *)
 add_axiom "PtsOfCirclesinter" (
 Forall (Const "Circle",
   Forall (Const "Circle",
@@ -751,6 +821,7 @@ Forall (Const "Circle",
   )
 )
 );
+(* OnCircleIffLengthEq : (a : Point) -> (b : Point) -> (c : Point) -> (d : Circle) -> CenterCircle a d -> OnCircle b d -> And (Eq Len (Length a b) (Length a c) -> OnCircle c d) (OnCircle c d -> Eq Len (Length a b) (Length a c)) *)
 add_axiom "OnCircleIffLengthEq" (
 Forall (Const "Point",
   Forall (Const "Point",

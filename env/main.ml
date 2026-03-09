@@ -56,10 +56,13 @@ let () =
       | Axiom ->
           let elab_type = Typecheck.fill_holes e decl.ty None in
           let elab_type = Typecheck.reduce e elab_type in
+          let type_str = Pretty.term_to_string e elab_type in
           Buffer.add_string
             buf
             (Printf.sprintf
-               "add_axiom \"%s\" (\n%s\n);\n"
+               "(* %s : %s *)\nadd_axiom \"%s\" (\n%s\n);\n"
+               decl.name
+               type_str
                decl.name
                (kterm_to_ocaml (Convert.conv_to_kterm elab_type))))
     decls;
