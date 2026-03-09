@@ -104,7 +104,11 @@ let rec valid_pattern (e: ctx) (m: int) (args: term list) (tm: term) : bool =
   | _ -> true
 
 let rec last = function
-| [] -> failwith "empty list"
+| [] ->
+    raise (Error.ElabError {
+      context = { loc = None; decl_name = None };
+      error_type = Error.InternalError "last: empty list"
+    })
 | [x] -> x
 | _ :: xs -> last xs
 
@@ -166,8 +170,13 @@ let rec unify (e: ctx) (t1: term) (t2: term) : unit =
   | _, MetaSpine ({inner=Hole m; _}, args) ->
     pattern_match_meta e m args t1
   | VarSpine (h1, args1), VarSpine (h2, args2) when h1.inner = h2.inner ->
-    if List.length args1 != List.length args2 then failwith "tried to unify different length var spines" else
-    List.iter2 (fun arg1 arg2 -> unify e arg1 arg2) args1 args2
+    if List.length args1 <> List.length args2 then
+      raise (Error.ElabError {
+        context = { loc = Some t1.loc; decl_name = None };
+        error_type = Error.InternalError "tried to unify different length var spines"
+      })
+    else
+      List.iter2 (fun arg1 arg2 -> unify e arg1 arg2) args1 args2
   | Arrow (_, ty_arg1, ty_ret1), Arrow (_, ty_arg2, ty_ret2) ->
     unify e ty_arg1 ty_arg2;
     let x = gen_fvar_id () in
@@ -181,8 +190,16 @@ let rec unify (e: ctx) (t1: term) (t2: term) : unit =
     let body2_fvar = replace_bvar body2 0 {inner=Fvar x; loc=body2.loc} in
     unify e body1_fvar body2_fvar
   | Sort n1, Sort n2 when n1 = n2 -> ()
-  | _ -> failwith ("failed to unify non-matching terms " ^ Pretty.term_to_string e t1 ^ " and " ^ Pretty.term_to_string e t2)
-
+  | _ ->
+    raise (Error.ElabError {
+      context = { loc = Some t1.loc; decl_name = None };
+      error_type =
+        Error.InternalError
+          ("failed to unify non-matching terms "
+           ^ Pretty.term_to_string e t1
+           ^ " and "
+           ^ Pretty.term_to_string e t2)
+    })
 (** checks that tm has expected type ty, trying to fill in metavariables (holes).
   If it fails it throws an ElabError. *)
 let rec checktype (e: ctx) (tm: term) (ty: term) : unit =
