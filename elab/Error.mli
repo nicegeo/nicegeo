@@ -2,11 +2,11 @@
 
 open Term
 
-(** Location and declaration context attached to every error. *)
 type error_context = {
   loc : range option;
   decl_name : string option;
 }
+(** Location and declaration context attached to every error. *)
 
 type parse_error_info = {
   input : string;
@@ -61,5 +61,5 @@ type elab_error_info = {
 
 exception ElabError of elab_error_info
 
-(** Format a complete elaboration error for display. *)
 val pp_exn : Types.ctx -> elab_error_info -> string
+(** Format a complete elaboration error for display. *)

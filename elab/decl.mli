@@ -7,10 +7,10 @@ type decl_type =
   | Theorem of term  (** A theorem with its proof term. *)
   | Axiom
 
-(** A parsed declaration (axiom or theorem). *)
 type declaration = {
   name : string;
   name_loc : range;
   ty : term;
   kind : decl_type;
 }
+(** A parsed declaration (axiom or theorem). *)
