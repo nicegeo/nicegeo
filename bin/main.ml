@@ -10,18 +10,22 @@ let () =
   end;
 
   let filename = Sys.argv.(1) in
-  let env = try
-    Elab.Interface.create_with_env ();
-  with Error.ElabError info ->
-    print_endline ("Internal error while processing env.txt: " ^ Error.pp_exn {
-      env=Hashtbl.create 0;
-      kenv=Hashtbl.create 0;
-      metas=Hashtbl.create 0;
-      lctx=Hashtbl.create 0;
-    } info );
-    (* Uncomment this to get a stack trace *)
-    (* raise exn *)
-    exit 255
+  let env =
+    try Elab.Interface.create_with_env ()
+    with Error.ElabError info ->
+      print_endline
+        ("Internal error while processing env.txt: "
+        ^ Error.pp_exn
+            {
+              env = Hashtbl.create 0;
+              kenv = Hashtbl.create 0;
+              metas = Hashtbl.create 0;
+              lctx = Hashtbl.create 0;
+            }
+            info);
+      (* Uncomment this to get a stack trace *)
+      (* raise exn *)
+      exit 255
   in
   let tone = Nice_messages.tone_from_env () in
   try
