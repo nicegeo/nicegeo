@@ -1,4 +1,3 @@
-open Decl
 (** The general strategy for filling in user-specified holes essentially boils down to
     creating unique variables each time we encounter a hole, generating constraints
     (equations) that a correctly typed program would have to satisfy with bidirectional
@@ -30,6 +29,7 @@ open Decl
 
     See lecture 3 of https://github.com/andrejbauer/faux-type-theory for more information
     on the algorithm. *)
+open Decl
 
 open Term
 open Convert

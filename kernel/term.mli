@@ -11,8 +11,8 @@ type term =
   | App of term * term  (** function application *)
   | Sort of int  (** sorts *)
 
-type environment = (string, term) Hashtbl.t
 (** Maps constants to their types *)
+type environment = (string, term) Hashtbl.t
 
-type localcontext = (string, term) Hashtbl.t
 (** Maps free variable names to their types *)
+type localcontext = (string, term) Hashtbl.t

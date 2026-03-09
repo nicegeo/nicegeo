@@ -2,6 +2,7 @@
 
 open Term
 
+(** A metavariable (hole) to be solved during elaboration. *)
 type metavar = {
   ty : term option;  (** Expected type of the hole, if already known. *)
   vartypes : term list;
@@ -9,20 +10,20 @@ type metavar = {
           (later entries may contain [Bvar]s referring to earlier ones). *)
   sol : term option;  (** Solution term once found; must be closed. *)
 }
-(** A metavariable (hole) to be solved during elaboration. *)
 
 (** Data associated with each entry in the environment. *)
 type enventry_data =
   | Theorem of string list  (** The list of axiom names the theorem depends on. *)
   | Axiom  (** No data for axioms *)
 
+(** An entry in the elaboration environment. *)
 type enventry = {
   name : string;
   ty : term;
   data : enventry_data;
 }
-(** An entry in the elaboration environment. *)
 
+(** Elaboration context. *)
 type ctx = {
   env : (string, enventry) Hashtbl.t;
       (** Elaboration-level environment mapping defined names to their entries. *)
@@ -33,4 +34,3 @@ type ctx = {
   lctx : (int, string option * term) Hashtbl.t;
       (** Local context mapping free-variable ids to their optional name and type. *)
 }
-(** Elaboration context. *)
