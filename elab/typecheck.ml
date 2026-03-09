@@ -37,9 +37,29 @@ open Types
 module KInfer = Kernel.Infer
 module KExceptions = Kernel.Exceptions
 
+let term_name_of (tm : term) : string option =
+  match tm.inner with
+  | Name x -> Some x
+  | Fun (Some x, _, _) -> Some x
+  | Arrow (Some x, _, _) -> Some x
+  | Hole m -> Some ("_" ^ string_of_int m)
+  | Fvar i -> Some ("f" ^ string_of_int i)
+  | Bvar i -> Some ("#" ^ string_of_int i)
+  | App(f, _) -> term_name_of f
+  | _ -> None
+
 let raise_at (tm : term) (e : Error.error_type) : 'a =
-  let loc = Some tm.loc in
-  raise (Error.ElabError { context = { loc; decl_name = None }; error_type = e })
+  raise
+    (Error.ElabError
+       {
+         context =
+           {
+             loc = Some tm.loc;
+             decl_name = None;
+             term_name = term_name_of tm;
+           };
+         error_type = e;
+       })
 
 type normterm =
   | Fun of string option * term * term
@@ -139,7 +159,7 @@ let rec valid_pattern (e : ctx) (m : int) (args : term list) (tm : term) : bool 
 let rec last = function
 | [] ->
     raise (Error.ElabError {
-      context = { loc = None; decl_name = None };
+      context = { loc = None; decl_name = None; term_name = None };
       error_type = Error.InternalError "last: empty list"
     })
 | [x] -> x
@@ -221,7 +241,7 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
   | VarSpine (h1, args1), VarSpine (h2, args2) when h1.inner = h2.inner ->
     if List.length args1 <> List.length args2 then
       raise (Error.ElabError {
-        context = { loc = Some t1.loc; decl_name = None };
+        context = { loc = Some t1.loc; decl_name = None; term_name = term_name_of t1 };
         error_type = Error.InternalError "tried to unify different length var spines"
       })
     else
@@ -242,7 +262,7 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
   | Sort n1, Sort n2 when n1 = n2 -> ()
   | _ ->
     raise (Error.ElabError {
-      context = { loc = Some t1.loc; decl_name = None };
+      context = { loc = Some t1.loc; decl_name = None; term_name = term_name_of t1 };
       error_type =
         Error.InternalError
           ("failed to unify non-matching terms "
@@ -500,7 +520,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
           raise
             (Error.ElabError
                {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
+                 context = { loc = Some d.name_loc; decl_name = Some d.name; term_name = Some d.name };
                  error_type = Error.AlreadyDefined d.name;
                })
         else
@@ -538,14 +558,14 @@ let process_decl (e : ctx) (d : declaration) : unit =
               raise
                 (Error.ElabError
                    {
-                     context = { loc = Some d.name_loc; decl_name = Some d.name };
+                     context = { loc = Some d.name_loc; decl_name = Some d.name; term_name = Some d.name };
                      error_type = Error.InternalError "kernel did not accept proof\n";
                    })
           with KExceptions.TypeError msg ->
             raise
               (Error.ElabError
                  {
-                   context = { loc = Some d.name_loc; decl_name = Some d.name };
+                   context = { loc = Some d.name_loc; decl_name = Some d.name; term_name = Some d.name };
                    error_type = Error.KernelError { kernel_exn = msg };
                  }))
     | Axiom ->
@@ -553,7 +573,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
           raise
             (Error.ElabError
                {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
+                 context = { loc = Some d.name_loc; decl_name = Some d.name; term_name = Some d.name };
                  error_type = Error.AlreadyDefined d.name;
                })
         else
