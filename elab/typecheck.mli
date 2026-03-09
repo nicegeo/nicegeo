@@ -1,0 +1,19 @@
+(** Type-checking and elaboration of declarations.
+
+    Implements bidirectional type-checking with pattern-unification–based hole inference.
+    Holes written by the user as [_] are replaced by metavariable spines, constraints are
+    gathered during type-checking, and pattern unification fills in solutions. Solved
+    terms are then verified by the trusted kernel before being committed to the
+    environment. *)
+
+(** Type-check and add a single declaration to the elaboration context. Raises
+    [Error.ElabError] on any error. *)
+val process_decl : Types.ctx -> Decl.declaration -> unit
+
+(** [`fill_holes e t ty`] attempts to elaborate a term, filling in its holes. If `ty` is
+    none, `t` is expected to be a type (i.e. its type is `Sort u` for some universe `u`).
+*)
+val fill_holes : Types.ctx -> Term.term -> Term.term option -> Term.term
+
+(** reduces a term to its normal form by applying beta reduction. *)
+val reduce : Types.ctx -> Term.term -> Term.term
