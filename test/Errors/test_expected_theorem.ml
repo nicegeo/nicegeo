@@ -4,6 +4,4 @@ let () =
   try
     let _ = Elab.Interface.list_axioms env "only_axiom" in
     print_endline "Unexpected success"
-  with
-  | Error.ElabError e ->
-      print_endline (Error.pp_exn env e)
+  with Error.ElabError e -> print_endline (Error.pp_exn env e)
