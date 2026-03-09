@@ -57,6 +57,18 @@ let list_axioms (env : Types.ctx) (name : string) =
   match Hashtbl.find_opt env.env name with
   | Some entry -> (
       match entry.data with
-      | Types.Axiom -> failwith (name ^ " is an axiom")
+      |Types.Axiom ->
+          raise
+            (Error.ElabError
+               {
+                 context = { loc = None; decl_name = Some name };
+                 error_type = Error.InternalError (name ^ " is an axiom");
+               })
       | Types.Theorem axioms -> axioms)
-  | None -> failwith ("unknown declaration: " ^ name)
+  | None ->
+      raise
+        (Error.ElabError
+           {
+             context = { loc = None; decl_name = Some name };
+             error_type = Error.UnknownName { name };
+           })
