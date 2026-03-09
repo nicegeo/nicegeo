@@ -36,10 +36,10 @@ Annotating the types of function parameters helps the type checker catch cases w
 ### ALWAYS use `snake_case` for lowercase names (not `camelCase`)
 Using only one case throughout the code base increases coherence and readability, and `snake_case` is standard in OCaml. `PascalCase` is correct for variants and exceptions, but `Upper_snake_case` should be used for module names.
 
-### **PREFER** records over tuples
+### PREFER records over tuples
 Records provide a baseline level of documentation on the meanings of their fields, while tuples do not.
 
-### **AVOID** mutual recursion
+### AVOID mutual recursion
 While mutual recursion is sometimes necessary, it can also make code more difficult to understand and modify, so it should be avoided when possible.
 
 ## AI Usage
