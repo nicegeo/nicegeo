@@ -1,5 +1,6 @@
 (** Handling of nice messages (the "nice" in "nicegeo"). *)
 
+(** The different tones that messages can have. *)
 type tone =
   | Calm
   | Cheerful
@@ -10,6 +11,7 @@ type tone =
 type context = After_error
 
 val default_tone : tone
+(** The default tone to use if no environment variable is set. *)
 
 val tone_from_env : unit -> tone
 (** Reads the [NICEGEO_TONE] environment variable to select a tone. Defaults to

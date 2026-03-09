@@ -3,36 +3,48 @@
 open Term
 
 type error_context = {
-  loc : range option;
+  loc : range option;  (** Source location of the offending term, if available. *)
   decl_name : string option;
+      (** Name of the declaration being processed when the error occurred, if known. *)
 }
 (** Location and declaration context attached to every error. *)
 
 type parse_error_info = {
-  input : string;
-  error_msg : string;
+  input : string;  (** The source text that could not be parsed. *)
+  error_msg : string;  (** The error message produced by the parser. *)
 }
+(** Payload for a parse failure. *)
 
 type type_mismatch_info = {
-  term : term;
-  inferred_type : term;
-  expected_type : term;
+  term : term;  (** The term whose type was checked. *)
+  inferred_type : term;  (** The type that was inferred for [term]. *)
+  expected_type : term;  (** The type that [term] was required to have. *)
 }
+(** Payload for a type-mismatch error. *)
 
-type kernel_error_info = { kernel_exn : Kernel.Exceptions.type_error_info }
-type unknown_name_info = { name : string }
+type kernel_error_info = {
+  kernel_exn : Kernel.Exceptions.type_error_info;
+      (** The raw error record produced by the kernel. *)
+}
+(** Payload for an error originating in the trusted kernel. *)
+
+type unknown_name_info = { name : string  (** The name that could not be resolved. *) }
+(** Payload for an unbound-name error. *)
 
 type function_expected_info = {
-  not_func : term;
-  not_func_type : term;
-  arg : term;
+  not_func : term;  (** The term that was applied as if it were a function. *)
+  not_func_type : term;  (** The inferred type of [not_func]. *)
+  arg : term;  (** The argument that was passed to [not_func]. *)
 }
+(** Payload for a function-expected error. *)
 
 type type_expected_info = {
-  not_type : term;
-  not_type_infer : term;
+  not_type : term;  (** The term that was used in a type position. *)
+  not_type_infer : term;  (** The inferred type of [not_type]. *)
 }
+(** Payload for a type-expected error. *)
 
+(** The type of error raised in an ElabError. *)
 type error_type =
   | ParseError of parse_error_info
       (** The input failed to parse; carries the offending source text and the parser's
@@ -55,11 +67,14 @@ type error_type =
       (** A term that is not a type was used in a position that requires a type. *)
 
 type elab_error_info = {
-  context : error_context;
-  error_type : error_type;
+  context : error_context;  (** Source location and declaration context of the error. *)
+  error_type : error_type;  (** The specific kind of error that occurred. *)
 }
+(** The complete error record raised by the elaborator. *)
 
 exception ElabError of elab_error_info
+(** Exception raised for any elaboration-level error. *)
 
 val pp_exn : Types.ctx -> elab_error_info -> string
-(** Format a complete elaboration error for display. *)
+(** [pp_exn ctx info] formats [info] as a human-readable error message, using [ctx] to
+    pretty-print any terms that appear in the error. *)

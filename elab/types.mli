@@ -1,7 +1,6 @@
 (** Types for the elaboration context. *)
 
 open Term
-module KTerm = Kernel.Term
 
 type metavar = {
   ty : term option;  (** Expected type of the hole, if already known. *)
@@ -12,20 +11,23 @@ type metavar = {
 }
 (** A metavariable (hole) to be solved during elaboration. *)
 
+(** Data associated with each entry in the environment. *)
 type enventry_data =
   | Theorem of string list  (** The list of axiom names the theorem depends on. *)
-  | Axiom
+  | Axiom  (** No data for axioms *)
 
 type enventry = {
   name : string;
   ty : term;
   data : enventry_data;
 }
+(** An entry in the elaboration environment. *)
 
 type ctx = {
   env : (string, enventry) Hashtbl.t;
       (** Elaboration-level environment mapping defined names to their entries. *)
-  kenv : KTerm.environment;  (** Kernel-level environment, kept in sync with [env]. *)
+  kenv : Kernel.Term.environment;
+      (** Kernel-level environment, kept in sync with [env]. *)
   metas : (int, metavar) Hashtbl.t;
       (** Mapping from hole ids to their metavariable records. *)
   lctx : (int, string option * term) Hashtbl.t;

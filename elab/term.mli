@@ -7,7 +7,10 @@ type range = {
 (** Source location range. *)
 
 val dummy_pos : Lexing.position
+(** A dummy position for when no location information is available. *)
+
 val dummy_range : range
+(** A dummy range for when no location information is available. *)
 
 type term = {
   inner : termkind;
@@ -16,6 +19,7 @@ type term = {
 (** Elaboration-level terms. Contains location information for precision in error
     messages. *)
 
+(** Actual term variants. *)
 and termkind =
   | Name of string
       (** A name as written in source code (resolved to a constant or the nearest bound
