@@ -1,6 +1,6 @@
 open Term
-module KTerm = System_e_kernel.Term
-module KExceptions = System_e_kernel.Exceptions
+module KTerm = Kernel.Term
+module KExceptions = Kernel.Exceptions
 
 type error_context = {
   loc : range option; (* loc - where the error is happening *)

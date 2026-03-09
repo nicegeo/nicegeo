@@ -1,5 +1,5 @@
 open Printexc
-open E_elab
+open Elab
 
 let () =
   record_backtrace true;
@@ -8,9 +8,10 @@ let () =
     Printf.eprintf "Usage: %s <filename>\n" Sys.argv.(0);
     exit 1
   end;
+
   let filename = Sys.argv.(1) in
   let env = try
-    Elab.create_with_env ();
+    Elab.Interface.create_with_env ();
   with Error.ElabError info ->
     print_endline ("Internal error while processing env.txt: " ^ Error.pp_exn {
       env=Hashtbl.create 0;
@@ -24,7 +25,7 @@ let () =
   in
   let tone = Nice_messages.tone_from_env () in
   try
-    Elab.process_file env filename;
+    Elab.Interface.process_file env filename;
     print_endline "Valid proofs!"
   with Error.ElabError e ->
     print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env e);

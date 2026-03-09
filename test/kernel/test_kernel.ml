@@ -1,9 +1,9 @@
 (* Tests for inferType with stack-based local context *)
-open System_e_kernel
+open Kernel
 open Term
 open Infer
+open Infer.KernelInternals
 open Exceptions
-open E_elab
 
 (* For backwards compatibility during exception refactoring *)
 let try_infer env localCtx t = inferType env localCtx t
@@ -67,7 +67,7 @@ let path_to_env = "../../../../elab/env.txt"
 
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.Interface.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
 
   (* Empty : Type (i.e. Sort 1) *)
@@ -87,7 +87,7 @@ let test_empty_constants () =
     ~expected:(Forall (Sort 1, Forall (Const "Empty", Bvar 1)))
 
 let test_and_constants () =
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.Interface.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
   (* And : (A : Prop) -> (B : Prop) -> Prop *)
   let and_ty = try_infer env.kenv lctx (Const "And") in
@@ -440,7 +440,7 @@ let test_eq_symm () =
 
   let eq ty a b = App (App (App (Const "Eq", ty), a), b) in
 
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.Interface.create_with_env_path path_to_env in
   let local_ctx = Hashtbl.create 16 in
 
   let eq_symm_type =
@@ -505,7 +505,7 @@ let test_eq_symm () =
 
 (* These two tests are made by AI so can remove or change them completely if wanted *)
 let test_len_sanity () =
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.Interface.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
 
   (* Base types are Sort 1 *)
@@ -559,7 +559,7 @@ let test_len_sanity () =
     ~expected
 
 let test_len_app () =
-  let env = Elab.create_with_env_path path_to_env in
+  let env = Elab.Interface.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
 
   (* Lt Zero Zero : Prop *)
@@ -692,7 +692,7 @@ let test_kernel_reduce () =
 
 let suite =
   let open Alcotest in
-  ( "system_e_kernel",
+  ( "kernel",
     [
       test_case "Constant lookup" `Quick test_const_lookup;
       test_case "Free variable lookup" `Quick test_fvar_lookup;
