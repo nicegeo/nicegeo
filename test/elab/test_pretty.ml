@@ -1,13 +1,13 @@
 (* Tests and examples for the pretty-printing feature.
    Run with: dune exec test/test_pretty.exe *)
 
-open E_elab.Kernel_pretty
-open E_elab.Decl
-open E_elab.Pretty
-module KTerm = System_e_kernel.Term
-module ETerm = E_elab.Term
-module Elab = E_elab.Elab
-module Nice = E_elab.Nice_messages
+open Elab.Kernel_pretty
+open Elab.Decl
+open Elab.Pretty
+module KTerm = Kernel.Term
+module ETerm = Elab.Term
+module Nice = Elab.Nice_messages
+module ElabIf = Elab.Interface
 
 let () = Printf.printf "=== Kernel term pretty-printing ===\n\n"
 
@@ -31,19 +31,18 @@ let () =
   let t = KTerm.(Forall (Sort 1, Forall (Sort 0, Bvar 0))) in
   Printf.printf "With default names: %s\n" (term_to_string_pretty t);
   (* ~names supplies names for Bvar indices: 0 -> "A", 1 -> "B". Binders still _0,_1. *)
-  Printf.printf "With custom names (for Bvars): %s\n\n"
+  Printf.printf
+    "With custom names (for Bvars): %s\n\n"
     (term_to_string_pretty ~names:[ "A"; "B" ] t)
 
 (* Example 4: Application flattening *)
 let () =
-  let t =
-    KTerm.(App (App (App (Const "f", Const "a"), Const "b"), Const "c"))
-  in
+  let t = KTerm.(App (App (App (Const "f", Const "a"), Const "b"), Const "c")) in
   Printf.printf "App spine f a b c:\n";
   Printf.printf "  Pretty: %s\n\n" (term_to_string_pretty t)
 
 let () = Printf.printf "=== Elaborator term pretty-printing ===\n\n"
-let e = Elab.create ()
+let e = ElabIf.create ()
 let l = ETerm.dummy_range
 
 (* Example 5: Elaborator terms have names already *)
@@ -54,42 +53,66 @@ let () =
 
 (* Example 6: Declaration pretty-printing *)
 let () =
-  let d = {name="Point"; name_loc=l; ty={ETerm.inner=Sort 1; loc=l}; kind=Axiom} in
+  let d =
+    { name = "Point"; name_loc = l; ty = { ETerm.inner = Sort 1; loc = l }; kind = Axiom }
+  in
   Printf.printf "Axiom Point : Type  =>  %s\n" (decl_to_string e d);
   let d2 =
-    {name="id"; name_loc=l; ty=Testterm.(narrow "A" (sort 1) (narrow "x" (bvar 0) (bvar 1))); 
-    kind=Theorem Testterm.(ufun (sort 1) (ufun (bvar 0) (bvar 0)))}
+    {
+      name = "id";
+      name_loc = l;
+      ty = Testterm.(narrow "A" (sort 1) (narrow "x" (bvar 0) (bvar 1)));
+      kind = Theorem Testterm.(ufun (sort 1) (ufun (bvar 0) (bvar 0)));
+    }
   in
-  Printf.printf "Theorem id : (A : Type) -> (x : A) -> A := ...  => \n%s\n\n"
+  Printf.printf
+    "Theorem id : (A : Type) -> (x : A) -> A := ...  => \n%s\n\n"
     (decl_to_string e d2)
 
 let test_lam_flattening () =
-  Alcotest.check' Alcotest.string ~msg:"Lambda args pretty-prints flattened"
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Lambda args pretty-prints flattened"
     ~expected:"fun (x : A) (y : B) => x"
-    ~actual:(term_to_string e Testterm.(nfun "x" (name "A") (nfun "y" (name "B") (bvar 1))));
+    ~actual:
+      (term_to_string e Testterm.(nfun "x" (name "A") (nfun "y" (name "B") (bvar 1))));
 
-  Alcotest.check' Alcotest.string ~msg:"Dependent lambda arg flattening"
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Dependent lambda arg flattening"
     ~expected:"fun (x : A) (y : B x) => y"
-    ~actual:(term_to_string e Testterm.(nfun "x" (name "A") (nfun "y" (app (name "B") (bvar 0)) (bvar 0))))
+    ~actual:
+      (term_to_string
+         e
+         Testterm.(nfun "x" (name "A") (nfun "y" (app (name "B") (bvar 0)) (bvar 0))))
 
 let test_kernel_sort_names () =
-  Alcotest.check' Alcotest.string ~msg:"Sort 0 pretty-prints as Prop"
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Sort 0 pretty-prints as Prop"
     ~expected:"Prop"
     ~actual:(term_to_string_pretty (KTerm.Sort 0));
 
-  Alcotest.check' Alcotest.string ~msg:"Sort 1 pretty-prints as Type"
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Sort 1 pretty-prints as Type"
     ~expected:"Type"
     ~actual:(term_to_string_pretty (KTerm.Sort 1))
 
 let test_elab_hole () =
-  Alcotest.check' Alcotest.string ~msg:"Hole 0 pretty-prints as ?m0"
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Hole 0 pretty-prints as ?m0"
     ~expected:"?m0"
-    ~actual:(term_to_string e {ETerm.inner=Hole 0; loc=l})
+    ~actual:(term_to_string e { ETerm.inner = Hole 0; loc = l })
 
 let test_elab_arrow_no_name () =
   let t = Testterm.(uarrow (sort 1) (sort 0)) in
-  Alcotest.check' Alcotest.string ~msg:"arrow pretty-prints sorts"
-    ~expected:"Type -> Prop" ~actual:(term_to_string e t)
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"arrow pretty-prints sorts"
+    ~expected:"Type -> Prop"
+    ~actual:(term_to_string e t)
 
 let test_nice_default_tone_calm () =
   (* OCaml versions vary on [Unix.unsetenv]. Simulate “unset/unknown” by using an unrecognized value. *)
@@ -119,5 +142,8 @@ let suite =
       test_case "Function args flattened" `Quick test_lam_flattening;
       test_case "Nice messages: default tone" `Quick test_nice_default_tone_calm;
       test_case "Nice messages: env cheerful" `Quick test_nice_tone_from_env_cheerful;
-      test_case "Nice messages: pick after error" `Quick test_nice_pick_message_after_error;
+      test_case
+        "Nice messages: pick after error"
+        `Quick
+        test_nice_pick_message_after_error;
     ] )
