@@ -37,7 +37,7 @@ open Types
 module KInfer = Kernel.Infer
 module KExceptions = Kernel.Exceptions
 
-let term_name_of (tm : term) : string option =
+let rec term_name_of (tm : term) : string option =
   match tm.inner with
   | Name x -> Some x
   | Fun (Some x, _, _) -> Some x
@@ -273,7 +273,7 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
         };
         error_type = Error.UnificationFailure { left = t1; right = t2 }
       })
-(** checks that tm has expected type ty, trying to fill in metavariables (holes).
+(* checks that tm has expected type ty, trying to fill in metavariables (holes).
   If it fails it throws an ElabError. *)
 let rec checktype (e: ctx) (tm: term) (ty: term) : unit =
   (* print_endline ("checking " ^ Pretty.term_to_string e tm ^ " has type " ^ Pretty.term_to_string e ty); *)
@@ -284,6 +284,18 @@ let rec checktype (e: ctx) (tm: term) (ty: term) : unit =
           match ty1 with
           | Some ty1 -> unify e ty ty1
           | None -> Hashtbl.replace e.metas m { ty = Some ty; vartypes; sol })
+      | None ->
+         raise
+           (Error.ElabError
+              {
+                context =
+                  {
+                    loc = Some tm.loc;
+                    decl_name = None;
+                    term_name = term_name_of tm;
+                  };
+                error_type = Error.InternalError "unknown hole in checktype";
+              }))
   | App (f, arg) ->
       (try
          let tm_type = infertype e tm in

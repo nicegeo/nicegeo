@@ -241,13 +241,13 @@ let pp_local_ctx (e : Types.ctx) : string =
 let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
   let ctx_str = pp_context info.context in
   let local_ctx_str = pp_local_ctx e in
-  match info.error_type with
-  | ParseError { input; error_msg } ->
-    let snippet =
+  let snippet =
       match info.context.loc with
       | Some r -> pp_source_snippet r
       | None -> ""
-    in
+  in
+  match info.error_type with
+  | ParseError { input; error_msg } ->
     Printf.sprintf
       "Parse error%s:%s\n%s (input: '%s')"
       ctx_str

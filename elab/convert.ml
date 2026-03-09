@@ -1,7 +1,7 @@
 open Term
 module KTerm = Kernel.Term
 
-let term_name_of (tm : term) : string option =
+let rec term_name_of (tm : term) : string option =
   match tm.inner with
   | Name x -> Some x
   | Fun (Some x, _, _) -> Some x
@@ -27,6 +27,6 @@ let rec conv_to_kterm (tm : term) : KTerm.term =
   | Bvar n -> KTerm.Bvar n
   | Fvar _ ->
       raise (Error.ElabError {
-        context = { loc = tm.loc; decl_name = None; term_name = term_name_of tm };
+        context = { loc = Some tm.loc; decl_name = None; term_name = term_name_of tm };
         error_type = Error.InternalError "fvar in conv_to_kterm input"
       })
