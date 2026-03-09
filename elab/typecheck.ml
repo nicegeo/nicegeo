@@ -1,3 +1,4 @@
+open Decl
 (** The general strategy for filling in user-specified holes essentially boils down to
     creating unique variables each time we encounter a hole, generating constraints
     (equations) that a correctly typed program would have to satisfy with bidirectional
@@ -29,7 +30,6 @@
 
     See lecture 3 of https://github.com/andrejbauer/faux-type-theory for more information
     on the algorithm. *)
-open Decl
 
 open Term
 open Convert
@@ -239,13 +239,17 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
   | MetaSpine ({ inner = Hole m; _ }, args), _ -> pattern_match_meta e m args t2
   | _, MetaSpine ({ inner = Hole m; _ }, args) -> pattern_match_meta e m args t1
   | VarSpine (h1, args1), VarSpine (h2, args2) when h1.inner = h2.inner ->
-    if List.length args1 <> List.length args2 then
-      raise (Error.ElabError {
-        context = { loc = Some t1.loc; decl_name = None };
-        error_type = Error.UnificationFailure { left = t1; right = t2 }
-      })
-    else
-      List.iter2 (fun arg1 arg2 -> unify e arg1 arg2) args1 args2
+      if List.length args1 <> List.length args2 then
+        raise (Error.ElabError {
+          context = {
+            loc = Some t1.loc;
+            decl_name = None;
+            term_name = term_name_of h1;
+          };
+          error_type = Error.UnificationFailure { left = t1; right = t2 }
+        })
+      else
+        List.iter2 (fun arg1 arg2 -> unify e arg1 arg2) args1 args2
   | Arrow (_, ty_arg1, ty_ret1), Arrow (_, ty_arg2, ty_ret2) ->
       unify e ty_arg1 ty_arg2;
       let x = gen_fvar_id () in
@@ -261,10 +265,14 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
       unify e body1_fvar body2_fvar
   | Sort n1, Sort n2 when n1 = n2 -> ()
   | _ ->
-    raise (Error.ElabError {
-      context = { loc = Some t1.loc; decl_name = None };
-      error_type = Error.UnificationFailure { left = t1; right = t2 }
-    })
+      raise (Error.ElabError {
+        context = {
+          loc = Some t1.loc;
+          decl_name = None;
+          term_name = term_name_of t1;
+        };
+        error_type = Error.UnificationFailure { left = t1; right = t2 }
+      })
 (** checks that tm has expected type ty, trying to fill in metavariables (holes).
   If it fails it throws an ElabError. *)
 let rec checktype (e: ctx) (tm: term) (ty: term) : unit =
@@ -276,16 +284,16 @@ let rec checktype (e: ctx) (tm: term) (ty: term) : unit =
           match ty1 with
           | Some ty1 -> unify e ty ty1
           | None -> Hashtbl.replace e.metas m { ty = Some ty; vartypes; sol })
-      | None -> raise_at tm (Error.InternalError ("unknown meta: " ^ string_of_int m)))
-  | App (f, arg) -> (
-      try
-        let tm_type = infertype e tm in
-        try unify e ty tm_type
-        with Error.ElabError { error_type = Error.UnificationFailure _; _ } ->
-          raise_at tm (Error.TypeMismatch { term = tm; inferred_type = tm_type; expected_type = ty })
-      with Error.ElabError { error_type = Error.CannotInferHole; _ } ->
-        let argtype = infertype e arg in
-        checktype e f { inner = Arrow (None, argtype, ty); loc = ty.loc })
+  | App (f, arg) ->
+      (try
+         let tm_type = infertype e tm in
+         try unify e ty tm_type
+         with
+         | Error.ElabError { error_type = Error.UnificationFailure _; _ } ->
+             raise_at tm (Error.TypeMismatch { term = tm; inferred_type = tm_type; expected_type = ty })
+       with Error.ElabError { error_type = Error.CannotInferHole; _ } ->
+         let argtype = infertype e arg in
+         checktype e f { inner = Arrow (None, argtype, ty); loc = ty.loc })
   | Name _ | Fun _ | Arrow _ | Sort _ | Fvar _ ->
     let infer_ty = infertype e tm in
     (try unify e infer_ty ty with
