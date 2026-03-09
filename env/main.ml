@@ -100,10 +100,13 @@ let () =
       | Axiom ->
           let elab_type = Typecheck.fill_holes e decl.ty None in
           let elab_type = Typecheck.reduce e elab_type in
+          let type_str = Pretty.term_to_string e elab_type in
           Buffer.add_string
             buf
             (Printf.sprintf
-               "add_axiom \"%s\" (named_term_to_term (\n%s\n));\n"
+               "(* %s : %s *)\nadd_axiom \"%s\" (named_term_to_term (\n%s\n));\n"
+               decl.name
+               type_str
                decl.name
                (namedterm_to_ocaml (eterm_to_namedterm elab_type))));
       counter := 0)
