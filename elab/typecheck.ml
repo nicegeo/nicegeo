@@ -37,9 +37,24 @@ open Types
 module KInfer = Kernel.Infer
 module KExceptions = Kernel.Exceptions
 
+let rec term_name_of (tm : term) : string option =
+  match tm.inner with
+  | Name x -> Some x
+  | Fun (Some x, _, _) -> Some x
+  | Arrow (Some x, _, _) -> Some x
+  | Hole m -> Some ("_" ^ string_of_int m)
+  | Fvar i -> Some ("f" ^ string_of_int i)
+  | Bvar i -> Some ("#" ^ string_of_int i)
+  | App (f, _) -> term_name_of f
+  | _ -> None
+
 let raise_at (tm : term) (e : Error.error_type) : 'a =
-  let loc = Some tm.loc in
-  raise (Error.ElabError { context = { loc; decl_name = None }; error_type = e })
+  raise
+    (Error.ElabError
+       {
+         context = { loc = Some tm.loc; decl_name = None; term_name = term_name_of tm };
+         error_type = e;
+       })
 
 type normterm =
   | Fun of string option * term * term
@@ -136,7 +151,16 @@ let rec valid_pattern (e : ctx) (m : int) (args : term list) (tm : term) : bool 
   | Fvar _ -> List.exists (fun arg -> arg.inner = tm.inner) args
   | _ -> true
 
-let rec last = function [] -> failwith "empty list" | [ x ] -> x | _ :: xs -> last xs
+let rec last = function
+  | [] ->
+      raise
+        (Error.ElabError
+           {
+             context = { loc = None; decl_name = None; term_name = None };
+             error_type = Error.InternalError "last: empty list";
+           })
+  | [ x ] -> x
+  | _ :: xs -> last xs
 
 (** Tries to find the value for the hole `m` given a constraint equation of the form `m
     args = tm` (meaning that we'd expect `m` to become a function that has at least
@@ -212,8 +236,14 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
   | MetaSpine ({ inner = Hole m; _ }, args), _ -> pattern_match_meta e m args t2
   | _, MetaSpine ({ inner = Hole m; _ }, args) -> pattern_match_meta e m args t1
   | VarSpine (h1, args1), VarSpine (h2, args2) when h1.inner = h2.inner ->
-      if List.length args1 != List.length args2 then
-        failwith "tried to unify different length var spines"
+      if List.length args1 <> List.length args2 then
+        raise
+          (Error.ElabError
+             {
+               context =
+                 { loc = Some t1.loc; decl_name = None; term_name = term_name_of h1 };
+               error_type = Error.UnificationFailure { left = t1; right = t2 };
+             })
       else List.iter2 (fun arg1 arg2 -> unify e arg1 arg2) args1 args2
   | Arrow (_, ty_arg1, ty_ret1), Arrow (_, ty_arg2, ty_ret2) ->
       unify e ty_arg1 ty_arg2;
@@ -230,12 +260,16 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
       unify e body1_fvar body2_fvar
   | Sort n1, Sort n2 when n1 = n2 -> ()
   | _ ->
-      failwith
-        ("failed to unify non-matching terms " ^ Pretty.term_to_string e t1 ^ " and "
-       ^ Pretty.term_to_string e t2)
+      raise
+        (Error.ElabError
+           {
+             context =
+               { loc = Some t1.loc; decl_name = None; term_name = term_name_of t1 };
+             error_type = Error.UnificationFailure { left = t1; right = t2 };
+           })
 
-(** checks that tm has expected type ty, trying to fill in metavariables (holes). If it
-    fails it throws an ElabError. *)
+(* checks that tm has expected type ty, trying to fill in metavariables (holes).
+  If it fails it throws an ElabError. *)
 let rec checktype (e : ctx) (tm : term) (ty : term) : unit =
   (* print_endline ("checking " ^ Pretty.term_to_string e tm ^ " has type " ^ Pretty.term_to_string e ty); *)
   match tm.inner with
@@ -245,12 +279,19 @@ let rec checktype (e : ctx) (tm : term) (ty : term) : unit =
           match ty1 with
           | Some ty1 -> unify e ty ty1
           | None -> Hashtbl.replace e.metas m { ty = Some ty; vartypes; sol })
-      | None -> raise_at tm (Error.InternalError ("unknown meta: " ^ string_of_int m)))
+      | None ->
+          raise
+            (Error.ElabError
+               {
+                 context =
+                   { loc = Some tm.loc; decl_name = None; term_name = term_name_of tm };
+                 error_type = Error.InternalError "unknown hole in checktype";
+               }))
   | App (f, arg) -> (
       try
         let tm_type = infertype e tm in
         try unify e ty tm_type
-        with Failure _ ->
+        with Error.ElabError { error_type = Error.UnificationFailure _; _ } ->
           raise_at
             tm
             (Error.TypeMismatch { term = tm; inferred_type = tm_type; expected_type = ty })
@@ -260,7 +301,7 @@ let rec checktype (e : ctx) (tm : term) (ty : term) : unit =
   | Name _ | Fun _ | Arrow _ | Sort _ | Fvar _ -> (
       let infer_ty = infertype e tm in
       try unify e infer_ty ty
-      with Failure _ ->
+      with Error.ElabError { error_type = Error.UnificationFailure _; _ } ->
         raise_at
           tm
           (Error.TypeMismatch { term = tm; inferred_type = infer_ty; expected_type = ty })
@@ -484,7 +525,12 @@ let process_decl (e : ctx) (d : declaration) : unit =
           raise
             (Error.ElabError
                {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
+                 context =
+                   {
+                     loc = Some d.name_loc;
+                     decl_name = Some d.name;
+                     term_name = Some d.name;
+                   };
                  error_type = Error.AlreadyDefined d.name;
                })
         else
@@ -522,14 +568,24 @@ let process_decl (e : ctx) (d : declaration) : unit =
               raise
                 (Error.ElabError
                    {
-                     context = { loc = Some d.name_loc; decl_name = Some d.name };
+                     context =
+                       {
+                         loc = Some d.name_loc;
+                         decl_name = Some d.name;
+                         term_name = Some d.name;
+                       };
                      error_type = Error.InternalError "kernel did not accept proof\n";
                    })
           with KExceptions.TypeError msg ->
             raise
               (Error.ElabError
                  {
-                   context = { loc = Some d.name_loc; decl_name = Some d.name };
+                   context =
+                     {
+                       loc = Some d.name_loc;
+                       decl_name = Some d.name;
+                       term_name = Some d.name;
+                     };
                    error_type = Error.KernelError { kernel_exn = msg };
                  }))
     | Axiom ->
@@ -537,7 +593,12 @@ let process_decl (e : ctx) (d : declaration) : unit =
           raise
             (Error.ElabError
                {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
+                 context =
+                   {
+                     loc = Some d.name_loc;
+                     decl_name = Some d.name;
+                     term_name = Some d.name;
+                   };
                  error_type = Error.AlreadyDefined d.name;
                })
         else

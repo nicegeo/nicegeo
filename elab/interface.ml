@@ -37,7 +37,12 @@ let parse_decls (filename : string) : Decl.declaration list =
       raise
         (Error.ElabError
            {
-             context = { loc = Some { start = pos1; end_ = pos2 }; decl_name = None };
+             context =
+               {
+                 loc = Some { start = pos1; end_ = pos2 };
+                 decl_name = None;
+                 term_name = None;
+               };
              error_type =
                Error.ParseError { input = Lexing.lexeme lexbuf; error_msg = msg };
            })
@@ -57,6 +62,18 @@ let list_axioms (env : Types.ctx) (name : string) =
   match Hashtbl.find_opt env.env name with
   | Some entry -> (
       match entry.data with
-      | Types.Axiom -> failwith (name ^ " is an axiom")
+      | Types.Axiom ->
+          raise
+            (Error.ElabError
+               {
+                 context = { loc = None; decl_name = Some name; term_name = Some name };
+                 error_type = Error.ExpectedTheorem { name; actual = "an axiom" };
+               })
       | Types.Theorem axioms -> axioms)
-  | None -> failwith ("unknown declaration: " ^ name)
+  | None ->
+      raise
+        (Error.ElabError
+           {
+             context = { loc = None; decl_name = Some name; term_name = Some name };
+             error_type = Error.UnknownName { name };
+           })

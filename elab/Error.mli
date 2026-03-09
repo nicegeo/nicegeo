@@ -7,6 +7,7 @@ type error_context = {
   loc : range option;  (** Source location of the offending term, if available. *)
   decl_name : string option;
       (** Name of the declaration being processed when the error occurred, if known. *)
+  term_name : string option;  (** Name of the nearest useful term/binder, if known. *)
 }
 
 (** Payload for a parse failure. *)
@@ -44,27 +45,31 @@ type type_expected_info = {
   not_type_infer : term;  (** The inferred type of [not_type]. *)
 }
 
-(** The type of error raised in an ElabError. *)
+(** Payload for a unification failure. *)
+type unification_failure_info = {
+  left : term;  (** Left-hand side of the failed unification. *)
+  right : term;  (** Right-hand side of the failed unification. *)
+}
+
+(** Payload for an expected-theorem error. *)
+type expected_theorem_info = {
+  name : string;  (** Name that was expected to refer to a theorem. *)
+  actual : string;  (** What it actually referred to instead. *)
+}
+
+(** The type of error raised in an [ElabError]. *)
 type error_type =
   | ParseError of parse_error_info
-      (** The input failed to parse; carries the offending source text and the parser's
-          error message. *)
   | AlreadyDefined of string
-      (** A declaration with this name was already added to the environment. *)
   | TypeMismatch of type_mismatch_info
-      (** A term's inferred type does not match its expected type. *)
   | CannotInferHole
-      (** A hole ([_]) was encountered that could not be solved or its type inferred. *)
   | KernelError of kernel_error_info
-      (** The trusted kernel rejected a term; wraps the kernel's own error info. *)
   | UnknownName of unknown_name_info
-      (** A name was used that is not bound in the current environment. *)
   | InternalError of string
-      (** An invariant was violated inside the elaborator; indicates a bug. *)
   | FunctionExpected of function_expected_info
-      (** A non-function term was applied to an argument. *)
   | TypeExpected of type_expected_info
-      (** A term that is not a type was used in a position that requires a type. *)
+  | UnificationFailure of unification_failure_info
+  | ExpectedTheorem of expected_theorem_info
 
 (** The complete error record raised by the elaborator. *)
 type elab_error_info = {
