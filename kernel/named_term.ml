@@ -1,5 +1,5 @@
-(** "Named terms", terms with named Lam and Forall arguments which are hopefully easier to read. 
-These conversion functions will also need to be trusted. *)
+(** "Named terms", terms with named Lam and Forall arguments which are hopefully easier to
+    read. These conversion functions will also need to be trusted. *)
 
 type named_term =
   | Name of string
