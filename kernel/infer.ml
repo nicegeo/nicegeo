@@ -227,3 +227,12 @@ let add_axiom (env : environment) (name : string) (axiomType : term) : unit =
         let err_kind = LamDomainError in
         raise (TypeError { env; ctx = localCtx; trm = axiomType; err_kind })
       else Hashtbl.add env name axiomType
+
+(** The internal kernal functionality is exposed in an Internals module for testing
+    purposes. These functions are not meant to be interacted with by non-kernel code
+    otherwise, but OCaml does not have a good way to enforce this. *)
+module Internals = struct
+  let subst_bvar = subst_bvar
+  let rebind_bvar = rebind_bvar
+  let isSort = isSort
+end

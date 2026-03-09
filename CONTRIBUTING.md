@@ -22,5 +22,25 @@ The PRs should pass CI, be formatted properly and sufficiently documented, and h
 
 Once a PR is merged, please delete the corresponding feature branch. Create a new branch for any continuations based on the merged main (which will contain another merge commit). 
 
+## Programming Style and Conventions
+When working on this project, please adhere to the [OCaml Programming Guidelines](https://ocaml.org/docs/guidelines)
+
+In particular, pay special attention to the following standards:
+
+### ALWAYS add an .mli file for each .ml file
+Adding .mli files helps to document which functions are meant to be used in other modules, and which are internal to the module.
+
+### ALWAYS annotate function parameters with types
+Annotating the types of function parameters helps the type checker catch cases where the written function doesn't align with the intended function.
+
+### ALWAYS use `snake_case` for lowercase names (not `camelCase`)
+Using only one case throughout the code base increases coherence and readability, and `snake_case` is standard in OCaml. `PascalCase` is correct for variants and exceptions, but `Upper_snake_case` should be used for module names.
+
+### PREFER records over tuples
+Records provide a baseline level of documentation on the meanings of their fields, while tuples do not.
+
+### AVOID mutual recursion
+While mutual recursion is sometimes necessary, it can also make code more difficult to understand and modify, so it should be avoided when possible.
+
 ## AI Usage
 Do not use LLMs for the kernel. AI may be used outside the kernel, but you must disclose the scope of any usage of AI tools (i.e. which functions AI was used for, and how it was used) in the PR or commit messages.
