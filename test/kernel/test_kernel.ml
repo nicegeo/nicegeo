@@ -2,7 +2,7 @@
 open Kernel
 open Term
 open Infer
-open Infer.KernelInternals
+open Infer.Internals
 open Exceptions
 
 (* For backwards compatibility during exception refactoring *)

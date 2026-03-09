@@ -14,7 +14,7 @@ val inferType : environment -> localcontext -> term -> term
 (** The internal kernal functionality is exposed in an Internals module for testing
     purposes. These functions are not meant to be interacted with by non-kernel code
     otherwise, but OCaml does not have a good way to enforce this. *)
-module type Internals = sig
+module Internals : sig
   (* Substitution *)
   val subst_bvar : term -> int -> term -> term
 
@@ -24,5 +24,3 @@ module type Internals = sig
   (* Determine if a term is a Sort *)
   val isSort : environment -> term -> bool
 end
-
-module KernelInternals : Internals
