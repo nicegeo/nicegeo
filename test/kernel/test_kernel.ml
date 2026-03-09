@@ -2,7 +2,6 @@
 open Kernel
 open Term
 open Infer
-open Infer.Internals
 open Exceptions
 
 (* For backwards compatibility during exception refactoring *)
@@ -285,6 +284,7 @@ is equivalent to `fun (x: Point) -> x`, so we'd expect a type of `Point => Point
     ~expected:(Forall (Const "Point", Const "Point"))
 
 let test_subst_bvar () =
+  let open Internals in
   Alcotest.check'
     Testable.term
     ~msg:"no bvars"
@@ -351,6 +351,7 @@ let test_subst_bvar () =
     ~expected:(Forall (Bvar 0, Bvar 1))
 
 let test_rebind_bvar () =
+  let open Internals in
   Alcotest.check'
     Testable.term
     ~msg:"no bvars or fvars"
