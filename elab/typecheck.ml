@@ -241,8 +241,8 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
   | VarSpine (h1, args1), VarSpine (h2, args2) when h1.inner = h2.inner ->
     if List.length args1 <> List.length args2 then
       raise (Error.ElabError {
-        context = { loc = Some t1.loc; decl_name = None; term_name = term_name_of t1 };
-        error_type = Error.InternalError "tried to unify different length var spines"
+        context = { loc = Some t1.loc; decl_name = None };
+        error_type = Error.UnificationFailure { left = t1; right = t2 }
       })
     else
       List.iter2 (fun arg1 arg2 -> unify e arg1 arg2) args1 args2
@@ -262,13 +262,8 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
   | Sort n1, Sort n2 when n1 = n2 -> ()
   | _ ->
     raise (Error.ElabError {
-      context = { loc = Some t1.loc; decl_name = None; term_name = term_name_of t1 };
-      error_type =
-        Error.InternalError
-          ("failed to unify non-matching terms "
-           ^ Pretty.term_to_string e t1
-           ^ " and "
-           ^ Pretty.term_to_string e t2)
+      context = { loc = Some t1.loc; decl_name = None };
+      error_type = Error.UnificationFailure { left = t1; right = t2 }
     })
 (** checks that tm has expected type ty, trying to fill in metavariables (holes).
   If it fails it throws an ElabError. *)
@@ -286,21 +281,16 @@ let rec checktype (e: ctx) (tm: term) (ty: term) : unit =
       try
         let tm_type = infertype e tm in
         try unify e ty tm_type
-        with Failure _ ->
-          raise_at
-            tm
-            (Error.TypeMismatch { term = tm; inferred_type = tm_type; expected_type = ty })
+        with Error.ElabError { error_type = Error.UnificationFailure _; _ } ->
+          raise_at tm (Error.TypeMismatch { term = tm; inferred_type = tm_type; expected_type = ty })
       with Error.ElabError { error_type = Error.CannotInferHole; _ } ->
         let argtype = infertype e arg in
         checktype e f { inner = Arrow (None, argtype, ty); loc = ty.loc })
-  | Name _ | Fun _ | Arrow _ | Sort _ | Fvar _ -> (
-      let infer_ty = infertype e tm in
-      try unify e infer_ty ty
-      with Failure _ ->
-        raise_at
-          tm
-          (Error.TypeMismatch { term = tm; inferred_type = infer_ty; expected_type = ty })
-      )
+  | Name _ | Fun _ | Arrow _ | Sort _ | Fvar _ ->
+    let infer_ty = infertype e tm in
+    (try unify e infer_ty ty with
+    | Error.ElabError { error_type = Error.UnificationFailure _; _ } ->
+        raise_at tm (Error.TypeMismatch { term = tm; inferred_type = infer_ty; expected_type = ty }))
   | Bvar _ -> raise_at tm (Error.InternalError "unexpected bound variable in checktype")
 
 (** Infer the type of the term `tm` in the context `e`, possibly throwing an ElabError *)

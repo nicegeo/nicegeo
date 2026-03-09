@@ -34,6 +34,16 @@ type type_expected_info = {
   not_type_infer : term;
 }
 
+type unification_failure_info = {
+  left : term;
+  right : term;
+}
+
+type expected_theorem_info = {
+  name : string;
+  actual : string;
+}
+
 type error_type =
   | ParseError of parse_error_info
   | AlreadyDefined of string
@@ -44,6 +54,8 @@ type error_type =
   | InternalError of string
   | FunctionExpected of function_expected_info
   | TypeExpected of type_expected_info
+  | UnificationFailure of unification_failure_info
+  | ExpectedTheorem of expected_theorem_info
 
 type elab_error_info = {
   context : error_context;
@@ -121,6 +133,43 @@ let pp_loc (r : range) =
       r.end_.pos_lnum
       (r.end_.pos_cnum - r.end_.pos_bol + 1)
 
+let line_text_from_file (filename : string) (line_no : int) : string option =
+  try
+    let ic = open_in filename in
+    let rec loop n =
+      match input_line ic with
+      | line ->
+          if n = line_no then (
+            close_in ic;
+            Some line
+          ) else loop (n + 1)
+      | exception End_of_file ->
+          close_in ic;
+          None
+    in
+    loop 1
+  with _ -> None
+
+let caret_line (start_col : int) (end_col : int) : string =
+  let start_col = max 1 start_col in
+  let end_col = max start_col end_col in
+  String.make (start_col - 1) ' ' ^ String.make (max 1 (end_col - start_col + 1)) '^'
+
+let pp_source_snippet (r : range) : string =
+  let filename = r.start.pos_fname in
+  let line_no = r.start.pos_lnum in
+  let start_col = r.start.pos_cnum - r.start.pos_bol + 1 in
+  let end_col =
+    if r.start.pos_lnum = r.end_.pos_lnum then
+      r.end_.pos_cnum - r.end_.pos_bol + 1
+    else
+      start_col
+  in
+  match line_text_from_file filename line_no with
+  | Some line ->
+      Printf.sprintf "\n%s\n%s" line (caret_line start_col end_col)
+  | None -> ""
+
 let pp_context (ctx : error_context) : string =
   let parts = ref [] in
   (match ctx.decl_name with
@@ -152,11 +201,17 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
   let local_ctx_str = pp_local_ctx e in
   match info.error_type with
   | ParseError { input; error_msg } ->
-      Printf.sprintf
-        "Parse error%s: %s (input: '%s')"
-        ctx_str
-        error_msg
-        input
+    let snippet =
+      match info.context.loc with
+      | Some r -> pp_source_snippet r
+      | None -> ""
+    in
+    Printf.sprintf
+      "Parse error in %s at %s:%s\n%s (input: '%s')"
+      ctx_str
+      snippet
+      error_msg
+      input
   | AlreadyDefined name ->
       Printf.sprintf
         "Error%s: %s is already defined"
@@ -174,6 +229,7 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
          %s\n"
         local_ctx_str
         ctx_str
+        snippet
         (Pretty.term_to_string e term)
         (Pretty.term_to_string e inferred_type)
         (Pretty.term_to_string e expected_type)
@@ -182,6 +238,7 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         "Local context:\n%s\nCannot infer hole%s"
         local_ctx_str
         ctx_str
+        snippet
   | KernelError { kernel_exn } ->
       Printf.sprintf
         "Kernel error%s: %s"
@@ -192,6 +249,7 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         "Unknown name '%s'%s"
         name
         ctx_str
+        snippet
   | InternalError msg ->
       Printf.sprintf
         "Local context:\n%s\nInternal error%s: %s"
@@ -210,6 +268,7 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
          %s\n"
         local_ctx_str
         ctx_str
+        snippet
         (Pretty.term_to_string e not_func)
         (Pretty.term_to_string e not_func_type)
         (Pretty.term_to_string e arg)
@@ -223,5 +282,27 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
          %s\n"
         local_ctx_str
         ctx_str
+        snippet
         (Pretty.term_to_string e not_type)
         (Pretty.term_to_string e not_type_infer)
+    | UnificationFailure { left; right } ->
+      Printf.sprintf
+        "Local context:\n\
+         %s\n\
+         Failed to unify in %s at %s:\n\
+         %s\n\
+         with\n\
+         %s\n"
+        local_ctx_str
+        decl_str
+        loc_str
+        snippet
+        (Pretty.term_to_string e left)
+        (Pretty.term_to_string e right)
+  | ExpectedTheorem { name; actual } ->
+      Printf.sprintf
+        "Error in %s at %s: expected theorem '%s', but it is %s"
+        decl_str
+        loc_str
+        name
+        actual
