@@ -1,6 +1,6 @@
-open Term
 (** This file contains the kernel-side exception types, to be passed to the elaborator for
     processing. *)
+open Term
 
 (* --- Exception types --- *)
 
@@ -21,13 +21,13 @@ type type_error_kind =
   | LamDomainError
   | ForallSortError of term * term
 
+(** Type error information that the kernel passes on. *)
 type type_error_info = {
   env : environment;
   ctx : localcontext;
   trm : term;
   err_kind : type_error_kind;
 }
-(** Type error information that the kernel passes on. *)
 
-exception TypeError of type_error_info
 (** Exceptions that the kernel may raise, using the above information. *)
+exception TypeError of type_error_info
