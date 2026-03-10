@@ -104,7 +104,7 @@ let () =
           Buffer.add_string
             buf
             (Printf.sprintf
-               "(* %s : %s *)\nadd_axiom \"%s\" (named_term_to_term (\n%s\n));\n"
+               "\n(* %s : %s *)\nadd_axiom \"%s\" (named_term_to_term (\n%s\n));\n"
                decl.name
                type_str
                decl.name
