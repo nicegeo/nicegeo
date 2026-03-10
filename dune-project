@@ -25,6 +25,7 @@
   ocaml
   (ocamlformat :with-test)
   (alcotest :with-test)
+  (ppx_expect :with-test)
   (odoc :with-doc))
  (tags
   ("add topics" "to describe" your project)))
