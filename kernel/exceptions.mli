@@ -17,8 +17,8 @@ type type_error_kind =
   | UnknownFreeVarError of string
   | BoundVarScopeError of int
   | AppArgTypeError of term * term * term * term * term
-  | AppNonFuncError
-  | LamDomainError
+  | AppNonFuncError of term
+  | LamDomainError of term
   | ForallSortError of term * term
 
 (** Type error information that the kernel passes on. *)
