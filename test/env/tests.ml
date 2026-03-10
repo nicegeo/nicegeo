@@ -50,6 +50,7 @@ let kterm_to_repr (term : Kernel.Term.term) =
 
     Running [dune runtest] again will fill in the expect with the kernel term
     representation. Ensure this representation is correct before promoting and pushing. *)
+
 let%expect_test "Elaborate env.txt" =
   let env = Elab.Interface.create_with_env_path "../../../../../../env/env.txt" in
   let kenv = Hashtbl.copy env.kenv in
