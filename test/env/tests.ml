@@ -29,6 +29,27 @@ let kterm_to_repr (term : Kernel.Term.term) =
   in
   kterm_to_repr_helper term 0
 
+(** These are the regression tests for the axioms in env.txt. If [dune runtest] yields
+    errors here, inspect the diff to ensure that all changes in the kernel terms make
+    sense. Assume changes in the term representation of the axioms are regressions unless
+    you fully understand what the change represents.
+
+    If the changes make sense and are intended behavior, run [dune promote] to update the
+    regression tests.
+
+    At the end of this test, there is a check that all definitions in the environment have
+    been checked. If you see the [[%expect.unreachable]] at the end being replaced with a
+    list of missing definitions, DO NOT PROMOTE. Instead, check that each of the missing
+    definitions are indeed missing axioms, and then add a section like this for each:
+
+    {[
+      (* Name : Type *)
+      show_kterm "Name";
+      [%expect]
+    ]}
+
+    Running [dune runtest] again will fill in the expect with the kernel term
+    representation. Ensure this representation is correct before promoting and pushing. *)
 let%expect_test "Elaborate env.txt" =
   let env = Elab.Interface.create_with_env_path "../../../../../../env/env.txt" in
   let kenv = Hashtbl.copy env.kenv in
