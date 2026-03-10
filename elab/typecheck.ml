@@ -1,4 +1,3 @@
-open Decl
 (** The general strategy for filling in user-specified holes essentially boils down to
     creating unique variables each time we encounter a hole, generating constraints
     (equations) that a correctly typed program would have to satisfy with bidirectional
@@ -30,6 +29,7 @@ open Decl
 
     See lecture 3 of https://github.com/andrejbauer/faux-type-theory for more information
     on the algorithm. *)
+open Decl
 
 open Term
 open Convert
@@ -307,7 +307,7 @@ and infertype (e : ctx) (tm : term) : term =
               ty_arg
               (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty }))
     | App (f, arg) -> (
-        let f_type = infertype e f in
+        let f_type = whnf_beta e (infertype e f) in
         match f_type.inner with
         | Arrow (_, ty_arg, ty_ret) ->
             check_is_type e ty_arg;
@@ -354,7 +354,7 @@ and check_is_type (e : ctx) (tm : term) : unit =
       Hashtbl.remove e.lctx x
   | App (f, arg) -> (
       let f_type =
-        try Some (infertype e f)
+        try Some (whnf_beta e (infertype e f))
         with Error.ElabError { error_type = Error.CannotInferHole; _ } -> None
       in
 

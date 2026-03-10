@@ -125,7 +125,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
       let err_kind = BoundVarScopeError idx in
       raise (TypeError { env; ctx = localCtx; trm = t; err_kind })
   | App (func, arg) -> (
-      let func_type = inferType env localCtx func in
+      let func_type = reduce env localCtx (inferType env localCtx func) in
       let inferred_arg_type = inferType env localCtx arg in
       match func_type with
       | Forall (expected_arg_type, return_type) ->
@@ -189,3 +189,12 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
           let err_kind = ForallSortError (domainTypeType, returnTypeType) in
           raise (TypeError { env; ctx; trm; err_kind }))
   | Sort level -> Sort (level + 1)
+
+(** The internal kernal functionality is exposed in an Internals module for testing
+    purposes. These functions are not meant to be interacted with by non-kernel code
+    otherwise, but OCaml does not have a good way to enforce this. *)
+module Internals = struct
+  let subst_bvar = subst_bvar
+  let rebind_bvar = rebind_bvar
+  let isSort = isSort
+end
