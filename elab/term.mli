@@ -18,21 +18,24 @@ type term = {
 (** The kind of a term. *)
 and termkind =
   | Name of string
-      (** A name as written in source code (resolved to a constant or the nearest bound
-          variable of the same name during parsing). *)
-  | Bvar of int  (** De Bruijn index for bound variables. *)
+      (** [Name(name)] represents a name from the source (resolved to a constant or the
+          nearest bound variable of the same name during parsing). *)
+  | Bvar of int  (** [Bvar(idx)] represents a De Bruijn indexed bound variable. *)
   | Fvar of int
-      (** Free variable introduced during internal processing; the int is a unique id. *)
+      (** [Fvar(idx)] represents a free variable (introduced during internal processing).
+          [idx] is a unique id. *)
   | Hole of int
-      (** A hole (underscore) to be filled by elaboration; the int is a unique id. *)
+      (** [Hole(idx)] represents a hole (underscore) to be filled by elaboration. [idx] is
+          a unique id. *)
   | Fun of string option * term * term
-      (** A lambda abstraction, containing an optional parameter name, the input type, and
-          the body. *)
+      (** [Fun(name, domain_type, body)] represents a lambda abstraction, where [name] is
+          the optional parameter name. *)
   | Arrow of string option * term * term
-      (** A dependent function type, containing an optional parameter name, the input
-          type, and the return type. *)
-  | App of term * term  (** Apply a term (ideally a function) to an argument. *)
-  | Sort of int  (** Universe level. Sort 0 = Prop, Sort 1 = Type. *)
+      (** [Arrow(name, domain_type, return_type)] represents a dependent function type,
+          where [name] is the optional parameter name. *)
+  | App of term * term  (** [App(func, arg)] represents applying [func] to [arg]. *)
+  | Sort of int
+      (** [Sort(level)] represents a universe level. Sort 0 = Prop, Sort 1 = Type. *)
 
 (** [gen_hole_id ()] generates a fresh hole id. *)
 val gen_hole_id : unit -> int

@@ -47,24 +47,32 @@ type type_expected_info = {
 (** The type of error raised in an ElabError. *)
 type error_type =
   | ParseError of parse_error_info
-      (** The input failed to parse; carries the offending source text and the parser's
-          error message. *)
+      (** [ParseError(info)] indicated a parsing failure. [info] carries the offending
+          source and the error message. *)
   | AlreadyDefined of string
-      (** A declaration with this name was already added to the environment. *)
+      (** [AlreadyDefined(name)] indicates that a declaration [name] already exists in the
+          environment. *)
   | TypeMismatch of type_mismatch_info
-      (** A term's inferred type does not match its expected type. *)
+      (** [TypeMismatch(info)] indicates a type mismatch. [info] carries details about the
+          term, its inferred type, and the expected type. *)
   | CannotInferHole
-      (** A hole ([_]) was encountered that could not be solved or its type inferred. *)
+      (** [CannotInferHole] indicates that a hole ([_]) was encountered that could not be
+          solved or its type inferred. *)
   | KernelError of kernel_error_info
-      (** The trusted kernel rejected a term; wraps the kernel's own error info. *)
+      (** [KernelError(info)] indicates that the trusted kernel rejected a term. [info]
+          contains the error received from the kernel. *)
   | UnknownName of unknown_name_info
-      (** A name was used that is not bound in the current environment. *)
+      (** [UnknownName(info)] indicates that a name was used that is not bound in the
+          current environment. [info] carries the unknown name. *)
   | InternalError of string
-      (** An invariant was violated inside the elaborator; indicates a bug. *)
+      (** [InternalError(info)] indicates that an invariant was violated inside the
+          elaborator (indicates a bug). *)
   | FunctionExpected of function_expected_info
-      (** A non-function term was applied to an argument. *)
+      (** [FunctionExpected(info)] indicates that a non-function term was applied to an
+          argument. [info] carries details about the term, its type and the argument. *)
   | TypeExpected of type_expected_info
-      (** A term that is not a type was used in a position that requires a type. *)
+      (** [TypeExpected(info)] indicates that a non-type term was used in a position that
+          requires a type. [info] carries details about the term and its type. *)
 
 (** The complete error record raised by the elaborator. *)
 type elab_error_info = {

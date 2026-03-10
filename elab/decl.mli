@@ -4,8 +4,9 @@ open Term
 
 (** The body of a declaration: either a proof term or an axiom. *)
 type decl_type =
-  | Theorem of term  (** A theorem with its proof term. *)
-  | Axiom  (** An axiom. *)
+  | Theorem of term
+      (** [Theorem(term)] is the type of theorems with definition [term]. *)
+  | Axiom  (** [Axiom] is the type of axioms. *)
 
 (** A parsed declaration (axiom or theorem). *)
 type declaration = {
