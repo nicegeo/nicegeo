@@ -17,10 +17,11 @@ type type_error_kind =
       (** [AppArgTypeError(func, arg, func_type, expected_arg_type, actual_arg_type)]
           indicates a type error in the argument of a function application. *)
   | AppNonFuncError of term
-      (** [AppNonFuncError(func_type)] indicates an attempt to apply with a non-function term. *)
+      (** [AppNonFuncError(func_type)] indicates an attempt to apply with a non-function
+          term. *)
   | LamDomainError of term
-      (** [LamDomainError(domain_type_type)] indicates that the domain of a lambda abstraction is not a
-          valid type. *)
+      (** [LamDomainError(domain_type_type)] indicates that the domain of a lambda
+          abstraction is not a valid type. *)
   | ForallSortError of term * term
       (** [ForallSortError(domain_type_type, return_type_type)] indicates that either the
           domain type or the return type is not a valid sort. *)
