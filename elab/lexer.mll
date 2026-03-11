@@ -34,6 +34,10 @@ rule token = parse
   | "Type"      { TYPE }
   | "Prop"      { PROP }
   | "_" 	    { UNDERSCORE }
+  | "#print"    { PRINT_DIRECTIVE }
+  | "#infer"    { INFER_DIRECTIVE }
+  | "#check"    { CHECK_DIRECTIVE }
+  | "#reduce"   { REDUCE_DIRECTIVE }
   | ident as id {
       IDENT id
     }

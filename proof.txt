@@ -268,6 +268,15 @@ Exists Point (fun (c : Point) =>
     center_and_on
     ))
 
+Theorem fst : (A: Prop) -> (B: Prop) -> And A B -> A :=
+    fun A B h => And.elim1 A B A h (fun a b => a)
+
+Theorem snd : (A: Prop) -> (B: Prop) -> And A B -> B :=
+    fun A B h => And.elim1 A B B h (fun a b => b)
+
+Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
+    (* unification could improve here *)
+    fun (M: Prop) (P: Prop) (p: P) (f: P -> M) => f p
 
 Theorem prop1_mini :
 (a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
@@ -279,10 +288,10 @@ Exists Point (fun (c : Point) =>
     (fun (aa : Circle) (center_and_on : (And (CenterCircle a aa) (OnCircle b aa))) =>
 
     And.elim1 _ _ _ center_and_on
-    (fun (aaa : CenterCircle a aa) => fun (baa : OnCircle b aa) =>
+    (fun (aaa : CenterCircle a aa) (baa : OnCircle b aa) =>
 
     Exists.elim _ _ _ (circle_of_ne b a (Ne.symm _ _ _ ab))
-    (fun (bb : Circle) => fun (b_center_and_on : And (CenterCircle b bb) (OnCircle a bb)) =>
+    (fun (bb : Circle) (b_center_and_on : And (CenterCircle b bb) (OnCircle a bb)) =>
 
     And.elim1 _ _ _ b_center_and_on
     (fun (bbb : CenterCircle b bb) (abb : OnCircle a bb) =>
@@ -296,17 +305,11 @@ Exists Point (fun (c : Point) =>
     And.elim1 _ _ _ facts
     (fun (caa : OnCircle c aa) (cbb : OnCircle c bb) =>
 
-    And.elim1 _ _ _ (OnCircleIffLengthEq b c a bb bbb cbb)
-    (fun u1 (rtl_bc_ba : (OnCircle a bb -> Eq Len (Length b c) (Length b a))) =>
-
-    And.elim1 _ _ _ (OnCircleIffLengthEq a b c aa aaa baa) 
-    (fun u2 (rtl_ab_ac : (OnCircle c aa -> Eq Len (Length a b) (Length a c))) =>
-
     Exists.intro Point (fun (c : Point) =>
 		And (Eq Len (Length a b) (Length a c))
 			(Eq Len (Length b c) (Length b a)))
-    c (And.intro _ _ (rtl_ab_ac caa) (rtl_bc_ba abb))
-	))))))))
+    c (And.intro _ _ (snd _ _ (OnCircleIffLengthEq a b c aa aaa baa) caa) (snd _ _ (OnCircleIffLengthEq b c a bb bbb cbb) abb))
+	))))))
 
 
 Theorem AddCancel : (x: Len) -> (y: Len) -> (z: Len) -> Eq _ (Add x z) (Add y z) -> Eq _ x y :=
@@ -325,3 +328,8 @@ Theorem AddCancel : (x: Len) -> (y: Len) -> (z: Len) -> Eq _ (Add x z) (Add y z)
     )
     (fun (eqxy : Eq _ x y) => eqxy)
     )
+
+#print axioms prop1
+#infer prop1
+#check (fun (x : Point) => x) : (Point -> Point)
+#reduce (fun (x : Point) => x) (fun (y : Point) => y)

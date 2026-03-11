@@ -1,0 +1,9 @@
+profile=default
+margin=90
+
+doc-comments=before
+
+wrap-comments=false
+wrap-fun-args=false
+
+type-decl=sparse
