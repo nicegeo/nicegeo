@@ -11,4 +11,3 @@ val decl_to_string : Types.ctx -> Statement.declaration -> string
 
 (** [pp_loc loc] formats a file range as a string, e.g. proof.txt:334:8-49 *)
 val pp_loc : range -> string
-
