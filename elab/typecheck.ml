@@ -494,12 +494,13 @@ let process_decl (e : ctx) (d : declaration) : unit =
           (* replace_metas only fills in metavariables *)
           let ty_filled = replace_metas e ty_meta in
           Hashtbl.clear e.metas;
+          let ty_reduced = Reduce.reduce e ty_filled in
           let proof_meta = hole_to_meta e [] proof in
-          checktype e proof_meta ty_filled;
+          checktype e proof_meta ty_reduced;
           let proof_filled = replace_metas e proof_meta in
           Hashtbl.clear e.metas;
           (* conv_to_kterm does a straightforward variant-to-variant conversion *)
-          let ty_k = conv_to_kterm ty_filled in
+          let ty_k = conv_to_kterm ty_reduced in
           let proof_k = conv_to_kterm proof_filled in
 
           try
@@ -514,7 +515,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
                 d.name
                 {
                   name = d.name;
-                  ty = ty_filled;
+                  ty = ty_reduced;
                   data = Theorem (list_axioms_used e proof_filled);
                 };
               Hashtbl.add e.kenv d.name ty_k)
@@ -547,9 +548,10 @@ let process_decl (e : ctx) (d : declaration) : unit =
           (* replace_metas only fills in metavariables *)
           let ty_filled = replace_metas e ty_meta in
           Hashtbl.clear e.metas;
+          let ty_reduced = Reduce.reduce e ty_filled in
           (* conv_to_kterm does a straightforward variant-to-variant conversion *)
-          let ty_k = conv_to_kterm ty_filled in
-          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
+          let ty_k = conv_to_kterm ty_reduced in
+          Hashtbl.add e.env d.name { name = d.name; ty = ty_reduced; data = Axiom };
           Hashtbl.add e.kenv d.name ty_k
   with Error.ElabError x ->
     raise
