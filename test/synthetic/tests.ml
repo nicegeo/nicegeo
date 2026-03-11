@@ -1,49 +1,61 @@
-let rec collect_bound_names (tm: Elab.Term.term) : string list =
+let rec collect_bound_names (tm : Elab.Term.term) : string list =
   let open Elab.Term in
   match tm.inner with
   | Fun (name, ty, body) ->
       let ty_names = collect_bound_names ty in
       let body_names = collect_bound_names body in
-      (match name with Some n -> n | None -> "") :: ty_names @ body_names
+      ((match name with Some n -> n | None -> "") :: ty_names) @ body_names
   | Arrow (name, ty, ret) ->
       let ty_names = collect_bound_names ty in
       let ret_names = collect_bound_names ret in
-      (match name with Some n -> n | None -> "") :: ty_names @ ret_names
+      ((match name with Some n -> n | None -> "") :: ty_names) @ ret_names
   | App (f, arg) -> collect_bound_names f @ collect_bound_names arg
   | _ -> []
 
-let kterm_to_repr (term : Kernel.Term.term) (bound_names : string list) = 
+let kterm_to_repr (term : Kernel.Term.term) (bound_names : string list) =
   let open Kernel.Term in
-  let rec kterm_to_repr_helper (term : term) (indent : int) (bound_names : string list) (bvars : string list) =
+  let rec kterm_to_repr_helper (term : term) (indent : int) (bound_names : string list)
+      (bvars : string list) =
     let indent_str = String.make (indent * 2) ' ' in
     match term with
     | Const s -> (Printf.sprintf "Const \"%s\"" s, bound_names)
-    | Bvar n -> (Printf.sprintf "Bvar %d %s" n (if List.nth bvars n = "" then "" else "(* " ^ List.nth bvars n ^ " *)"), bound_names)
-    | Lam (ty, body) ->
-        (match bound_names with
+    | Bvar n ->
+        ( Printf.sprintf
+            "Bvar %d %s"
+            n
+            (if List.nth bvars n = "" then "" else "(* " ^ List.nth bvars n ^ " *)"),
+          bound_names )
+    | Lam (ty, body) -> (
+        match bound_names with
         | name :: rest_names ->
             let ty_repr, rest_names = kterm_to_repr_helper ty indent rest_names bvars in
-            let body_repr, rest_names = kterm_to_repr_helper body (indent + 1) rest_names (name :: bvars) in
-             (Printf.sprintf
-              "Lam (%s%s,\n%s  %s\n%s)"
-              (if name = "" then "" else "(* " ^ name ^ " : *)")
-              ty_repr
-              indent_str
-              body_repr
-              indent_str), rest_names
+            let body_repr, rest_names =
+              kterm_to_repr_helper body (indent + 1) rest_names (name :: bvars)
+            in
+            ( Printf.sprintf
+                "Lam (%s%s,\n%s  %s\n%s)"
+                (if name = "" then "" else "(* " ^ name ^ " : *)")
+                ty_repr
+                indent_str
+                body_repr
+                indent_str,
+              rest_names )
         | [] -> failwith "Not enough bound names provided in kterm_to_repr input")
-    | Forall (ty, ret) ->
-        (match bound_names with
+    | Forall (ty, ret) -> (
+        match bound_names with
         | name :: rest_names ->
             let ty_repr, rest_names = kterm_to_repr_helper ty indent rest_names bvars in
-            let ret_repr, rest_names = kterm_to_repr_helper ret (indent + 1) rest_names (name :: bvars) in
-             (Printf.sprintf
-              "Forall (%s%s,\n%s  %s\n%s)"
-              (if name = "" then "" else "(* " ^ name ^ " : *)")
-              ty_repr
-              indent_str
-              ret_repr
-              indent_str), rest_names
+            let ret_repr, rest_names =
+              kterm_to_repr_helper ret (indent + 1) rest_names (name :: bvars)
+            in
+            ( Printf.sprintf
+                "Forall (%s%s,\n%s  %s\n%s)"
+                (if name = "" then "" else "(* " ^ name ^ " : *)")
+                ty_repr
+                indent_str
+                ret_repr
+                indent_str,
+              rest_names )
         | [] -> failwith "Not enough bound names provided in kterm_to_repr input")
     | App (f, arg) ->
         let f_repr, bound_names = kterm_to_repr_helper f indent bound_names bvars in
@@ -98,9 +110,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Empty.elim";
   [%expect
     {|
-    Forall (Sort 1,
+    Forall ((* C : *)Sort 1,
       Forall (Const "Empty",
-        Bvar 1
+        Bvar 1 (* C *)
       )
     )
     |}];
@@ -113,9 +125,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "False.elim";
   [%expect
     {|
-    Forall (Sort 0,
+    Forall ((* P : *)Sort 0,
       Forall (Const "False",
-        Bvar 1
+        Bvar 1 (* P *)
       )
     )
     |}];
@@ -132,8 +144,8 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Exists";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    Forall ((* A : *)Sort 1,
+      Forall (Forall (Bvar 0 (* A *),
         Sort 0
       ),
         Sort 0
@@ -145,13 +157,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Exists.intro";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    Forall ((* A : *)Sort 1,
+      Forall ((* p : *)Forall (Bvar 0 (* A *),
         Sort 0
       ),
-        Forall (Bvar 1,
-          Forall (App (Bvar 1, Bvar 0),
-            App (App (Const "Exists", Bvar 3), Bvar 2)
+        Forall ((* a : *)Bvar 1 (* A *),
+          Forall ((* h : *)App (Bvar 1 (* p *), Bvar 0 (* a *)),
+            App (App (Const "Exists", Bvar 3 (* A *)), Bvar 2 (* p *))
           )
         )
       )
@@ -163,18 +175,18 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Exists.elim";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    Forall ((* A : *)Sort 1,
+      Forall ((* p : *)Forall (Bvar 0 (* A *),
         Sort 0
       ),
-        Forall (Sort 0,
-          Forall (App (App (Const "Exists", Bvar 2), Bvar 1),
-            Forall (Forall (Bvar 3,
-              Forall (App (Bvar 3, Bvar 0),
-                Bvar 3
+        Forall ((* b : *)Sort 0,
+          Forall ((* e : *)App (App (Const "Exists", Bvar 2 (* A *)), Bvar 1 (* p *)),
+            Forall (Forall ((* a : *)Bvar 3 (* A *),
+              Forall (App (Bvar 3 (* p *), Bvar 0 (* a *)),
+                Bvar 3 (* b *)
               )
             ),
-              Bvar 2
+              Bvar 2 (* b *)
             )
           )
         )
@@ -186,8 +198,8 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Forall";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    Forall ((* A : *)Sort 1,
+      Forall (Forall (Bvar 0 (* A *),
         Sort 0
       ),
         Sort 0
@@ -200,14 +212,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Forall.intro";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    Forall ((* A : *)Sort 1,
+      Forall ((* p : *)Forall (Bvar 0 (* A *),
         Sort 0
       ),
-        Forall (Forall (Bvar 1,
-          App (Bvar 1, Bvar 0)
+        Forall (Forall ((* a : *)Bvar 1 (* A *),
+          App (Bvar 1 (* p *), Bvar 0 (* a *))
         ),
-          App (App (Const "Forall", Bvar 2), Bvar 1)
+          App (App (Const "Forall", Bvar 2 (* A *)), Bvar 1 (* p *))
         )
       )
     )
@@ -218,13 +230,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Forall.elim";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    Forall ((* A : *)Sort 1,
+      Forall ((* p : *)Forall (Bvar 0 (* A *),
         Sort 0
       ),
-        Forall (App (App (Const "Forall", Bvar 1), Bvar 0),
-          Forall (Bvar 2,
-            App (Bvar 2, Bvar 0)
+        Forall (App (App (Const "Forall", Bvar 1 (* A *)), Bvar 0 (* p *)),
+          Forall ((* a : *)Bvar 2 (* A *),
+            App (Bvar 2 (* p *), Bvar 0 (* a *))
           )
         )
       )
@@ -246,11 +258,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "And.intro";
   [%expect
     {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Bvar 1,
-          Forall (Bvar 1,
-            App (App (Const "And", Bvar 3), Bvar 2)
+    Forall ((* A : *)Sort 0,
+      Forall ((* B : *)Sort 0,
+        Forall ((* a : *)Bvar 1 (* A *),
+          Forall ((* b : *)Bvar 1 (* B *),
+            App (App (Const "And", Bvar 3 (* A *)), Bvar 2 (* B *))
           )
         )
       )
@@ -262,16 +274,16 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "And.elim";
   [%expect
     {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Sort 0,
-          Forall (Forall (Bvar 2,
-            Forall (Bvar 2,
-              Bvar 2
+    Forall ((* A : *)Sort 0,
+      Forall ((* B : *)Sort 0,
+        Forall ((* C : *)Sort 0,
+          Forall ((* f : *)Forall (Bvar 2 (* A *),
+            Forall (Bvar 2 (* B *),
+              Bvar 2 (* C *)
             )
           ),
-            Forall (App (App (Const "And", Bvar 3), Bvar 2),
-              Bvar 2
+            Forall (App (App (Const "And", Bvar 3 (* A *)), Bvar 2 (* B *)),
+              Bvar 2 (* C *)
             )
           )
         )
@@ -294,10 +306,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Or.inl";
   [%expect
     {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Bvar 1,
-          App (App (Const "Or", Bvar 2), Bvar 1)
+    Forall ((* A : *)Sort 0,
+      Forall ((* B : *)Sort 0,
+        Forall (Bvar 1 (* A *),
+          App (App (Const "Or", Bvar 2 (* A *)), Bvar 1 (* B *))
         )
       )
     )
@@ -307,10 +319,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Or.inr";
   [%expect
     {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Bvar 0,
-          App (App (Const "Or", Bvar 2), Bvar 1)
+    Forall ((* A : *)Sort 0,
+      Forall ((* B : *)Sort 0,
+        Forall (Bvar 0 (* B *),
+          App (App (Const "Or", Bvar 2 (* A *)), Bvar 1 (* B *))
         )
       )
     )
@@ -321,17 +333,17 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Or.elim";
   [%expect
     {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Sort 0,
-          Forall (App (App (Const "Or", Bvar 2), Bvar 1),
-            Forall (Forall (Bvar 3,
-              Bvar 2
+    Forall ((* A : *)Sort 0,
+      Forall ((* B : *)Sort 0,
+        Forall ((* C : *)Sort 0,
+          Forall (App (App (Const "Or", Bvar 2 (* A *)), Bvar 1 (* B *)),
+            Forall (Forall (Bvar 3 (* A *),
+              Bvar 2 (* C *)
             ),
-              Forall (Forall (Bvar 3,
-                Bvar 3
+              Forall (Forall (Bvar 3 (* B *),
+                Bvar 3 (* C *)
               ),
-                Bvar 3
+                Bvar 3 (* C *)
               )
             )
           )
@@ -352,11 +364,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Not.intro";
   [%expect
     {|
-    Forall (Sort 0,
-      Forall (Forall (Bvar 0,
+    Forall ((* P : *)Sort 0,
+      Forall (Forall (Bvar 0 (* P *),
         Const "False"
       ),
-        App (Const "Not", Bvar 1)
+        App (Const "Not", Bvar 1 (* P *))
       )
     )
     |}];
@@ -365,9 +377,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Not.elim";
   [%expect
     {|
-    Forall (Sort 0,
-      Forall (App (Const "Not", Bvar 0),
-        Forall (Bvar 1,
+    Forall ((* P : *)Sort 0,
+      Forall (App (Const "Not", Bvar 0 (* P *)),
+        Forall (Bvar 1 (* P *),
           Const "False"
         )
       )
@@ -378,9 +390,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Eq";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (Bvar 1,
+    Forall ((* T : *)Sort 1,
+      Forall (Bvar 0 (* T *),
+        Forall (Bvar 1 (* T *),
           Sort 0
         )
       )
@@ -391,9 +403,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Eq.intro";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        App (App (App (Const "Eq", Bvar 1), Bvar 0), Bvar 0)
+    Forall ((* T : *)Sort 1,
+      Forall ((* t : *)Bvar 0 (* T *),
+        App (App (App (Const "Eq", Bvar 1 (* T *)), Bvar 0 (* t *)), Bvar 0 (* t *))
       )
     )
     |}];
@@ -402,15 +414,15 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Eq.elim";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (Forall (Bvar 1,
+    Forall ((* T : *)Sort 1,
+      Forall ((* t : *)Bvar 0 (* T *),
+        Forall ((* motive : *)Forall (Bvar 1 (* T *),
           Sort 0
         ),
-          Forall (App (Bvar 0, Bvar 1),
-            Forall (Bvar 3,
-              Forall (App (App (App (Const "Eq", Bvar 4), Bvar 3), Bvar 0),
-                App (Bvar 3, Bvar 1)
+          Forall ((* rfl : *)App (Bvar 0 (* motive *), Bvar 1 (* t *)),
+            Forall ((* t1 : *)Bvar 3 (* T *),
+              Forall (App (App (App (Const "Eq", Bvar 4 (* T *)), Bvar 3 (* t *)), Bvar 0 (* t1 *)),
+                App (Bvar 3 (* motive *), Bvar 1 (* t1 *))
               )
             )
           )
@@ -429,9 +441,10 @@ let%expect_test "Elaborate env.txt" =
 
   (* List.nil : (A : Type) -> List A *)
   show_kterm "List.nil";
-  [%expect {|
-    Forall (Sort 1,
-      App (Const "List", Bvar 0)
+  [%expect
+    {|
+    Forall ((* A : *)Sort 1,
+      App (Const "List", Bvar 0 (* A *))
     )
     |}];
 
@@ -439,10 +452,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "List.cons";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (App (Const "List", Bvar 1),
-          App (Const "List", Bvar 2)
+    Forall ((* A : *)Sort 1,
+      Forall (Bvar 0 (* A *),
+        Forall (App (Const "List", Bvar 1 (* A *)),
+          App (Const "List", Bvar 2 (* A *))
         )
       )
     )
@@ -452,9 +465,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "List.mem";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (App (Const "List", Bvar 1),
+    Forall ((* A : *)Sort 1,
+      Forall (Bvar 0 (* A *),
+        Forall (App (Const "List", Bvar 1 (* A *)),
           Sort 0
         )
       )
@@ -465,9 +478,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "List.not_mem_nil";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (App (App (App (Const "List.mem", Bvar 1), Bvar 0), App (Const "List.nil", Bvar 1)),
+    Forall ((* A : *)Sort 1,
+      Forall ((* a : *)Bvar 0 (* A *),
+        Forall (App (App (App (Const "List.mem", Bvar 1 (* A *)), Bvar 0 (* a *)), App (Const "List.nil", Bvar 1 (* A *))),
           Const "False"
         )
       )
@@ -480,14 +493,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "List.mem_cons";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (Bvar 1,
-          Forall (App (Const "List", Bvar 2),
-            App (App (Const "And", Forall (App (App (App (Const "List.mem", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0)),
-              App (App (Const "Or", App (App (App (Const "Eq", Bvar 4), Bvar 3), Bvar 2)), App (App (App (Const "List.mem", Bvar 4), Bvar 3), Bvar 1))
-            )), Forall (App (App (Const "Or", App (App (App (Const "Eq", Bvar 3), Bvar 2), Bvar 1)), App (App (App (Const "List.mem", Bvar 3), Bvar 2), Bvar 0)),
-              App (App (App (Const "List.mem", Bvar 4), Bvar 3), App (App (App (Const "List.cons", Bvar 4), Bvar 2), Bvar 1))
+    Forall ((* A : *)Sort 1,
+      Forall ((* a : *)Bvar 0 (* A *),
+        Forall ((* b : *)Bvar 1 (* A *),
+          Forall ((* L : *)App (Const "List", Bvar 2 (* A *)),
+            App (App (Const "And", Forall (App (App (App (Const "List.mem", Bvar 3 (* A *)), Bvar 2 (* a *)), App (App (App (Const "List.cons", Bvar 3 (* A *)), Bvar 1 (* b *)), Bvar 0 (* L *))),
+              App (App (Const "Or", App (App (App (Const "Eq", Bvar 4 (* A *)), Bvar 3 (* a *)), Bvar 2 (* b *))), App (App (App (Const "List.mem", Bvar 4 (* A *)), Bvar 3 (* a *)), Bvar 1 (* L *)))
+            )), Forall (App (App (Const "Or", App (App (App (Const "Eq", Bvar 3 (* A *)), Bvar 2 (* a *)), Bvar 1 (* b *))), App (App (App (Const "List.mem", Bvar 3 (* A *)), Bvar 2 (* a *)), Bvar 0 (* L *))),
+              App (App (App (Const "List.mem", Bvar 4 (* A *)), Bvar 3 (* a *)), App (App (App (Const "List.cons", Bvar 4 (* A *)), Bvar 2 (* b *)), Bvar 1 (* L *)))
             ))
           )
         )
@@ -499,11 +512,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "List.forall";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    Forall ((* A : *)Sort 1,
+      Forall (Forall (Bvar 0 (* A *),
         Sort 0
       ),
-        Forall (App (Const "List", Bvar 1),
+        Forall (App (Const "List", Bvar 1 (* A *)),
           Sort 0
         )
       )
@@ -514,11 +527,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "List.forall_nil";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    Forall ((* A : *)Sort 1,
+      Forall ((* p : *)Forall (Bvar 0 (* A *),
         Sort 0
       ),
-        App (App (App (Const "List.forall", Bvar 1), Bvar 0), App (Const "List.nil", Bvar 1))
+        App (App (App (Const "List.forall", Bvar 1 (* A *)), Bvar 0 (* p *)), App (Const "List.nil", Bvar 1 (* A *)))
       )
     )
     |}];
@@ -529,16 +542,16 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "List.forall_cons";
   [%expect
     {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    Forall ((* A : *)Sort 1,
+      Forall ((* p : *)Forall (Bvar 0 (* A *),
         Sort 0
       ),
-        Forall (Bvar 1,
-          Forall (App (Const "List", Bvar 2),
-            App (App (Const "And", Forall (App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0)),
-              App (App (Const "And", App (Bvar 3, Bvar 2)), App (App (App (Const "List.forall", Bvar 4), Bvar 3), Bvar 1))
-            )), Forall (App (App (Const "And", App (Bvar 2, Bvar 1)), App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)),
-              App (App (App (Const "List.forall", Bvar 4), Bvar 3), App (App (App (Const "List.cons", Bvar 4), Bvar 2), Bvar 1))
+        Forall ((* a : *)Bvar 1 (* A *),
+          Forall ((* L : *)App (Const "List", Bvar 2 (* A *)),
+            App (App (Const "And", Forall (App (App (App (Const "List.forall", Bvar 3 (* A *)), Bvar 2 (* p *)), App (App (App (Const "List.cons", Bvar 3 (* A *)), Bvar 1 (* a *)), Bvar 0 (* L *))),
+              App (App (Const "And", App (Bvar 3 (* p *), Bvar 2 (* a *))), App (App (App (Const "List.forall", Bvar 4 (* A *)), Bvar 3 (* p *)), Bvar 1 (* L *)))
+            )), Forall (App (App (Const "And", App (Bvar 2 (* p *), Bvar 1 (* a *))), App (App (App (Const "List.forall", Bvar 3 (* A *)), Bvar 2 (* p *)), Bvar 0 (* L *))),
+              App (App (App (Const "List.forall", Bvar 4 (* A *)), Bvar 3 (* p *)), App (App (App (Const "List.cons", Bvar 4 (* A *)), Bvar 2 (* a *)), Bvar 1 (* L *)))
             ))
           )
         )
@@ -577,8 +590,8 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "LtIrrefl";
   [%expect
     {|
-    Forall (Const "Measure",
-      Forall (App (App (Const "Lt", Bvar 0), Bvar 0),
+    Forall ((* a : *)Const "Measure",
+      Forall (App (App (Const "Lt", Bvar 0 (* a *)), Bvar 0 (* a *)),
         Const "False"
       )
     )
@@ -588,12 +601,12 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "LtTrans";
   [%expect
     {|
-    Forall (Const "Measure",
-      Forall (Const "Measure",
-        Forall (Const "Measure",
-          Forall (App (App (Const "Lt", Bvar 2), Bvar 1),
-            Forall (App (App (Const "Lt", Bvar 2), Bvar 1),
-              App (App (Const "Lt", Bvar 4), Bvar 2)
+    Forall ((* a : *)Const "Measure",
+      Forall ((* b : *)Const "Measure",
+        Forall ((* c : *)Const "Measure",
+          Forall (App (App (Const "Lt", Bvar 2 (* a *)), Bvar 1 (* b *)),
+            Forall (App (App (Const "Lt", Bvar 2 (* b *)), Bvar 1 (* c *)),
+              App (App (Const "Lt", Bvar 4 (* a *)), Bvar 2 (* c *))
             )
           )
         )
@@ -605,9 +618,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "LtTricot";
   [%expect
     {|
-    Forall (Const "Measure",
-      Forall (Const "Measure",
-        App (App (Const "Or", App (App (Const "Lt", Bvar 1), Bvar 0)), App (App (Const "Or", App (App (Const "Lt", Bvar 0), Bvar 1)), App (App (App (Const "Eq", Const "Measure"), Bvar 1), Bvar 0)))
+    Forall ((* a : *)Const "Measure",
+      Forall ((* b : *)Const "Measure",
+        App (App (Const "Or", App (App (Const "Lt", Bvar 1 (* a *)), Bvar 0 (* b *))), App (App (Const "Or", App (App (Const "Lt", Bvar 0 (* b *)), Bvar 1 (* a *))), App (App (App (Const "Eq", Const "Measure"), Bvar 1 (* a *)), Bvar 0 (* b *))))
       )
     )
     |}];
@@ -616,10 +629,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "LtAntisymm";
   [%expect
     {|
-    Forall (Const "Measure",
-      Forall (Const "Measure",
-        Forall (App (App (Const "Lt", Bvar 1), Bvar 0),
-          Forall (App (App (Const "Lt", Bvar 1), Bvar 2),
+    Forall ((* a : *)Const "Measure",
+      Forall ((* b : *)Const "Measure",
+        Forall (App (App (Const "Lt", Bvar 1 (* a *)), Bvar 0 (* b *)),
+          Forall (App (App (Const "Lt", Bvar 1 (* b *)), Bvar 2 (* a *)),
             Const "False"
           )
         )
@@ -635,8 +648,8 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "ZeroLeast";
   [%expect
     {|
-    Forall (Const "Measure",
-      App (App (Const "Or", App (App (Const "Lt", Const "Zero"), Bvar 0)), App (App (App (Const "Eq", Const "Measure"), Const "Zero"), Bvar 0))
+    Forall ((* a : *)Const "Measure",
+      App (App (Const "Or", App (App (Const "Lt", Const "Zero"), Bvar 0 (* a *))), App (App (App (Const "Eq", Const "Measure"), Const "Zero"), Bvar 0 (* a *)))
     )
     |}];
 
@@ -655,9 +668,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "AddComm";
   [%expect
     {|
-    Forall (Const "Measure",
-      Forall (Const "Measure",
-        App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", Bvar 1), Bvar 0)), App (App (Const "Add", Bvar 0), Bvar 1))
+    Forall ((* a : *)Const "Measure",
+      Forall ((* b : *)Const "Measure",
+        App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", Bvar 1 (* a *)), Bvar 0 (* b *))), App (App (Const "Add", Bvar 0 (* b *)), Bvar 1 (* a *)))
       )
     )
     |}];
@@ -666,10 +679,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "AddAssoc";
   [%expect
     {|
-    Forall (Const "Measure",
-      Forall (Const "Measure",
-        Forall (Const "Measure",
-          App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (Const "Add", Bvar 2), Bvar 1)), Bvar 0)), App (App (Const "Add", Bvar 2), App (App (Const "Add", Bvar 1), Bvar 0)))
+    Forall ((* a : *)Const "Measure",
+      Forall ((* b : *)Const "Measure",
+        Forall ((* c : *)Const "Measure",
+          App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (Const "Add", Bvar 2 (* a *)), Bvar 1 (* b *))), Bvar 0 (* c *))), App (App (Const "Add", Bvar 2 (* a *)), App (App (Const "Add", Bvar 1 (* b *)), Bvar 0 (* c *))))
         )
       )
     )
@@ -679,8 +692,8 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "AddZero";
   [%expect
     {|
-    Forall (Const "Measure",
-      App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", Bvar 0), Const "Zero")), Bvar 0)
+    Forall ((* a : *)Const "Measure",
+      App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", Bvar 0 (* a *)), Const "Zero")), Bvar 0 (* a *))
     )
     |}];
 
@@ -688,11 +701,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "LtAdd";
   [%expect
     {|
-    Forall (Const "Measure",
-      Forall (Const "Measure",
-        Forall (Const "Measure",
-          Forall (App (App (Const "Lt", Bvar 2), Bvar 1),
-            App (App (Const "Lt", App (App (Const "Add", Bvar 3), Bvar 1)), App (App (Const "Add", Bvar 2), Bvar 1))
+    Forall ((* a : *)Const "Measure",
+      Forall ((* b : *)Const "Measure",
+        Forall ((* c : *)Const "Measure",
+          Forall (App (App (Const "Lt", Bvar 2 (* a *)), Bvar 1 (* b *)),
+            App (App (Const "Lt", App (App (Const "Add", Bvar 3 (* a *)), Bvar 1 (* c *))), App (App (Const "Add", Bvar 2 (* b *)), Bvar 1 (* c *)))
           )
         )
       )
@@ -740,8 +753,8 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Length";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
         Const "Measure"
       )
     )
@@ -751,9 +764,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Angle";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
           Const "Measure"
         )
       )
@@ -764,9 +777,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "Area";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
           Const "Measure"
         )
       )
@@ -866,18 +879,18 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "distinct_from.intro";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 3), Bvar 2)),
-              Forall (App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
-                App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 0))
-              )), Bvar 2),
-                Forall (App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
-                  App (Const "Not", App (App (Const "OnCircle", Bvar 6), Bvar 0))
-                )), Bvar 2),
-                  App (App (App (App (Const "distinct_from", Bvar 6), Bvar 5), Bvar 4), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* p_list : *)App (Const "List", Const "Point"),
+        Forall ((* l_list : *)App (Const "List", Const "Line"),
+          Forall ((* c_list : *)App (Const "List", Const "Circle"),
+            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 3 (* a *)), Bvar 2 (* p_list *))),
+              Forall (App (App (App (Const "List.forall", Const "Line"), Lam ((* L : *)Const "Line",
+                App (Const "Not", App (App (Const "OnLine", Bvar 5 (* a *)), Bvar 0 (* L *)))
+              )), Bvar 2 (* l_list *)),
+                Forall (App (App (App (Const "List.forall", Const "Circle"), Lam ((* aa : *)Const "Circle",
+                  App (Const "Not", App (App (Const "OnCircle", Bvar 6 (* a *)), Bvar 0 (* aa *)))
+                )), Bvar 2 (* c_list *)),
+                  App (App (App (App (Const "distinct_from", Bvar 6 (* a *)), Bvar 5 (* p_list *)), Bvar 4 (* l_list *)), Bvar 3 (* c_list *))
                 )
               )
             )
@@ -893,16 +906,16 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "distinct_from.elim";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            Forall (App (App (App (App (Const "distinct_from", Bvar 3), Bvar 2), Bvar 1), Bvar 0),
-              App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 4), Bvar 3))), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
-                App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 0))
-              )), Bvar 2))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
-                App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 0))
-              )), Bvar 1))
+    Forall ((* a : *)Const "Point",
+      Forall ((* p_list : *)App (Const "List", Const "Point"),
+        Forall ((* l_list : *)App (Const "List", Const "Line"),
+          Forall ((* c_list : *)App (Const "List", Const "Circle"),
+            Forall (App (App (App (App (Const "distinct_from", Bvar 3 (* a *)), Bvar 2 (* p_list *)), Bvar 1 (* l_list *)), Bvar 0 (* c_list *)),
+              App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 4 (* a *)), Bvar 3 (* p_list *)))), App (App (App (Const "List.forall", Const "Line"), Lam ((* L : *)Const "Line",
+                App (Const "Not", App (App (Const "OnLine", Bvar 5 (* a *)), Bvar 0 (* L *)))
+              )), Bvar 2 (* l_list *)))), App (App (App (Const "List.forall", Const "Circle"), Lam ((* aa : *)Const "Circle",
+                App (Const "Not", App (App (Const "OnCircle", Bvar 5 (* a *)), Bvar 0 (* aa *)))
+              )), Bvar 1 (* c_list *)))
             )
           )
         )
@@ -916,11 +929,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_exists";
   [%expect
     {|
-    Forall (App (Const "List", Const "Point"),
-      Forall (App (Const "List", Const "Line"),
-        Forall (App (Const "List", Const "Circle"),
-          App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1)
+    Forall ((* p_list : *)App (Const "List", Const "Point"),
+      Forall ((* l_list : *)App (Const "List", Const "Line"),
+        Forall ((* c_list : *)App (Const "List", Const "Circle"),
+          App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+            App (App (App (App (Const "distinct_from", Bvar 0 (* a *)), Bvar 3 (* p_list *)), Bvar 2 (* l_list *)), Bvar 1 (* c_list *))
           ))
         )
       )
@@ -934,13 +947,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_on_line";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 3), Bvar 1)),
-              App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+    Forall ((* L : *)Const "Line",
+      Forall ((* p_list : *)App (Const "List", Const "Point"),
+        Forall ((* l_list : *)App (Const "List", Const "Line"),
+          Forall ((* c_list : *)App (Const "List", Const "Circle"),
+            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 3 (* L *)), Bvar 1 (* l_list *))),
+              App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                App (App (Const "And", App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 5 (* L *))), App (App (App (App (Const "distinct_from", Bvar 0 (* a *)), Bvar 4 (* p_list *)), Bvar 3 (* l_list *)), Bvar 2 (* c_list *)))
               ))
             )
           )
@@ -957,20 +970,20 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_between_on_line";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (App (Const "List", Const "Point"),
-            Forall (App (Const "List", Const "Line"),
-              Forall (App (Const "List", Const "Circle"),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 5),
-                  Forall (App (App (Const "OnLine", Bvar 4), Bvar 6),
-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+    Forall ((* L : *)Const "Line",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* p_list : *)App (Const "List", Const "Point"),
+            Forall ((* l_list : *)App (Const "List", Const "Line"),
+              Forall ((* c_list : *)App (Const "List", Const "Circle"),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 5 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 4 (* c *)), Bvar 6 (* L *)),
+                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6 (* b *)), Bvar 5 (* c *)),
                       Const "False"
                     ),
-                      Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
-                        App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 0), Bvar 8))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                      Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8 (* L *)), Bvar 4 (* l_list *))),
+                        App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 10 (* L *))), App (App (App (Const "Between", Bvar 9 (* b *)), Bvar 0 (* a *)), Bvar 8 (* c *)))), App (App (App (App (Const "distinct_from", Bvar 0 (* a *)), Bvar 7 (* p_list *)), Bvar 6 (* l_list *)), Bvar 5 (* c_list *)))
                         ))
                       )
                     )
@@ -992,20 +1005,20 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_extension_on_line";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (App (Const "List", Const "Point"),
-            Forall (App (Const "List", Const "Line"),
-              Forall (App (Const "List", Const "Circle"),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 5),
-                  Forall (App (App (Const "OnLine", Bvar 4), Bvar 6),
-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+    Forall ((* L : *)Const "Line",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* p_list : *)App (Const "List", Const "Point"),
+            Forall ((* l_list : *)App (Const "List", Const "Line"),
+              Forall ((* c_list : *)App (Const "List", Const "Circle"),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 5 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 4 (* c *)), Bvar 6 (* L *)),
+                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6 (* b *)), Bvar 5 (* c *)),
                       Const "False"
                     ),
-                      Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
-                        App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 0))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                      Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8 (* L *)), Bvar 4 (* l_list *))),
+                        App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 10 (* L *))), App (App (App (Const "Between", Bvar 9 (* b *)), Bvar 8 (* c *)), Bvar 0 (* a *)))), App (App (App (App (Const "distinct_from", Bvar 0 (* a *)), Bvar 7 (* p_list *)), Bvar 6 (* l_list *)), Bvar 5 (* c_list *)))
                         ))
                       )
                     )
@@ -1026,16 +1039,16 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_sameside_of_not_online";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (Const "Point",
-        Forall (App (Const "List", Const "Point"),
-          Forall (App (Const "List", Const "Line"),
-            Forall (App (Const "List", Const "Circle"),
-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 4),
+    Forall ((* L : *)Const "Line",
+      Forall ((* b : *)Const "Point",
+        Forall ((* p_list : *)App (Const "List", Const "Point"),
+          Forall ((* l_list : *)App (Const "List", Const "Line"),
+            Forall ((* c_list : *)App (Const "List", Const "Circle"),
+              Forall (Forall (App (App (Const "OnLine", Bvar 3 (* b *)), Bvar 4 (* L *)),
                 Const "False"
               ),
-                App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                  App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                  App (App (Const "And", App (App (App (Const "SameSide", Bvar 0 (* a *)), Bvar 5 (* b *)), Bvar 6 (* L *))), App (App (App (App (Const "distinct_from", Bvar 0 (* a *)), Bvar 4 (* p_list *)), Bvar 3 (* l_list *)), Bvar 2 (* c_list *)))
                 ))
               )
             )
@@ -1054,20 +1067,20 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_oppositeside_of_not_online";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (Const "Point",
-        Forall (App (Const "List", Const "Point"),
-          Forall (App (Const "List", Const "Line"),
-            Forall (App (Const "List", Const "Circle"),
-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 4),
+    Forall ((* L : *)Const "Line",
+      Forall ((* b : *)Const "Point",
+        Forall ((* p_list : *)App (Const "List", Const "Point"),
+          Forall ((* l_list : *)App (Const "List", Const "Line"),
+            Forall ((* c_list : *)App (Const "List", Const "Circle"),
+              Forall (Forall (App (App (Const "OnLine", Bvar 3 (* b *)), Bvar 4 (* L *)),
                 Const "False"
               ),
-                App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                  App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0), Bvar 6),
+                App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                  App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 6 (* L *)),
                     Const "False"
-                  )), Forall (App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6),
+                  )), Forall (App (App (App (Const "SameSide", Bvar 0 (* a *)), Bvar 5 (* b *)), Bvar 6 (* L *)),
                     Const "False"
-                  ))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                  ))), App (App (App (App (Const "distinct_from", Bvar 0 (* a *)), Bvar 4 (* p_list *)), Bvar 3 (* l_list *)), Bvar 2 (* c_list *)))
                 ))
               )
             )
@@ -1083,13 +1096,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_on_circle";
   [%expect
     {|
-    Forall (Const "Circle",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Circle"), Bvar 3), Bvar 0)),
-              App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+    Forall ((* aa : *)Const "Circle",
+      Forall ((* p_list : *)App (Const "List", Const "Point"),
+        Forall ((* l_list : *)App (Const "List", Const "Line"),
+          Forall ((* c_list : *)App (Const "List", Const "Circle"),
+            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Circle"), Bvar 3 (* aa *)), Bvar 0 (* c_list *))),
+              App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                App (App (Const "And", App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 5 (* aa *))), App (App (App (App (Const "distinct_from", Bvar 0 (* a *)), Bvar 4 (* p_list *)), Bvar 3 (* l_list *)), Bvar 2 (* c_list *)))
               ))
             )
           )
@@ -1104,12 +1117,12 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_inside_circle";
   [%expect
     {|
-    Forall (Const "Circle",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", App (App (Const "InCircle", Bvar 0), Bvar 4)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+    Forall ((* aa : *)Const "Circle",
+      Forall ((* p_list : *)App (Const "List", Const "Point"),
+        Forall ((* l_list : *)App (Const "List", Const "Line"),
+          Forall ((* c_list : *)App (Const "List", Const "Circle"),
+            App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+              App (App (Const "And", App (App (Const "InCircle", Bvar 0 (* a *)), Bvar 4 (* aa *))), App (App (App (App (Const "distinct_from", Bvar 0 (* a *)), Bvar 3 (* p_list *)), Bvar 2 (* l_list *)), Bvar 1 (* c_list *)))
             ))
           )
         )
@@ -1125,16 +1138,16 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_outside_circle";
   [%expect
     {|
-    Forall (Const "Circle",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnCircle", Bvar 0), Bvar 4),
+    Forall ((* aa : *)Const "Circle",
+      Forall ((* p_list : *)App (Const "List", Const "Point"),
+        Forall ((* l_list : *)App (Const "List", Const "Line"),
+          Forall ((* c_list : *)App (Const "List", Const "Circle"),
+            App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+              App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 4 (* aa *)),
                 Const "False"
-              )), Forall (App (App (Const "InCircle", Bvar 0), Bvar 4),
+              )), Forall (App (App (Const "InCircle", Bvar 0 (* a *)), Bvar 4 (* aa *)),
                 Const "False"
-              ))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+              ))), App (App (App (App (Const "distinct_from", Bvar 0 (* a *)), Bvar 3 (* p_list *)), Bvar 2 (* l_list *)), Bvar 1 (* c_list *)))
             ))
           )
         )
@@ -1149,13 +1162,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "line_of_pts";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1 (* a *)), Bvar 0 (* b *)),
           Const "False"
         ),
-          App (App (Const "Exists", Const "Line"), Lam (Const "Line",
-            App (App (Const "And", App (App (Const "OnLine", Bvar 3), Bvar 0)), App (App (Const "OnLine", Bvar 2), Bvar 0))
+          App (App (Const "Exists", Const "Line"), Lam ((* L : *)Const "Line",
+            App (App (Const "And", App (App (Const "OnLine", Bvar 3 (* a *)), Bvar 0 (* L *))), App (App (Const "OnLine", Bvar 2 (* b *)), Bvar 0 (* L *)))
           ))
         )
       )
@@ -1169,13 +1182,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "circle_of_ne";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1 (* a *)), Bvar 0 (* b *)),
           Const "False"
         ),
-          App (App (Const "Exists", Const "Circle"), Lam (Const "Circle",
-            App (App (Const "And", App (App (Const "CenterCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 2), Bvar 0))
+          App (App (Const "Exists", Const "Circle"), Lam ((* aa : *)Const "Circle",
+            App (App (Const "And", App (App (Const "CenterCircle", Bvar 3 (* a *)), Bvar 0 (* aa *))), App (App (Const "OnCircle", Bvar 2 (* b *)), Bvar 0 (* aa *)))
           ))
         )
       )
@@ -1189,11 +1202,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_of_linesinter";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (Const "Line",
-        Forall (App (App (Const "LinesInter", Bvar 1), Bvar 0),
-          App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 3)), App (App (Const "OnLine", Bvar 0), Bvar 2))
+    Forall ((* L : *)Const "Line",
+      Forall ((* M : *)Const "Line",
+        Forall (App (App (Const "LinesInter", Bvar 1 (* L *)), Bvar 0 (* M *)),
+          App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+            App (App (Const "And", App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 3 (* L *))), App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 2 (* M *)))
           ))
         )
       )
@@ -1207,11 +1220,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_of_linecircleinter";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (Const "Circle",
-        Forall (App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
-          App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 2))
+    Forall ((* L : *)Const "Line",
+      Forall ((* aa : *)Const "Circle",
+        Forall (App (App (Const "LineCircleInter", Bvar 1 (* L *)), Bvar 0 (* aa *)),
+          App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+            App (App (Const "And", App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 3 (* L *))), App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 2 (* aa *)))
           ))
         )
       )
@@ -1229,14 +1242,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pts_of_linecircleinter";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (Const "Circle",
-        Forall (App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
-          App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+    Forall ((* L : *)Const "Line",
+      Forall ((* aa : *)Const "Circle",
+        Forall (App (App (Const "LineCircleInter", Bvar 1 (* L *)), Bvar 0 (* aa *)),
+          App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+            App (App (Const "Exists", Const "Point"), Lam ((* b : *)Const "Point",
+              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1 (* a *)), Bvar 0 (* b *)),
                 Const "False"
-              )), App (App (Const "And", App (App (Const "OnLine", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+              )), App (App (Const "And", App (App (Const "OnLine", Bvar 1 (* a *)), Bvar 4 (* L *))), App (App (Const "And", App (App (Const "OnLine", Bvar 0 (* b *)), Bvar 4 (* L *))), App (App (Const "And", App (App (Const "OnCircle", Bvar 1 (* a *)), Bvar 3 (* aa *))), App (App (Const "OnCircle", Bvar 0 (* b *)), Bvar 3 (* aa *))))))
             ))
           ))
         )
@@ -1255,21 +1268,21 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_oncircle_between_inside_outside";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (Const "Circle",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (App (App (Const "OnLine", Bvar 1), Bvar 3),
-              Forall (App (App (Const "OnLine", Bvar 1), Bvar 4),
-                Forall (App (App (Const "InCircle", Bvar 3), Bvar 4),
-                  Forall (Forall (App (App (Const "OnCircle", Bvar 3), Bvar 5),
+    Forall ((* L : *)Const "Line",
+      Forall ((* aa : *)Const "Circle",
+        Forall ((* b : *)Const "Point",
+          Forall ((* c : *)Const "Point",
+            Forall (App (App (Const "OnLine", Bvar 1 (* b *)), Bvar 3 (* L *)),
+              Forall (App (App (Const "OnLine", Bvar 1 (* c *)), Bvar 4 (* L *)),
+                Forall (App (App (Const "InCircle", Bvar 3 (* b *)), Bvar 4 (* aa *)),
+                  Forall (Forall (App (App (Const "OnCircle", Bvar 3 (* c *)), Bvar 5 (* aa *)),
                     Const "False"
                   ),
-                    Forall (Forall (App (App (Const "InCircle", Bvar 4), Bvar 6),
+                    Forall (Forall (App (App (Const "InCircle", Bvar 4 (* c *)), Bvar 6 (* aa *)),
                       Const "False"
                     ),
-                      App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                        App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 9)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (App (Const "Between", Bvar 7), Bvar 0), Bvar 6)))
+                      App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                        App (App (Const "And", App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 9 (* L *))), App (App (Const "And", App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 8 (* aa *))), App (App (App (Const "Between", Bvar 7 (* b *)), Bvar 0 (* a *)), Bvar 6 (* c *))))
                       ))
                     )
                   )
@@ -1293,18 +1306,18 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_oncircle_extension_from_inside";
   [%expect
     {|
-    Forall (Const "Line",
-      Forall (Const "Circle",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (App (App (Const "OnLine", Bvar 1), Bvar 3),
-              Forall (App (App (Const "OnLine", Bvar 1), Bvar 4),
-                Forall (App (App (Const "InCircle", Bvar 3), Bvar 4),
-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 4),
+    Forall ((* L : *)Const "Line",
+      Forall ((* aa : *)Const "Circle",
+        Forall ((* b : *)Const "Point",
+          Forall ((* c : *)Const "Point",
+            Forall (App (App (Const "OnLine", Bvar 1 (* b *)), Bvar 3 (* L *)),
+              Forall (App (App (Const "OnLine", Bvar 1 (* c *)), Bvar 4 (* L *)),
+                Forall (App (App (Const "InCircle", Bvar 3 (* b *)), Bvar 4 (* aa *)),
+                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3 (* c *)), Bvar 4 (* b *)),
                     Const "False"
                   ),
-                    App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                      App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 8)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 7)), App (App (App (Const "Between", Bvar 0), Bvar 6), Bvar 5)))
+                    App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                      App (App (Const "And", App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 8 (* L *))), App (App (Const "And", App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 7 (* aa *))), App (App (App (Const "Between", Bvar 0 (* a *)), Bvar 6 (* b *)), Bvar 5 (* c *))))
                     ))
                   )
                 )
@@ -1323,11 +1336,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_of_circlesinter";
   [%expect
     {|
-    Forall (Const "Circle",
-      Forall (Const "Circle",
-        Forall (App (App (Const "CirclesInter", Bvar 1), Bvar 0),
-          App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 2))
+    Forall ((* aa : *)Const "Circle",
+      Forall ((* bb : *)Const "Circle",
+        Forall (App (App (Const "CirclesInter", Bvar 1 (* aa *)), Bvar 0 (* bb *)),
+          App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+            App (App (Const "And", App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 3 (* aa *))), App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 2 (* bb *)))
           ))
         )
       )
@@ -1345,14 +1358,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pts_of_circlesinter";
   [%expect
     {|
-    Forall (Const "Circle",
-      Forall (Const "Circle",
-        Forall (App (App (Const "CirclesInter", Bvar 1), Bvar 0),
-          App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+    Forall ((* aa : *)Const "Circle",
+      Forall ((* bb : *)Const "Circle",
+        Forall (App (App (Const "CirclesInter", Bvar 1 (* aa *)), Bvar 0 (* bb *)),
+          App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+            App (App (Const "Exists", Const "Point"), Lam ((* b : *)Const "Point",
+              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1 (* a *)), Bvar 0 (* b *)),
                 Const "False"
-              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 4)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 1 (* a *)), Bvar 4 (* aa *))), App (App (Const "And", App (App (Const "OnCircle", Bvar 1 (* a *)), Bvar 3 (* bb *))), App (App (Const "And", App (App (Const "OnCircle", Bvar 0 (* b *)), Bvar 4 (* aa *))), App (App (Const "OnCircle", Bvar 0 (* b *)), Bvar 3 (* bb *))))))
             ))
           ))
         )
@@ -1370,22 +1383,22 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_sameside_of_circlesinter";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (Const "Circle",
-              Forall (Const "Circle",
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                  Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
-                    Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
+    Forall ((* b : *)Const "Point",
+      Forall ((* c : *)Const "Point",
+        Forall ((* d : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall ((* aa : *)Const "Circle",
+              Forall ((* bb : *)Const "Circle",
+                Forall (App (App (Const "OnLine", Bvar 4 (* c *)), Bvar 2 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 4 (* d *)), Bvar 3 (* L *)),
+                    Forall (Forall (App (App (Const "OnLine", Bvar 7 (* b *)), Bvar 4 (* L *)),
                       Const "False"
                     ),
-                      Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
-                        Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
-                          Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
-                            App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                              App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7)))
+                      Forall (App (App (Const "CenterCircle", Bvar 7 (* c *)), Bvar 4 (* aa *)),
+                        Forall (App (App (Const "CenterCircle", Bvar 7 (* d *)), Bvar 4 (* bb *)),
+                          Forall (App (App (Const "CirclesInter", Bvar 6 (* aa *)), Bvar 5 (* bb *)),
+                            App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                              App (App (Const "And", App (App (App (Const "SameSide", Bvar 0 (* a *)), Bvar 12 (* b *)), Bvar 9 (* L *))), App (App (Const "And", App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 8 (* aa *))), App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 7 (* bb *))))
                             ))
                           )
                         )
@@ -1412,26 +1425,26 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pt_oppositeside_of_circlesinter";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (Const "Circle",
-              Forall (Const "Circle",
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                  Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
-                    Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
+    Forall ((* b : *)Const "Point",
+      Forall ((* c : *)Const "Point",
+        Forall ((* d : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall ((* aa : *)Const "Circle",
+              Forall ((* bb : *)Const "Circle",
+                Forall (App (App (Const "OnLine", Bvar 4 (* c *)), Bvar 2 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 4 (* d *)), Bvar 3 (* L *)),
+                    Forall (Forall (App (App (Const "OnLine", Bvar 7 (* b *)), Bvar 4 (* L *)),
                       Const "False"
                     ),
-                      Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
-                        Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
-                          Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
-                            App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                              App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0), Bvar 9),
+                      Forall (App (App (Const "CenterCircle", Bvar 7 (* c *)), Bvar 4 (* aa *)),
+                        Forall (App (App (Const "CenterCircle", Bvar 7 (* d *)), Bvar 4 (* bb *)),
+                          Forall (App (App (Const "CirclesInter", Bvar 6 (* aa *)), Bvar 5 (* bb *)),
+                            App (App (Const "Exists", Const "Point"), Lam ((* a : *)Const "Point",
+                              App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0 (* a *)), Bvar 9 (* L *)),
                                 Const "False"
-                              )), App (App (Const "And", Forall (App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9),
+                              )), App (App (Const "And", Forall (App (App (App (Const "SameSide", Bvar 0 (* a *)), Bvar 12 (* b *)), Bvar 9 (* L *)),
                                 Const "False"
-                              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7))))
+                              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 8 (* aa *))), App (App (Const "OnCircle", Bvar 0 (* a *)), Bvar 7 (* bb *)))))
                             ))
                           )
                         )
@@ -1455,18 +1468,18 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "two_distinct_points_determine_unique_line";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Line",
-          Forall (Const "Line",
-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* L : *)Const "Line",
+          Forall ((* M : *)Const "Line",
+            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3 (* a *)), Bvar 2 (* b *)),
               Const "False"
             ),
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
-                  Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
-                    Forall (App (App (Const "OnLine", Bvar 6), Bvar 4),
-                      App (App (App (Const "Eq", Const "Line"), Bvar 6), Bvar 5)
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 2 (* L *)),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 3 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 6 (* a *)), Bvar 3 (* M *)),
+                    Forall (App (App (Const "OnLine", Bvar 6 (* b *)), Bvar 4 (* M *)),
+                      App (App (App (Const "Eq", Const "Line"), Bvar 6 (* L *)), Bvar 5 (* M *))
                     )
                   )
                 )
@@ -1485,12 +1498,12 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "circle_has_unique_center";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Circle",
-          Forall (App (App (Const "CenterCircle", Bvar 2), Bvar 0),
-            Forall (App (App (Const "CenterCircle", Bvar 2), Bvar 1),
-              App (App (App (Const "Eq", Const "Point"), Bvar 4), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* aa : *)Const "Circle",
+          Forall (App (App (Const "CenterCircle", Bvar 2 (* a *)), Bvar 0 (* aa *)),
+            Forall (App (App (Const "CenterCircle", Bvar 2 (* b *)), Bvar 1 (* aa *)),
+              App (App (App (Const "Eq", Const "Point"), Bvar 4 (* a *)), Bvar 3 (* b *))
             )
           )
         )
@@ -1504,10 +1517,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "center_lies_inside_circle";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Circle",
-        Forall (App (App (Const "CenterCircle", Bvar 1), Bvar 0),
-          App (App (Const "InCircle", Bvar 2), Bvar 1)
+    Forall ((* a : *)Const "Point",
+      Forall ((* aa : *)Const "Circle",
+        Forall (App (App (Const "CenterCircle", Bvar 1 (* a *)), Bvar 0 (* aa *)),
+          App (App (Const "InCircle", Bvar 2 (* a *)), Bvar 1 (* aa *))
         )
       )
     )
@@ -1519,10 +1532,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "inside_implies_not_on_circle";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Circle",
-        Forall (App (App (Const "InCircle", Bvar 1), Bvar 0),
-          Forall (App (App (Const "OnCircle", Bvar 2), Bvar 1),
+    Forall ((* a : *)Const "Point",
+      Forall ((* aa : *)Const "Circle",
+        Forall (App (App (Const "InCircle", Bvar 1 (* a *)), Bvar 0 (* aa *)),
+          Forall (App (App (Const "OnCircle", Bvar 2 (* a *)), Bvar 1 (* aa *)),
             Const "False"
           )
         )
@@ -1540,11 +1553,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "between_distinct";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (App (App (App (Const "Between", Bvar 2), Bvar 1), Bvar 0),
-            App (App (Const "And", App (App (App (Const "Between", Bvar 1), Bvar 2), Bvar 3)), App (App (Const "And", App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2))), App (App (Const "And", App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 1))), App (Const "Not", App (App (App (Const "Between", Bvar 2), Bvar 3), Bvar 1)))))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall (App (App (App (Const "Between", Bvar 2 (* a *)), Bvar 1 (* b *)), Bvar 0 (* c *)),
+            App (App (Const "And", App (App (App (Const "Between", Bvar 1 (* c *)), Bvar 2 (* b *)), Bvar 3 (* a *))), App (App (Const "And", App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3 (* a *)), Bvar 2 (* b *)))), App (App (Const "And", App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3 (* a *)), Bvar 1 (* c *)))), App (Const "Not", App (App (App (Const "Between", Bvar 2 (* b *)), Bvar 3 (* a *)), Bvar 1 (* c *))))))
           )
         )
       )
@@ -1557,14 +1570,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "between_collinear_right";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                  App (App (Const "OnLine", Bvar 4), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (App (App (Const "Between", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* c *)),
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 1 (* L *)),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 2 (* L *)),
+                  App (App (Const "OnLine", Bvar 4 (* c *)), Bvar 3 (* L *))
                 )
               )
             )
@@ -1580,14 +1593,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "between_collinear_middle";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                Forall (App (App (Const "OnLine", Bvar 3), Bvar 2),
-                  App (App (Const "OnLine", Bvar 5), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (App (App (Const "Between", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* c *)),
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 1 (* L *)),
+                Forall (App (App (Const "OnLine", Bvar 3 (* c *)), Bvar 2 (* L *)),
+                  App (App (Const "OnLine", Bvar 5 (* b *)), Bvar 3 (* L *))
                 )
               )
             )
@@ -1603,13 +1616,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "between_in";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
-              Forall (App (App (App (Const "Between", Bvar 4), Bvar 1), Bvar 3),
-                App (App (App (Const "Between", Bvar 5), Bvar 2), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall (App (App (App (Const "Between", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* c *)),
+              Forall (App (App (App (Const "Between", Bvar 4 (* a *)), Bvar 1 (* d *)), Bvar 3 (* b *)),
+                App (App (App (Const "Between", Bvar 5 (* a *)), Bvar 2 (* d *)), Bvar 3 (* c *))
               )
             )
           )
@@ -1624,13 +1637,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "between_out";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
-              Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
-                App (App (App (Const "Between", Bvar 5), Bvar 4), Bvar 2)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall (App (App (App (Const "Between", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* c *)),
+              Forall (App (App (App (Const "Between", Bvar 3 (* b *)), Bvar 2 (* c *)), Bvar 1 (* d *)),
+                App (App (App (Const "Between", Bvar 5 (* a *)), Bvar 4 (* b *)), Bvar 2 (* d *))
               )
             )
           )
@@ -1646,17 +1659,17 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "between_linear";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
-              Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
-                Forall (App (App (Const "OnLine", Bvar 3), Bvar 2),
-                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5)),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 8), Bvar 6)),
-                        App (App (Const "Or", App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 7)), App (App (Const "Or", App (App (App (Const "Between", Bvar 8), Bvar 9), Bvar 7)), App (App (App (Const "Between", Bvar 9), Bvar 7), Bvar 8)))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (App (Const "OnLine", Bvar 3 (* a *)), Bvar 0 (* L *)),
+              Forall (App (App (Const "OnLine", Bvar 3 (* b *)), Bvar 1 (* L *)),
+                Forall (App (App (Const "OnLine", Bvar 3 (* c *)), Bvar 2 (* L *)),
+                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 6 (* a *)), Bvar 5 (* b *))),
+                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 6 (* b *)), Bvar 5 (* c *))),
+                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 8 (* a *)), Bvar 6 (* c *))),
+                        App (App (Const "Or", App (App (App (Const "Between", Bvar 9 (* a *)), Bvar 8 (* b *)), Bvar 7 (* c *))), App (App (Const "Or", App (App (App (Const "Between", Bvar 8 (* b *)), Bvar 9 (* a *)), Bvar 7 (* c *))), App (App (App (Const "Between", Bvar 9 (* a *)), Bvar 7 (* c *)), Bvar 8 (* b *))))
                       )
                     )
                   )
@@ -1675,13 +1688,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "between_separation";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
-              Forall (App (App (App (Const "Between", Bvar 4), Bvar 3), Bvar 1),
-                App (Const "Not", App (App (App (Const "Between", Bvar 3), Bvar 4), Bvar 2))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall (App (App (App (Const "Between", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* c *)),
+              Forall (App (App (App (Const "Between", Bvar 4 (* a *)), Bvar 3 (* b *)), Bvar 1 (* d *)),
+                App (Const "Not", App (App (App (Const "Between", Bvar 3 (* c *)), Bvar 4 (* b *)), Bvar 2 (* d *)))
               )
             )
           )
@@ -1696,10 +1709,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "same_side_refl";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Line",
-        Forall (App (Const "Not", App (App (Const "OnLine", Bvar 1), Bvar 0)),
-          App (App (App (Const "SameSide", Bvar 2), Bvar 2), Bvar 1)
+    Forall ((* a : *)Const "Point",
+      Forall ((* L : *)Const "Line",
+        Forall (App (Const "Not", App (App (Const "OnLine", Bvar 1 (* a *)), Bvar 0 (* L *))),
+          App (App (App (Const "SameSide", Bvar 2 (* a *)), Bvar 2 (* a *)), Bvar 1 (* L *))
         )
       )
     )
@@ -1711,11 +1724,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "same_side_symm";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Line",
-          Forall (App (App (App (Const "SameSide", Bvar 2), Bvar 1), Bvar 0),
-            App (App (App (Const "SameSide", Bvar 2), Bvar 3), Bvar 1)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* L : *)Const "Line",
+          Forall (App (App (App (Const "SameSide", Bvar 2 (* a *)), Bvar 1 (* b *)), Bvar 0 (* L *)),
+            App (App (App (Const "SameSide", Bvar 2 (* b *)), Bvar 3 (* a *)), Bvar 1 (* L *))
           )
         )
       )
@@ -1728,11 +1741,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "same_side_not_on_line";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Line",
-          Forall (App (App (App (Const "SameSide", Bvar 2), Bvar 1), Bvar 0),
-            App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* L : *)Const "Line",
+          Forall (App (App (App (Const "SameSide", Bvar 2 (* a *)), Bvar 1 (* b *)), Bvar 0 (* L *)),
+            App (Const "Not", App (App (Const "OnLine", Bvar 3 (* a *)), Bvar 1 (* L *)))
           )
         )
       )
@@ -1746,13 +1759,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "same_side_trans";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (App (App (Const "SameSide", Bvar 3), Bvar 2), Bvar 0),
-              Forall (App (App (App (Const "SameSide", Bvar 4), Bvar 2), Bvar 1),
-                App (App (App (Const "SameSide", Bvar 4), Bvar 3), Bvar 2)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (App (App (Const "SameSide", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 0 (* L *)),
+              Forall (App (App (App (Const "SameSide", Bvar 4 (* a *)), Bvar 2 (* c *)), Bvar 1 (* L *)),
+                App (App (App (Const "SameSide", Bvar 4 (* b *)), Bvar 3 (* c *)), Bvar 2 (* L *))
               )
             )
           )
@@ -1770,15 +1783,15 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "same_side_or";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 0)),
-              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1)),
-                Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 2)),
-                  Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 3)),
-                    App (App (Const "Or", App (App (App (Const "SameSide", Bvar 7), Bvar 5), Bvar 4)), App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 4))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3 (* a *)), Bvar 0 (* L *))),
+              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3 (* b *)), Bvar 1 (* L *))),
+                Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3 (* c *)), Bvar 2 (* L *))),
+                  Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 6 (* a *)), Bvar 5 (* b *)), Bvar 3 (* L *))),
+                    App (App (Const "Or", App (App (App (Const "SameSide", Bvar 7 (* a *)), Bvar 5 (* c *)), Bvar 4 (* L *))), App (App (App (Const "SameSide", Bvar 6 (* b *)), Bvar 5 (* c *)), Bvar 4 (* L *)))
                   )
                 )
               )
@@ -1796,13 +1809,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pasch_sameside";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
-              Forall (App (App (App (Const "SameSide", Bvar 4), Bvar 2), Bvar 1),
-                App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 2)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (App (App (Const "Between", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* c *)),
+              Forall (App (App (App (Const "SameSide", Bvar 4 (* a *)), Bvar 2 (* c *)), Bvar 1 (* L *)),
+                App (App (App (Const "SameSide", Bvar 5 (* a *)), Bvar 4 (* b *)), Bvar 2 (* L *))
               )
             )
           )
@@ -1818,16 +1831,16 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pasch_online_sameside";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                Forall (Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (App (App (Const "Between", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* c *)),
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 1 (* L *)),
+                Forall (Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 2 (* L *)),
                   Const "False"
                 ),
-                  App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)
+                  App (App (App (Const "SameSide", Bvar 5 (* b *)), Bvar 4 (* c *)), Bvar 3 (* L *))
                 )
               )
             )
@@ -1844,13 +1857,13 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pasch_online_not_sameside";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
-              Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
-                Forall (App (App (App (Const "SameSide", Bvar 5), Bvar 3), Bvar 2),
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (App (App (Const "Between", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* c *)),
+              Forall (App (App (Const "OnLine", Bvar 3 (* b *)), Bvar 1 (* L *)),
+                Forall (App (App (App (Const "SameSide", Bvar 5 (* a *)), Bvar 3 (* c *)), Bvar 2 (* L *)),
                   Const "False"
                 )
               )
@@ -1872,28 +1885,28 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "pasch_intersection_between";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (Const "Line",
-              Forall (Forall (App (App (App (Const "Eq", Const "Line"), Bvar 1), Bvar 0),
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall ((* M : *)Const "Line",
+              Forall (Forall (App (App (App (Const "Eq", Const "Line"), Bvar 1 (* L *)), Bvar 0 (* M *)),
                 Const "False"
               ),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                  Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
-                    Forall (App (App (Const "OnLine", Bvar 7), Bvar 3),
-                      Forall (App (App (Const "OnLine", Bvar 6), Bvar 4),
-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 2 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 5 (* b *)), Bvar 2 (* M *)),
+                    Forall (App (App (Const "OnLine", Bvar 7 (* a *)), Bvar 3 (* M *)),
+                      Forall (App (App (Const "OnLine", Bvar 6 (* c *)), Bvar 4 (* M *)),
+                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9 (* a *)), Bvar 8 (* b *)),
                           Const "False"
                         ),
-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 8), Bvar 9),
+                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 8 (* c *)), Bvar 9 (* b *)),
                             Const "False"
                           ),
-                            Forall (Forall (App (App (App (Const "SameSide", Bvar 11), Bvar 9), Bvar 8),
+                            Forall (Forall (App (App (App (Const "SameSide", Bvar 11 (* a *)), Bvar 9 (* c *)), Bvar 8 (* L *)),
                               Const "False"
                             ),
-                              App (App (App (Const "Between", Bvar 12), Bvar 11), Bvar 10)
+                              App (App (App (Const "Between", Bvar 12 (* a *)), Bvar 11 (* b *)), Bvar 10 (* c *))
                             )
                           )
                         )
@@ -1919,22 +1932,22 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "triple_incidence_1";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Line",
-              Forall (Const "Line",
-                Forall (Const "Line",
-                  Forall (App (App (Const "OnLine", Bvar 6), Bvar 2),
-                    Forall (App (App (Const "OnLine", Bvar 7), Bvar 2),
-                      Forall (App (App (Const "OnLine", Bvar 8), Bvar 2),
-                        Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
-                          Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
-                            Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
-                              Forall (App (App (App (Const "SameSide", Bvar 10), Bvar 9), Bvar 8),
-                                Forall (App (App (App (Const "SameSide", Bvar 12), Bvar 11), Bvar 7),
-                                  App (Const "Not", App (App (App (Const "SameSide", Bvar 13), Bvar 11), Bvar 9))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* L : *)Const "Line",
+              Forall ((* M : *)Const "Line",
+                Forall ((* N : *)Const "Line",
+                  Forall (App (App (Const "OnLine", Bvar 6 (* a *)), Bvar 2 (* L *)),
+                    Forall (App (App (Const "OnLine", Bvar 7 (* a *)), Bvar 2 (* M *)),
+                      Forall (App (App (Const "OnLine", Bvar 8 (* a *)), Bvar 2 (* N *)),
+                        Forall (App (App (Const "OnLine", Bvar 8 (* b *)), Bvar 5 (* L *)),
+                          Forall (App (App (Const "OnLine", Bvar 8 (* c *)), Bvar 5 (* M *)),
+                            Forall (App (App (Const "OnLine", Bvar 8 (* d *)), Bvar 5 (* N *)),
+                              Forall (App (App (App (Const "SameSide", Bvar 10 (* c *)), Bvar 9 (* d *)), Bvar 8 (* L *)),
+                                Forall (App (App (App (Const "SameSide", Bvar 12 (* b *)), Bvar 11 (* c *)), Bvar 7 (* N *)),
+                                  App (Const "Not", App (App (App (Const "SameSide", Bvar 13 (* b *)), Bvar 11 (* d *)), Bvar 9 (* M *)))
                                 )
                               )
                             )
@@ -1964,24 +1977,24 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "triple_incidence_2";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Line",
-              Forall (Const "Line",
-                Forall (Const "Line",
-                  Forall (App (App (Const "OnLine", Bvar 6), Bvar 2),
-                    Forall (App (App (Const "OnLine", Bvar 7), Bvar 2),
-                      Forall (App (App (Const "OnLine", Bvar 8), Bvar 2),
-                        Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
-                          Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
-                            Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
-                              Forall (App (App (App (Const "SameSide", Bvar 10), Bvar 9), Bvar 8),
-                                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 12), Bvar 10), Bvar 8)),
-                                  Forall (App (Const "Not", App (App (Const "OnLine", Bvar 11), Bvar 9)),
-                                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 14), Bvar 15)),
-                                      App (App (App (Const "SameSide", Bvar 15), Bvar 14), Bvar 10)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* L : *)Const "Line",
+              Forall ((* M : *)Const "Line",
+                Forall ((* N : *)Const "Line",
+                  Forall (App (App (Const "OnLine", Bvar 6 (* a *)), Bvar 2 (* L *)),
+                    Forall (App (App (Const "OnLine", Bvar 7 (* a *)), Bvar 2 (* M *)),
+                      Forall (App (App (Const "OnLine", Bvar 8 (* a *)), Bvar 2 (* N *)),
+                        Forall (App (App (Const "OnLine", Bvar 8 (* b *)), Bvar 5 (* L *)),
+                          Forall (App (App (Const "OnLine", Bvar 8 (* c *)), Bvar 5 (* M *)),
+                            Forall (App (App (Const "OnLine", Bvar 8 (* d *)), Bvar 5 (* N *)),
+                              Forall (App (App (App (Const "SameSide", Bvar 10 (* c *)), Bvar 9 (* d *)), Bvar 8 (* L *)),
+                                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 12 (* b *)), Bvar 10 (* d *)), Bvar 8 (* M *))),
+                                  Forall (App (Const "Not", App (App (Const "OnLine", Bvar 11 (* d *)), Bvar 9 (* M *))),
+                                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 14 (* b *)), Bvar 15 (* a *))),
+                                      App (App (App (Const "SameSide", Bvar 15 (* b *)), Bvar 14 (* c *)), Bvar 10 (* N *))
                                     )
                                   )
                                 )
@@ -2013,25 +2026,25 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "triple_incidence_3";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Point",
-              Forall (Const "Line",
-                Forall (Const "Line",
-                  Forall (Const "Line",
-                    Forall (App (App (Const "OnLine", Bvar 7), Bvar 2),
-                      Forall (App (App (Const "OnLine", Bvar 8), Bvar 2),
-                        Forall (App (App (Const "OnLine", Bvar 9), Bvar 2),
-                          Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
-                            Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
-                              Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
-                                Forall (App (App (App (Const "SameSide", Bvar 11), Bvar 10), Bvar 8),
-                                  Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 7),
-                                    Forall (App (App (App (Const "SameSide", Bvar 12), Bvar 11), Bvar 9),
-                                      Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 12), Bvar 9),
-                                        App (App (App (Const "SameSide", Bvar 15), Bvar 13), Bvar 12)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* e : *)Const "Point",
+              Forall ((* L : *)Const "Line",
+                Forall ((* M : *)Const "Line",
+                  Forall ((* N : *)Const "Line",
+                    Forall (App (App (Const "OnLine", Bvar 7 (* a *)), Bvar 2 (* L *)),
+                      Forall (App (App (Const "OnLine", Bvar 8 (* a *)), Bvar 2 (* M *)),
+                        Forall (App (App (Const "OnLine", Bvar 9 (* a *)), Bvar 2 (* N *)),
+                          Forall (App (App (Const "OnLine", Bvar 9 (* b *)), Bvar 5 (* L *)),
+                            Forall (App (App (Const "OnLine", Bvar 9 (* c *)), Bvar 5 (* M *)),
+                              Forall (App (App (Const "OnLine", Bvar 9 (* d *)), Bvar 5 (* N *)),
+                                Forall (App (App (App (Const "SameSide", Bvar 11 (* c *)), Bvar 10 (* d *)), Bvar 8 (* L *)),
+                                  Forall (App (App (App (Const "SameSide", Bvar 13 (* b *)), Bvar 12 (* c *)), Bvar 7 (* N *)),
+                                    Forall (App (App (App (Const "SameSide", Bvar 12 (* d *)), Bvar 11 (* e *)), Bvar 9 (* M *)),
+                                      Forall (App (App (App (Const "SameSide", Bvar 14 (* c *)), Bvar 12 (* e *)), Bvar 9 (* N *)),
+                                        App (App (App (Const "SameSide", Bvar 15 (* c *)), Bvar 13 (* e *)), Bvar 12 (* L *))
                                       )
                                     )
                                   )
@@ -2061,19 +2074,19 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "circle_chord_between";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (Const "Circle",
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                  Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
-                    Forall (App (App (Const "InCircle", Bvar 7), Bvar 3),
-                      Forall (App (App (Const "OnCircle", Bvar 7), Bvar 4),
-                        Forall (App (App (Const "OnCircle", Bvar 7), Bvar 5),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8)),
-                            App (App (App (Const "Between", Bvar 10), Bvar 11), Bvar 9)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall ((* aa : *)Const "Circle",
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 1 (* L *)),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 2 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 4 (* c *)), Bvar 3 (* L *)),
+                    Forall (App (App (Const "InCircle", Bvar 7 (* a *)), Bvar 3 (* aa *)),
+                      Forall (App (App (Const "OnCircle", Bvar 7 (* b *)), Bvar 4 (* aa *)),
+                        Forall (App (App (Const "OnCircle", Bvar 7 (* c *)), Bvar 5 (* aa *)),
+                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9 (* b *)), Bvar 8 (* c *))),
+                            App (App (App (Const "Between", Bvar 10 (* b *)), Bvar 11 (* a *)), Bvar 9 (* c *))
                           )
                         )
                       )
@@ -2096,14 +2109,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "circle_convex";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Circle",
-            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
-              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
-                Forall (App (App (App (Const "Between", Bvar 5), Bvar 3), Bvar 4),
-                  App (App (Const "InCircle", Bvar 4), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* aa : *)Const "Circle",
+            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3 (* a *)), Bvar 0 (* aa *))), App (App (Const "OnCircle", Bvar 3 (* a *)), Bvar 0 (* aa *))),
+              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3 (* b *)), Bvar 1 (* aa *))), App (App (Const "OnCircle", Bvar 3 (* b *)), Bvar 1 (* aa *))),
+                Forall (App (App (App (Const "Between", Bvar 5 (* a *)), Bvar 3 (* c *)), Bvar 4 (* b *)),
+                  App (App (Const "InCircle", Bvar 4 (* c *)), Bvar 3 (* aa *))
                 )
               )
             )
@@ -2121,14 +2134,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "circle_extend_ray_outside";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Circle",
-            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
-              Forall (App (Const "Not", App (App (Const "InCircle", Bvar 2), Bvar 1)),
-                Forall (App (App (App (Const "Between", Bvar 5), Bvar 3), Bvar 4),
-                  App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3)))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* aa : *)Const "Circle",
+            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3 (* a *)), Bvar 0 (* aa *))), App (App (Const "OnCircle", Bvar 3 (* a *)), Bvar 0 (* aa *))),
+              Forall (App (Const "Not", App (App (Const "InCircle", Bvar 2 (* c *)), Bvar 1 (* aa *))),
+                Forall (App (App (App (Const "Between", Bvar 5 (* a *)), Bvar 3 (* c *)), Bvar 4 (* b *)),
+                  App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5 (* b *)), Bvar 3 (* aa *)))), App (Const "Not", App (App (Const "OnCircle", Bvar 5 (* b *)), Bvar 3 (* aa *))))
                 )
               )
             )
@@ -2152,24 +2165,24 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "circle_intersect_opposite_sides";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Line",
-              Forall (Const "Circle",
-                Forall (Const "Circle",
-                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Circle"), Bvar 1), Bvar 0)),
-                    Forall (App (App (Const "OnCircle", Bvar 5), Bvar 2),
-                      Forall (App (App (Const "OnCircle", Bvar 6), Bvar 2),
-                        Forall (App (App (Const "OnCircle", Bvar 6), Bvar 4),
-                          Forall (App (App (Const "OnCircle", Bvar 7), Bvar 4),
-                            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8)),
-                              Forall (App (App (Const "CenterCircle", Bvar 12), Bvar 7),
-                                Forall (App (App (Const "CenterCircle", Bvar 12), Bvar 7),
-                                  Forall (App (App (Const "OnLine", Bvar 14), Bvar 10),
-                                    Forall (App (App (Const "OnLine", Bvar 14), Bvar 11),
-                                      App (Const "Not", App (App (App (Const "SameSide", Bvar 14), Bvar 13), Bvar 12))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* L : *)Const "Line",
+              Forall ((* aa : *)Const "Circle",
+                Forall ((* bb : *)Const "Circle",
+                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Circle"), Bvar 1 (* aa *)), Bvar 0 (* bb *))),
+                    Forall (App (App (Const "OnCircle", Bvar 5 (* c *)), Bvar 2 (* aa *)),
+                      Forall (App (App (Const "OnCircle", Bvar 6 (* c *)), Bvar 2 (* bb *)),
+                        Forall (App (App (Const "OnCircle", Bvar 6 (* d *)), Bvar 4 (* aa *)),
+                          Forall (App (App (Const "OnCircle", Bvar 7 (* d *)), Bvar 4 (* bb *)),
+                            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9 (* c *)), Bvar 8 (* d *))),
+                              Forall (App (App (Const "CenterCircle", Bvar 12 (* a *)), Bvar 7 (* aa *)),
+                                Forall (App (App (Const "CenterCircle", Bvar 12 (* b *)), Bvar 7 (* bb *)),
+                                  Forall (App (App (Const "OnLine", Bvar 14 (* a *)), Bvar 10 (* L *)),
+                                    Forall (App (App (Const "OnLine", Bvar 14 (* b *)), Bvar 11 (* L *)),
+                                      App (Const "Not", App (App (App (Const "SameSide", Bvar 14 (* c *)), Bvar 13 (* d *)), Bvar 12 (* L *)))
                                     )
                                   )
                                 )
@@ -2197,14 +2210,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "lines_inter_if_diff_sides";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Line",
-          Forall (Const "Line",
-            Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 3), Bvar 2), Bvar 1)),
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                  App (App (Const "LinesInter", Bvar 4), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* L : *)Const "Line",
+          Forall ((* M : *)Const "Line",
+            Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* L *))),
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 1 (* M *)),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 2 (* M *)),
+                  App (App (Const "LinesInter", Bvar 4 (* L *)), Bvar 3 (* M *))
                 )
               )
             )
@@ -2222,14 +2235,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "line_circle_inter_if_diff_sides";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Line",
-          Forall (Const "Circle",
-            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
-              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
-                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)),
-                  App (App (Const "LineCircleInter", Bvar 4), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* L : *)Const "Line",
+          Forall ((* aa : *)Const "Circle",
+            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3 (* a *)), Bvar 0 (* aa *))), App (App (Const "OnCircle", Bvar 3 (* a *)), Bvar 0 (* aa *))),
+              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3 (* b *)), Bvar 1 (* aa *))), App (App (Const "OnCircle", Bvar 3 (* b *)), Bvar 1 (* aa *))),
+                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 5 (* a *)), Bvar 4 (* b *)), Bvar 3 (* L *))),
+                  App (App (Const "LineCircleInter", Bvar 4 (* L *)), Bvar 3 (* aa *))
                 )
               )
             )
@@ -2246,12 +2259,12 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "line_circle_inter_if_inside_or_on";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Line",
-        Forall (Const "Circle",
-          Forall (App (App (Const "InCircle", Bvar 2), Bvar 0),
-            Forall (App (App (Const "OnLine", Bvar 3), Bvar 2),
-              App (App (Const "LineCircleInter", Bvar 3), Bvar 2)
+    Forall ((* a : *)Const "Point",
+      Forall ((* L : *)Const "Line",
+        Forall ((* aa : *)Const "Circle",
+          Forall (App (App (Const "InCircle", Bvar 2 (* a *)), Bvar 0 (* aa *)),
+            Forall (App (App (Const "OnLine", Bvar 3 (* a *)), Bvar 2 (* L *)),
+              App (App (Const "LineCircleInter", Bvar 3 (* L *)), Bvar 2 (* aa *))
             )
           )
         )
@@ -2268,15 +2281,15 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "circles_inter_if_inside_outside";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Circle",
-          Forall (Const "Circle",
-            Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
-              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 2)), App (App (Const "OnCircle", Bvar 3), Bvar 2)),
-                Forall (App (App (Const "InCircle", Bvar 5), Bvar 2),
-                  Forall (App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3))),
-                    App (App (Const "CirclesInter", Bvar 5), Bvar 4)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* aa : *)Const "Circle",
+          Forall ((* bb : *)Const "Circle",
+            Forall (App (App (Const "OnCircle", Bvar 3 (* a *)), Bvar 1 (* aa *)),
+              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3 (* b *)), Bvar 2 (* aa *))), App (App (Const "OnCircle", Bvar 3 (* b *)), Bvar 2 (* aa *))),
+                Forall (App (App (Const "InCircle", Bvar 5 (* a *)), Bvar 2 (* bb *)),
+                  Forall (App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5 (* b *)), Bvar 3 (* bb *)))), App (Const "Not", App (App (Const "OnCircle", Bvar 5 (* b *)), Bvar 3 (* bb *)))),
+                    App (App (Const "CirclesInter", Bvar 5 (* aa *)), Bvar 4 (* bb *))
                   )
                 )
               )
@@ -2294,15 +2307,15 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "circles_inter_if_on_in";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Circle",
-          Forall (Const "Circle",
-            Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
-              Forall (App (App (Const "InCircle", Bvar 3), Bvar 2),
-                Forall (App (App (Const "InCircle", Bvar 5), Bvar 2),
-                  Forall (App (App (Const "OnCircle", Bvar 5), Bvar 3),
-                    App (App (Const "CirclesInter", Bvar 5), Bvar 4)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* aa : *)Const "Circle",
+          Forall ((* bb : *)Const "Circle",
+            Forall (App (App (Const "OnCircle", Bvar 3 (* a *)), Bvar 1 (* aa *)),
+              Forall (App (App (Const "InCircle", Bvar 3 (* b *)), Bvar 2 (* aa *)),
+                Forall (App (App (Const "InCircle", Bvar 5 (* a *)), Bvar 2 (* bb *)),
+                  Forall (App (App (Const "OnCircle", Bvar 5 (* b *)), Bvar 3 (* bb *)),
+                    App (App (Const "CirclesInter", Bvar 5 (* aa *)), Bvar 4 (* bb *))
                   )
                 )
               )
@@ -2319,10 +2332,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "eq_if_len_zero";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 1), Bvar 0)), Const "Zero"),
-          App (App (App (Const "Eq", Const "Point"), Bvar 2), Bvar 1)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 1 (* a *)), Bvar 0 (* b *))), Const "Zero"),
+          App (App (App (Const "Eq", Const "Point"), Bvar 2 (* a *)), Bvar 1 (* b *))
         )
       )
     )
@@ -2334,10 +2347,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "len_zero_if_eq";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
-          App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 2), Bvar 1)), Const "Zero")
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1 (* a *)), Bvar 0 (* b *)),
+          App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 2 (* a *)), Bvar 1 (* b *))), Const "Zero")
         )
       )
     )
@@ -2348,9 +2361,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "length_nonneg";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        App (Const "Not", App (App (Const "Lt", App (App (Const "Length", Bvar 1), Bvar 0)), Const "Zero"))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        App (Const "Not", App (App (Const "Lt", App (App (Const "Length", Bvar 1 (* a *)), Bvar 0 (* b *))), Const "Zero"))
       )
     )
     |}];
@@ -2360,9 +2373,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "length_symm";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 1), Bvar 0)), App (App (Const "Length", Bvar 0), Bvar 1))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 1 (* a *)), Bvar 0 (* b *))), App (App (Const "Length", Bvar 0 (* b *)), Bvar 1 (* a *)))
       )
     )
     |}];
@@ -2373,12 +2386,12 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "angle_symm";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 2), Bvar 1)),
-            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 2), Bvar 1)),
-              App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 4), Bvar 3), Bvar 2)), App (App (App (Const "Angle", Bvar 2), Bvar 3), Bvar 4))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 2 (* a *)), Bvar 1 (* b *))),
+            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 2 (* b *)), Bvar 1 (* c *))),
+              App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 4 (* a *)), Bvar 3 (* b *)), Bvar 2 (* c *))), App (App (App (Const "Angle", Bvar 2 (* c *)), Bvar 3 (* b *)), Bvar 4 (* a *)))
             )
           )
         )
@@ -2392,11 +2405,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "angle_range";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero")),
-            App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 3), Bvar 2), Bvar 1)))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall (App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2 (* a *)), Bvar 1 (* b *)), Bvar 0 (* c *))), Const "Zero")),
+            App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 3 (* a *)), Bvar 2 (* b *)), Bvar 1 (* c *))))
           )
         )
       )
@@ -2408,9 +2421,9 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "area_degenerate";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 1), Bvar 1), Bvar 0)), Const "Zero")
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 1 (* a *)), Bvar 1 (* a *)), Bvar 0 (* b *))), Const "Zero")
       )
     )
     |}];
@@ -2420,10 +2433,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "area_nonneg";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          App (Const "Not", App (App (Const "Lt", App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          App (Const "Not", App (App (Const "Lt", App (App (App (Const "Area", Bvar 2 (* a *)), Bvar 1 (* b *)), Bvar 0 (* c *))), Const "Zero"))
         )
       )
     )
@@ -2434,10 +2447,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "area_perm";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 0), Bvar 2), Bvar 1))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 2), Bvar 0), Bvar 1)))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2 (* a *)), Bvar 1 (* b *)), Bvar 0 (* c *))), App (App (App (Const "Area", Bvar 0 (* c *)), Bvar 2 (* a *)), Bvar 1 (* b *)))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2 (* a *)), Bvar 1 (* b *)), Bvar 0 (* c *))), App (App (App (Const "Area", Bvar 2 (* a *)), Bvar 0 (* c *)), Bvar 1 (* b *))))
         )
       )
     )
@@ -2454,18 +2467,18 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "area_congruence";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Point",
-              Forall (Const "Point",
-                Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 5), Bvar 4)), App (App (Const "Length", Bvar 2), Bvar 1)),
-                  Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 5), Bvar 4)), App (App (Const "Length", Bvar 2), Bvar 1)),
-                    Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 7), Bvar 6), Bvar 5)), App (App (App (Const "Angle", Bvar 4), Bvar 3), Bvar 2)),
-                      Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 7), Bvar 6), Bvar 8)), App (App (App (Const "Angle", Bvar 4), Bvar 3), Bvar 5)),
-                        Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 7), Bvar 9), Bvar 8)), App (App (App (Const "Angle", Bvar 4), Bvar 6), Bvar 5)),
-                          App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 10), Bvar 9), Bvar 8)), App (App (App (Const "Area", Bvar 7), Bvar 6), Bvar 5))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* a' : *)Const "Point",
+            Forall ((* b' : *)Const "Point",
+              Forall ((* c' : *)Const "Point",
+                Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 5 (* a *)), Bvar 4 (* b *))), App (App (Const "Length", Bvar 2 (* a' *)), Bvar 1 (* b' *))),
+                  Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 5 (* b *)), Bvar 4 (* c *))), App (App (Const "Length", Bvar 2 (* b' *)), Bvar 1 (* c' *))),
+                    Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 7 (* a *)), Bvar 6 (* b *)), Bvar 5 (* c *))), App (App (App (Const "Angle", Bvar 4 (* a' *)), Bvar 3 (* b' *)), Bvar 2 (* c' *))),
+                      Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 7 (* b *)), Bvar 6 (* c *)), Bvar 8 (* a *))), App (App (App (Const "Angle", Bvar 4 (* b' *)), Bvar 3 (* c' *)), Bvar 5 (* a' *))),
+                        Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 7 (* c *)), Bvar 9 (* a *)), Bvar 8 (* b *))), App (App (App (Const "Angle", Bvar 4 (* c' *)), Bvar 6 (* a' *)), Bvar 5 (* b' *))),
+                          App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 10 (* a *)), Bvar 9 (* b *)), Bvar 8 (* c *))), App (App (App (Const "Area", Bvar 7 (* a' *)), Bvar 6 (* b' *)), Bvar 5 (* c' *)))
                         )
                       )
                     )
@@ -2485,11 +2498,11 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "between_add_lengths";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (App (App (App (Const "Between", Bvar 2), Bvar 1), Bvar 0),
-            App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (Const "Length", Bvar 3), Bvar 2)), App (App (Const "Length", Bvar 2), Bvar 1))), App (App (Const "Length", Bvar 3), Bvar 1))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall (App (App (App (Const "Between", Bvar 2 (* a *)), Bvar 1 (* b *)), Bvar 0 (* c *)),
+            App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (Const "Length", Bvar 3 (* a *)), Bvar 2 (* b *))), App (App (Const "Length", Bvar 2 (* b *)), Bvar 1 (* c *)))), App (App (Const "Length", Bvar 3 (* a *)), Bvar 1 (* c *)))
           )
         )
       )
@@ -2506,17 +2519,17 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "circle_eq_if_center_and_radius_eq";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Circle",
-            Forall (Const "Circle",
-              Forall (App (App (Const "CenterCircle", Bvar 4), Bvar 1),
-                Forall (App (App (Const "CenterCircle", Bvar 5), Bvar 1),
-                  Forall (App (App (Const "OnCircle", Bvar 5), Bvar 3),
-                    Forall (App (App (Const "OnCircle", Bvar 5), Bvar 3),
-                      Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 8), Bvar 7)), App (App (Const "Length", Bvar 8), Bvar 6)),
-                        App (App (App (Const "Eq", Const "Circle"), Bvar 6), Bvar 5)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* aa : *)Const "Circle",
+            Forall ((* bb : *)Const "Circle",
+              Forall (App (App (Const "CenterCircle", Bvar 4 (* a *)), Bvar 1 (* aa *)),
+                Forall (App (App (Const "CenterCircle", Bvar 5 (* a *)), Bvar 1 (* bb *)),
+                  Forall (App (App (Const "OnCircle", Bvar 5 (* b *)), Bvar 3 (* aa *)),
+                    Forall (App (App (Const "OnCircle", Bvar 5 (* c *)), Bvar 3 (* bb *)),
+                      Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 8 (* a *)), Bvar 7 (* b *))), App (App (Const "Length", Bvar 8 (* a *)), Bvar 6 (* c *))),
+                        App (App (App (Const "Eq", Const "Circle"), Bvar 6 (* aa *)), Bvar 5 (* bb *))
                       )
                     )
                   )
@@ -2537,14 +2550,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "on_circle_if_eq_radius";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Circle",
-            Forall (App (App (Const "CenterCircle", Bvar 3), Bvar 0),
-              Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
-                Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 5), Bvar 3)), App (App (Const "Length", Bvar 5), Bvar 4)),
-                  App (App (Const "OnCircle", Bvar 4), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* aa : *)Const "Circle",
+            Forall (App (App (Const "CenterCircle", Bvar 3 (* a *)), Bvar 0 (* aa *)),
+              Forall (App (App (Const "OnCircle", Bvar 3 (* b *)), Bvar 1 (* aa *)),
+                Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 5 (* a *)), Bvar 3 (* c *))), App (App (Const "Length", Bvar 5 (* a *)), Bvar 4 (* b *))),
+                  App (App (Const "OnCircle", Bvar 4 (* c *)), Bvar 3 (* aa *))
                 )
               )
             )
@@ -2562,14 +2575,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "eq_radius_if_on_circle";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Circle",
-            Forall (App (App (Const "CenterCircle", Bvar 3), Bvar 0),
-              Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
-                Forall (App (App (Const "OnCircle", Bvar 3), Bvar 2),
-                  App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 6), Bvar 4)), App (App (Const "Length", Bvar 6), Bvar 5))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* aa : *)Const "Circle",
+            Forall (App (App (Const "CenterCircle", Bvar 3 (* a *)), Bvar 0 (* aa *)),
+              Forall (App (App (Const "OnCircle", Bvar 3 (* b *)), Bvar 1 (* aa *)),
+                Forall (App (App (Const "OnCircle", Bvar 3 (* c *)), Bvar 2 (* aa *)),
+                  App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 6 (* a *)), Bvar 4 (* c *))), App (App (Const "Length", Bvar 6 (* a *)), Bvar 5 (* b *)))
                 )
               )
             )
@@ -2587,14 +2600,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "in_circle_if_lt_radius";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Circle",
-            Forall (App (App (Const "CenterCircle", Bvar 3), Bvar 0),
-              Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
-                Forall (App (App (Const "Lt", App (App (Const "Length", Bvar 5), Bvar 3)), App (App (Const "Length", Bvar 5), Bvar 4)),
-                  App (App (Const "InCircle", Bvar 4), Bvar 3)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* aa : *)Const "Circle",
+            Forall (App (App (Const "CenterCircle", Bvar 3 (* a *)), Bvar 0 (* aa *)),
+              Forall (App (App (Const "OnCircle", Bvar 3 (* b *)), Bvar 1 (* aa *)),
+                Forall (App (App (Const "Lt", App (App (Const "Length", Bvar 5 (* a *)), Bvar 3 (* c *))), App (App (Const "Length", Bvar 5 (* a *)), Bvar 4 (* b *))),
+                  App (App (Const "InCircle", Bvar 4 (* c *)), Bvar 3 (* aa *))
                 )
               )
             )
@@ -2612,14 +2625,14 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "lt_radius_if_in_circle";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Circle",
-            Forall (App (App (Const "CenterCircle", Bvar 3), Bvar 0),
-              Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
-                Forall (App (App (Const "InCircle", Bvar 3), Bvar 2),
-                  App (App (Const "Lt", App (App (Const "Length", Bvar 6), Bvar 4)), App (App (Const "Length", Bvar 6), Bvar 5))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* aa : *)Const "Circle",
+            Forall (App (App (Const "CenterCircle", Bvar 3 (* a *)), Bvar 0 (* aa *)),
+              Forall (App (App (Const "OnCircle", Bvar 3 (* b *)), Bvar 1 (* aa *)),
+                Forall (App (App (Const "InCircle", Bvar 3 (* c *)), Bvar 2 (* aa *)),
+                  App (App (Const "Lt", App (App (Const "Length", Bvar 6 (* a *)), Bvar 4 (* c *))), App (App (Const "Length", Bvar 6 (* a *)), Bvar 5 (* b *)))
                 )
               )
             )
@@ -2639,17 +2652,17 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "angle_zero_if_on_line";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2)),
-              Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 4), Bvar 2)),
-                Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
-                  Forall (App (App (Const "OnLine", Bvar 5), Bvar 3),
-                    Forall (App (App (Const "OnLine", Bvar 5), Bvar 4),
-                      Forall (App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)),
-                        App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8), Bvar 9), Bvar 7)), Const "Zero")
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3 (* a *)), Bvar 2 (* b *))),
+              Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 4 (* a *)), Bvar 2 (* c *))),
+                Forall (App (App (Const "OnLine", Bvar 5 (* a *)), Bvar 2 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 5 (* b *)), Bvar 3 (* L *)),
+                    Forall (App (App (Const "OnLine", Bvar 5 (* c *)), Bvar 4 (* L *)),
+                      Forall (App (Const "Not", App (App (App (Const "Between", Bvar 7 (* b *)), Bvar 8 (* a *)), Bvar 6 (* c *))),
+                        App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8 (* b *)), Bvar 9 (* a *)), Bvar 7 (* c *))), Const "Zero")
                       )
                     )
                   )
@@ -2672,16 +2685,16 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "on_line_if_angle_zero";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2)),
-              Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 4), Bvar 2)),
-                Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
-                  Forall (App (App (Const "OnLine", Bvar 5), Bvar 3),
-                    Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 6), Bvar 7), Bvar 5)), Const "Zero"),
-                      App (App (Const "And", App (App (Const "OnLine", Bvar 6), Bvar 5)), App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3 (* a *)), Bvar 2 (* b *))),
+              Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 4 (* a *)), Bvar 2 (* c *))),
+                Forall (App (App (Const "OnLine", Bvar 5 (* a *)), Bvar 2 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 5 (* b *)), Bvar 3 (* L *)),
+                    Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 6 (* b *)), Bvar 7 (* a *)), Bvar 5 (* c *))), Const "Zero"),
+                      App (App (Const "And", App (App (Const "OnLine", Bvar 6 (* c *)), Bvar 5 (* L *))), App (Const "Not", App (App (App (Const "Between", Bvar 7 (* b *)), Bvar 8 (* a *)), Bvar 6 (* c *))))
                     )
                   )
                 )
@@ -2705,24 +2718,24 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "angle_add_if_same_side";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Line",
-              Forall (Const "Line",
-                Forall (App (App (Const "OnLine", Bvar 5), Bvar 1),
-                  Forall (App (App (Const "OnLine", Bvar 6), Bvar 1),
-                    Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
-                      Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8)),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 10), Bvar 8)),
-                            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8), Bvar 7)),
-                              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9), Bvar 7)),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Line"), Bvar 9), Bvar 8)),
-                                  Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 11), Bvar 9),
-                                    Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11),
-                                      App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 15), Bvar 16), Bvar 14)), App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 16), Bvar 13)), App (App (App (Const "Angle", Bvar 13), Bvar 16), Bvar 14)))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* L : *)Const "Line",
+              Forall ((* M : *)Const "Line",
+                Forall (App (App (Const "OnLine", Bvar 5 (* a *)), Bvar 1 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 6 (* a *)), Bvar 1 (* M *)),
+                    Forall (App (App (Const "OnLine", Bvar 6 (* b *)), Bvar 3 (* L *)),
+                      Forall (App (App (Const "OnLine", Bvar 6 (* c *)), Bvar 3 (* M *)),
+                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9 (* a *)), Bvar 8 (* b *))),
+                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 10 (* a *)), Bvar 8 (* c *))),
+                            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8 (* d *)), Bvar 7 (* L *))),
+                              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9 (* d *)), Bvar 7 (* M *))),
+                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Line"), Bvar 9 (* L *)), Bvar 8 (* M *))),
+                                  Forall (App (App (App (Const "SameSide", Bvar 13 (* b *)), Bvar 11 (* d *)), Bvar 9 (* M *)),
+                                    Forall (App (App (App (Const "SameSide", Bvar 13 (* c *)), Bvar 12 (* d *)), Bvar 11 (* L *)),
+                                      App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 15 (* b *)), Bvar 16 (* a *)), Bvar 14 (* c *))), App (App (Const "Add", App (App (App (Const "Angle", Bvar 15 (* b *)), Bvar 16 (* a *)), Bvar 13 (* d *))), App (App (App (Const "Angle", Bvar 13 (* d *)), Bvar 16 (* a *)), Bvar 14 (* c *))))
                                     )
                                   )
                                 )
@@ -2754,23 +2767,23 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "same_side_if_angle_add";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Line",
-              Forall (Const "Line",
-                Forall (App (App (Const "OnLine", Bvar 5), Bvar 1),
-                  Forall (App (App (Const "OnLine", Bvar 6), Bvar 1),
-                    Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
-                      Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8)),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 10), Bvar 8)),
-                            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8), Bvar 7)),
-                              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9), Bvar 7)),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Line"), Bvar 9), Bvar 8)),
-                                  Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 12)), App (App (Const "Add", App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 11)), App (App (App (Const "Angle", Bvar 11), Bvar 14), Bvar 12))),
-                                    App (App (Const "And", App (App (App (Const "SameSide", Bvar 14), Bvar 12), Bvar 10)), App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* L : *)Const "Line",
+              Forall ((* M : *)Const "Line",
+                Forall (App (App (Const "OnLine", Bvar 5 (* a *)), Bvar 1 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 6 (* a *)), Bvar 1 (* M *)),
+                    Forall (App (App (Const "OnLine", Bvar 6 (* b *)), Bvar 3 (* L *)),
+                      Forall (App (App (Const "OnLine", Bvar 6 (* c *)), Bvar 3 (* M *)),
+                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9 (* a *)), Bvar 8 (* b *))),
+                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 10 (* a *)), Bvar 8 (* c *))),
+                            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8 (* d *)), Bvar 7 (* L *))),
+                              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9 (* d *)), Bvar 7 (* M *))),
+                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Line"), Bvar 9 (* L *)), Bvar 8 (* M *))),
+                                  Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13 (* b *)), Bvar 14 (* a *)), Bvar 12 (* c *))), App (App (Const "Add", App (App (App (Const "Angle", Bvar 13 (* b *)), Bvar 14 (* a *)), Bvar 11 (* d *))), App (App (App (Const "Angle", Bvar 11 (* d *)), Bvar 14 (* a *)), Bvar 12 (* c *)))),
+                                    App (App (Const "And", App (App (App (Const "SameSide", Bvar 14 (* b *)), Bvar 12 (* d *)), Bvar 10 (* M *))), App (App (App (Const "SameSide", Bvar 13 (* c *)), Bvar 12 (* d *)), Bvar 11 (* L *)))
                                   )
                                 )
                               )
@@ -2798,17 +2811,17 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "right_angle_if_angle_eq";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Line",
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                  Forall (App (App (App (Const "Between", Bvar 6), Bvar 4), Bvar 5),
-                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 3)),
-                      Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8), Bvar 6), Bvar 5)), App (App (App (Const "Angle", Bvar 5), Bvar 6), Bvar 7)),
-                        App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 9), Bvar 7), Bvar 6)), Const "RightAngle")
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* L : *)Const "Line",
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 0 (* L *)),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 1 (* L *)),
+                  Forall (App (App (App (Const "Between", Bvar 6 (* a *)), Bvar 4 (* c *)), Bvar 5 (* b *)),
+                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4 (* d *)), Bvar 3 (* L *))),
+                      Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8 (* a *)), Bvar 6 (* c *)), Bvar 5 (* d *))), App (App (App (Const "Angle", Bvar 5 (* d *)), Bvar 6 (* c *)), Bvar 7 (* b *))),
+                        App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 9 (* a *)), Bvar 7 (* c *)), Bvar 6 (* d *))), Const "RightAngle")
                       )
                     )
                   )
@@ -2830,17 +2843,17 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "angle_eq_if_right_angle";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Line",
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                  Forall (App (App (App (Const "Between", Bvar 6), Bvar 4), Bvar 5),
-                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 3)),
-                      Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8), Bvar 6), Bvar 5)), Const "RightAngle"),
-                        App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 9), Bvar 7), Bvar 6)), App (App (App (Const "Angle", Bvar 6), Bvar 7), Bvar 8))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* L : *)Const "Line",
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 0 (* L *)),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 1 (* L *)),
+                  Forall (App (App (App (Const "Between", Bvar 6 (* a *)), Bvar 4 (* c *)), Bvar 5 (* b *)),
+                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4 (* d *)), Bvar 3 (* L *))),
+                      Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8 (* a *)), Bvar 6 (* c *)), Bvar 5 (* d *))), Const "RightAngle"),
+                        App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 9 (* a *)), Bvar 7 (* c *)), Bvar 6 (* d *))), App (App (App (Const "Angle", Bvar 6 (* d *)), Bvar 7 (* c *)), Bvar 8 (* b *)))
                       )
                     )
                   )
@@ -2865,26 +2878,26 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "angle_eq_on_same_rays";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Point",
-              Forall (Const "Line",
-                Forall (Const "Line",
-                  Forall (App (App (Const "OnLine", Bvar 6), Bvar 1),
-                    Forall (App (App (Const "OnLine", Bvar 6), Bvar 2),
-                      Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
-                        Forall (App (App (Const "OnLine", Bvar 9), Bvar 3),
-                          Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
-                            Forall (App (App (Const "OnLine", Bvar 7), Bvar 5),
-                              Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 12)),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 13)),
-                                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 14)),
-                                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 15)),
-                                      Forall (App (Const "Not", App (App (App (Const "Between", Bvar 15), Bvar 16), Bvar 14)),
-                                        Forall (App (Const "Not", App (App (App (Const "Between", Bvar 14), Bvar 17), Bvar 13)),
-                                          App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 17), Bvar 18), Bvar 15)), App (App (App (Const "Angle", Bvar 16), Bvar 18), Bvar 14))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* b' : *)Const "Point",
+          Forall ((* c : *)Const "Point",
+            Forall ((* c' : *)Const "Point",
+              Forall ((* L : *)Const "Line",
+                Forall ((* M : *)Const "Line",
+                  Forall (App (App (Const "OnLine", Bvar 6 (* a *)), Bvar 1 (* L *)),
+                    Forall (App (App (Const "OnLine", Bvar 6 (* b *)), Bvar 2 (* L *)),
+                      Forall (App (App (Const "OnLine", Bvar 6 (* b' *)), Bvar 3 (* L *)),
+                        Forall (App (App (Const "OnLine", Bvar 9 (* a *)), Bvar 3 (* M *)),
+                          Forall (App (App (Const "OnLine", Bvar 7 (* c *)), Bvar 4 (* M *)),
+                            Forall (App (App (Const "OnLine", Bvar 7 (* c' *)), Bvar 5 (* M *)),
+                              Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11 (* b *)), Bvar 12 (* a *))),
+                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11 (* b' *)), Bvar 13 (* a *))),
+                                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11 (* c *)), Bvar 14 (* a *))),
+                                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11 (* c' *)), Bvar 15 (* a *))),
+                                      Forall (App (Const "Not", App (App (App (Const "Between", Bvar 15 (* b *)), Bvar 16 (* a *)), Bvar 14 (* b' *))),
+                                        Forall (App (Const "Not", App (App (App (Const "Between", Bvar 14 (* c *)), Bvar 17 (* a *)), Bvar 13 (* c' *))),
+                                          App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 17 (* b *)), Bvar 18 (* a *)), Bvar 15 (* c *))), App (App (App (Const "Angle", Bvar 16 (* b' *)), Bvar 18 (* a *)), Bvar 14 (* c' *)))
                                         )
                                       )
                                     )
@@ -2918,24 +2931,24 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "lines_inter_if_angle_sum_lt_180";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Point",
-              Forall (Const "Line",
-                Forall (Const "Line",
-                  Forall (Const "Line",
-                    Forall (App (App (Const "OnLine", Bvar 7), Bvar 2),
-                      Forall (App (App (Const "OnLine", Bvar 7), Bvar 3),
-                        Forall (App (App (Const "OnLine", Bvar 8), Bvar 3),
-                          Forall (App (App (Const "OnLine", Bvar 8), Bvar 4),
-                            Forall (App (App (Const "OnLine", Bvar 9), Bvar 4),
-                              Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 12), Bvar 11)),
-                                  Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 11), Bvar 8),
-                                    Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
-                                      App (App (Const "LinesInter", Bvar 11), Bvar 9)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* e : *)Const "Point",
+              Forall ((* L : *)Const "Line",
+                Forall ((* M : *)Const "Line",
+                  Forall ((* N : *)Const "Line",
+                    Forall (App (App (Const "OnLine", Bvar 7 (* a *)), Bvar 2 (* L *)),
+                      Forall (App (App (Const "OnLine", Bvar 7 (* b *)), Bvar 3 (* L *)),
+                        Forall (App (App (Const "OnLine", Bvar 8 (* b *)), Bvar 3 (* M *)),
+                          Forall (App (App (Const "OnLine", Bvar 8 (* c *)), Bvar 4 (* M *)),
+                            Forall (App (App (Const "OnLine", Bvar 9 (* c *)), Bvar 4 (* N *)),
+                              Forall (App (App (Const "OnLine", Bvar 9 (* d *)), Bvar 5 (* N *)),
+                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 12 (* b *)), Bvar 11 (* c *))),
+                                  Forall (App (App (App (Const "SameSide", Bvar 14 (* a *)), Bvar 11 (* d *)), Bvar 8 (* M *)),
+                                    Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15 (* a *)), Bvar 14 (* b *)), Bvar 13 (* c *))), App (App (App (Const "Angle", Bvar 14 (* b *)), Bvar 13 (* c *)), Bvar 12 (* d *)))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
+                                      App (App (Const "LinesInter", Bvar 11 (* L *)), Bvar 9 (* N *))
                                     )
                                   )
                                 )
@@ -2968,26 +2981,26 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "ine_inter_point_on_same_side_if_angle_sum_lt_180";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Point",
-              Forall (Const "Line",
-                Forall (Const "Line",
-                  Forall (Const "Line",
-                    Forall (App (App (Const "OnLine", Bvar 7), Bvar 2),
-                      Forall (App (App (Const "OnLine", Bvar 7), Bvar 3),
-                        Forall (App (App (Const "OnLine", Bvar 8), Bvar 3),
-                          Forall (App (App (Const "OnLine", Bvar 8), Bvar 4),
-                            Forall (App (App (Const "OnLine", Bvar 9), Bvar 4),
-                              Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 12), Bvar 11)),
-                                  Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 11), Bvar 8),
-                                    Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
-                                      Forall (App (App (Const "OnLine", Bvar 12), Bvar 11),
-                                        Forall (App (App (Const "OnLine", Bvar 13), Bvar 10),
-                                          App (App (App (Const "SameSide", Bvar 14), Bvar 18), Bvar 12)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* e : *)Const "Point",
+              Forall ((* L : *)Const "Line",
+                Forall ((* M : *)Const "Line",
+                  Forall ((* N : *)Const "Line",
+                    Forall (App (App (Const "OnLine", Bvar 7 (* a *)), Bvar 2 (* L *)),
+                      Forall (App (App (Const "OnLine", Bvar 7 (* b *)), Bvar 3 (* L *)),
+                        Forall (App (App (Const "OnLine", Bvar 8 (* b *)), Bvar 3 (* M *)),
+                          Forall (App (App (Const "OnLine", Bvar 8 (* c *)), Bvar 4 (* M *)),
+                            Forall (App (App (Const "OnLine", Bvar 9 (* c *)), Bvar 4 (* N *)),
+                              Forall (App (App (Const "OnLine", Bvar 9 (* d *)), Bvar 5 (* N *)),
+                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 12 (* b *)), Bvar 11 (* c *))),
+                                  Forall (App (App (App (Const "SameSide", Bvar 14 (* a *)), Bvar 11 (* d *)), Bvar 8 (* M *)),
+                                    Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15 (* a *)), Bvar 14 (* b *)), Bvar 13 (* c *))), App (App (App (Const "Angle", Bvar 14 (* b *)), Bvar 13 (* c *)), Bvar 12 (* d *)))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
+                                      Forall (App (App (Const "OnLine", Bvar 12 (* e *)), Bvar 11 (* L *)),
+                                        Forall (App (App (Const "OnLine", Bvar 13 (* e *)), Bvar 10 (* N *)),
+                                          App (App (App (Const "SameSide", Bvar 14 (* e *)), Bvar 18 (* a *)), Bvar 12 (* M *))
                                         )
                                       )
                                     )
@@ -3016,15 +3029,15 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "on_line_if_area_zero";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
-              Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
-                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                  Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 6), Bvar 5), Bvar 4)), Const "Zero"),
-                    App (App (Const "OnLine", Bvar 5), Bvar 4)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (App (Const "OnLine", Bvar 3 (* a *)), Bvar 0 (* L *)),
+              Forall (App (App (Const "OnLine", Bvar 3 (* b *)), Bvar 1 (* L *)),
+                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5 (* a *)), Bvar 4 (* b *))),
+                  Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 6 (* a *)), Bvar 5 (* b *)), Bvar 4 (* c *))), Const "Zero"),
+                    App (App (Const "OnLine", Bvar 5 (* c *)), Bvar 4 (* L *))
                   )
                 )
               )
@@ -3042,15 +3055,15 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "area_zero_if_on_line";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Line",
-            Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
-              Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
-                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                  Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
-                    App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 7), Bvar 6), Bvar 5)), Const "Zero")
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* L : *)Const "Line",
+            Forall (App (App (Const "OnLine", Bvar 3 (* a *)), Bvar 0 (* L *)),
+              Forall (App (App (Const "OnLine", Bvar 3 (* b *)), Bvar 1 (* L *)),
+                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5 (* a *)), Bvar 4 (* b *))),
+                  Forall (App (App (Const "OnLine", Bvar 4 (* c *)), Bvar 3 (* L *)),
+                    App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 7 (* a *)), Bvar 6 (* b *)), Bvar 5 (* c *))), Const "Zero")
                   )
                 )
               )
@@ -3070,20 +3083,20 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "area_add_if_between";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Line",
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                  Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6)),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 7)),
-                          Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 6)),
-                            Forall (App (App (App (Const "Between", Bvar 11), Bvar 9), Bvar 10),
-                              App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 12), Bvar 10), Bvar 9)), App (App (App (Const "Area", Bvar 9), Bvar 10), Bvar 11))), App (App (App (Const "Area", Bvar 12), Bvar 9), Bvar 11))
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* L : *)Const "Line",
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 0 (* L *)),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 1 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 4 (* c *)), Bvar 2 (* L *)),
+                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7 (* a *)), Bvar 6 (* b *))),
+                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7 (* b *)), Bvar 6 (* c *))),
+                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9 (* a *)), Bvar 7 (* c *))),
+                          Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7 (* d *)), Bvar 6 (* L *))),
+                            Forall (App (App (App (Const "Between", Bvar 11 (* a *)), Bvar 9 (* c *)), Bvar 10 (* b *)),
+                              App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 12 (* a *)), Bvar 10 (* c *)), Bvar 9 (* d *))), App (App (App (Const "Area", Bvar 9 (* d *)), Bvar 10 (* c *)), Bvar 11 (* b *)))), App (App (App (Const "Area", Bvar 12 (* a *)), Bvar 9 (* d *)), Bvar 11 (* b *)))
                             )
                           )
                         )
@@ -3108,20 +3121,20 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "between_if_area_add";
   [%expect
     {|
-    Forall (Const "Point",
-      Forall (Const "Point",
-        Forall (Const "Point",
-          Forall (Const "Point",
-            Forall (Const "Line",
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                  Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6)),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 7)),
-                          Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 6)),
-                            Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 11), Bvar 9), Bvar 8)), App (App (App (Const "Area", Bvar 8), Bvar 9), Bvar 10))), App (App (App (Const "Area", Bvar 11), Bvar 8), Bvar 10)),
-                              App (App (App (Const "Between", Bvar 12), Bvar 10), Bvar 11)
+    Forall ((* a : *)Const "Point",
+      Forall ((* b : *)Const "Point",
+        Forall ((* c : *)Const "Point",
+          Forall ((* d : *)Const "Point",
+            Forall ((* L : *)Const "Line",
+              Forall (App (App (Const "OnLine", Bvar 4 (* a *)), Bvar 0 (* L *)),
+                Forall (App (App (Const "OnLine", Bvar 4 (* b *)), Bvar 1 (* L *)),
+                  Forall (App (App (Const "OnLine", Bvar 4 (* c *)), Bvar 2 (* L *)),
+                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7 (* a *)), Bvar 6 (* b *))),
+                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7 (* b *)), Bvar 6 (* c *))),
+                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9 (* a *)), Bvar 7 (* c *))),
+                          Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7 (* d *)), Bvar 6 (* L *))),
+                            Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 11 (* a *)), Bvar 9 (* c *)), Bvar 8 (* d *))), App (App (App (Const "Area", Bvar 8 (* d *)), Bvar 9 (* c *)), Bvar 10 (* b *)))), App (App (App (Const "Area", Bvar 11 (* a *)), Bvar 8 (* d *)), Bvar 10 (* b *))),
+                              App (App (App (Const "Between", Bvar 12 (* a *)), Bvar 10 (* c *)), Bvar 11 (* b *))
                             )
                           )
                         )
