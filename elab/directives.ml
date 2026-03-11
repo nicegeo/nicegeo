@@ -23,7 +23,7 @@ let process_directive (e : ctx) (dir : directive) : unit =
       (* replace holes *)
       let ty_filled = Typecheck.replace_metas e ty_term in
       Hashtbl.clear e.metas;
-      print_endline (prefix ^ "#infer: " ^ Pretty.term_to_string_with e [] ty_filled)
+      print_endline (prefix ^ "#infer: " ^ Pretty.term_to_string e ty_filled)
   | Check (t, ty, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
       (* process provided type to make sure valid type *)
@@ -40,9 +40,9 @@ let process_directive (e : ctx) (dir : directive) : unit =
 
       print_endline
         (prefix ^ "#check successful: Term is well-typed as "
-        ^ Pretty.term_to_string_with e [] ty_filled)
+        ^ Pretty.term_to_string e ty_filled)
   | Reduce (t, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
       let t_meta = Typecheck.hole_to_meta e [] t in
       let reduced_term = Pretty.reduce e t_meta in
-      print_endline (prefix ^ "#reduce: " ^ Pretty.term_to_string_with e [] reduced_term)
+      print_endline (prefix ^ "#reduce: " ^ Pretty.term_to_string e reduced_term)
