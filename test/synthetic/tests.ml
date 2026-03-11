@@ -1,33 +1,58 @@
-let kterm_to_repr (term : Kernel.Term.term) =
+let rec collect_bound_names (tm: Elab.Term.term) : string list =
+  let open Elab.Term in
+  match tm.inner with
+  | Fun (name, ty, body) ->
+      let ty_names = collect_bound_names ty in
+      let body_names = collect_bound_names body in
+      (match name with Some n -> n | None -> "") :: ty_names @ body_names
+  | Arrow (name, ty, ret) ->
+      let ty_names = collect_bound_names ty in
+      let ret_names = collect_bound_names ret in
+      (match name with Some n -> n | None -> "") :: ty_names @ ret_names
+  | App (f, arg) -> collect_bound_names f @ collect_bound_names arg
+  | _ -> []
+
+let kterm_to_repr (term : Kernel.Term.term) (bound_names : string list) = 
   let open Kernel.Term in
-  let rec kterm_to_repr_helper (term : term) (indent : int) =
+  let rec kterm_to_repr_helper (term : term) (indent : int) (bound_names : string list) (bvars : string list) =
     let indent_str = String.make (indent * 2) ' ' in
     match term with
-    | Const s -> Printf.sprintf "Const \"%s\"" s
-    | Bvar n -> Printf.sprintf "Bvar %d" n
-    | Fvar s -> Printf.sprintf "Fvar \"%s\"" s
+    | Const s -> (Printf.sprintf "Const \"%s\"" s, bound_names)
+    | Bvar n -> (Printf.sprintf "Bvar %d %s" n (if List.nth bvars n = "" then "" else "(* " ^ List.nth bvars n ^ " *)"), bound_names)
     | Lam (ty, body) ->
-        Printf.sprintf
-          "Lam (%s,\n%s  %s\n%s)"
-          (kterm_to_repr_helper ty indent)
-          indent_str
-          (kterm_to_repr_helper body (indent + 1))
-          indent_str
-    | Forall (ty, body) ->
-        Printf.sprintf
-          "Forall (%s,\n%s  %s\n%s)"
-          (kterm_to_repr_helper ty indent)
-          indent_str
-          (kterm_to_repr_helper body (indent + 1))
-          indent_str
+        (match bound_names with
+        | name :: rest_names ->
+            let ty_repr, rest_names = kterm_to_repr_helper ty indent rest_names bvars in
+            let body_repr, rest_names = kterm_to_repr_helper body (indent + 1) rest_names (name :: bvars) in
+             (Printf.sprintf
+              "Lam (%s%s,\n%s  %s\n%s)"
+              (if name = "" then "" else "(* " ^ name ^ " : *)")
+              ty_repr
+              indent_str
+              body_repr
+              indent_str), rest_names
+        | [] -> failwith "Not enough bound names provided in kterm_to_repr input")
+    | Forall (ty, ret) ->
+        (match bound_names with
+        | name :: rest_names ->
+            let ty_repr, rest_names = kterm_to_repr_helper ty indent rest_names bvars in
+            let ret_repr, rest_names = kterm_to_repr_helper ret (indent + 1) rest_names (name :: bvars) in
+             (Printf.sprintf
+              "Forall (%s%s,\n%s  %s\n%s)"
+              (if name = "" then "" else "(* " ^ name ^ " : *)")
+              ty_repr
+              indent_str
+              ret_repr
+              indent_str), rest_names
+        | [] -> failwith "Not enough bound names provided in kterm_to_repr input")
     | App (f, arg) ->
-        Printf.sprintf
-          "App (%s, %s)"
-          (kterm_to_repr_helper f indent)
-          (kterm_to_repr_helper arg indent)
-    | Sort n -> Printf.sprintf "Sort %d" n
+        let f_repr, bound_names = kterm_to_repr_helper f indent bound_names bvars in
+        let arg_repr, bound_names = kterm_to_repr_helper arg indent bound_names bvars in
+        (Printf.sprintf "App (%s, %s)" f_repr arg_repr, bound_names)
+    | Sort n -> (Printf.sprintf "Sort %d" n, bound_names)
+    | Fvar _ -> failwith "fvar in kterm_to_repr input"
   in
-  kterm_to_repr_helper term 0
+  fst (kterm_to_repr_helper term 0 bound_names [])
 
 (** These are the regression tests for the axioms in env.txt. If [dune runtest] yields
     errors here, inspect the diff to ensure that all changes in the kernel terms make
@@ -56,8 +81,10 @@ let%expect_test "Elaborate env.txt" =
   let kenv = Hashtbl.copy env.kenv in
 
   let show_kterm name =
-    let term = Hashtbl.find kenv name in
-    let repr = kterm_to_repr term in
+    let term = (Hashtbl.find env.env name).ty in
+    let bound_names = collect_bound_names term in
+    let kterm = Hashtbl.find kenv name in
+    let repr = kterm_to_repr kterm bound_names in
     print_endline repr;
     (* Delete entry from kenv so we can check this is empty at the end *)
     Hashtbl.remove kenv name
