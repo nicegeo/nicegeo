@@ -145,23 +145,6 @@ let ktype_err_to_string (info : KExceptions.type_error_info) : string =
         (Kernel_pretty.term_to_string_pretty domainTypeType)
         (Kernel_pretty.term_to_string_pretty returnTypeType)
 
-let pp_loc (r : range) =
-  if r.start.pos_lnum = r.end_.pos_lnum then
-    Printf.sprintf
-      "%s:%d:%d-%d"
-      r.start.pos_fname
-      r.start.pos_lnum
-      (r.start.pos_cnum - r.start.pos_bol + 1)
-      (r.end_.pos_cnum - r.end_.pos_bol + 1)
-  else
-    Printf.sprintf
-      "%s:%d:%d to %d:%d"
-      r.start.pos_fname
-      r.start.pos_lnum
-      (r.start.pos_cnum - r.start.pos_bol + 1)
-      r.end_.pos_lnum
-      (r.end_.pos_cnum - r.end_.pos_bol + 1)
-
 let pp_local_ctx (e : Types.ctx) : string =
   Hashtbl.fold
     (fun k v acc ->
@@ -175,7 +158,7 @@ let pp_local_ctx (e : Types.ctx) : string =
 
 let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
   let loc_str =
-    match info.context.loc with Some r -> pp_loc r | None -> "unknown location"
+    match info.context.loc with Some r -> Pretty.pp_loc r | None -> "unknown location"
   in
   let decl_str =
     match info.context.decl_name with

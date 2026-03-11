@@ -1,20 +1,38 @@
 %token <string> IDENT
 %token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE
 %token THEOREM AXIOM DEFEQ
-%start <Decl.declaration list> main
+%token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE
+%start <Statement.statement list> main
 %start <Term.term> single_term
 %%
 
 main:
-  | decls = list(declaration) EOF { decls }
+  | stmts = list(statement) EOF { stmts }
 
 single_term:
   | t = term EOF { t }
 
+statement:
+  | d = declaration { Statement.Declaration d }
+  | d = directive { Statement.Directive d }
+
 declaration:
-  | AXIOM name = IDENT COLON ty = term { Decl.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Axiom} }
+  | AXIOM name = IDENT COLON ty = term { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Axiom} }
   | THEOREM name = IDENT COLON ty = term DEFEQ proof = term
-    { Decl.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem proof} }
+    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem proof} }
+
+directive:
+  (* print all axioms used in proposition: #print axioms prop1 *)
+  | PRINT_DIRECTIVE _arg = IDENT prop = IDENT
+    { Statement.PrintAxioms (prop, { Term.start = $startpos(_arg); Term.end_ = $endpos(prop) }) }
+  (* print inferred types in proposition: #infer prop1 *)
+  | INFER_DIRECTIVE t = term
+    { Statement.Infer (t, { Term.start = $startpos(t); Term.end_ = $endpos(t) }) }
+  (* verify term against type: #check (fun (x : Point) => x) : (Point -> Point) *)
+  | CHECK_DIRECTIVE t = term COLON ty = term
+    { Statement.Check (t, ty, { Term.start = $startpos(t); Term.end_ = $endpos(ty) }) }
+  | REDUCE_DIRECTIVE t = term
+    { Statement.Reduce (t, { Term.start = $startpos(t); Term.end_ = $endpos(t) }) }
 
 term:
   | t = app_term { t }

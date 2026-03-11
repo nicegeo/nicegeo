@@ -8,13 +8,18 @@ let create () : Types.ctx =
     lctx = Hashtbl.create 16;
   }
 
+let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
+  match stmt with
+  | Statement.Declaration decl -> Typecheck.process_decl env decl
+  | Statement.Directive dir -> Directives.process_directive env dir
+
 (* Creates an elaborator environment by parsing the environment file at `path_to_env`. *)
 let create_with_env_path (path_to_env : string) : Types.ctx =
   let e = create () in
   let ic = open_in path_to_env in
   let lexbuf = Lexing.from_channel ic in
-  let decls = Parser.main Lexer.token lexbuf in
-  let _ = List.map (Typecheck.process_decl e) decls in
+  let stmts = Parser.main Lexer.token lexbuf in
+  let _ = List.map (process_statement e) stmts in
   e
 
 (* Creates an elaborator environment with the default environment path. *)
@@ -24,7 +29,7 @@ let parse_term (s : string) : Term.term =
   let lexbuf = Lexing.from_string s in
   Parser.single_term Lexer.token lexbuf
 
-let parse_decls (filename : string) : Decl.declaration list =
+let parse_statements (filename : string) : Statement.statement list =
   let ic = open_in filename in
   let lexbuf = Lexing.from_channel ic in
   Lexing.set_filename lexbuf filename;
@@ -44,13 +49,9 @@ let parse_decls (filename : string) : Decl.declaration list =
   in
   decls
 
-(* Type-checks and adds a parsed axiom or theorem to the environment. *)
-let process_decl (env : Types.ctx) (decl : Decl.declaration) : unit =
-  Typecheck.process_decl env decl
-
 let process_file (env : Types.ctx) (filename : string) : unit =
-  let decls = parse_decls filename in
-  List.iter (process_decl env) decls
+  let stmts = parse_statements filename in
+  List.iter (process_statement env) stmts
 
 (* Returns the list of axioms used by the theorem `name`. *)
 let list_axioms (env : Types.ctx) (name : string) =
