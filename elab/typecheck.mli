@@ -10,7 +10,7 @@ open Term
 
 (** [process_decl ctx decl] type-checks and adds a single declaration to the elaboration
     context. Raises [Error.ElabError] on any error. *)
-val process_decl : Types.ctx -> Decl.declaration -> unit
+val process_decl : Types.ctx -> Statement.declaration -> unit
 
 val hole_to_meta : Types.ctx -> term list -> term -> term
 val infertype : Types.ctx -> term -> term

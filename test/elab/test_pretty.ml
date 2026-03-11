@@ -16,12 +16,12 @@ let () =
 (* Example 2: Declaration pretty-printing *)
 let () =
   let d =
-    Elab.Decl.
+    Elab.Statement.
       { name = "Point"; name_loc = l; ty = { inner = Sort 1; loc = l }; kind = Axiom }
   in
   Printf.printf "Axiom Point : Type  =>  %s\n" (decl_to_string e d);
   let d2 =
-    Elab.Decl.
+    Elab.Statement.
       {
         name = "id";
         name_loc = l;

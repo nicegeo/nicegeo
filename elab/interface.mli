@@ -16,11 +16,11 @@ val parse_term : string -> Term.term
 
 (** [parse_decls filename] parses all declarations from the file [filename]. Raises
     [Error.ElabError] with a [ParseError] payload on failure. *)
-val parse_decls : string -> Decl.statement list
+val parse_decls : string -> Statement.statement list
 
 (** [process_decl env decl] type-checks and adds [decl] to [env]. Raises [Error.ElabError]
     on type errors. *)
-val process_statement : Types.ctx -> Decl.statement -> unit
+val process_statement : Types.ctx -> Statement.statement -> unit
 
 (** [process_file env filename] parses and processes all declarations in [filename],
     adding them to [env]. *)

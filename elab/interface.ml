@@ -8,10 +8,10 @@ let create () : Types.ctx =
     lctx = Hashtbl.create 16;
   }
 
-let process_statement (env : Types.ctx) (stmt : Decl.statement) : unit =
+let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
   match stmt with
-  | Decl.Declaration decl -> Typecheck.process_decl env decl
-  | Decl.Directive dir -> Directives.process_directive env dir
+  | Statement.Declaration decl -> Typecheck.process_decl env decl
+  | Statement.Directive dir -> Directives.process_directive env dir
 
 (* Creates an elaborator environment by parsing the environment file at `path_to_env`. *)
 let create_with_env_path (path_to_env : string) : Types.ctx =
@@ -29,7 +29,7 @@ let parse_term (s : string) : Term.term =
   let lexbuf = Lexing.from_string s in
   Parser.single_term Lexer.token lexbuf
 
-let parse_decls (filename : string) : Decl.statement list =
+let parse_decls (filename : string) : Statement.statement list =
   let ic = open_in filename in
   let lexbuf = Lexing.from_channel ic in
   Lexing.set_filename lexbuf filename;

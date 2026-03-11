@@ -5,7 +5,7 @@
     [lctx] and [metas]). *)
 
 open Term
-open Decl
+open Statement
 
 (* Sort 0 = Prop, Sort 1 = Type; for n >= 2 display as "Sort n". *)
 let sort_to_string = function 0 -> "Prop" | 1 -> "Type" | n -> "Sort " ^ string_of_int n

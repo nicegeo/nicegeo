@@ -1,5 +1,5 @@
 open Types
-open Decl
+open Statement
 
 let process_directive (e : ctx) (dir : directive) : unit =
   match dir with
