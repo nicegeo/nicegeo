@@ -11,7 +11,8 @@ let process_directive (e : ctx) (dir : directive) : unit =
           | Theorem used_axioms ->
               print_endline (prefix ^ "Axioms used in " ^ prop_name ^ ":");
               List.iter print_endline used_axioms
-          | Axiom -> print_endline (prefix ^ prop_name ^ " is an axiom itself."))
+          | Axiom -> print_endline (prefix ^ prop_name ^ " is an axiom itself.")
+          | Primitive -> print_endline (prefix ^ prop_name ^ " is a primitive." ))
       | None ->
           print_endline (prefix ^ "Error: Proposition '" ^ prop_name ^ "' not found."))
   | Infer (t, loc) ->

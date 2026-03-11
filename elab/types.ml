@@ -11,6 +11,7 @@ type metavar = {
 type enventry_data =
   | Theorem of string list (* list of axiom names used *)
   | Axiom
+  | Primitive
 
 type enventry = {
   name : string;

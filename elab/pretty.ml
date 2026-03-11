@@ -138,6 +138,7 @@ let term_to_string (e : Types.ctx) (t : term) : string = term_to_string_with e [
 let decl_to_string (e : Types.ctx) (d : declaration) =
   match d.kind with
   | Axiom -> "Axiom " ^ d.name ^ " : " ^ term_to_string e d.ty
+  | Primitive -> "Primitive " ^ d.name ^ " : " ^ term_to_string e d.ty
   | Theorem proof ->
       "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := "
       ^ term_to_string e proof

@@ -468,6 +468,7 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
       match Hashtbl.find_opt e.env name with
       | Some { data = Theorem axioms; _ } -> axioms
       | Some { data = Axiom; _ } -> [ name ]
+      | Some { data = Primitive; _ } -> []
       | None -> raise_at tm (Error.UnknownName { name }))
   | Fun (_, ty_arg, body) -> union (list_axioms_used e ty_arg) (list_axioms_used e body)
   | Arrow (_, ty_arg, ty_ret) ->
@@ -532,7 +533,10 @@ let process_decl (e : ctx) (d : declaration) : unit =
                    context = { loc = Some d.name_loc; decl_name = Some d.name };
                    error_type = Error.KernelError { kernel_exn = msg };
                  }))
-    | Axiom ->
+    | Axiom | Primitive ->
+        let env_data : Types.enventry_data =
+          match d.kind with Statement.Primitive -> Types.Primitive | _ -> Types.Axiom
+        in
         if Hashtbl.mem e.env d.name then
           raise
             (Error.ElabError
@@ -549,7 +553,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
           Hashtbl.clear e.metas;
           (* conv_to_kterm does a straightforward variant-to-variant conversion *)
           let ty_k = conv_to_kterm ty_filled in
-          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
+          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = env_data };
           Hashtbl.add e.kenv d.name ty_k
   with Error.ElabError x ->
     raise

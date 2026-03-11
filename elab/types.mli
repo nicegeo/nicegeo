@@ -16,6 +16,9 @@ type enventry_data =
   | Theorem of string list
       (** [Theorem(axioms)] describes the axioms a theorem depends on. *)
   | Axiom  (** [Axiom] represents an axiom with no additional data. *)
+  | Primitive
+      (** [Primitive] represents a foundational declaration (type, relation, operation, or
+          constant).*)
 
 (** An entry in the elaboration environment. *)
 type enventry = {

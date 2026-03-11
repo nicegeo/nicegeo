@@ -8,6 +8,10 @@ type decl_type =
   | Theorem of term
       (** [Theorem(term)] is the type of theorems with definition [term]. *)
   | Axiom  (** [Axiom] is the type of axioms. *)
+  | Primitive
+      (** [Primitive] is the type of primitive declarations: types, relations, operations,
+          and constants. Operationally identical to [Axiom], but not reported by [#print axioms]. *)
+
 
 (** A parsed declaration (axiom or theorem). *)
 type declaration = {

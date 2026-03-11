@@ -59,5 +59,6 @@ let list_axioms (env : Types.ctx) (name : string) =
   | Some entry -> (
       match entry.data with
       | Types.Axiom -> failwith (name ^ " is an axiom")
+      | Types.Primitive -> failwith (name ^ " is a primitive")
       | Types.Theorem axioms -> axioms)
   | None -> failwith ("unknown declaration: " ^ name)
