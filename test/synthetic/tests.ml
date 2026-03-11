@@ -10,7 +10,7 @@ let rec collect_bound_names (tm : Elab.Term.term) : string list =
       let ret_names = collect_bound_names ret in
       ((match name with Some n -> n | None -> "") :: ty_names) @ ret_names
   | App (f, arg) -> collect_bound_names f @ collect_bound_names arg
-  | _ -> []
+  | Name _ | Bvar _ | Fvar _ | Hole _ | Sort _ -> []
 
 let kterm_to_repr (term : Kernel.Term.term) (bound_names : string list) =
   let open Kernel.Term in
