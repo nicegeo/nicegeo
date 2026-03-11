@@ -17,12 +17,12 @@ let term_to_repr (term : Elab.Term.term) =
     let indent_str = String.make (indent * 2) ' ' in
     match term.inner with
     | Name s -> Printf.sprintf "Const \"%s\"" s
-    | Bvar n -> Printf.sprintf "Bvar %d %s" n (List.nth bvars n)
+    | Bvar n -> Printf.sprintf "Bvar %d (* %s *)" n (List.nth bvars n)
     | Fvar _ -> failwith "fvar in term_to_repr input"
     | Fun (name, ty, body) ->
         Printf.sprintf
           "Lam (%s%s,\n%s  %s\n%s)"
-          (match name with Some n -> n ^ " : " | None -> "")
+          (match name with Some n -> "(* " ^ n ^ " : *)" | None -> "")
           (term_to_repr_helper ty indent bvars)
           indent_str
           (term_to_repr_helper body (indent + 1) (Option.value name ~default:"" :: bvars))
@@ -30,7 +30,7 @@ let term_to_repr (term : Elab.Term.term) =
     | Arrow (name, ty, ret) ->
         Printf.sprintf
           "Forall (%s%s,\n%s  %s\n%s)"
-          (match name with Some n -> n ^ " : " | None -> "")
+          (match name with Some n -> "(* " ^ n ^ " : *)" | None -> "")
           (term_to_repr_helper ty indent bvars)
           indent_str
           (term_to_repr_helper ret (indent + 1) (Option.value name ~default:"" :: bvars))
