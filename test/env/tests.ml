@@ -1,49 +1,58 @@
-let rec conv_to_kterm (tm : Elab.Term.term) : Kernel.Term.term =
+let rec collect_bound_names (tm: Elab.Term.term) : string list =
   let open Elab.Term in
-  let module KTerm = Kernel.Term in
   match tm.inner with
-  | Name x -> KTerm.Const x
-  | Hole _ -> failwith "hole in conv_to_kterm input"
-  | Fun (_, ty, body) -> KTerm.Lam (conv_to_kterm ty, conv_to_kterm body)
-  | Arrow (_, ty, ret) -> KTerm.Forall (conv_to_kterm ty, conv_to_kterm ret)
-  | App (f, arg) -> KTerm.App (conv_to_kterm f, conv_to_kterm arg)
-  | Sort n -> KTerm.Sort n
-  | Bvar n -> KTerm.Bvar n
-  | Fvar _ -> failwith "fvar in conv_to_kterm input"
+  | Fun (name, ty, body) ->
+      let ty_names = collect_bound_names ty in
+      let body_names = collect_bound_names body in
+      (match name with Some n -> n | None -> "") :: ty_names @ body_names
+  | Arrow (name, ty, ret) ->
+      let ty_names = collect_bound_names ty in
+      let ret_names = collect_bound_names ret in
+      (match name with Some n -> n | None -> "") :: ty_names @ ret_names
+  | App (f, arg) -> collect_bound_names f @ collect_bound_names arg
+  | _ -> []
 
-let term_to_repr (term : Elab.Term.term) =
-  let open Elab.Term in
-  let rec term_to_repr_helper (term : term) (indent : int) (bvars : string list) =
+let kterm_to_repr (term : Kernel.Term.term) (bound_names : string list) = 
+  let open Kernel.Term in
+  let rec kterm_to_repr_helper (term : term) (indent : int) (bound_names : string list) (bvars : string list) =
     let indent_str = String.make (indent * 2) ' ' in
-    match term.inner with
-    | Name s -> Printf.sprintf "Const \"%s\"" s
-    | Bvar n -> Printf.sprintf "Bvar %d (* %s *)" n (List.nth bvars n)
-    | Fvar _ -> failwith "fvar in term_to_repr input"
-    | Fun (name, ty, body) ->
-        Printf.sprintf
-          "Lam (%s%s,\n%s  %s\n%s)"
-          (match name with Some n -> "(* " ^ n ^ " : *)" | None -> "")
-          (term_to_repr_helper ty indent bvars)
-          indent_str
-          (term_to_repr_helper body (indent + 1) (Option.value name ~default:"" :: bvars))
-          indent_str
-    | Arrow (name, ty, ret) ->
-        Printf.sprintf
-          "Forall (%s%s,\n%s  %s\n%s)"
-          (match name with Some n -> "(* " ^ n ^ " : *)" | None -> "")
-          (term_to_repr_helper ty indent bvars)
-          indent_str
-          (term_to_repr_helper ret (indent + 1) (Option.value name ~default:"" :: bvars))
-          indent_str
+    match term with
+    | Const s -> (Printf.sprintf "Const \"%s\"" s, bound_names)
+    | Bvar n -> (Printf.sprintf "Bvar %d %s" n (if List.nth bvars n = "" then "" else "(* " ^ List.nth bvars n ^ " *)"), bound_names)
+    | Lam (ty, body) ->
+        (match bound_names with
+        | name :: rest_names ->
+            let ty_repr, rest_names = kterm_to_repr_helper ty indent rest_names bvars in
+            let body_repr, rest_names = kterm_to_repr_helper body (indent + 1) rest_names (name :: bvars) in
+             (Printf.sprintf
+              "Lam (%s%s,\n%s  %s\n%s)"
+              (if name = "" then "" else "(* " ^ name ^ " : *)")
+              ty_repr
+              indent_str
+              body_repr
+              indent_str), rest_names
+        | [] -> failwith "Not enough bound names provided in kterm_to_repr input")
+    | Forall (ty, ret) ->
+        (match bound_names with
+        | name :: rest_names ->
+            let ty_repr, rest_names = kterm_to_repr_helper ty indent rest_names bvars in
+            let ret_repr, rest_names = kterm_to_repr_helper ret (indent + 1) rest_names (name :: bvars) in
+             (Printf.sprintf
+              "Forall (%s%s,\n%s  %s\n%s)"
+              (if name = "" then "" else "(* " ^ name ^ " : *)")
+              ty_repr
+              indent_str
+              ret_repr
+              indent_str), rest_names
+        | [] -> failwith "Not enough bound names provided in kterm_to_repr input")
     | App (f, arg) ->
-        Printf.sprintf
-          "App (%s, %s)"
-          (term_to_repr_helper f indent bvars)
-          (term_to_repr_helper arg indent bvars)
-    | Sort n -> Printf.sprintf "Sort %d" n
-    | Hole _ -> failwith "hole in term_to_repr input"
+        let f_repr, bound_names = kterm_to_repr_helper f indent bound_names bvars in
+        let arg_repr, bound_names = kterm_to_repr_helper arg indent bound_names bvars in
+        (Printf.sprintf "App (%s, %s)" f_repr arg_repr, bound_names)
+    | Sort n -> (Printf.sprintf "Sort %d" n, bound_names)
+    | Fvar _ -> failwith "fvar in kterm_to_repr input"
   in
-  term_to_repr_helper term 0 []
+  fst (kterm_to_repr_helper term 0 bound_names [])
 
 (** These are the regression tests for the axioms in env.txt. If [dune runtest] yields
     errors here, inspect the diff to ensure that all changes in the kernel terms make
@@ -73,11 +82,9 @@ let%expect_test "Elaborate env.txt" =
 
   let show_kterm name =
     let term = (Hashtbl.find ctx.env name).ty in
+    let bound_names = collect_bound_names term in
     let kterm = Hashtbl.find kenv name in
-    if not (conv_to_kterm term = kterm) then
-      failwith
-        (Printf.sprintf "Term for %s does not match kernel term representation" name);
-    let repr = term_to_repr term in
+    let repr = kterm_to_repr kterm bound_names in
     print_endline repr;
     (* Delete entry from kenv so we can check this is empty at the end *)
     Hashtbl.remove kenv name
@@ -1171,7 +1178,7 @@ let%expect_test "Elaborate env.txt" =
             App (App (Const "Exists", Const "Point"), Lam ((* d : *)Const "Point",
               App (App (Const "And", Forall (App (App (App (Const "Eq", App (App (App (App (App (Lam (Const "Circle",
                 Lam (Const "Circle",
-                  Lam (App (App (Const "CirclesInter", Bvar 1 (*  *)), Bvar 0 (*  *)),
+                  Lam (App (App (Const "CirclesInter", Bvar 1 ), Bvar 0 ),
                     Lam (Const "Point",
                       Lam (Const "Point",
                         Const "Point"
@@ -1179,7 +1186,7 @@ let%expect_test "Elaborate env.txt" =
                     )
                   )
                 )
-              ), Bvar 4 (* a *)), Bvar 3 (* b *)), Bvar 2 (*  *)), Bvar 1 (* c *)), Bvar 0 (* d *))), Bvar 1 (* c *)), Bvar 0 (* d *)),
+              ), Bvar 4 (* a *)), Bvar 3 (* b *)), Bvar 2 ), Bvar 1 (* c *)), Bvar 0 (* d *))), Bvar 1 (* c *)), Bvar 0 (* d *)),
                 Const "False"
               )), App (App (Const "And", App (App (Const "OnCircle", Bvar 1 (* c *)), Bvar 4 (* a *))), App (App (Const "And", App (App (Const "OnCircle", Bvar 1 (* c *)), Bvar 3 (* b *))), App (App (Const "And", App (App (Const "OnCircle", Bvar 0 (* d *)), Bvar 4 (* a *))), App (App (Const "OnCircle", Bvar 0 (* d *)), Bvar 3 (* b *))))))
             ))
@@ -1204,24 +1211,24 @@ let%expect_test "Elaborate env.txt" =
                   Lam (Const "Point",
                     Lam (Const "Point",
                       Lam (Const "Circle",
-                        Lam (App (App (Const "CenterCircle", Bvar 3 (*  *)), Bvar 0 (*  *)),
-                          Lam (App (App (Const "OnCircle", Bvar 3 (*  *)), Bvar 1 (*  *)),
+                        Lam (App (App (Const "CenterCircle", Bvar 3 ), Bvar 0 ),
+                          Lam (App (App (Const "OnCircle", Bvar 3 ), Bvar 1 ),
                             Const "Len"
                           )
                         )
                       )
                     )
                   )
-                ), Bvar 5 (* a *)), Bvar 4 (* b *)), Bvar 3 (* c *)), Bvar 2 (* d *)), Bvar 1 (*  *)), Bvar 0 (*  *))), App (App (Const "Length", Bvar 5 (* a *)), Bvar 4 (* b *))), App (App (Const "Length", Bvar 5 (* a *)), Bvar 3 (* c *))),
+                ), Bvar 5 (* a *)), Bvar 4 (* b *)), Bvar 3 (* c *)), Bvar 2 (* d *)), Bvar 1 ), Bvar 0 )), App (App (Const "Length", Bvar 5 (* a *)), Bvar 4 (* b *))), App (App (Const "Length", Bvar 5 (* a *)), Bvar 3 (* c *))),
                   App (App (Const "OnCircle", Bvar 4 (* c *)), Bvar 3 (* d *))
                 )), Forall (App (App (Const "OnCircle", Bvar 3 (* c *)), Bvar 2 (* d *)),
                   App (App (App (Const "Eq", App (App (App (App (App (App (App (Lam (Const "Point",
                     Lam (Const "Point",
                       Lam (Const "Point",
                         Lam (Const "Circle",
-                          Lam (App (App (Const "CenterCircle", Bvar 3 (*  *)), Bvar 0 (*  *)),
-                            Lam (App (App (Const "OnCircle", Bvar 3 (*  *)), Bvar 1 (*  *)),
-                              Lam (App (App (Const "OnCircle", Bvar 3 (*  *)), Bvar 2 (*  *)),
+                          Lam (App (App (Const "CenterCircle", Bvar 3 ), Bvar 0 ),
+                            Lam (App (App (Const "OnCircle", Bvar 3 ), Bvar 1 ),
+                              Lam (App (App (Const "OnCircle", Bvar 3 ), Bvar 2 ),
                                 Const "Len"
                               )
                             )
@@ -1229,7 +1236,7 @@ let%expect_test "Elaborate env.txt" =
                         )
                       )
                     )
-                  ), Bvar 6 (* a *)), Bvar 5 (* b *)), Bvar 4 (* c *)), Bvar 3 (* d *)), Bvar 2 (*  *)), Bvar 1 (*  *)), Bvar 0 (*  *))), App (App (Const "Length", Bvar 6 (* a *)), Bvar 5 (* b *))), App (App (Const "Length", Bvar 6 (* a *)), Bvar 4 (* c *)))
+                  ), Bvar 6 (* a *)), Bvar 5 (* b *)), Bvar 4 (* c *)), Bvar 3 (* d *)), Bvar 2 ), Bvar 1 ), Bvar 0 )), App (App (Const "Length", Bvar 6 (* a *)), Bvar 5 (* b *))), App (App (Const "Length", Bvar 6 (* a *)), Bvar 4 (* c *)))
                 ))
               )
             )
