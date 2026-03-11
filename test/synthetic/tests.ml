@@ -52,7 +52,7 @@ let kterm_to_repr (term : Kernel.Term.term) =
     representation. Ensure this representation is correct before promoting and pushing. *)
 
 let%expect_test "Elaborate env.txt" =
-  let env = Elab.Interface.create_with_env_path "../../../../../../env/env.txt" in
+  let env = Elab.Interface.create_with_env_path "../../../../../../synthetic/env.txt" in
   let kenv = Hashtbl.copy env.kenv in
 
   let show_kterm name =
