@@ -14,6 +14,11 @@ open Term
     context. *)
 val process_decl : Types.ctx -> Statement.declaration -> unit
 
+(** [elaborate ctx tm expected_ty] elaborates the term [tm] in context [ctx], filling in
+    holes. If [expected_ty] is provided, it is used as the expected type for the term for
+    filling. Otherwise, [tm] is expected to be a type. *)
+val elaborate : Types.ctx -> term -> term option -> term
+
 (** [hole_to_meta ctx stack tm] returns tm unchanged except for replacing holes with
     metavariable spines.
 

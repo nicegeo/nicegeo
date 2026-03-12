@@ -23,6 +23,6 @@ let () =
   with Error.ElabError info ->
     print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
     (match Nice_messages.pick_message tone Nice_messages.After_error with
-    | Some extra -> Printf.printf "%s" (Nice_messages.format_for_output extra)
+    | Some extra -> Printf.printf "\n%s\n\n" extra
     | None -> ());
     exit 1

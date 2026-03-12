@@ -27,10 +27,7 @@ let process_directive (e : ctx) (dir : directive) : unit =
   | Check (t, ty, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
       (* process provided type to make sure valid type *)
-      let ty_meta = Typecheck.hole_to_meta e [] ty in
-      Typecheck.check_is_type e ty_meta;
-      let ty_filled = Typecheck.replace_metas e ty_meta in
-      Hashtbl.clear e.metas;
+      let ty_filled = Typecheck.elaborate e ty None in
       (* process term provided *)
       let t_meta = Typecheck.hole_to_meta e [] t in
       (* call elaborator to check if term matches type *)
