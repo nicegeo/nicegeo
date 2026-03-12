@@ -476,6 +476,27 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
   | _ -> []
 
+(** Needs to be trusted for faithfulness of meaning. *)
+let rec delta_reduce (e : ctx) (tm : term) : term =
+  match tm.inner with
+  | Name name -> (
+      match Hashtbl.find_opt e.env name with
+      | Some { data = Def (_, body); _ } -> delta_reduce e body
+      | _ -> tm)
+  | Fun (arg, ty_arg, body) ->
+      let ty_arg_red = delta_reduce e ty_arg in
+      let body_red = delta_reduce e body in
+      { inner = Fun (arg, ty_arg_red, body_red); loc = tm.loc }
+  | Arrow (arg, ty_arg, ty_ret) ->
+      let ty_arg_red = delta_reduce e ty_arg in
+      let ty_ret_red = delta_reduce e ty_ret in
+      { inner = Arrow (arg, ty_arg_red, ty_ret_red); loc = tm.loc }
+  | App (f, arg) ->
+      let f_red = delta_reduce e f in
+      let arg_red = delta_reduce e arg in
+      { inner = App (f_red, arg_red); loc = tm.loc }
+  | _ -> tm
+
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
   try
@@ -489,13 +510,15 @@ let process_decl (e : ctx) (d : declaration) : unit =
     else
       match d.kind with
       | Theorem body | Def body -> (
+          let ty_delta = delta_reduce e d.ty in
           (* hole_to_meta only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
-          let ty_meta = hole_to_meta e [] d.ty in
+          let ty_meta = hole_to_meta e [] ty_delta in
           check_is_type e ty_meta;
           (* replace_metas only fills in metavariables *)
           let ty_filled = replace_metas e ty_meta in
           Hashtbl.clear e.metas;
-          let body_meta = hole_to_meta e [] body in
+          let body_delta = delta_reduce e body in
+          let body_meta = hole_to_meta e [] body_delta in
           checktype e body_meta ty_filled;
           let body_filled = replace_metas e body_meta in
           Hashtbl.clear e.metas;
@@ -516,7 +539,11 @@ let process_decl (e : ctx) (d : declaration) : unit =
                 {
                   name = d.name;
                   ty = ty_filled;
-                  data = Theorem (list_axioms_used e body_filled);
+                  data =
+                    (match d.kind with
+                    | Def _ -> Def (list_axioms_used e body_filled, body_filled)
+                    | Theorem _ -> Theorem (list_axioms_used e body_filled)
+                    | Axiom -> assert false);
                 };
               Hashtbl.add e.kenv d.name ty_k)
             else
@@ -534,8 +561,9 @@ let process_decl (e : ctx) (d : declaration) : unit =
                    error_type = Error.KernelError { kernel_exn = msg };
                  }))
       | Axiom ->
+          let ty_delta = delta_reduce e d.ty in
           (* hole_to_meta only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
-          let ty_meta = hole_to_meta e [] d.ty in
+          let ty_meta = hole_to_meta e [] ty_delta in
           check_is_type e ty_meta;
           (* replace_metas only fills in metavariables *)
           let ty_filled = replace_metas e ty_meta in

@@ -17,7 +17,8 @@ type enventry_data =
       (** [Theorem(axioms)] describes the axioms a theorem depends on. *)
   | Axiom  (** [Axiom] represents an axiom with no additional data. *)
   | Def of string list * term
-    (** [Def(axioms, body)] describes a definition with body [body] and the axioms it depends on. *)
+      (** [Def(axioms, body)] describes a definition with body [body] and the axioms it
+          depends on. *)
 
 (** An entry in the elaboration environment. *)
 type enventry = {
