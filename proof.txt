@@ -1,8 +1,8 @@
 Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
 	fun (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab
 
-Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b -> False) -> (Eq A b a -> False) :=
-	fun (A: Type) (a b: A) (ne_ab: Eq A a b -> False) => fun (eq_ba: Eq A b a) =>
+Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Ne A a b) -> (Ne A b a) :=
+	fun (A: Type) (a b: A) (ne_ab: Ne A a b) => fun (eq_ba: Eq A b a) =>
 		ne_ab (Eq.symm A b a eq_ba)
 
 Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> And A B -> (f: A -> B -> C) -> C :=
@@ -10,8 +10,7 @@ Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> And A B -> (f: A -> B
 
 Theorem on_circle_iff_length_eq : (a : Point) -> (b : Point) -> (c : Point) -> (d : Circle) ->
     CenterCircle a d -> OnCircle b d -> 
-    (And (Eq _ (Length a b) (Length a c) -> OnCircle c d)
-         (OnCircle c d -> Eq _ (Length a b) (Length a c))) :=
+    Iff (Eq _ (Length a b) (Length a c)) (OnCircle c d) :=
     fun (a b c : Point) (d : Circle) (ad : CenterCircle a d) (bd : OnCircle b d) =>
     And.intro (Eq _ (Length a b) (Length a c) -> OnCircle c d) (OnCircle c d -> Eq _ (Length a b) (Length a c)) 
     (fun h => on_circle_if_eq_radius a b c d ad bd (Eq.symm _ _ _ h)) 
@@ -287,11 +286,11 @@ Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
     fun (M: Prop) (P: Prop) (p: P) (f: P -> M) => f p
 
 Theorem prop1_mini :
-(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
+(a : Point) -> (b : Point) -> (ab : Ne Point a b) -> 
 Exists Point (fun (c : Point) =>
     And (Eq Measure (Length a b) (Length a c))
         (Eq Measure (Length b c) (Length b a)))
-:= fun (a b : Point) (ab : Eq Point a b -> False) =>
+:= fun (a b : Point) (ab : Ne Point a b) =>
    	Exists.elim _ _ _ (circle_of_ne a b ab)
     (fun (aa : Circle) (center_and_on : (And (CenterCircle a aa) (OnCircle b aa))) =>
 
@@ -341,3 +340,7 @@ Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x 
 #infer prop1
 #check (fun (x : Point) => x) : (Point -> Point)
 #reduce (fun (x : Point) => x) (fun (y : Point) => y)
+
+#infer distinct_from
+
+Theorem test : (P: Prop) -> P -> Not (Not P) := fun P p (np : Not P) => np p
