@@ -28,9 +28,11 @@ let kterm_to_repr (term : Kernel.Term.term) (bound_names : string list) =
     | Lam (ty, body) -> (
         match bound_names with
         | name :: rest_names ->
-            let ty_repr, rest_names = kterm_to_repr_helper ty indent rest_names bvars in
-            let body_repr, rest_names =
-              kterm_to_repr_helper body (indent + 1) rest_names (name :: bvars)
+            let ty_repr, next_bound_names =
+              kterm_to_repr_helper ty indent rest_names bvars
+            in
+            let body_repr, next_next_bound_names =
+              kterm_to_repr_helper body (indent + 1) next_bound_names (name :: bvars)
             in
             ( Printf.sprintf
                 "Lam (%s%s,\n%s  %s\n%s)"
@@ -39,14 +41,16 @@ let kterm_to_repr (term : Kernel.Term.term) (bound_names : string list) =
                 indent_str
                 body_repr
                 indent_str,
-              rest_names )
+              next_next_bound_names )
         | [] -> failwith "Not enough bound names provided in kterm_to_repr input")
     | Forall (ty, ret) -> (
         match bound_names with
         | name :: rest_names ->
-            let ty_repr, rest_names = kterm_to_repr_helper ty indent rest_names bvars in
-            let ret_repr, rest_names =
-              kterm_to_repr_helper ret (indent + 1) rest_names (name :: bvars)
+            let ty_repr, next_bound_names =
+              kterm_to_repr_helper ty indent rest_names bvars
+            in
+            let ret_repr, next_next_bound_names =
+              kterm_to_repr_helper ret (indent + 1) next_bound_names (name :: bvars)
             in
             ( Printf.sprintf
                 "Forall (%s%s,\n%s  %s\n%s)"
@@ -55,12 +59,14 @@ let kterm_to_repr (term : Kernel.Term.term) (bound_names : string list) =
                 indent_str
                 ret_repr
                 indent_str,
-              rest_names )
+              next_next_bound_names )
         | [] -> failwith "Not enough bound names provided in kterm_to_repr input")
     | App (f, arg) ->
-        let f_repr, bound_names = kterm_to_repr_helper f indent bound_names bvars in
-        let arg_repr, bound_names = kterm_to_repr_helper arg indent bound_names bvars in
-        (Printf.sprintf "App (%s, %s)" f_repr arg_repr, bound_names)
+        let f_repr, next_bound_names = kterm_to_repr_helper f indent bound_names bvars in
+        let arg_repr, next_next_bound_names =
+          kterm_to_repr_helper arg indent next_bound_names bvars
+        in
+        (Printf.sprintf "App (%s, %s)" f_repr arg_repr, next_next_bound_names)
     | Sort n -> (Printf.sprintf "Sort %d" n, bound_names)
     | Fvar _ -> failwith "fvar in kterm_to_repr input"
   in
