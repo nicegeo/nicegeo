@@ -12,6 +12,14 @@ val isDefEq : environment -> localcontext -> term -> term -> bool
     [TypeError]. *)
 val inferType : environment -> localcontext -> term -> term
 
+(** [add_theorem env name ty tm] Type-checks and adds a theorem to the environment,
+    throwing a TypeError on failure. *)
+val add_theorem : environment -> string -> term -> term -> unit
+
+(** [add_axiom env name ty] Type-checks and adds an axiom to the environment, throwing a
+    TypeError on failure. *)
+val add_axiom : environment -> string -> term -> unit
+
 (** The internal kernel functionality is exposed in an [Internals] module for testing
     purposes. These functions are not meant to be interacted with by non-kernel code
     otherwise, but OCaml does not have a good way to enforce this. *)

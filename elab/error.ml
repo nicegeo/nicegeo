@@ -140,6 +140,15 @@ let ktype_err_to_string (info : KExceptions.type_error_info) : string =
            Return Type Sort: %s\n\n"
           (Kernel_pretty.term_to_string_pretty domainTypeType)
           (Kernel_pretty.term_to_string_pretty returnTypeType)
+    | AlreadyDefined name -> "Name already defined in environment: " ^ name
+    | DeclarationTypeError declType ->
+        "Type of declaration is not a sort: "
+        ^ Kernel_pretty.term_to_string_pretty declType
+    | ProofTypeMismatch (expected, actual) ->
+        Printf.sprintf
+          "Proof term has incorrect type.\nExpected: %s\nActual: %s\n"
+          (Kernel_pretty.term_to_string_pretty expected)
+          (Kernel_pretty.term_to_string_pretty actual)
   in
   "Kernel Type Error:\nLocal Context:\n" ^ context_to_string info.ctx ^ "\nTerm: "
   ^ Kernel_pretty.term_to_string_pretty info.trm

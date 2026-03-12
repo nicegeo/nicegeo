@@ -9,29 +9,19 @@ let () =
     exit 1);
 
   let filename = Sys.argv.(1) in
-  let env =
-    try Elab.Interface.create_with_env ()
-    with Error.ElabError info ->
-      print_endline
-        ("Internal error while processing env.txt: "
-        ^ Error.pp_exn
-            {
-              env = Hashtbl.create 0;
-              kenv = Hashtbl.create 0;
-              metas = Hashtbl.create 0;
-              lctx = Hashtbl.create 0;
-            }
-            info);
-      (* Uncomment this to get a stack trace *)
-      (* raise exn *)
-      exit 255
-  in
+
+  let env = Elab.Interface.create () in
+  (try Elab.Interface.process_env env
+   with Error.ElabError info ->
+     print_endline ("Internal error while processing env.txt: " ^ Error.pp_exn env info);
+     exit 255);
+
   let tone = Nice_messages.tone_from_env () in
   try
     Elab.Interface.process_file env filename;
     print_endline "Valid proofs!"
-  with Error.ElabError e ->
-    print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env e);
+  with Error.ElabError info ->
+    print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
     (match Nice_messages.pick_message tone Nice_messages.After_error with
     | Some extra -> Printf.printf "%s" (Nice_messages.format_for_output extra)
     | None -> ());
