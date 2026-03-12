@@ -190,6 +190,9 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
           raise (TypeError { env; ctx; trm; err_kind }))
   | Sort level -> Sort (level + 1)
 
+(** Type-checks and adds a theorem to the provided environment, throwing TypeError on failure. 
+First ensures [theorem_type]'s type is a sort, and then that the inferred type of [proof] is definitionally
+equal to [theorem_type]. *)
 let add_theorem (env : environment) (name : string) (theorem_type : term) (proof : term) :
     unit =
   let local_ctx = Hashtbl.create 0 in
@@ -212,6 +215,8 @@ let add_theorem (env : environment) (name : string) (theorem_type : term) (proof
           raise (TypeError { env; ctx = local_ctx; trm = proof; err_kind })
         else Hashtbl.add env name theorem_type
 
+(** Type-checks and adds an axiom to the provided environment, throwing TypeError on failure. 
+Ensures [axiomType]'s type is a sort. *)
 let add_axiom (env : environment) (name : string) (axiomType : term) : unit =
   let localCtx = Hashtbl.create 0 in
   match Hashtbl.find_opt env name with
