@@ -337,7 +337,7 @@ Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x 
     (fun (eqxy : Eq _ x y) => eqxy)
     )
 
-#print axioms prop1
+#print axioms prop1_mini
 #infer prop1
 #check (fun (x : Point) => x) : (Point -> Point)
 #reduce (fun (x : Point) => x) (fun (y : Point) => y)

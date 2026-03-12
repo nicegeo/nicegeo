@@ -25,6 +25,7 @@ rule token = parse
   | "fun"       { FUN }
   | "Axiom"     { AXIOM }
   | "Theorem"   { THEOREM }
+  | "Def"       { DEF }
   | ":="        { DEFEQ }
   | "->"        { FORALL }
   | "=>"        { ARROW }

@@ -8,7 +8,7 @@ let process_directive (e : ctx) (dir : directive) : unit =
       match Hashtbl.find_opt e.env prop_name with
       | Some record -> (
           match record.data with
-          | Theorem used_axioms ->
+          | Theorem used_axioms | Def (used_axioms, _) ->
               print_endline (prefix ^ "Axioms used in " ^ prop_name ^ ":");
               List.iter print_endline used_axioms
           | Axiom -> print_endline (prefix ^ prop_name ^ " is an axiom itself."))
