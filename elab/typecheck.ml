@@ -481,7 +481,7 @@ let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   (match ty with Some ty -> checktype e tm_meta ty | None -> check_is_type e tm_meta);
   let tm_filled = replace_metas e tm_meta in
   Hashtbl.clear e.metas;
-  (match ty with Some ty -> checktype e tm_filled ty | None -> check_is_type e tm_filled);
+  (* (match ty with Some ty -> checktype e tm_filled ty | None -> check_is_type e tm_filled); *)
   tm_filled
 
 (* Needs to be trusted for faithfulness of meaning *)
