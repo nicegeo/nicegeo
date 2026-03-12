@@ -34,7 +34,6 @@ open Statement
 open Term
 open Convert
 open Types
-module KInfer = Kernel.Infer
 module KExceptions = Kernel.Exceptions
 
 let raise_at (tm : term) (e : Error.error_type) : 'a =
@@ -503,7 +502,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
           let proof_k = conv_to_kterm proof_filled in
 
           try
-            KInfer.add_theorem e.kenv d.name ty_k proof_k;
+            Kernel.Interface.add_theorem e.kenv d.name ty_k proof_k;
             Hashtbl.add
               e.env
               d.name
@@ -523,7 +522,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
           let ty_filled = elaborate e d.ty None in
           let ty_k = conv_to_kterm ty_filled in
           try
-            KInfer.add_axiom e.kenv d.name ty_k;
+            Kernel.Interface.add_axiom e.kenv d.name ty_k;
             Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom }
           with KExceptions.TypeError msg ->
             raise
