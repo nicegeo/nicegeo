@@ -62,7 +62,7 @@ let test_const_unknown_fails () =
       | _ -> false)
     (fun () -> ignore (try_infer env (Hashtbl.create 0) (Const "Unknown")))
 
-let path_to_env = "../../../../elab/env.txt"
+let path_to_env = "../../../../synthetic/env.txt"
 
 let create_env_with_env () =
   let env = Elab.Interface.create () in

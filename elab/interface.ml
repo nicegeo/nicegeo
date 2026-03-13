@@ -42,7 +42,7 @@ let process_file (env : Types.ctx) (filename : string) : unit =
   List.iter (process_statement env) stmts
 
 (* Creates an elaborator environment with the default environment path. *)
-let process_env (env : Types.ctx) : unit = process_file env "elab/env.txt"
+let process_env (env : Types.ctx) : unit = process_file env "synthetic/env.txt"
 
 (* Returns the list of axioms used by the theorem `name`. *)
 let list_axioms (env : Types.ctx) (name : string) =
