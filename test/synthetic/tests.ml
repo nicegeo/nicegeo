@@ -2928,7 +2928,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* ine_inter_point_on_same_side_if_angle_sum_lt_180: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> 
+  (* lines_inter_point_on_same_side_if_angle_sum_lt_180: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> 
   (e : Point) -> (L : Line) -> (M : Line) -> (N : Line) ->
     (OnLine a L) -> (OnLine b L) ->
     (OnLine b M) ->(OnLine c M) ->
@@ -2938,7 +2938,7 @@ let%expect_test "Elaborate env.txt" =
     (Lt (Add (Angle a b c) (Angle b c d)) (Add RightAngle RightAngle)) ->   
     (OnLine e L) -> (OnLine e N) ->
     (SameSide e a M) *)
-  show_kterm "ine_inter_point_on_same_side_if_angle_sum_lt_180";
+  show_kterm "lines_inter_point_on_same_side_if_angle_sum_lt_180";
   [%expect
     {|
     Forall (Const "Point",
@@ -3106,6 +3106,110 @@ let%expect_test "Elaborate env.txt" =
             )
           )
         )
+      )
+    )
+    |}];
+
+  (* sss_congruence: (a : Point) -> (b : Point) -> (c : Point) -> (a' : Point) -> (b' : Point) -> (c' : Point) ->
+  (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
+  (Not (Eq Point a' b')) -> (Not (Eq Point b' c')) -> (Not (Eq Point a' c')) ->
+  (Eq Measure (Length a b) (Length a' b')) -> (Eq Measure (Length b c) (Length b' c')) -> 
+  (Eq Measure (Length c a) (Length c' a')) ->
+  (And 
+  (Eq Measure (Area a b c) (Area a' b' c'))
+  (And (Eq Measure (Angle a b c) (Angle a' b' c')) (And (Eq Measure (Angle b c a) (Angle b' c' a'))
+  (Eq Measure (Angle c a b) (Angle c' a' b'))))) *)
+  show_kterm "sss_congruence";
+  [%expect
+    {|
+    Forall (Const "Point",
+      Forall (Const "Point",
+        Forall (Const "Point",
+          Forall (Const "Point",
+            Forall (Const "Point",
+              Forall (Const "Point",
+                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                            Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                              Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                                Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 13)), App (App (Const "Length", Bvar 8), Bvar 10)),
+                                  App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Angle", Bvar 11), Bvar 10), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    |}];
+
+  (* sas_congruence: (a : Point) -> (b : Point) -> (c : Point) -> (a' : Point) -> (b' : Point) -> (c' : Point) ->
+  (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
+  (Not (Eq Point a' b')) -> (Not (Eq Point b' c')) -> (Not (Eq Point a' c')) ->
+  (Eq Measure (Length a b) (Length a' b')) ->
+  (Eq Measure (Length b c) (Length b' c')) ->
+  (Eq Measure (Angle a b c) (Angle a' b' c')) ->
+  (And
+  (Eq Measure (Area a b c) (Area a' b' c'))
+  (And (Eq Measure (Length a c) (Length a' c')) (And (Eq Measure (Angle b c a) (Angle b' c' a'))
+  (Eq Measure (Angle c a b) (Angle c' a' b'))))) *)
+  show_kterm "sas_congruence";
+  [%expect
+    {|
+    Forall (Const "Point",
+      Forall (Const "Point",
+        Forall (Const "Point",
+          Forall (Const "Point",
+            Forall (Const "Point",
+              Forall (Const "Point",
+                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                            Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                              Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                                Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 11)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 8)),
+                                  App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 14), Bvar 12)), App (App (Const "Length", Bvar 11), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    |}];
+
+  (* double_negation: (A: Prop) -> ((Not A) -> False) -> A *)
+  show_kterm "double_negation";
+  [%expect
+    {|
+    Forall (Sort 0,
+      Forall (Forall (App (Const "Not", Bvar 0),
+        Const "False"
+      ),
+        Bvar 1
       )
     )
     |}];
