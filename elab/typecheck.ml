@@ -467,6 +467,7 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | Name name -> (
       match Hashtbl.find_opt e.env name with
       | Some { data = Theorem axioms; _ } -> axioms
+      | Some { data = Def (axioms, _); _ } -> axioms
       | Some { data = Axiom; _ } -> [ name ]
       | None -> raise_at tm (Error.UnknownName { name }))
   | Fun (_, ty_arg, body) -> union (list_axioms_used e ty_arg) (list_axioms_used e body)
@@ -475,36 +476,60 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
   | _ -> []
 
+(** Needs to be trusted for faithfulness of meaning. *)
+let rec delta_reduce (e : ctx) (tm : term) : term =
+  match tm.inner with
+  | Name name -> (
+      match Hashtbl.find_opt e.env name with
+      | Some { data = Def (_, body); _ } -> delta_reduce e body
+      | _ -> tm)
+  | Fun (arg, ty_arg, body) ->
+      let ty_arg_red = delta_reduce e ty_arg in
+      let body_red = delta_reduce e body in
+      { inner = Fun (arg, ty_arg_red, body_red); loc = tm.loc }
+  | Arrow (arg, ty_arg, ty_ret) ->
+      let ty_arg_red = delta_reduce e ty_arg in
+      let ty_ret_red = delta_reduce e ty_ret in
+      { inner = Arrow (arg, ty_arg_red, ty_ret_red); loc = tm.loc }
+  | App (f, arg) ->
+      let f_red = delta_reduce e f in
+      let arg_red = delta_reduce e arg in
+      { inner = App (f_red, arg_red); loc = tm.loc }
+  | _ -> tm
+
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
   try
-    match d.kind with
-    | Theorem proof -> (
-        if Hashtbl.mem e.env d.name then
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.AlreadyDefined d.name;
-               })
-        else
+    if Hashtbl.mem e.env d.name then
+      raise
+        (Error.ElabError
+           {
+             context = { loc = Some d.name_loc; decl_name = Some d.name };
+             error_type = Error.AlreadyDefined d.name;
+           })
+    else
+      match d.kind with
+      | Theorem body | Def body -> (
+          let ty_delta = delta_reduce e d.ty in
           (* hole_to_meta only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
-          let ty_meta = hole_to_meta e [] d.ty in
+          let ty_meta = hole_to_meta e [] ty_delta in
           check_is_type e ty_meta;
           (* replace_metas only fills in metavariables *)
           let ty_filled = replace_metas e ty_meta in
           Hashtbl.clear e.metas;
           let ty_reduced = Reduce.reduce e ty_filled in
-          let proof_meta = hole_to_meta e [] proof in
-          checktype e proof_meta ty_reduced;
-          let proof_filled = replace_metas e proof_meta in
+          let body_delta = delta_reduce e body in
+          let body_meta = hole_to_meta e [] body_delta in
+          checktype e body_meta ty_reduced;
+          let body_filled = replace_metas e body_meta in
+          let body_reduced = Reduce.reduce e body_filled in
           Hashtbl.clear e.metas;
           (* conv_to_kterm does a straightforward variant-to-variant conversion *)
           let ty_k = conv_to_kterm ty_reduced in
-          let proof_k = conv_to_kterm proof_filled in
+          let body_k = conv_to_kterm body_reduced in
 
           try
-            let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
+            let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) body_k in
             let isValidProof =
               KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k
             in
@@ -516,7 +541,11 @@ let process_decl (e : ctx) (d : declaration) : unit =
                 {
                   name = d.name;
                   ty = ty_reduced;
-                  data = Theorem (list_axioms_used e proof_filled);
+                  data =
+                    (match d.kind with
+                    | Def _ -> Def (list_axioms_used e body_reduced, body_reduced)
+                    | Theorem _ -> Theorem (list_axioms_used e body_reduced)
+                    | Axiom -> assert false);
                 };
               Hashtbl.add e.kenv d.name ty_k)
             else
@@ -533,17 +562,10 @@ let process_decl (e : ctx) (d : declaration) : unit =
                    context = { loc = Some d.name_loc; decl_name = Some d.name };
                    error_type = Error.KernelError { kernel_exn = msg };
                  }))
-    | Axiom ->
-        if Hashtbl.mem e.env d.name then
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.AlreadyDefined d.name;
-               })
-        else
+      | Axiom ->
+          let ty_delta = delta_reduce e d.ty in
           (* hole_to_meta only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
-          let ty_meta = hole_to_meta e [] d.ty in
+          let ty_meta = hole_to_meta e [] ty_delta in
           check_is_type e ty_meta;
           (* replace_metas only fills in metavariables *)
           let ty_filled = replace_metas e ty_meta in

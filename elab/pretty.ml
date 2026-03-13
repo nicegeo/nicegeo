@@ -115,3 +115,5 @@ let decl_to_string (e : Types.ctx) (d : declaration) =
   | Theorem proof ->
       "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := "
       ^ term_to_string e proof
+  | Def body ->
+      "Def " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e body

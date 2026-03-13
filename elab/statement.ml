@@ -3,6 +3,7 @@ open Term
 type decl_type =
   | Theorem of term
   | Axiom
+  | Def of term
 
 type declaration = {
   name : string;

@@ -8,6 +8,7 @@ type decl_type =
   | Theorem of term
       (** [Theorem(term)] is the type of theorems with definition [term]. *)
   | Axiom  (** [Axiom] is the type of axioms. *)
+  | Def of term  (** [Def(term)] is the type of definitions with body [term]. *)
 
 (** A parsed declaration (axiom or theorem). *)
 type declaration = {
