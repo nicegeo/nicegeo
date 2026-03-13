@@ -23,7 +23,7 @@ let create_with_env_path (path_to_env : string) : Types.ctx =
   e
 
 (* Creates an elaborator environment with the default environment path. *)
-let create_with_env () : Types.ctx = create_with_env_path "elab/env.txt"
+let create_with_env () : Types.ctx = create_with_env_path "synthetic/env.txt"
 
 let parse_term (s : string) : Term.term =
   let lexbuf = Lexing.from_string s in
