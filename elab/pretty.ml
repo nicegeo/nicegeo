@@ -99,7 +99,7 @@ let rec reduce (e : Types.ctx) (tm : term) : term =
   | _ -> tm
 
 let rec term_to_string_with (e : Types.ctx) (bctx : string list) (t : term) : string =
-  let t = reduce e t in
+  (* let t = reduce e t in *)
   match t.inner with
   | Name x -> x
   | Bvar idx -> bvar_to_string bctx idx

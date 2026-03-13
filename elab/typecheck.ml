@@ -184,10 +184,10 @@ let rec pattern_match_meta (e : ctx) (m : int) (args : term list) (tm : term) : 
 
 (** Takes in two terms `t1` and `t2` (both defined in the same context `e`) and solves for
     holes assuming that `t1 = t2` *)
-let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
+let rec unify ?(depth = 0) (e : ctx) (t1 : term) (t2 : term) : unit =
   let t1 = whnf_beta e t1 in
   let t2 = whnf_beta e t2 in
-  (* print_endline ("unifying " ^ Pretty.term_to_string e t1 ^ " and " ^ Pretty.term_to_string e t2); *)
+  print_endline (String.make depth ' ' ^ "unifying " ^ Pretty.term_to_string e t1 ^ " and " ^ Pretty.term_to_string e t2);
   let nt1 = to_norm e t1 in
   let nt2 = to_norm e t2 in
   (* t1 and t2 should be closed under the current e *)
@@ -208,26 +208,26 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
           e.metas
           m1
           { (Hashtbl.find e.metas m1) with sol = Some { inner = Hole m2; loc = l2 } };
-        List.iter2 (fun arg1 arg2 -> unify e arg1 arg2) args1 args2
+        List.iter2 (fun arg1 arg2 -> unify ~depth:(depth + 1) e arg1 arg2) args1 args2
   | MetaSpine ({ inner = Hole m; _ }, args), _ -> pattern_match_meta e m args t2
   | _, MetaSpine ({ inner = Hole m; _ }, args) -> pattern_match_meta e m args t1
   | VarSpine (h1, args1), VarSpine (h2, args2) when h1.inner = h2.inner ->
       if List.length args1 != List.length args2 then
         failwith "tried to unify different length var spines"
-      else List.iter2 (fun arg1 arg2 -> unify e arg1 arg2) args1 args2
+      else List.iter2 (fun arg1 arg2 -> unify ~depth:(depth + 1) e arg1 arg2) args1 args2
   | Arrow (_, ty_arg1, ty_ret1), Arrow (_, ty_arg2, ty_ret2) ->
-      unify e ty_arg1 ty_arg2;
+      unify ~depth:(depth + 1) e ty_arg1 ty_arg2;
       let x = gen_fvar_id () in
       let ty_ret1_fvar = replace_bvar ty_ret1 0 { inner = Fvar x; loc = ty_ret1.loc } in
       let ty_ret2_fvar = replace_bvar ty_ret2 0 { inner = Fvar x; loc = ty_ret2.loc } in
-      unify e ty_ret1_fvar ty_ret2_fvar
+      unify ~depth:(depth + 1) e ty_ret1_fvar ty_ret2_fvar
   | Fun (_, ty_arg1, body1), Fun (_, ty_arg2, body2) ->
       (* todo: eta i think here? *)
-      unify e ty_arg1 ty_arg2;
+      unify ~depth:(depth + 1) e ty_arg1 ty_arg2;
       let x = gen_fvar_id () in
       let body1_fvar = replace_bvar body1 0 { inner = Fvar x; loc = body1.loc } in
       let body2_fvar = replace_bvar body2 0 { inner = Fvar x; loc = body2.loc } in
-      unify e body1_fvar body2_fvar
+      unify ~depth:(depth + 1) e body1_fvar body2_fvar
   | Sort n1, Sort n2 when n1 = n2 -> ()
   | _ ->
       failwith
@@ -236,30 +236,31 @@ let rec unify (e : ctx) (t1 : term) (t2 : term) : unit =
 
 (** checks that tm has expected type ty, trying to fill in metavariables (holes). If it
     fails it throws an ElabError. *)
-let rec checktype (e : ctx) (tm : term) (ty : term) : unit =
-  (* print_endline ("checking " ^ Pretty.term_to_string e tm ^ " has type " ^ Pretty.term_to_string e ty); *)
+let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
+  print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " has type " ^ Pretty.term_to_string e ty);
   match tm.inner with
   | Hole m -> (
+    print_endline (String.make depth ' ' ^ "encountered hole ?m" ^ string_of_int m ^ " with expected type " ^ Pretty.term_to_string e ty);
       match Hashtbl.find_opt e.metas m with
       | Some { ty = ty1; vartypes; sol } -> (
           match ty1 with
-          | Some ty1 -> unify e ty ty1
+          | Some ty1 -> unify ~depth:(depth + 1) e ty ty1
           | None -> Hashtbl.replace e.metas m { ty = Some ty; vartypes; sol })
       | None -> raise_at tm (Error.InternalError ("unknown meta: " ^ string_of_int m)))
   | App (f, arg) -> (
       try
-        let tm_type = infertype e tm in
-        try unify e ty tm_type
+        let tm_type = infertype ~depth:(depth + 1) e tm in
+        try unify ~depth:(depth + 1) e ty tm_type
         with Failure _ ->
           raise_at
             tm
             (Error.TypeMismatch { term = tm; inferred_type = tm_type; expected_type = ty })
       with Error.ElabError { error_type = Error.CannotInferHole; _ } ->
-        let argtype = infertype e arg in
-        checktype e f { inner = Arrow (None, argtype, ty); loc = ty.loc })
+        let argtype = infertype ~depth:(depth + 1) e arg in
+        checktype ~depth:(depth + 1) e f { inner = Arrow (None, argtype, ty); loc = ty.loc })
   | Name _ | Fun _ | Arrow _ | Sort _ | Fvar _ -> (
-      let infer_ty = infertype e tm in
-      try unify e infer_ty ty
+      let infer_ty = infertype ~depth:(depth + 1) e tm in
+      try unify ~depth:(depth + 1) e infer_ty ty
       with Failure _ ->
         raise_at
           tm
@@ -268,8 +269,8 @@ let rec checktype (e : ctx) (tm : term) (ty : term) : unit =
   | Bvar _ -> raise_at tm (Error.InternalError "unexpected bound variable in checktype")
 
 (** Infer the type of the term `tm` in the context `e`, possibly throwing an ElabError *)
-and infertype (e : ctx) (tm : term) : term =
-  (* print_endline ("inferring type of " ^ Pretty.term_to_string e tm); *)
+and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
+  print_endline (String.make depth ' ' ^ "inferring type of " ^ Pretty.term_to_string e tm);
   let res =
     match tm.inner with
     | Hole _ -> raise_at tm Error.CannotInferHole
@@ -278,22 +279,22 @@ and infertype (e : ctx) (tm : term) : term =
         | Some entry -> entry.ty
         | None -> raise_at tm (Error.UnknownName { name }))
     | Fun (arg, ty_arg, body) ->
-        check_is_type e ty_arg;
+        check_is_type ~depth:(depth + 1) e ty_arg;
         let x = gen_fvar_id () in
         let body_fvar = replace_bvar body 0 { inner = Fvar x; loc = body.loc } in
         Hashtbl.add e.lctx x (arg, ty_arg);
-        let ty_body = infertype e body_fvar in
+        let ty_body = infertype ~depth:(depth + 1) e body_fvar in
         let ty_body = bind_bvar ty_body 0 { inner = Fvar x; loc = body.loc } in
         Hashtbl.remove e.lctx x;
         { inner = Arrow (arg, ty_arg, ty_body); loc = tm.loc }
     | Arrow (arg, ty_arg, ty_ret) -> (
-        check_is_type e ty_arg;
-        let ty_arg_ty = infertype e ty_arg in
+        check_is_type ~depth:(depth + 1) e ty_arg;
+        let ty_arg_ty = infertype ~depth:(depth + 1) e ty_arg in
         let x = gen_fvar_id () in
         let ty_ret_fvar = replace_bvar ty_ret 0 { inner = Fvar x; loc = ty_ret.loc } in
         Hashtbl.add e.lctx x (arg, ty_arg);
-        check_is_type e ty_ret_fvar;
-        let ty_ret_ty = infertype e ty_ret_fvar in
+        check_is_type ~depth:(depth + 1) e ty_ret_fvar;
+        let ty_ret_ty = infertype ~depth:(depth + 1) e ty_ret_fvar in
         Hashtbl.remove e.lctx x;
         match (ty_arg_ty.inner, ty_ret_ty.inner) with
         | Sort n1, Sort n2 ->
@@ -307,11 +308,10 @@ and infertype (e : ctx) (tm : term) : term =
               ty_arg
               (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty }))
     | App (f, arg) -> (
-        let f_type = whnf_beta e (infertype e f) in
+        let f_type = whnf_beta e (infertype ~depth:(depth + 1) e f) in
         match f_type.inner with
         | Arrow (_, ty_arg, ty_ret) ->
-            check_is_type e ty_arg;
-            checktype e arg ty_arg;
+            checktype ~depth:(depth + 1) e arg ty_arg;
             replace_bvar ty_ret 0 arg
         | _ ->
             raise_at
@@ -327,60 +327,13 @@ and infertype (e : ctx) (tm : term) : term =
   (* print_endline ("inferred type " ^ Pretty.term_to_string e res ^ " for term " ^ Pretty.term_to_string e tm); *)
   res
 
-and check_is_type (e : ctx) (tm : term) : unit =
-  (* print_endline ("checking " ^ Pretty.term_to_string e tm ^ " is a type"); *)
-  match tm.inner with
-  | Hole m -> (
-      match Hashtbl.find_opt e.metas m with
-      | Some { ty = Some ty; _ } ->
-          if not (is_sort ty) then
-            raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = ty })
-          else ()
-      | _ -> ())
-  | Name name -> (
-      match Hashtbl.find_opt e.env name with
-      | Some entry ->
-          if not (is_sort entry.ty) then
-            raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = entry.ty })
-          else ()
-      | None -> raise_at tm (Error.UnknownName { name }))
-  | Fun _ -> raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = tm })
-  | Arrow (arg, ty_arg, ty_ret) ->
-      check_is_type e ty_arg;
-      let x = gen_fvar_id () in
-      let ty_ret_fvar = replace_bvar ty_ret 0 { inner = Fvar x; loc = tm.loc } in
-      Hashtbl.add e.lctx x (arg, ty_arg);
-      check_is_type e ty_ret_fvar;
-      Hashtbl.remove e.lctx x
-  | App (f, arg) -> (
-      let f_type =
-        try Some (whnf_beta e (infertype e f))
-        with Error.ElabError { error_type = Error.CannotInferHole; _ } -> None
-      in
-
-      match f_type with
-      | Some { inner = Arrow (_, ty_arg, ty_ret); _ } ->
-          (* print_endline ("app checktype: checking that " ^ Pretty.term_to_string e arg ^ " has type " ^ Pretty.term_to_string e ty_arg);
-      print_endline ("because f is " ^ Pretty.term_to_string e f ^ " and has type " ^ Pretty.term_to_string e f_type); *)
-          checktype e arg ty_arg;
-          if not (is_sort ty_ret) then
-            raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = ty_ret })
-          else ()
-      | Some v ->
-          raise_at f (Error.FunctionExpected { not_func = f; not_func_type = v; arg })
-      | None -> ())
+and check_is_type ?(depth = 0) (e : ctx) (tm : term) : unit =
+  print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " is a type");
+  let inferred_ty = infertype ~depth:(depth + 1) e tm in
+  let inferred_ty_whnf = whnf_beta e inferred_ty in
+  match inferred_ty_whnf.inner with
   | Sort _ -> ()
-  | Bvar _ ->
-      raise_at tm (Error.InternalError "unexpected bound variable in check_is_type")
-  | Fvar fvar -> (
-      match Hashtbl.find_opt e.lctx fvar with
-      | Some (_, ty) ->
-          let ty = whnf_beta e ty in
-          if not (is_sort ty || match ty.inner with Hole _ -> true | _ -> false) then
-            raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = ty })
-          else ()
-      | None -> raise_at tm (Error.InternalError "unknown free variable in check_is_type")
-      )
+  | _ -> raise_at tm (Error.TypeExpected { not_type = tm; not_type_infer = inferred_ty_whnf })
 
 (** Return true if the given term contains a free variable *)
 let rec contains_fvar (tm : term) : bool =
