@@ -11,7 +11,3 @@ val decl_to_string : Types.ctx -> Statement.declaration -> string
 
 (** [pp_loc loc] formats a file range as a string, e.g. proof.txt:334:8-49 *)
 val pp_loc : range -> string
-
-(** [reduce ctx t] beta-reduces the term [t] in the context [ctx]. Ideally this is in a
-    different module, it can't be in typecheck.ml because circular dependency *)
-val reduce : Types.ctx -> term -> term

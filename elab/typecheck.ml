@@ -517,13 +517,14 @@ let process_decl (e : ctx) (d : declaration) : unit =
           (* replace_metas only fills in metavariables *)
           let ty_filled = replace_metas e ty_meta in
           Hashtbl.clear e.metas;
+          let ty_reduced = Reduce.reduce e ty_filled in
           let body_delta = delta_reduce e body in
           let body_meta = hole_to_meta e [] body_delta in
-          checktype e body_meta ty_filled;
+          checktype e body_meta ty_reduced;
           let body_filled = replace_metas e body_meta in
           Hashtbl.clear e.metas;
           (* conv_to_kterm does a straightforward variant-to-variant conversion *)
-          let ty_k = conv_to_kterm ty_filled in
+          let ty_k = conv_to_kterm ty_reduced in
           let body_k = conv_to_kterm body_filled in
 
           try
@@ -538,7 +539,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
                 d.name
                 {
                   name = d.name;
-                  ty = ty_filled;
+                  ty = ty_reduced;
                   data =
                     (match d.kind with
                     | Def _ -> Def (list_axioms_used e body_filled, body_filled)
@@ -568,9 +569,10 @@ let process_decl (e : ctx) (d : declaration) : unit =
           (* replace_metas only fills in metavariables *)
           let ty_filled = replace_metas e ty_meta in
           Hashtbl.clear e.metas;
+          let ty_reduced = Reduce.reduce e ty_filled in
           (* conv_to_kterm does a straightforward variant-to-variant conversion *)
-          let ty_k = conv_to_kterm ty_filled in
-          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
+          let ty_k = conv_to_kterm ty_reduced in
+          Hashtbl.add e.env d.name { name = d.name; ty = ty_reduced; data = Axiom };
           Hashtbl.add e.kenv d.name ty_k
   with Error.ElabError x ->
     raise

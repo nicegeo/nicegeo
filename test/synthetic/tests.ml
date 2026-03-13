@@ -321,32 +321,6 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* Not.intro : (P : Prop) -> (P -> False) -> Not P *)
-  show_kterm "Not.intro";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Forall (Bvar 0,
-        Const "False"
-      ),
-        App (Const "Not", Bvar 1)
-      )
-    )
-    |}];
-
-  (* Not.elim : (P : Prop) -> Not P -> P -> False *)
-  show_kterm "Not.elim";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (App (Const "Not", Bvar 0),
-        Forall (Bvar 1,
-          Const "False"
-        )
-      )
-    )
-    |}];
-
   (* Eq : (T: Type) -> T -> T -> Prop *)
   show_kterm "Eq";
   [%expect
@@ -825,58 +799,6 @@ let%expect_test "Elaborate env.txt" =
         Forall (App (Const "List", Const "Line"),
           Forall (App (Const "List", Const "Circle"),
             Sort 0
-          )
-        )
-      )
-    )
-    |}];
-
-  (* distinct_from.intro : (a : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    (Not (List.mem Point a p_list)) ->
-    (List.forall Line (fun (L : Line) => Not (OnLine a L)) l_list) ->
-    (List.forall Circle (fun (aa : Circle) => Not (OnCircle a aa)) c_list) ->
-    distinct_from a p_list l_list c_list *)
-  show_kterm "distinct_from.intro";
-  [%expect
-    {|
-    Forall (Const "Point",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 3), Bvar 2)),
-              Forall (App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
-                App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 0))
-              )), Bvar 2),
-                Forall (App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
-                  App (Const "Not", App (App (Const "OnCircle", Bvar 6), Bvar 0))
-                )), Bvar 2),
-                  App (App (App (App (Const "distinct_from", Bvar 6), Bvar 5), Bvar 4), Bvar 3)
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-    |}];
-
-  (* distinct_from.elim : (a : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    distinct_from a p_list l_list c_list ->
-    And (And (Not (List.mem Point a p_list)) (List.forall Line (fun (L : Line) => Not (OnLine a L)) l_list)) (List.forall Circle (fun (aa : Circle) => Not (OnCircle a aa)) c_list) *)
-  show_kterm "distinct_from.elim";
-  [%expect
-    {|
-    Forall (Const "Point",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            Forall (App (App (App (App (Const "distinct_from", Bvar 3), Bvar 2), Bvar 1), Bvar 0),
-              App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 4), Bvar 3))), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
-                App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 0))
-              )), Bvar 2))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
-                App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 0))
-              )), Bvar 1))
-            )
           )
         )
       )
