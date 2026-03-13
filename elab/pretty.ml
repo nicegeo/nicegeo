@@ -5,7 +5,6 @@
     [lctx] and [metas]). *)
 
 open Term
-open Statement
 
 (* Sort 0 = Prop, Sort 1 = Type; for n >= 2 display as "Sort n". *)
 let sort_to_string = function 0 -> "Prop" | 1 -> "Type" | n -> "Sort " ^ string_of_int n
@@ -134,10 +133,3 @@ let rec term_to_string_with (e : Types.ctx) (bctx : string list) (t : term) : st
       match args_s with [] -> head_s | _ -> head_s ^ " " ^ String.concat " " args_s)
 
 let term_to_string (e : Types.ctx) (t : term) : string = term_to_string_with e [] t
-
-let decl_to_string (e : Types.ctx) (d : declaration) =
-  match d.kind with
-  | Axiom -> "Axiom " ^ d.name ^ " : " ^ term_to_string e d.ty
-  | Theorem proof ->
-      "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := "
-      ^ term_to_string e proof

@@ -13,26 +13,6 @@ let () =
   Printf.printf "Elab term (A : Type) -> (B : Prop) -> B:\n";
   Printf.printf "  %s\n\n" (term_to_string e t)
 
-(* Example 2: Declaration pretty-printing *)
-let () =
-  let d =
-    Elab.Statement.
-      { name = "Point"; name_loc = l; ty = { inner = Sort 1; loc = l }; kind = Axiom }
-  in
-  Printf.printf "Axiom Point : Type  =>  %s\n" (decl_to_string e d);
-  let d2 =
-    Elab.Statement.
-      {
-        name = "id";
-        name_loc = l;
-        ty = Util.(narrow "A" (sort 1) (narrow "x" (bvar 0) (bvar 1)));
-        kind = Theorem Util.(ufun (sort 1) (ufun (bvar 0) (bvar 0)));
-      }
-  in
-  Printf.printf
-    "Theorem id : (A : Type) -> (x : A) -> A := ...  => \n%s\n\n"
-    (decl_to_string e d2)
-
 let test_lam_flattening () =
   Alcotest.check'
     Alcotest.string

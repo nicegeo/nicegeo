@@ -25,6 +25,15 @@ type type_error_kind =
   | ForallSortError of term * term
       (** [ForallSortError(domain_type_type, return_type_type)] indicates that either the
           domain type or the return type is not a valid sort. *)
+  | AlreadyDefined of string
+      (** [AlreadyDefined(name)] indicates an attempt to declare a name that is already
+          defined in the environment. *)
+  | DeclarationTypeError of term
+      (** [DeclarationTypeError(decl_type)] indicates that the type of a declaration is
+          not a valid sort. *)
+  | ProofTypeMismatch of term * term
+      (** [ProofTypeMismatch(expected, actual)] indicates that a proof term has an
+          unexpected type. *)
 
 (** Type error information that the kernel passes on. *)
 type type_error_info = {

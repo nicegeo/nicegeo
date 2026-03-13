@@ -34,7 +34,6 @@ open Statement
 open Term
 open Convert
 open Types
-module KInfer = Kernel.Infer
 module KExceptions = Kernel.Exceptions
 
 let raise_at (tm : term) (e : Error.error_type) : 'a =
@@ -476,55 +475,42 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | _ -> []
 
 (* Needs to be trusted for faithfulness of meaning *)
+let elaborate (e : ctx) (tm : term) (ty : term option) : term =
+  let tm_meta = hole_to_meta e [] tm in
+  (match ty with Some ty -> checktype e tm_meta ty | None -> check_is_type e tm_meta);
+  let tm_filled = replace_metas e tm_meta in
+  Hashtbl.clear e.metas;
+  (* (match ty with Some ty -> checktype e tm_filled ty | None -> check_is_type e tm_filled); *)
+  tm_filled
+
+(* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
-  try
-    match d.kind with
-    | Theorem proof -> (
-        if Hashtbl.mem e.env d.name then
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.AlreadyDefined d.name;
-               })
-        else
-          (* hole_to_meta only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
-          let ty_meta = hole_to_meta e [] d.ty in
-          check_is_type e ty_meta;
-          (* replace_metas only fills in metavariables *)
-          let ty_filled = replace_metas e ty_meta in
-          Hashtbl.clear e.metas;
-          let proof_meta = hole_to_meta e [] proof in
-          checktype e proof_meta ty_filled;
-          let proof_filled = replace_metas e proof_meta in
-          Hashtbl.clear e.metas;
-          (* conv_to_kterm does a straightforward variant-to-variant conversion *)
+  if Hashtbl.mem e.env d.name then
+    raise
+      (Error.ElabError
+         {
+           context = { loc = Some d.name_loc; decl_name = Some d.name };
+           error_type = Error.AlreadyDefined d.name;
+         })
+  else
+    try
+      match d.kind with
+      | Theorem proof -> (
+          let ty_filled = elaborate e d.ty None in
+          let proof_filled = elaborate e proof (Some ty_filled) in
           let ty_k = conv_to_kterm ty_filled in
           let proof_k = conv_to_kterm proof_filled in
 
           try
-            let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
-            let isValidProof =
-              KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k
-            in
-
-            if isValidProof then (
-              Hashtbl.add
-                e.env
-                d.name
-                {
-                  name = d.name;
-                  ty = ty_filled;
-                  data = Theorem (list_axioms_used e proof_filled);
-                };
-              Hashtbl.add e.kenv d.name ty_k)
-            else
-              raise
-                (Error.ElabError
-                   {
-                     context = { loc = Some d.name_loc; decl_name = Some d.name };
-                     error_type = Error.InternalError "kernel did not accept proof\n";
-                   })
+            Kernel.Interface.add_theorem e.kenv d.name ty_k proof_k;
+            Hashtbl.add
+              e.env
+              d.name
+              {
+                name = d.name;
+                ty = ty_filled;
+                data = Theorem (list_axioms_used e proof_filled);
+              }
           with KExceptions.TypeError msg ->
             raise
               (Error.ElabError
@@ -532,25 +518,19 @@ let process_decl (e : ctx) (d : declaration) : unit =
                    context = { loc = Some d.name_loc; decl_name = Some d.name };
                    error_type = Error.KernelError { kernel_exn = msg };
                  }))
-    | Axiom ->
-        if Hashtbl.mem e.env d.name then
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.AlreadyDefined d.name;
-               })
-        else
-          (* hole_to_meta only replaces holes explicitly typed in by the user as "_" with metavariable spines *)
-          let ty_meta = hole_to_meta e [] d.ty in
-          check_is_type e ty_meta;
-          (* replace_metas only fills in metavariables *)
-          let ty_filled = replace_metas e ty_meta in
-          Hashtbl.clear e.metas;
-          (* conv_to_kterm does a straightforward variant-to-variant conversion *)
+      | Axiom -> (
+          let ty_filled = elaborate e d.ty None in
           let ty_k = conv_to_kterm ty_filled in
-          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
-          Hashtbl.add e.kenv d.name ty_k
-  with Error.ElabError x ->
-    raise
-      (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })
+          try
+            Kernel.Interface.add_axiom e.kenv d.name ty_k;
+            Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom }
+          with KExceptions.TypeError msg ->
+            raise
+              (Error.ElabError
+                 {
+                   context = { loc = Some d.name_loc; decl_name = Some d.name };
+                   error_type = Error.KernelError { kernel_exn = msg };
+                 }))
+    with Error.ElabError x ->
+      raise
+        (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })
