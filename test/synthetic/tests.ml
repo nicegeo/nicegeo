@@ -378,7 +378,7 @@ let%expect_test "Elaborate env.txt" =
       )
     )
     |}];
-  
+
   (* Iff : Prop -> Prop -> Prop *)
   show_kterm "Iff";
   [%expect
