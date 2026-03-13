@@ -522,10 +522,11 @@ let process_decl (e : ctx) (d : declaration) : unit =
           let body_meta = hole_to_meta e [] body_delta in
           checktype e body_meta ty_reduced;
           let body_filled = replace_metas e body_meta in
+          let body_reduced = Reduce.reduce e body_filled in
           Hashtbl.clear e.metas;
           (* conv_to_kterm does a straightforward variant-to-variant conversion *)
           let ty_k = conv_to_kterm ty_reduced in
-          let body_k = conv_to_kterm body_filled in
+          let body_k = conv_to_kterm body_reduced in
 
           try
             let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) body_k in
@@ -542,8 +543,8 @@ let process_decl (e : ctx) (d : declaration) : unit =
                   ty = ty_reduced;
                   data =
                     (match d.kind with
-                    | Def _ -> Def (list_axioms_used e body_filled, body_filled)
-                    | Theorem _ -> Theorem (list_axioms_used e body_filled)
+                    | Def _ -> Def (list_axioms_used e body_reduced, body_reduced)
+                    | Theorem _ -> Theorem (list_axioms_used e body_reduced)
                     | Axiom -> assert false);
                 };
               Hashtbl.add e.kenv d.name ty_k)
