@@ -39,5 +39,6 @@ let process_directive (e : ctx) (dir : directive) : unit =
         ^ Pretty.term_to_string e ty_filled)
   | Reduce (t, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
-      let reduced_term = Pretty.reduce e t in
+      let reduced_term = t in
+      (* todo: implement reduce *)
       print_endline (prefix ^ "#reduce: " ^ Pretty.term_to_string e reduced_term)

@@ -205,9 +205,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
     (g2 : rw_graph) : unit =
   let t1 = whnf_beta e t1 in
   let t2 = whnf_beta e t2 in
-  print_endline
-    (String.make depth ' ' ^ "unifying " ^ Pretty.term_to_string e t1 ^ " and "
-   ^ Pretty.term_to_string e t2);
+  (* print_endline (String.make depth ' ' ^ "unifying " ^ Pretty.term_to_string e t1 ^ " and " ^ Pretty.term_to_string e t2); *)
   let nt1 = to_norm e t1 in
   let nt2 = to_norm e t2 in
   (* t1 and t2 should be closed under the current e *)
@@ -276,9 +274,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
 (** checks that tm has expected type ty, trying to fill in metavariables (holes). If it
     fails it throws an ElabError. *)
 let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
-  print_endline
-    (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " has type "
-   ^ Pretty.term_to_string e ty);
+  (* print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " has type " ^ Pretty.term_to_string e ty); *)
   match tm.inner with
   | Hole m -> (
       (* print_endline (String.make depth ' ' ^ "encountered hole ?m" ^ string_of_int m ^ " with expected type " ^ Pretty.term_to_string e ty); *)
@@ -332,7 +328,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
 
 (** Infer the type of the term `tm` in the context `e`, possibly throwing an ElabError *)
 and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
-  print_endline (String.make depth ' ' ^ "inferring type of " ^ Pretty.term_to_string e tm);
+  (* print_endline (String.make depth ' ' ^ "inferring type of " ^ Pretty.term_to_string e tm); *)
   let res =
     match tm.inner with
     | Hole m -> (

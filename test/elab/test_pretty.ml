@@ -33,7 +33,7 @@ let () =
     "Theorem id : (A : Type) -> (x : A) -> A := ...  => \n%s\n\n"
     (decl_to_string e d2)
 
-let _test_lam_flattening () =
+let test_lam_flattening () =
   Alcotest.check'
     Alcotest.string
     ~msg:"Lambda args pretty-prints flattened"
@@ -69,7 +69,7 @@ let suite =
   let open Alcotest in
   ( "Pretty-printing",
     [
-      (* test_case "Function args flattened" `Quick test_lam_flattening; *)
+      test_case "Function args flattened" `Quick test_lam_flattening;
       test_case "Elab hole" `Quick test_elab_hole;
       test_case "Elab arrow no name" `Quick test_elab_arrow_no_name;
     ] )

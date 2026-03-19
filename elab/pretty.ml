@@ -23,30 +23,19 @@ let rec flatten_app t =
       (head, args @ [ a ])
   | _ -> (t, [])
 
-let ctr = ref 0
-
-let gen_fresh_name () =
-  let name = "x" ^ string_of_int !ctr in
-  incr ctr;
-  name
-
-let opt_name_to_string = function Some x -> x | None -> gen_fresh_name ()
-let fmt_binder (name : string) (ty : string) : string = "(" ^ name ^ " : " ^ ty ^ ")"
-let reduce (_e : Types.ctx) (t : term) : term = t
-
-(* Return a list of formatted arguments to the lambdas,
-  the remaining body to format, and the new `bctx` after processing them all.
+(* Return a list of argument names, list of argument types, and the remaining body of 
+the lambda to format, after processing them all.
 *)
-let rec _flatten_fun (t : term) (bctx : string list) (fmt : string list -> term -> string)
-    : string list * term * string list =
+let rec flatten_fun (e : Types.ctx) (t : term) : string list * term list * term =
   match t.inner with
-  | Fun (x, _, ty, body) ->
-      let x_s : string = opt_name_to_string x in
-      let ty_s : string = fmt bctx ty in
-      let binder = fmt_binder x_s ty_s in
-      let binders, new_body, new_bctx = _flatten_fun body (x_s :: bctx) fmt in
-      (binder :: binders, new_body, new_bctx)
-  | _ -> ([], t, bctx)
+  | Fun (x, bid, ty, body) ->
+      let x_s : string =
+        match x with Some name -> name | None -> "x" ^ string_of_int bid
+      in
+      Hashtbl.add e.lctx bid (x, ty);
+      let xs, args, body = flatten_fun e body in
+      (x_s :: xs, ty :: args, body)
+  | _ -> ([], [], t)
 
 let pp_loc (r : range) =
   if r.start.pos_lnum = r.end_.pos_lnum then
@@ -67,7 +56,7 @@ let pp_loc (r : range) =
 
 let bvar_to_string (e : Types.ctx) (idx : int) : string =
   match Hashtbl.find_opt e.lctx idx with
-  | Some (Some name, _) -> name ^ "[" ^ string_of_int idx ^ "]"
+  | Some (Some name, _) -> name (* ^ "[" ^ string_of_int idx ^ "]" *)
   | Some (None, _) -> "x" ^ string_of_int idx
   | None -> "!" ^ string_of_int idx
 
@@ -81,17 +70,19 @@ let rec term_to_string (e : Types.ctx) (t : term) : string =
       | Some { sol = Some tm_sol; _ } -> term_to_string e tm_sol
       | _ -> "?m" ^ string_of_int idx)
   | Sort n -> sort_to_string n
-  | Fun (x, bid, ty, body) ->
-      "fun ("
-      ^ (match x with
-        | Some name -> name ^ "[" ^ string_of_int bid ^ "]"
-        | None -> "x" ^ string_of_int bid)
-      ^ " : " ^ term_to_string e ty ^ ") => "
-      ^
-      (Hashtbl.add e.lctx bid (x, ty);
-       let body_str = term_to_string e body in
-       Hashtbl.remove e.lctx bid;
-       body_str)
+  | Fun _ ->
+      let xs, args, body = flatten_fun e t in
+      let saved_lctx = Hashtbl.copy e.lctx in
+      let res =
+        "fun "
+        ^ String.concat
+            " "
+            (List.map2 (fun x ty -> "(" ^ x ^ " : " ^ term_to_string e ty ^ ")") xs args)
+        ^ " => " ^ term_to_string e body
+      in
+      Hashtbl.clear e.lctx;
+      Hashtbl.iter (Hashtbl.add e.lctx) saved_lctx;
+      res
   | Arrow (x, bid, ty, ret) -> (
       match x with
       | None ->
@@ -103,7 +94,8 @@ let rec term_to_string (e : Types.ctx) (t : term) : string =
           Hashtbl.add e.lctx bid (Some name, ty);
           let ret_s = term_to_string e ret in
           Hashtbl.remove e.lctx bid;
-          "(" ^ name ^ "[" ^ string_of_int bid ^ "]" ^ " : " ^ ty_s ^ ") -> " ^ ret_s)
+          "(" ^ name (* "[" ^ string_of_int bid ^ "]" ^ *) ^ " : "
+          ^ ty_s ^ ") -> " ^ ret_s)
   | App _ -> (
       let head, args = flatten_app t in
       let head_s = term_to_string e head in
