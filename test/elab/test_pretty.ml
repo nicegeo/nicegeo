@@ -38,7 +38,8 @@ let _test_lam_flattening () =
     Alcotest.string
     ~msg:"Lambda args pretty-prints flattened"
     ~expected:"fun (x : A) (y : B) => x"
-    ~actual:(term_to_string e Util.(nfun "x" 1 (name "A") (nfun "y" 2 (name "B") (bvar 1))));
+    ~actual:
+      (term_to_string e Util.(nfun "x" 1 (name "A") (nfun "y" 2 (name "B") (bvar 1))));
 
   Alcotest.check'
     Alcotest.string

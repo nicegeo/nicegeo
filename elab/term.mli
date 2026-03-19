@@ -34,7 +34,6 @@ and termkind =
 val gen_hole_id : unit -> int
 
 val gen_binder_id : unit -> int
-
 val subst : term -> term -> term -> term
 
 (** [is_sort] returns [true] if the term is literally a [Sort _]. *)

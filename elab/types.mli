@@ -5,7 +5,8 @@ open Term
 (** A metavariable (hole) to be solved during elaboration. *)
 type metavar = {
   ty : term option;  (** Expected type of the hole, if already known. *)
-  context : int list; (** list of binder ids that are in scope when the hole is defined *)
+  context : int list;
+      (** list of binder ids that are in scope when the hole is defined *)
   sol : term option;  (** Solution term once found *)
 }
 
@@ -24,7 +25,6 @@ type enventry = {
 
 type rw_graph = (int, int) Hashtbl.t
 
-
 (** Elaboration context. *)
 type ctx = {
   env : (string, enventry) Hashtbl.t;
@@ -35,5 +35,5 @@ type ctx = {
       (** Mapping from hole ids to their metavariable records. *)
   lctx : (int, string option * term) Hashtbl.t;
       (** mapping binder ids to their optional name and type. *)
-  (* graph : rw_graph; *)
+      (* graph : rw_graph; *)
 }

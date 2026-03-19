@@ -32,7 +32,6 @@ let gen_fresh_name () =
 
 let opt_name_to_string = function Some x -> x | None -> gen_fresh_name ()
 let fmt_binder (name : string) (ty : string) : string = "(" ^ name ^ " : " ^ ty ^ ")"
-
 let reduce (_e : Types.ctx) (t : term) : term = t
 
 (* Return a list of formatted arguments to the lambdas,
@@ -83,18 +82,18 @@ let rec term_to_string (e : Types.ctx) (t : term) : string =
       | _ -> "?m" ^ string_of_int idx)
   | Sort n -> sort_to_string n
   | Fun (x, bid, ty, body) ->
-    "fun (" ^ (
+      "fun ("
+      ^ (match x with
+        | Some name -> name ^ "[" ^ string_of_int bid ^ "]"
+        | None -> "x" ^ string_of_int bid)
+      ^ " : " ^ term_to_string e ty ^ ") => "
+      ^
+      (Hashtbl.add e.lctx bid (x, ty);
+       let body_str = term_to_string e body in
+       Hashtbl.remove e.lctx bid;
+       body_str)
+  | Arrow (x, bid, ty, ret) -> (
       match x with
-      | Some name -> name ^ "[" ^ string_of_int bid ^ "]"
-      | None -> "x" ^ string_of_int bid
-    ) ^ " : " ^ term_to_string e ty ^ ") => " ^ (
-      Hashtbl.add e.lctx bid (x, ty);
-      let body_str = term_to_string e body in
-      Hashtbl.remove e.lctx bid;
-      body_str
-    )
-  | Arrow (x, bid, ty, ret) ->
-      (match x with
       | None ->
           let ty_s = term_to_string e ty in
           let ret_s = term_to_string e ret in
@@ -116,7 +115,6 @@ let rec term_to_string (e : Types.ctx) (t : term) : string =
           args
       in
       match args_s with [] -> head_s | _ -> head_s ^ " " ^ String.concat " " args_s)
-
 
 let decl_to_string (e : Types.ctx) (d : declaration) =
   match d.kind with

@@ -4,7 +4,8 @@ module KTerm = Kernel.Term
 (** A metavariable (hole) to be solved during elaboration. *)
 type metavar = {
   ty : term option;  (** Expected type of the hole, if already known. *)
-  context : int list; (** list of binder ids that are in scope when the hole is defined *)
+  context : int list;
+      (** list of binder ids that are in scope when the hole is defined *)
   sol : term option;  (** Solution term once found *)
 }
 
@@ -28,6 +29,5 @@ type ctx = {
   metas : (int, metavar) Hashtbl.t;
       (** Mapping from hole IDs to values to fill in for that hole (i.e. values that we
           solved for during elaboration) *)
-  lctx : (int, string option * term) Hashtbl.t;
-  (* graph : rw_graph; *)
+  lctx : (int, string option * term) Hashtbl.t; (* graph : rw_graph; *)
 }

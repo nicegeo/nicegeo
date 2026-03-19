@@ -32,7 +32,6 @@ let gen_hole_id () =
 
 let gen_binder_id = gen_hole_id
 
-
 let rec subst (tm : term) (pat : term) (replacement : term) =
   match tm.inner with
   | Name _ | Bvar _ -> if tm.inner = pat.inner then replacement else tm
