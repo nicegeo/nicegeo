@@ -326,7 +326,11 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
           (Error.TypeMismatch { term = tm; inferred_type = infer_ty; expected_type = ty })
       )
 
-(** Infer the type of the term `tm` in the context `e`, possibly throwing an ElabError *)
+(** Infer the type of the term `tm` in the context `e`, possibly throwing an ElabError.
+    Note: While the .mli documentation of this function states that [tm] must be
+    elaborated, that is only applicable for outside users of [infertype]. The actual
+    precondition is that any holes in [tm] has an appropriate entry in [e.metas], which
+    can be done with the [create_metas] function in controlled cases. *)
 and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
   (* print_endline (String.make depth ' ' ^ "inferring type of " ^ Pretty.term_to_string e tm); *)
   let res =
@@ -460,6 +464,13 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
   | _ -> []
 
+let elaborate (e : ctx) (tm : term) (ty : term option) : term =
+  create_metas e tm [];
+  (match ty with Some ty -> checktype e tm ty | None -> ignore (infertype e tm));
+  let tm_filled = replace_metas e tm in
+  Hashtbl.clear e.metas;
+  tm_filled
+
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
   try
@@ -471,17 +482,10 @@ let process_decl (e : ctx) (d : declaration) : unit =
                {
                  context = { loc = Some d.name_loc; decl_name = Some d.name };
                  error_type = Error.AlreadyDefined d.name;
-               })
-        else create_metas e d.ty [];
-        check_is_type e d.ty;
-        (* replace_metas only fills in metavariables *)
-        let ty_filled = replace_metas e d.ty in
-        Hashtbl.clear e.metas;
-        create_metas e proof [];
-        checktype e proof ty_filled;
-        let proof_filled = replace_metas e proof in
-        Hashtbl.clear e.metas;
-        (* conv_to_kterm does a straightforward variant-to-variant conversion *)
+               });
+        let ty_filled = elaborate e d.ty None in
+        check_is_type e ty_filled;
+        let proof_filled = elaborate e proof (Some ty_filled) in
         let ty_k = conv_to_kterm ty_filled in
         let proof_k = conv_to_kterm proof_filled in
 
@@ -520,13 +524,10 @@ let process_decl (e : ctx) (d : declaration) : unit =
                {
                  context = { loc = Some d.name_loc; decl_name = Some d.name };
                  error_type = Error.AlreadyDefined d.name;
-               })
-        else create_metas e d.ty [];
-        check_is_type e d.ty;
-        (* replace_metas only fills in metavariables *)
-        let ty_filled = replace_metas e d.ty in
-        Hashtbl.clear e.metas;
-        (* conv_to_kterm does a straightforward variant-to-variant conversion *)
+               });
+
+        let ty_filled = elaborate e d.ty None in
+        check_is_type e ty_filled;
         let ty_k = conv_to_kterm ty_filled in
         Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
         Hashtbl.add e.kenv d.name ty_k

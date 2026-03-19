@@ -344,4 +344,4 @@ Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x 
 #print axioms prop1
 #infer prop1
 #check (fun (x : Point) => x) : (Point -> Point)
-#reduce (fun (x : Point) => x) (fun (y : Point) => y)
+#reduce (fun (x : Measure) => x) Zero

@@ -34,7 +34,8 @@ let gen_binder_id = gen_hole_id
 
 let rec subst (tm : term) (pat : termkind) (replacement : termkind) =
   match tm.inner with
-  | Name _ | Bvar _ -> if tm.inner = pat then {inner=replacement; loc=tm.loc} else tm
+  | Name _ | Bvar _ ->
+      if tm.inner = pat then { inner = replacement; loc = tm.loc } else tm
   | Fun (x, bid, ty, body) ->
       let ty_subst = subst ty pat replacement in
       let body_subst = subst body pat replacement in
@@ -48,5 +49,3 @@ let rec subst (tm : term) (pat : termkind) (replacement : termkind) =
       let arg_subst = subst arg pat replacement in
       { inner = App (f_subst, arg_subst); loc = tm.loc }
   | _ -> tm
-
-let is_sort (t : term) : bool = match t.inner with Sort _ -> true | _ -> false

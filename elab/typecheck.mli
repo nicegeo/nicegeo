@@ -14,18 +14,10 @@ open Term
     context. *)
 val process_decl : Types.ctx -> Statement.declaration -> unit
 
-(** [infertype ctx tm] returns the inferred type of term [tm] in context [ctx], filling in
-    metavariables. *)
+(** [elaborate ctx tm ty] elaborates term [tm] in context [ctx] with an optional expected
+    type [ty]. Returns a filled term with type [ty], or raises [Error.ElabError]. *)
+val elaborate : Types.ctx -> term -> term option -> term
+
+(** [infertype ctx tm] returns the inferred type of term [tm] in context [ctx]. [tm] must
+    be elaborated first. *)
 val infertype : ?depth:int -> Types.ctx -> term -> term
-
-(** [replace_metas ctx tm] replaces all holes in [tm] with their solutions in context
-    [ctx]. *)
-val replace_metas : Types.ctx -> term -> term
-
-(** [check_is_type ctx tm] checks that [tm] is a type in context [ctx], filling in
-    metavariables. *)
-val check_is_type : ?depth:int -> Types.ctx -> term -> unit
-
-(** [checktype ctx tm ty] checks that [tm] has type [ty] in context [ctx], filling in
-    metavariables. *)
-val checktype : ?depth:int -> Types.ctx -> term -> term -> unit
