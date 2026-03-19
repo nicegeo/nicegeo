@@ -16,16 +16,10 @@ type term = {
 and termkind =
   | Name of string
     (* a name in the code (refers to a const or the nearest bound variable of the same name during parsing) *)
-  | Bvar of int (* de Bruijn index *)
-  (* Free variable (where int is a unique index for that specific free variable) introduced during internal processing of
-   term *)
-  | Fvar of int
-  (* Part of a term that we need to fill in for the user (where the user can use an underscore to specify that they want
-  something to be inferred). The int is a unique index for that specific hole  
-  *)
+  | Bvar of int
   | Hole of int
-  | Fun of string option * term * term (* argument name, type, body *)
-  | Arrow of string option * term * term (* argument name, type, return type *)
+  | Fun of string option * int * term * term (* argument name, type, body *)
+  | Arrow of string option * int * term * term (* argument name, type, return type *)
   | App of term * term
   | Sort of int
 
@@ -36,46 +30,24 @@ let gen_hole_id () =
   counter := id + 1;
   id
 
-let gen_fvar_id = gen_hole_id
+let gen_binder_id = gen_hole_id
 
-(** Find all occurrences of `pat` in `tm` and replace them with a reference to bound
-    variable `bvar_idx`*)
-let rec bind_bvar (tm : term) (bvar_idx : int) (pat : term) : term =
-  match tm.inner with
-  | Fun (x, ty_arg, body) ->
-      let ty_arg_rebound = bind_bvar ty_arg bvar_idx pat in
-      let body_rebound = bind_bvar body (bvar_idx + 1) pat in
-      { inner = Fun (x, ty_arg_rebound, body_rebound); loc = tm.loc }
-  | Arrow (x, ty_arg, ty_ret) ->
-      let ty_arg_rebound = bind_bvar ty_arg bvar_idx pat in
-      let ty_ret_rebound = bind_bvar ty_ret (bvar_idx + 1) pat in
-      { inner = Arrow (x, ty_arg_rebound, ty_ret_rebound); loc = tm.loc }
-  | App (t1, t2) ->
-      let t1_rebound = bind_bvar t1 bvar_idx pat in
-      let t2_rebound = bind_bvar t2 bvar_idx pat in
-      { inner = App (t1_rebound, t2_rebound); loc = tm.loc }
-  | Name _ | Fvar _ ->
-      if tm.inner = pat.inner then { inner = Bvar bvar_idx; loc = tm.loc }
-      else { inner = tm.inner; loc = tm.loc }
-  | _ -> tm
 
-(** Replace the bound variable corresponding to index `bvar_idx` (from the point of view
-    of the top level term) with the expression `replacement` *)
-let rec replace_bvar (tm : term) (bvar_idx : int) (replacement : term) : term =
+let rec subst (tm : term) (pat : term) (replacement : term) =
   match tm.inner with
-  | Fun (x, ty, body) ->
-      let ty_replaced = replace_bvar ty bvar_idx replacement in
-      let body_replaced = replace_bvar body (bvar_idx + 1) replacement in
-      { inner = Fun (x, ty_replaced, body_replaced); loc = tm.loc }
-  | Arrow (x, ty, ret) ->
-      let ty_replaced = replace_bvar ty bvar_idx replacement in
-      let ret_replaced = replace_bvar ret (bvar_idx + 1) replacement in
-      { inner = Arrow (x, ty_replaced, ret_replaced); loc = tm.loc }
+  | Name _ | Bvar _ -> if tm.inner = pat.inner then replacement else tm
+  | Fun (x, bid, ty, body) ->
+      let ty_subst = subst ty pat replacement in
+      let body_subst = subst body pat replacement in
+      { inner = Fun (x, bid, ty_subst, body_subst); loc = tm.loc }
+  | Arrow (x, bid, ty_arg, ty_ret) ->
+      let ty_arg_subst = subst ty_arg pat replacement in
+      let ty_ret_subst = subst ty_ret pat replacement in
+      { inner = Arrow (x, bid, ty_arg_subst, ty_ret_subst); loc = tm.loc }
   | App (f, arg) ->
-      let f_replaced = replace_bvar f bvar_idx replacement in
-      let arg_replaced = replace_bvar arg bvar_idx replacement in
-      { inner = App (f_replaced, arg_replaced); loc = tm.loc }
-  | Bvar idx -> if idx = bvar_idx then { inner = replacement.inner; loc = tm.loc } else tm
+      let f_subst = subst f pat replacement in
+      let arg_subst = subst arg pat replacement in
+      { inner = App (f_subst, arg_subst); loc = tm.loc }
   | _ -> tm
 
 let is_sort (t : term) : bool = match t.inner with Sort _ -> true | _ -> false

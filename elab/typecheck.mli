@@ -14,14 +14,6 @@ open Term
     context. *)
 val process_decl : Types.ctx -> Statement.declaration -> unit
 
-(** [hole_to_meta ctx stack tm] returns tm unchanged except for replacing holes with
-    metavariable spines.
-
-    `stack` is the types of all of the bound variables introduced outside of the term,
-    where the first element is the innermost definition (i.e. what `Bvar 0` would
-    correspond to) *)
-val hole_to_meta : Types.ctx -> term list -> term -> term
-
 (** [infertype ctx tm] returns the inferred type of term [tm] in context [ctx], filling in
     metavariables. *)
 val infertype : ?depth:int -> Types.ctx -> term -> term

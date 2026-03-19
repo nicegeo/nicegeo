@@ -43,19 +43,22 @@ term:
       List.fold_right
         (fun (x, ty) acc ->
            let pat = {Term.inner=Term.Name x; loc} in
-           {Term.inner=Term.Fun (Some x, ty, Term.bind_bvar acc 0 pat); loc})
+           let bid = Term.gen_binder_id () in
+           {Term.inner=Term.Fun (Some x, bid, ty, Term.subst acc pat {Term.inner=Term.Bvar bid; loc}); loc})
         params_flat body
     }
   | LPAREN x = IDENT COLON ty = term RPAREN FORALL rettype = term
     {
       let loc = { Term.start = $startpos; Term.end_ = $endpos } in
       let pat = {Term.inner=Term.Name x; loc} in
-      {Term.inner=Term.Arrow (Some x, ty, Term.bind_bvar rettype 0 pat); loc}
+      let bid = Term.gen_binder_id () in
+      {Term.inner=Term.Arrow (Some x, bid, ty, Term.subst rettype pat {Term.inner=Term.Bvar bid; loc}); loc}
     }
   | ty = app_term FORALL rettype = term
     {
       let loc = { Term.start = $startpos; Term.end_ = $endpos } in
-      {Term.inner=Term.Arrow (None, ty, rettype); loc}
+      let bid = Term.gen_binder_id () in
+      {Term.inner=Term.Arrow (None, bid, ty, rettype); loc}
     }
 
 app_term:

@@ -1,8 +1,8 @@
-Theorem LtNe : (a: Len) -> (b: Len) -> Lt a b -> Eq _ a b -> False :=
-  fun (a: Len) (b: Len) (lt_ab: Lt a b) (eq_ab: Eq _ a b) =>
+Theorem LtNe : (a: Measure) -> (b: Measure) -> Lt a b -> Eq _ a b -> False :=
+  fun (a: Measure) (b: Measure) (lt_ab: Lt a b) (eq_ab: Eq _ a b) =>
     LtAntisymm b b
-      (Eq.elim Len a (fun (x: Len) => Lt x b) lt_ab b eq_ab)
-      (Eq.elim Len a (fun (x: Len) => Lt x b) lt_ab b eq_ab)
+      (Eq.elim Measure a (fun (x: Measure) => Lt x b) lt_ab b eq_ab)
+      (Eq.elim Measure a (fun (x: Measure) => Lt x b) lt_ab b eq_ab)
 
 Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
 	fun (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab
@@ -314,14 +314,12 @@ Exists Point (fun (c : Point) =>
         (center_lies_inside_circle a aa aaa) 
 		(center_lies_inside_circle b bb bbb) abb
 	))
-    (fun (c : Point) (facts : And (OnCircle c aa) (OnCircle c bb)) =>
+    (fun (c : Point) facts =>
 
     And.elim1 _ _ _ facts
     (fun (caa : OnCircle c aa) (cbb : OnCircle c bb) =>
 
-    Exists.intro Point (fun (c : Point) =>
-		And (Eq Measure (Length a b) (Length a c))
-			(Eq Measure (Length b c) (Length b a)))
+    Exists.intro _ _
     c (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
 	))))))
 

@@ -1,11 +1,11 @@
 open Term
 module KTerm = Kernel.Term
 
+(** A metavariable (hole) to be solved during elaboration. *)
 type metavar = {
-  ty : term option;
-  vartypes : term list;
-      (* types of the free variables in the solution, in order (later entries may have bvars referring to previous entries) *)
-  sol : term option; (* solution term, should not contain fvars *)
+  ty : term option;  (** Expected type of the hole, if already known. *)
+  context : int list; (** list of binder ids that are in scope when the hole is defined *)
+  sol : term option;  (** Solution term once found *)
 }
 
 type enventry_data =
@@ -18,6 +18,8 @@ type enventry = {
   data : enventry_data;
 }
 
+type rw_graph = (int, int) Hashtbl.t
+
 type ctx = {
   env : (string, enventry) Hashtbl.t;
       (* elaboration-level environment that maps from defined names to what those names refer to *)
@@ -27,5 +29,5 @@ type ctx = {
       (** Mapping from hole IDs to values to fill in for that hole (i.e. values that we
           solved for during elaboration) *)
   lctx : (int, string option * term) Hashtbl.t;
-      (* local context id of a given free variable to name and type of that variable. *)
+  (* graph : rw_graph; *)
 }
