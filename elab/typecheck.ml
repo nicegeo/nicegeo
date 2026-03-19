@@ -56,9 +56,10 @@ type normterm =
 
 (** [subst e tm pat replacement] substitutes all occurrences of `pat` with `replacement`
     in `tm` *)
-let rec subst (e : ctx) (tm : term) (pat : termkind) (replacement : term) =
+let rec subst (e : ctx) (tm : term) (pat : termkind) (replacement : termkind) =
   match tm.inner with
-  | Name _ | Bvar _ -> if tm.inner = pat then replacement else tm
+  | Name _ | Bvar _ ->
+      if tm.inner = pat then { inner = replacement; loc = tm.loc } else tm
   | Fun (x, bid, ty, body) ->
       let ty_subst = subst e ty pat replacement in
       let body_subst = subst e body pat replacement in
@@ -82,7 +83,7 @@ let rec whnf_beta (e : ctx) (tm : term) : term =
   | App (f, arg) -> (
       let fn = whnf_beta e f in
       match fn.inner with
-      | Fun (_, bid, _, body) -> whnf_beta e (subst e body (Bvar bid) arg)
+      | Fun (_, bid, _, body) -> whnf_beta e (subst e body (Bvar bid) arg.inner)
       | _ -> { inner = App (fn, arg); loc = tm.loc })
   | Hole m -> (
       match Hashtbl.find_opt e.metas m with
@@ -102,20 +103,20 @@ let rec to_norm (e : ctx) (tm : term) : normterm =
       | MetaSpine (head, args) -> MetaSpine (head, args @ [ arg ])
       | Fun _ ->
           raise_at tm (Error.InternalError "to_norm input should already be in whnf")
-      | Arrow (n, bid, ty_arg, ty_ret) ->
+      | Arrow _ ->
           raise_at
             tm
             (Error.FunctionExpected
-               {
-                 not_func = tm;
-                 not_func_type = { inner = Arrow (n, bid, ty_arg, ty_ret); loc = tm.loc };
-                 arg;
-               })
+               { not_func = f; not_func_type = { inner = Hole 0; loc = tm.loc }; arg })
       | Sort n ->
           raise_at
             tm
             (Error.FunctionExpected
-               { not_func = tm; not_func_type = { inner = Sort n; loc = tm.loc }; arg }))
+               {
+                 not_func = f;
+                 not_func_type = { inner = Sort (n + 1); loc = tm.loc };
+                 arg;
+               }))
   | Name _ | Bvar _ -> VarSpine (tm, [])
   | Sort n -> Sort n
   | Hole _ -> MetaSpine (tm, [])
@@ -204,7 +205,9 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
     (g2 : rw_graph) : unit =
   let t1 = whnf_beta e t1 in
   let t2 = whnf_beta e t2 in
-  (* print_endline (String.make depth ' ' ^ "unifying " ^ Pretty.term_to_string e t1 ^ " and " ^ Pretty.term_to_string e t2); *)
+  print_endline
+    (String.make depth ' ' ^ "unifying " ^ Pretty.term_to_string e t1 ^ " and "
+   ^ Pretty.term_to_string e t2);
   let nt1 = to_norm e t1 in
   let nt2 = to_norm e t2 in
   (* t1 and t2 should be closed under the current e *)
@@ -242,7 +245,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
         if bid1 <> bid2 then
           (* make them equal *)
           Hashtbl.replace g2 bid1 bid2;
-        subst e ty_ret2 (Bvar bid2) { inner = Bvar bid1; loc = ty_ret2.loc }
+        subst e ty_ret2 (Bvar bid2) (Bvar bid1)
       in
       unify ~depth:(depth + 1) e ty_ret1 g1 ty_ret2 g2;
       if bid1 <> bid2 then
@@ -257,7 +260,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
         if bid1 <> bid2 then
           (* make them equal *)
           Hashtbl.replace g2 bid2 bid1;
-        subst e body2 (Bvar bid2) { inner = Bvar bid1; loc = body2.loc }
+        subst e body2 (Bvar bid2) (Bvar bid1)
       in
       unify ~depth:(depth + 1) e body1 g1 body2 g2;
       if bid1 <> bid2 then
@@ -273,7 +276,9 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
 (** checks that tm has expected type ty, trying to fill in metavariables (holes). If it
     fails it throws an ElabError. *)
 let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
-  (* print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " has type " ^ Pretty.term_to_string e ty); *)
+  print_endline
+    (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " has type "
+   ^ Pretty.term_to_string e ty);
   match tm.inner with
   | Hole m -> (
       (* print_endline (String.make depth ' ' ^ "encountered hole ?m" ^ string_of_int m ^ " with expected type " ^ Pretty.term_to_string e ty); *)
@@ -284,7 +289,39 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
               unify ~depth:(depth + 1) e ty (Hashtbl.create 0) ty1 (Hashtbl.create 0)
           | None -> Hashtbl.replace e.metas m { ty = Some ty; context; sol })
       | None -> raise_at tm (Error.InternalError ("unknown meta: " ^ string_of_int m)))
-  | App _ | Name _ | Fun _ | Arrow _ | Sort _ | Bvar _ -> (
+  | Fun (arg, bid, ty_arg, body) -> (
+      let ty_whnf = whnf_beta e ty in
+      match ty_whnf.inner with
+      | Arrow (_, bid_ex, ty_arg_ex, ty_ret_ex) ->
+          (try
+             unify
+               ~depth:(depth + 1)
+               e
+               ty_arg
+               (Hashtbl.create 0)
+               ty_arg_ex
+               (Hashtbl.create 0)
+           with Failure _ ->
+             raise_at
+               ty_arg
+               (Error.TypeMismatch
+                  { term = ty_arg; inferred_type = ty_arg_ex; expected_type = ty_arg }));
+          (* surely i just subst bid as bid_ex in ty_ret_ex *)
+          let ty_ret_ex_subst = subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in
+          Hashtbl.add e.lctx bid (arg, ty_arg);
+          checktype ~depth:(depth + 1) e body ty_ret_ex_subst;
+          Hashtbl.remove e.lctx bid
+      | _ ->
+          let unk = { inner = Hole 0; loc = ty.loc } in
+          raise_at
+            ty
+            (Error.TypeMismatch
+               {
+                 term = tm;
+                 inferred_type = { inner = Arrow (None, 0, unk, unk); loc = ty.loc };
+                 expected_type = ty;
+               }))
+  | App _ | Name _ | Arrow _ | Sort _ | Bvar _ -> (
       let infer_ty = infertype ~depth:(depth + 1) e tm in
       try unify ~depth:(depth + 1) e infer_ty (Hashtbl.create 0) ty (Hashtbl.create 0)
       with Failure _ ->
@@ -295,7 +332,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
 
 (** Infer the type of the term `tm` in the context `e`, possibly throwing an ElabError *)
 and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
-  (* print_endline (String.make depth ' ' ^ "inferring type of " ^ Pretty.term_to_string e tm); *)
+  print_endline (String.make depth ' ' ^ "inferring type of " ^ Pretty.term_to_string e tm);
   let res =
     match tm.inner with
     | Hole m -> (
@@ -343,7 +380,7 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
         match f_type.inner with
         | Arrow (_, bid, ty_arg, ty_ret) ->
             checktype ~depth:(depth + 1) e arg ty_arg;
-            subst e ty_ret (Bvar bid) arg
+            subst e ty_ret (Bvar bid) arg.inner
         | _ ->
             raise_at
               f

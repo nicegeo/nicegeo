@@ -5,10 +5,10 @@ Theorem LtNe : (a: Measure) -> (b: Measure) -> Lt a b -> Eq _ a b -> False :=
       (Eq.elim Measure a (fun (x: Measure) => Lt x b) lt_ab b eq_ab)
 
 Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
-	fun (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab
+	fun A a b eq_ab => Eq.elim A a (fun x => Eq A x a) (Eq.intro A a) b eq_ab
 
 Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b -> False) -> (Eq A b a -> False) :=
-	fun (A: Type) (a b: A) (ne_ab: Eq A a b -> False) => fun (eq_ba: Eq A b a) =>
+	fun A a b ne_ab eq_ba =>
 		ne_ab (Eq.symm A b a eq_ba)
 
 Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> And A B -> (f: A -> B -> C) -> C :=
