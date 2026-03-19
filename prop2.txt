@@ -1,3 +1,9 @@
+Theorem LtNe : (a: Measure) -> (b: Measure) -> Lt a b -> Eq _ a b -> False :=
+  fun (a: Measure) (b: Measure) (lt_ab: Lt a b) (eq_ab: Eq _ a b) =>
+    LtAntisymm b b
+      (Eq.elim Measure a (fun (x: Measure) => Lt x b) lt_ab b eq_ab)
+      (Eq.elim Measure a (fun (x: Measure) => Lt x b) lt_ab b eq_ab)
+
 Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
 	fun (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab
 
@@ -18,8 +24,17 @@ Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
     (* unification could improve here *)
     fun (M: Prop) (P: Prop) (p: P) (f: P -> M) => f p
 
-Theorem prop1_mini :
-(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) ->
+Theorem on_circle_iff_length_eq : (a : Point) -> (b : Point) -> (c : Point) -> (d : Circle) ->
+    CenterCircle a d -> OnCircle b d -> 
+    (And (Eq _ (Length a b) (Length a c) -> OnCircle c d)
+         (OnCircle c d -> Eq _ (Length a b) (Length a c))) :=
+    fun (a b c : Point) (d : Circle) (ad : CenterCircle a d) (bd : OnCircle b d) =>
+    And.intro (Eq _ (Length a b) (Length a c) -> OnCircle c d) (OnCircle c d -> Eq _ (Length a b) (Length a c)) 
+    (fun h => on_circle_if_eq_radius a b c d ad bd (Eq.symm _ _ _ h)) 
+    (fun h => Eq.symm _ _ _ (eq_radius_if_on_circle a b c d ad bd h))
+
+Theorem prop1 :
+(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
 Exists Point (fun (c : Point) =>
     And (Eq Measure (Length a b) (Length a c))
         (Eq Measure (Length b c) (Length b a)))
@@ -36,9 +51,9 @@ Exists Point (fun (c : Point) =>
     And.elim1 _ _ _ b_center_and_on
     (fun (bbb : CenterCircle b bb) (abb : OnCircle a bb) =>
 
-   	Exists.elim _ _ _ (pt_of_circlesinter aa bb (circlesinter_of_inside_on_circle a b aa bb baa abb
-        (inside_circle_of_center a aa aaa)
-		(inside_circle_of_center b bb bbb)
+   	Exists.elim _ _ _ (pt_of_circlesinter aa bb (circles_inter_if_on_in b a aa bb baa
+        (center_lies_inside_circle a aa aaa) 
+		(center_lies_inside_circle b bb bbb) abb
 	))
     (fun (c : Point) (facts : And (OnCircle c aa) (OnCircle c bb)) =>
 
@@ -50,7 +65,6 @@ Exists Point (fun (c : Point) =>
 			(Eq Measure (Length b c) (Length b a)))
     c (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
 	))))))
-
 
 Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x z) (Add y z) -> Eq _ x y :=
     fun x y z h =>
@@ -95,7 +109,7 @@ Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) ->
 
     Exists.intro Point (fun (c: Point) => And (Between a b c) (OnCircle c aa)) c
     (And.intro (Between a b c) (OnCircle c aa)
-    (between_symm c b a (snd _ _ (snd _ _ h)))
+    (fst _ _ (between_distinct c b a (snd _ _ (snd _ _ h))))
     (fst _ _ (snd _ _ h))
     ))))
 
@@ -104,9 +118,9 @@ Theorem length_pts_eq : (a: Point) -> (b: Point) -> (c: Point) -> Eq _ (Length a
     fun a b c (h: Eq _ (Length a b) (Length a c)) (ab: Eq _ a b) =>
     have _ _ (Eq.elim Measure (Length a b) (fun x => Eq _ (Length a c) x)
     (Eq.symm _ _ _ h) Zero
-    (snd _ _ (length_eq_zero_iff a b) ab))
+    (len_zero_if_eq a b ab))
     (fun (lac : Eq _ (Length a c) Zero) =>
-    fst _ _ (length_eq_zero_iff a c) lac)
+    eq_if_len_zero a c lac)
 
 Theorem length_pts_ne : (a: Point) -> (b: Point) -> (c: Point) -> Eq _ (Length a b) (Length a c) ->
     (Eq _ a b -> False) -> (Eq _ a c -> False) :=
@@ -119,6 +133,14 @@ Theorem ZeroAdd : (a: Measure) -> Eq _ (Add Zero a) a :=
 Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> Eq T a b -> Eq T b c -> Eq T a c :=
     fun T a b c h1 h2 =>
     Eq.elim T b (fun x => Eq T a x) h1 c h2
+
+Theorem ne_13_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> Eq _ a c -> False :=
+    fun a b c Babc => 
+    Not.elim _ (fst _ _ (snd _ _ (snd _ _ (between_distinct a b c Babc))))
+
+Theorem ne_23_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> Eq _ b c -> False :=
+    fun a b c Babc => 
+    Ne.symm _ _ _ (Not.elim _ (fst _ _ (snd _ _ (between_distinct c b a (fst _ _ (between_distinct a b c Babc))))))
 
 Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     -> (bc : Eq _ b c -> False) -> (ab : Eq _ a b -> False)
@@ -137,7 +159,7 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     have _ _ (Ne.symm _ _ _ (length_pts_ne b a d (Eq.symm _ _ _ (snd _ _ eqtri)) (Ne.symm _ _ _ ab)))
     (fun (db : (Eq _ d b -> False)) =>
 
-    Exists.elim _ _ _ (pt_oncircle_of_inside_ne _ _ _ db (inside_circle_of_center b aa baa))
+    Exists.elim _ _ _ (pt_oncircle_of_inside_ne _ _ _ db (center_lies_inside_circle b aa baa))
     (fun (e: Point) (h: And (Between d b e) (OnCircle e aa)) =>
 
     And.elim1 _ _ _ h
@@ -159,7 +181,7 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     (fun (dbda : Eq _ (Length d b) (Length d a)) =>
 
     have _ _ (
-        have _ _ (length_sum_of_between d b e Bdbe)
+        have _ _ (between_add_lengths d b e Bdbe)
         (fun (sum : Eq _ (Add (Length d b) (Length b e)) (Length d e)) =>
         Or.elim _ _ _ (ZeroLeast (Length b e))
         (fun (lbe: Lt Zero (Length b e)) =>
@@ -171,11 +193,11 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
             (Length d e) (EqTrans _ _ _ _ (AddComm (Length b e) (Length d b)) sum)
         )
         (fun (ineq : Lt (Length d a) (Length d e)) =>
-        fst _ _ (in_circle_iff_length_lt d e a bb dbb ebb) ineq
+        in_circle_if_lt_radius d e a bb dbb ebb ineq
         )
         )
         (fun (lbe: Eq _ Zero (Length b e)) =>
-        False.elim (InCircle a bb) (ne_23_of_between d b e Bdbe (fst _ _ (length_eq_zero_iff b e) (Eq.symm _ _ _ lbe)))
+        False.elim (InCircle a bb) (ne_23_of_between d b e Bdbe (eq_if_len_zero b e (Eq.symm _ _ _ lbe)))
         )
         )
     )
@@ -195,10 +217,10 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
         (Eq.elim Measure (Length d b) (fun x => Eq _ (Add x (Length b e)) (Length d f))
         (Eq.elim Measure (Length d e) (fun x => Eq _ x (Length d f))
         (snd _ _ (on_circle_iff_length_eq d e f bb dbb ebb) fbb)
-        (Add (Length d b) (Length b e)) (Eq.symm _ _ _ (length_sum_of_between d b e Bdbe)))
+        (Add (Length d b) (Length b e)) (Eq.symm _ _ _ (between_add_lengths d b e Bdbe)))
         (Length d a) dbda)
         (Length b c) (snd _ _ (on_circle_iff_length_eq b e c aa baa eaa) caa))
-        (Add (Length d a) (Length a f)) (Eq.symm _ _ _ (length_sum_of_between d a f Bdaf))
+        (Add (Length d a) (Length a f)) (Eq.symm _ _ _ (between_add_lengths d a f Bdaf))
     )
     (fun (equality : Eq _ (Add (Length d a) (Length b c)) (Add (Length d a) (Length a f))) =>
     Eq.symm _ _ _ (CancelAdd (Length b c) (Length a f) (Length d a) equality)
@@ -212,9 +234,9 @@ Theorem point_eq_em : (a: Point) -> (b: Point) -> Or (Eq _ a b) (Eq _ a b -> Fal
     (fun (h: Lt Zero (Length a b)) =>
     Or.inr (Eq _ a b) (Eq _ a b -> False) (
     fun (ab : Eq _ a b) =>
-    (Ne.symm _ _ _ (LtNe Zero (Length a b) h)) (snd _ _ (length_eq_zero_iff a b) ab))
+    (Ne.symm _ _ _ (LtNe Zero (Length a b) h)) (len_zero_if_eq a b ab))
     )
-    (fun (h: Eq _ Zero (Length a b)) => Or.inl (Eq _ a b) (Eq _ a b -> False) (fst _ _ (length_eq_zero_iff a b) (Eq.symm _ _ _ h)))
+    (fun (h: Eq _ Zero (Length a b)) => Or.inl (Eq _ a b) (Eq _ a b -> False) (eq_if_len_zero a b (Eq.symm _ _ _ h)))
 
 Theorem prop2 : (a : Point) -> (b: Point) -> (c: Point)
     -> Exists Point (fun f => Eq _ (Length a f) (Length b c)) :=
@@ -225,8 +247,8 @@ Theorem prop2 : (a : Point) -> (b: Point) -> (c: Point)
 
     Exists.intro Point (fun f => Eq _ (Length a f) (Length b c)) a (
         EqTrans _ _ _ _
-        (snd _ _ (length_eq_zero_iff a a) (Eq.intro _ a))
-        (Eq.symm _ _ _ (snd _ _ (length_eq_zero_iff b c) bc))
+        (len_zero_if_eq a a (Eq.intro _ a))
+        (Eq.symm _ _ _ (len_zero_if_eq b c bc))
     ))
 
     (fun (bc: Eq _ b c -> False) =>
