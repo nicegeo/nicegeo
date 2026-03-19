@@ -54,6 +54,8 @@ type normterm =
   | MetaSpine of term * term list
   | Sort of int
 
+type rw_graph = (int, int) Hashtbl.t
+
 (** [subst e tm pat replacement] substitutes all occurrences of `pat` with `replacement`
     in `tm` *)
 let rec subst (e : ctx) (tm : term) (pat : termkind) (replacement : termkind) =

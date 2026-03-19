@@ -1,10 +1,9 @@
 open Term
 
-(** Type-checking and elaboration of declarations.
+(** Type-checking and elaboration of terms and declarations.
 
     Implements bidirectional type-checking with pattern-unification–based hole inference.
-    Holes written by the user as [_] are replaced by metavariable spines, constraints are
-    gathered during type-checking, and pattern unification fills in solutions. Solved
+    Holes written by the user as [_] are automatically filled in based on context. Solved
     terms are then verified by the trusted kernel before being committed to the
     environment.
 

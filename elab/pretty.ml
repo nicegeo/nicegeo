@@ -1,9 +1,3 @@
-(** Pretty-printing for elaborator terms.
-
-    Elaborator terms now contain [Bvar] and [Fvar]s and only optional binder names. To
-    print readable names we consult the elaborator context stored in [Types.ctx] (notably
-    [lctx] and [metas]). *)
-
 open Term
 open Statement
 

@@ -19,8 +19,6 @@ type enventry = {
   data : enventry_data;
 }
 
-type rw_graph = (int, int) Hashtbl.t
-
 type ctx = {
   env : (string, enventry) Hashtbl.t;
       (* elaboration-level environment that maps from defined names to what those names refer to *)
@@ -29,5 +27,5 @@ type ctx = {
   metas : (int, metavar) Hashtbl.t;
       (** Mapping from hole IDs to values to fill in for that hole (i.e. values that we
           solved for during elaboration) *)
-  lctx : (int, string option * term) Hashtbl.t; (* graph : rw_graph; *)
+  lctx : (int, string option * term) Hashtbl.t;
 }

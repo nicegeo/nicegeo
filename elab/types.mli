@@ -23,8 +23,6 @@ type enventry = {
   data : enventry_data;
 }
 
-type rw_graph = (int, int) Hashtbl.t
-
 (** Elaboration context. *)
 type ctx = {
   env : (string, enventry) Hashtbl.t;
@@ -35,5 +33,4 @@ type ctx = {
       (** Mapping from hole ids to their metavariable records. *)
   lctx : (int, string option * term) Hashtbl.t;
       (** mapping binder ids to their optional name and type. *)
-      (* graph : rw_graph; *)
 }
