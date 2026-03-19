@@ -6,8 +6,8 @@ let sort_to_string = function 0 -> "Prop" | 1 -> "Type" | n -> "Sort " ^ string_
 
 let is_atomic x =
   match x.inner with
-  | Name _ | Bvar _ | Hole _ | Sort _ -> true
-  | Fun _ | Arrow _ | App _ -> false
+  | Name _ | Bvar _ | Sort _ -> true
+  | Hole _ | Fun _ | Arrow _ | App _ -> false
 
 (** Flatten application spine. *)
 let rec flatten_app t =
