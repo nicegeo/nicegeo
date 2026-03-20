@@ -5,10 +5,9 @@ open Term
 (** A metavariable (hole) to be solved during elaboration. *)
 type metavar = {
   ty : term option;  (** Expected type of the hole, if already known. *)
-  vartypes : term list;
-      (** Types of the free variables whose values the solution may depend on, in order
-          (later entries may contain [Bvar]s referring to earlier ones). *)
-  sol : term option;  (** Solution term once found; must be closed. *)
+  context : int list;
+      (** list of binder ids that are in scope when the hole is defined *)
+  sol : term option;  (** Solution term once found *)
 }
 
 (** Data associated with each entry in the environment. *)
@@ -36,5 +35,5 @@ type ctx = {
   metas : (int, metavar) Hashtbl.t;
       (** Mapping from hole ids to their metavariable records. *)
   lctx : (int, string option * term) Hashtbl.t;
-      (** Local context mapping free-variable ids to their optional name and type. *)
+      (** Mapping from binder ids to their optional name and type. *)
 }
