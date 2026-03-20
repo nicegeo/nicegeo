@@ -318,7 +318,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
              raise_at
                ty_arg
                (Error.TypeMismatch
-                  { term = ty_arg; inferred_type = ty_arg_ex; expected_type = ty_arg }));
+                  { term = {inner=Hole 0; loc=ty.loc}; inferred_type = ty_arg; expected_type = ty_arg_ex }));
           check_is_type ~depth:(depth + 1) e ty_arg;
           (* check body type by substituting the appropriate bound variable *)
           let ty_ret_ex_subst = subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in

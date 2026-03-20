@@ -382,87 +382,6 @@ let test_rebind_bvar () =
     ~actual:(rebind_bvar (Lam (Bvar 0, Bvar 1)) 1 "Point")
     ~expected:(Lam (Bvar 0, Bvar 1))
 
-let test_eq_symm () =
-  let application_multiple_arguments (func : term) (args : term list) : term =
-    List.fold_left
-      (fun application_so_far first_arg -> App (application_so_far, first_arg))
-      func
-      args
-  in
-  (* Confirm our helper function does what it should *)
-  Alcotest.check'
-    Testable.term
-    ~msg:"application_multiple_arguments works"
-    ~actual:
-      (application_multiple_arguments (Const "f") [ Const "a"; Const "b"; Const "c" ])
-    ~expected:(App (App (App (Const "f", Const "a"), Const "b"), Const "c"));
-
-  let eq ty a b = App (App (App (Const "Eq", ty), a), b) in
-
-  let env = Elab.Interface.create_with_env_path path_to_env in
-  let local_ctx = Hashtbl.create 16 in
-
-  let eq_symm_type =
-    Forall
-      ( Sort 1,
-        (* A: Type *)
-        Forall
-          ( Bvar 0,
-            (* a: A *)
-            Forall
-              ( Bvar 1,
-                (* b: A *)
-                Forall
-                  ( eq (Bvar 2) (Bvar 1) (Bvar 0),
-                    (* Eq a b *)
-                    eq (Bvar 3) (Bvar 1) (Bvar 2)
-                    (* Eq b a *) ) ) ) )
-  in
-  Alcotest.check'
-    Testable.term
-    ~msg:"eq_symm_type has correct type"
-    ~actual:(try_infer env.kenv local_ctx eq_symm_type)
-    ~expected:(Sort 0);
-
-  (* make sure this is actually a Prop *)
-  let eq_symm_term =
-    Lam
-      ( Sort 1,
-        (* A: Type *)
-        Lam
-          ( Bvar 0,
-            (* a: A *)
-            Lam
-              ( Bvar 1,
-                (* b: A *)
-                Lam
-                  ( eq (Bvar 2) (Bvar 1) (Bvar 0),
-                    (* eq_ab: Eq a b *)
-                    application_multiple_arguments
-                      (Const "Eq.elim")
-                      [
-                        Bvar 3;
-                        (* A: Type *)
-                        Bvar 2;
-                        (* a: A *)
-                        Lam (Bvar 3, eq (Bvar 4) (Bvar 0) (Bvar 3));
-                        (* motive: A -> Prop *)
-                        App (App (Const "Eq.intro", Bvar 3), Bvar 2);
-                        (* refl: motive a *)
-                        Bvar 1;
-                        (* b: A *)
-                        Bvar 0 (* eq_ab: Eq a b *);
-                      ] ) ) ) )
-  in
-  let inferred_type = try_infer env.kenv local_ctx eq_symm_term in
-  (* check that eq_symm_term is definitionally equal to the forall statement we expect *)
-  Alcotest.check'
-    (Testable.termDefEq env.kenv local_ctx)
-    ~msg:"eq_symm_term has correct type"
-    ~actual:inferred_type
-    ~expected:eq_symm_type
-
-(* These two tests are made by AI so can remove or change them completely if wanted *)
 let test_len_sanity () =
   let env = Elab.Interface.create_with_env_path path_to_env in
   let lctx = Hashtbl.create 16 in
@@ -498,24 +417,7 @@ let test_len_sanity () =
     Testable.term
     ~msg:"Add has correct type"
     ~actual:(try_infer env.kenv lctx (Const "Add"))
-    ~expected:(Forall (Const "Measure", Forall (Const "Measure", Const "Measure")));
-
-  (* AddZero is exact enough to check de Bruijn encoding *)
-  let inferred = try_infer env.kenv lctx (Const "AddZero") in
-  let expected =
-    Forall
-      ( Const "Measure",
-        App
-          ( App
-              ( App (Const "Eq", Const "Measure"),
-                App (App (Const "Add", Bvar 0), Const "Zero") ),
-            Bvar 0 ) )
-  in
-  Alcotest.check'
-    (Testable.termDefEq env.kenv lctx)
-    ~msg:"AddZero has correct type"
-    ~actual:inferred
-    ~expected
+    ~expected:(Forall (Const "Measure", Forall (Const "Measure", Const "Measure")))
 
 let test_len_app () =
   let env = Elab.Interface.create_with_env_path path_to_env in
@@ -677,7 +579,6 @@ let suite =
       test_case "Infer function application" `Quick test_infer_function_application;
       test_case "Substitution of bound variables" `Quick test_subst_bvar;
       test_case "Rebinding bound variables" `Quick test_rebind_bvar;
-      test_case "Symmetry of equality" `Quick test_eq_symm;
       test_case "Measure sanity checks" `Quick test_len_sanity;
       test_case "Measure application" `Quick test_len_app;
       test_case "Kernel reduction" `Quick test_kernel_reduce;

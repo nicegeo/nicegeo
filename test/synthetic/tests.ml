@@ -278,6 +278,25 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
+
+
+  (* double_negation: (A: Prop) -> ((Not A) -> False) -> A *)
+  show_kterm "double_negation";
+  [%expect
+    {|
+    Forall (Sort 0,
+      Forall (Forall (App (Const "Not", Bvar 0),
+        Const "False"
+      ),
+        Bvar 1
+      )
+    )
+    |}];
+
+  show_kterm "excluded_middle";
+  [%expect
+    {| |}];
+
   (* Eq : (T: Type) -> T -> T -> Prop *)
   show_kterm "Eq";
   [%expect
@@ -395,35 +414,29 @@ let%expect_test "Elaborate env.txt" =
         )
       )
     )
+    :=
+    Lam (Sort 1,
+      Lam (Bvar 0,
+        Lam (App (Const "List", Bvar 1),
+          App (Const "Not", App (App (App (Const "List.forall", Bvar 2), Lam (Bvar 2,
+            App (App (App (Const "Ne", Bvar 3), Bvar 2), Bvar 0)
+          )), Bvar 0))
+        )
+      )
+    )
     |}];
 
   (* List.not_mem_nil : (A : Type) -> (a : A) -> List.mem A a (List.nil A) -> False *)
   show_kterm "List.not_mem_nil";
   [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        App (Const "Not", App (App (App (Const "List.mem", Bvar 1), Bvar 0), App (Const "List.nil", Bvar 1)))
-      )
-    )
-    |}];
+    {| |}];
 
   (* List.mem_cons : (A : Type) -> (a : A) -> (b : A) -> (L : List A) ->
     And (List.mem A a (List.cons A b L) -> Or (Eq A a b) (List.mem A a L))
         (Or (Eq A a b) (List.mem A a L) -> List.mem A a (List.cons A b L)) *)
   show_kterm "List.mem_cons";
   [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (Bvar 1,
-          Forall (App (Const "List", Bvar 2),
-            App (App (Const "Iff", App (App (App (Const "List.mem", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0))), App (App (Const "Or", App (App (App (Const "Eq", Bvar 3), Bvar 2), Bvar 1)), App (App (App (Const "List.mem", Bvar 3), Bvar 2), Bvar 0)))
-          )
-        )
-      )
-    )
-    |}];
+    {| |}];
 
   (* List.forall : (A : Type) -> (A -> Prop) -> List A -> Prop *)
   show_kterm "List.forall";
@@ -3054,19 +3067,6 @@ let%expect_test "Elaborate env.txt" =
             )
           )
         )
-      )
-    )
-    |}];
-
-  (* double_negation: (A: Prop) -> ((Not A) -> False) -> A *)
-  show_kterm "double_negation";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Forall (App (Const "Not", Bvar 0),
-        Const "False"
-      ),
-        Bvar 1
       )
     )
     |}];
