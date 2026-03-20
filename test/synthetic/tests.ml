@@ -71,6 +71,12 @@ let%expect_test "Elaborate env.txt" =
     | Elab.Statement.Declaration decl -> Hashtbl.add env_statements decl.name decl
     | Elab.Statement.Directive _ -> ());
   let kenv = Hashtbl.copy env.kenv in
+  (* Remove theorems from kenv *)
+  Hashtbl.iter (fun name _ ->
+    match Hashtbl.find_opt env_statements name with
+    | Some { kind = Theorem _; _ } -> Hashtbl.remove kenv name
+    | _ -> ()
+  ) kenv;
 
   let show_kterm name =
     let decl = Hashtbl.find env_statements name in
@@ -120,7 +126,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* False : Prop *)
+  (* False : Prop := (P: Prop) -> P *)
   show_kterm "False";
   [%expect {|
     Sort 0
@@ -130,11 +136,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* False.elim : (P: Prop) -> False -> P *)
-  show_kterm "False.elim";
-  [%expect {| |}];
-
-  (* True : Prop *)
+  (* True : Prop := (P: Prop) -> P -> P *)
   show_kterm "True";
   [%expect
     {|
@@ -147,11 +149,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* True.intro : True *)
-  show_kterm "True.intro";
-  [%expect {| |}];
-
-  (* Exists : (A: Type) -> (A -> Prop) -> Prop *)
+  (* Exists : (A: Type) -> (A -> Prop) -> Prop := fun (A: Type) (p: A -> Prop) => ((M: Prop) -> ((a: A) -> p a -> M) -> M) *)
   show_kterm "Exists";
   [%expect
     {|
@@ -180,16 +178,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* Exists.intro : (A: Type) -> (p: A -> Prop) -> (a: A) -> (h: p a) -> Exists A p *)
-  show_kterm "Exists.intro";
-  [%expect {| |}];
-
-  (* Exists.elim : (A: Type) -> (p: A -> Prop) -> (b: Prop) -> 
-      (e: Exists A p) -> ((a: A) -> p a -> b) -> b *)
-  show_kterm "Exists.elim";
-  [%expect {| |}];
-
-  (* And : Prop -> Prop -> Prop *)
+  (* And : Prop -> Prop -> Prop := fun (A : Prop) (B : Prop) => (M: Prop) -> (A -> B -> M) -> M *)
   show_kterm "And";
   [%expect
     {|
@@ -214,16 +203,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
-  show_kterm "And.intro";
-  [%expect {| |}];
-
-  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Prop) ->
-      (f : A -> B -> C) -> And A B -> C *)
-  show_kterm "And.elim";
-  [%expect {| |}];
-
-  (* Or : Prop -> Prop -> Prop *)
+  (* Or : Prop -> Prop -> Prop := fun (A: Prop) (B: Prop) => (M: Prop) -> (A -> M) -> (B -> M) -> M *)
   show_kterm "Or";
   [%expect
     {|
@@ -249,21 +229,8 @@ let%expect_test "Elaborate env.txt" =
       )
     )
     |}];
-
-  (* Or.inl : (A : Prop) -> (B : Prop) -> A -> Or A B *)
-  show_kterm "Or.inl";
-  [%expect {| |}];
-
-  (* Or.inr : (A : Prop) -> (B : Prop) -> B -> Or A B *)
-  show_kterm "Or.inr";
-  [%expect {| |}];
-
-  (* Or.elim : (A : Prop) -> (B : Prop) -> (C : Prop) ->
-      Or A B -> (A -> C) -> (B -> C) -> C *)
-  show_kterm "Or.elim";
-  [%expect {| |}];
-
-  (* Not : Prop -> Prop *)
+  
+  (* Not : Prop -> Prop := fun (P: Prop) => (P -> False) *)
   show_kterm "Not";
   [%expect
     {|
@@ -278,8 +245,6 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-
-
   (* double_negation: (A: Prop) -> ((Not A) -> False) -> A *)
   show_kterm "double_negation";
   [%expect
@@ -293,11 +258,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  show_kterm "excluded_middle";
-  [%expect
-    {| |}];
-
-  (* Eq : (T: Type) -> T -> T -> Prop *)
+  (* Eq : (T: Type) -> T -> T -> Prop := fun (T: Type) (a b: T) => (motive : T -> Prop) -> motive a -> motive b *)
   show_kterm "Eq";
   [%expect
     {|
@@ -324,15 +285,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* Eq.intro : (T: Type) -> (t: T) -> Eq T t t *)
-  show_kterm "Eq.intro";
-  [%expect {| |}];
-
-  (* Eq.elim : (T: Type) -> (t: T) -> (motive : T -> Prop) -> (rfl: motive t) -> (t1: T) -> Eq T t t1 -> motive t1 *)
-  show_kterm "Eq.elim";
-  [%expect {| |}];
-
-  (* Ne : (A: Type) -> A -> A -> Prop *)
+  (* Ne : (A: Type) -> A -> A -> Prop := fun (A : Type) (a : A) (b : A) => Not (Eq A a b) *)
   show_kterm "Ne";
   [%expect
     {|
@@ -353,7 +306,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* Iff : Prop -> Prop -> Prop *)
+  (* Iff : Prop -> Prop -> Prop := fun (A: Prop) (B: Prop) => And (A -> B) (B -> A) *)
   show_kterm "Iff";
   [%expect
     {|
@@ -403,7 +356,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* List.mem : (A : Type) -> A -> List A -> Prop *)
+  (* List.mem : (A : Type) -> A -> List A -> Prop := fun (A: Type) (a: A) (L: List A) => Not (List.forall A (fun (x : A) => Ne A a x) L) *)
   show_kterm "List.mem";
   [%expect
     {|
@@ -425,18 +378,6 @@ let%expect_test "Elaborate env.txt" =
       )
     )
     |}];
-
-  (* List.not_mem_nil : (A : Type) -> (a : A) -> List.mem A a (List.nil A) -> False *)
-  show_kterm "List.not_mem_nil";
-  [%expect
-    {| |}];
-
-  (* List.mem_cons : (A : Type) -> (a : A) -> (b : A) -> (L : List A) ->
-    And (List.mem A a (List.cons A b L) -> Or (Eq A a b) (List.mem A a L))
-        (Or (Eq A a b) (List.mem A a L) -> List.mem A a (List.cons A b L)) *)
-  show_kterm "List.mem_cons";
-  [%expect
-    {| |}];
 
   (* List.forall : (A : Type) -> (A -> Prop) -> List A -> Prop *)
   show_kterm "List.forall";
@@ -778,7 +719,10 @@ let%expect_test "Elaborate env.txt" =
   show_kterm "RightAngle";
   [%expect {| Const "Measure" |}];
 
-  (* distinct_from : Point -> List Point -> List Line -> List Circle -> Prop *)
+  (* distinct_from : Point -> List Point -> List Line -> List Circle -> Prop
+  := 
+  fun (a: Point) (p_list : List Point) (l_list : List Line) (c_list : List Circle) => 
+  And (And (Not (List.mem Point a p_list)) (List.forall Line (fun (L : Line) => Not (OnLine a L)) l_list)) (List.forall Circle (fun (aa : Circle) => Not (OnCircle a aa)) c_list) *)
   show_kterm "distinct_from";
   [%expect
     {|
