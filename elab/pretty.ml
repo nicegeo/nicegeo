@@ -65,8 +65,8 @@ let rec term_to_string (e : Types.ctx) (t : term) : string =
       | _ -> "?m" ^ string_of_int idx)
   | Sort n -> sort_to_string n
   | Fun _ ->
-      let xs, args, body = flatten_fun e t in
       let saved_lctx = Hashtbl.copy e.lctx in
+      let xs, args, body = flatten_fun e t in
       let res =
         "fun "
         ^ String.concat
