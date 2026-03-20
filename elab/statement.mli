@@ -25,6 +25,7 @@ type directive =
   | Infer of term * range  (** [Infer(t, loc)] corresponds to #infer t. *)
   | Check of term * term * range  (** [Check(t, ty, loc)] corresponds to #check t : ty. *)
   | Reduce of term * range  (** [Reduce(t, loc)] corresponds to #reduce t. *)
+  | Opaque of string * range  (** [Opaque(name, loc)] corresponds to #opaque name. *)
 
 (** A parsed statement (either a declaration or a directive). *)
 type statement =

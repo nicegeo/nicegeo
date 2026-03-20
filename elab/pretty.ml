@@ -50,8 +50,9 @@ let pp_loc (r : range) =
 
 let bvar_to_string (e : Types.ctx) (idx : int) : string =
   match Hashtbl.find_opt e.lctx idx with
-  | Some (Some name, _) -> name
-  | _ -> "f" ^ string_of_int idx
+  | Some (Some name, _) -> name (* ^ "[" ^ string_of_int idx ^ "]" *)
+  | Some (None, _) -> "x" ^ string_of_int idx
+  | None -> "!" ^ string_of_int idx
 
 let rec term_to_string (e : Types.ctx) (t : term) : string =
   let t = Reduce.reduce e t in

@@ -1,7 +1,7 @@
 %token <string> IDENT
 %token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE
 %token THEOREM AXIOM DEF DEFEQ
-%token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE
+%token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE OPAQUE_DIRECTIVE
 %start <Statement.statement list> main
 %start <Term.term> single_term
 %%
@@ -35,6 +35,8 @@ directive:
     { Statement.Check (t, ty, { Term.start = $startpos(t); Term.end_ = $endpos(ty) }) }
   | REDUCE_DIRECTIVE t = term
     { Statement.Reduce (t, { Term.start = $startpos(t); Term.end_ = $endpos(t) }) }
+  | OPAQUE_DIRECTIVE name = IDENT
+    { Statement.Opaque (name, { Term.start = $startpos(name); Term.end_ = $endpos(name) }) }
 
 term:
   | t = app_term { t }

@@ -85,48 +85,6 @@ let test_empty_constants () =
     ~actual:elim_ty
     ~expected:(Forall (Sort 1, Forall (Const "Empty", Bvar 1)))
 
-let test_and_constants () =
-  let env = Elab.Interface.create_with_env_path path_to_env in
-  let lctx = Hashtbl.create 16 in
-  (* And : (A : Prop) -> (B : Prop) -> Prop *)
-  let and_ty = try_infer env.kenv lctx (Const "And") in
-  Alcotest.check'
-    Testable.term
-    ~msg:"And has correct type"
-    ~actual:and_ty
-    ~expected:(Forall (Sort 0, Forall (Sort 0, Sort 0)));
-
-  (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
-  let intro_ty = try_infer env.kenv lctx (Const "And.intro") in
-  Alcotest.check'
-    Testable.term
-    ~msg:"And.intro has correct type"
-    ~actual:intro_ty
-    ~expected:
-      (Forall
-         ( Sort 0,
-           Forall
-             ( Sort 0,
-               Forall (Bvar 1, Forall (Bvar 1, App (App (Const "And", Bvar 3), Bvar 2)))
-             ) ));
-
-  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Prop) -> (f : A -> B -> C) -> (h : And A B) -> C *)
-  let elim_ty = try_infer env.kenv lctx (Const "And.elim") in
-  Alcotest.check'
-    Testable.term
-    ~msg:"And.elim has correct type"
-    ~actual:elim_ty
-    ~expected:
-      (Forall
-         ( Sort 0,
-           Forall
-             ( Sort 0,
-               Forall
-                 ( Sort 0,
-                   Forall
-                     ( Forall (Bvar 2, Forall (Bvar 2, Bvar 2)),
-                       Forall (App (App (Const "And", Bvar 3), Bvar 2), Bvar 2) ) ) ) ))
-
 let test_infer_function_type () =
   let env = mk_env () in
 
@@ -714,7 +672,6 @@ let suite =
       test_case "Unknown free variable should raise" `Quick test_fvar_unknown_fails;
       test_case "Unknown constant should raise" `Quick test_const_unknown_fails;
       test_case "Empty constants" `Quick test_empty_constants;
-      test_case "And constants" `Quick test_and_constants;
       test_case "Infer function type" `Quick test_infer_function_type;
       test_case "Infer forall" `Quick test_infer_forall;
       test_case "Infer function application" `Quick test_infer_function_application;

@@ -17,6 +17,7 @@ type directive =
   | Infer of term * range
   | Check of term * term * range
   | Reduce of term * range
+  | Opaque of string * range
 
 type statement =
   | Declaration of declaration

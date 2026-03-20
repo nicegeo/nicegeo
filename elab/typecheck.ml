@@ -51,6 +51,7 @@ let subst = Reduce.subst
 let raise_at (tm : term) (e : Error.error_type) : 'a =
   let loc = Some tm.loc in
   raise (Error.ElabError { context = { loc; decl_name = None }; error_type = e })
+(* failwith "erm" *)
 
 type normterm =
   | Fun of string option * int * term * term
@@ -301,7 +302,8 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
       (* special case: checking type of fun. the algorithm would still work if this was together with
         the remaining cases, but it would solve less cases, as this is a common case. *)
       let ty_whnf = whnf_beta e ty in
-      match ty_whnf.inner with
+      let ty_norm = to_norm e ty_whnf in
+      match ty_norm with
       | Arrow (_, bid_ex, ty_arg_ex, ty_ret_ex) ->
           (* unify argument types first *)
           (try
@@ -323,6 +325,15 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
           Hashtbl.add e.lctx bid (arg, ty_arg);
           checktype ~depth:(depth + 1) e body ty_ret_ex_subst;
           Hashtbl.remove e.lctx bid
+      | MetaSpine _ -> (
+          (* if the expected type is a hole, go normally *)
+          let infer_ty = infertype ~depth:(depth + 1) e tm in
+          try unify ~depth:(depth + 1) e infer_ty (Hashtbl.create 0) ty (Hashtbl.create 0)
+          with Failure _ ->
+            raise_at
+              tm
+              (Error.TypeMismatch
+                 { term = tm; inferred_type = infer_ty; expected_type = ty }))
       | _ ->
           let unk = { inner = Hole 0; loc = ty.loc } in
           raise_at
@@ -361,14 +372,16 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
         | _ -> raise_at tm Error.CannotInferHole)
     | Name name -> (
         match Hashtbl.find_opt e.env name with
-        | Some entry -> entry.ty
+        | Some entry -> uniquify_bids (Reduce.delta_reduce e entry.ty false)
         | None -> raise_at tm (Error.UnknownName { name }))
     | Fun (arg, bid, ty_arg, body) ->
         check_is_type ~depth:(depth + 1) e ty_arg;
-        Hashtbl.add e.lctx bid (arg, ty_arg);
+        let new_bid = gen_binder_id () in
+        let body = subst e body (Bvar bid) (Bvar new_bid) in
+        Hashtbl.add e.lctx new_bid (arg, ty_arg);
         let ty_body = infertype ~depth:(depth + 1) e body in
-        Hashtbl.remove e.lctx bid;
-        { inner = Arrow (arg, bid, ty_arg, ty_body); loc = tm.loc }
+        Hashtbl.remove e.lctx new_bid;
+        { inner = Arrow (arg, new_bid, ty_arg, ty_body); loc = tm.loc }
     | Arrow (arg, bid, ty_arg, ty_ret) ->
         let ty_arg_ty = whnf_beta e (infertype ~depth:(depth + 1) e ty_arg) in
         let arg_sort =
@@ -471,7 +484,7 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | Name name -> (
       match Hashtbl.find_opt e.env name with
       | Some { data = Theorem axioms; _ } -> axioms
-      | Some { data = Def (axioms, _); _ } -> axioms
+      | Some { data = Def (axioms, _, _); _ } -> axioms
       | Some { data = Axiom; _ } -> [ name ]
       | None -> raise_at tm (Error.UnknownName { name }))
   | Fun (_, _, ty_arg, body) ->
@@ -481,38 +494,45 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
   | _ -> []
 
-(** Needs to be trusted for faithfulness of meaning. *)
-let rec delta_reduce (e : ctx) (tm : term) : term =
-  match tm.inner with
-  | Name name -> (
-      match Hashtbl.find_opt e.env name with
-      (* we need to uniquify binder ids here when replacing with the definition *)
-      | Some { data = Def (_, body); _ } -> delta_reduce e (uniquify_bids body)
-      | _ -> tm)
-  | Fun (arg, bid, ty_arg, body) ->
-      let ty_arg_red = delta_reduce e ty_arg in
-      let body_red = delta_reduce e body in
-      { inner = Fun (arg, bid, ty_arg_red, body_red); loc = tm.loc }
-  | Arrow (arg, bid, ty_arg, ty_ret) ->
-      let ty_arg_red = delta_reduce e ty_arg in
-      let ty_ret_red = delta_reduce e ty_ret in
-      { inner = Arrow (arg, bid, ty_arg_red, ty_ret_red); loc = tm.loc }
-  | App (f, arg) ->
-      let f_red = delta_reduce e f in
-      let arg_red = delta_reduce e arg in
-      { inner = App (f_red, arg_red); loc = tm.loc }
-  | _ -> tm
-
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
-  let tm_delta = delta_reduce e tm in
-  create_metas e tm_delta [];
+  create_metas e tm [];
+  let tm_delta = Reduce.delta_reduce e tm false in
   (match ty with
   | Some ty -> checktype e tm_delta ty
   | None -> ignore (infertype e tm_delta));
-  let tm_filled = replace_metas e tm_delta in
+  let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
   let tm_reduced = Reduce.reduce e tm_filled in
   tm_reduced
+
+(* ok i think what i want to do is impossible with the current kernel interface.
+like i can't have
+- no definitions in kernel
+- delta-reduced theorems in kernel
+- un-delta-reduced theorems in kernel
+- not keep around the definitions after opaquification
+like when i opaquify, i technically would need to like
+go back to all previous declarations and un-delta-reduce their types
+- no. 
+or never delta reduce them in the first place
+- strictly better than the above. but then what would i do. have the kernel typecheck the
+  delta-reduced version of the theorem but just insert the un-delta-reduced term? this is 
+  strictly what needs to happen. so might as well just add definitions to the kernel...
+
+ok to summarize why definitions in the kernel are needed:
+- we want to have those "definition-like axioms" as definitions rather than actual axioms. in other words we want
+to *prove* things like False, Exists, And, etc. and their constructors/eliminators rather than providing them as axioms.
+- with these definitions, we cannot work with fully delta-reduced terms in the elaborator. i think this intuitively 
+makes sense, expanding all definitions complicates terms and the unification algorithm stops being able to handle it.
+- in particular, when typechecking we almost never want to delta-reduce Exists, And, Or, Eq in the elaborator. we only 
+want to do so inside their respective constructor & eliminator proofs, and have all other proofs use those. 
+(Not, Ne can stay as they're simple enough that it doesn't cause issues)
+- so, when we create a definition and prove their cons and elim, we can write #opaque name afterwards to mark that definition
+as "opaque" so that it won't be delta-reduced in the future. 
+- we could just do allat in the elaborator. but then stuff wouldnt be kernel trusted. but we already trust delta reduction for
+faithfulness of meaning so it doesnt actually make anything worse. ok.
+- it's still a concern. i would slightly lean towards having definitions in the kernel just to make it closer to what the user types.
+*)
 
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
@@ -529,9 +549,15 @@ let process_decl (e : ctx) (d : declaration) : unit =
       | Theorem body | Def body -> (
           let ty_filled = elaborate e d.ty None in
           check_is_type e ty_filled;
-          let proof_filled = elaborate e body (Some ty_filled) in
-          let ty_k = conv_to_kterm ty_filled in
-          let proof_k = conv_to_kterm proof_filled in
+          let proof_filled =
+            elaborate e body (Some (Reduce.delta_reduce e ty_filled false))
+          in
+          let ty_k =
+            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
+          in
+          let proof_k =
+            Reduce.delta_reduce e proof_filled true |> Reduce.reduce e |> conv_to_kterm
+          in
 
           try
             let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
@@ -549,8 +575,8 @@ let process_decl (e : ctx) (d : declaration) : unit =
                   data =
                     (match d.kind with
                     | Theorem _ -> Theorem (list_axioms_used e proof_filled)
-                    | Def _ -> Def (list_axioms_used e proof_filled, proof_filled)
-                    | Axiom -> Axiom);
+                    | Def _ -> Def (list_axioms_used e proof_filled, proof_filled, false)
+                    | Axiom -> assert false);
                 };
               Hashtbl.add e.kenv d.name ty_k)
             else
@@ -570,7 +596,9 @@ let process_decl (e : ctx) (d : declaration) : unit =
       | Axiom ->
           let ty_filled = elaborate e d.ty None in
           check_is_type e ty_filled;
-          let ty_k = conv_to_kterm ty_filled in
+          let ty_k =
+            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
+          in
           Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
           Hashtbl.add e.kenv d.name ty_k
   with Error.ElabError x ->

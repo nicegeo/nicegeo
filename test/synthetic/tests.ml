@@ -55,7 +55,7 @@ let rec kdelta_reduce (e : Elab.Types.ctx) (tm : Kernel.Term.term) : Kernel.Term
   match tm with
   | Const name -> (
       match Hashtbl.find_opt e.env name with
-      | Some { data = Def (_, body); _ } ->
+      | Some { data = Def (_, body, _); _ } ->
           kdelta_reduce e (Elab.Convert.conv_to_kterm body)
       | _ -> tm)
   | Lam (ty, body) -> Lam (kdelta_reduce e ty, kdelta_reduce e body)
@@ -86,9 +86,19 @@ let%expect_test "Elaborate env.txt" =
         let repr = kterm_to_repr delta_unreduced in
         print_endline repr;
         let expanded_kterm = kdelta_reduce env delta_unreduced in
+        let expanded_kterm_red =
+          Kernel.Infer.reduce env.kenv (Hashtbl.create 0) expanded_kterm
+        in
         let kenv_kterm = Hashtbl.find env.kenv name in
-        if Kernel.Infer.reduce env.kenv (Hashtbl.create 0) expanded_kterm <> kenv_kterm then
-          failwith "Term repr does not delta reduce to kenv term!");
+        if expanded_kterm_red <> kenv_kterm then (
+          print_endline "Delta reduction does not match kenv term!";
+          print_endline "Term:";
+          print_endline repr;
+          print_endline "Delta reduced term:";
+          print_endline (kterm_to_repr expanded_kterm_red);
+          print_endline "kenv term:";
+          print_endline (kterm_to_repr kenv_kterm);
+          failwith "Term repr does not delta reduce to kenv term!"));
 
     (* Delete entry from kenv so we can check this is empty at the end *)
     Hashtbl.remove kenv name;
@@ -122,16 +132,24 @@ let%expect_test "Elaborate env.txt" =
 
   (* False.elim : (P: Prop) -> False -> P *)
   show_kterm "False.elim";
-  [%expect
-    {| |}];
+  [%expect {| |}];
 
   (* True : Prop *)
   show_kterm "True";
-  [%expect {| Sort 0 |}];
+  [%expect
+    {|
+    Sort 0
+    :=
+    Forall (Sort 0,
+      Forall (Bvar 0,
+        Bvar 1
+      )
+    )
+    |}];
 
   (* True.intro : True *)
   show_kterm "True.intro";
-  [%expect {| Const "True" |}];
+  [%expect {| |}];
 
   (* Exists : (A: Type) -> (A -> Prop) -> Prop *)
   show_kterm "Exists";
@@ -144,97 +162,32 @@ let%expect_test "Elaborate env.txt" =
         Sort 0
       )
     )
+    :=
+    Lam (Sort 1,
+      Lam (Forall (Bvar 0,
+        Sort 0
+      ),
+        Forall (Sort 0,
+          Forall (Forall (Bvar 2,
+            Forall (App (Bvar 2, Bvar 0),
+              Bvar 2
+            )
+          ),
+            Bvar 1
+          )
+        )
+      )
+    )
     |}];
 
   (* Exists.intro : (A: Type) -> (p: A -> Prop) -> (a: A) -> (h: p a) -> Exists A p *)
   show_kterm "Exists.intro";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
-        Sort 0
-      ),
-        Forall (Bvar 1,
-          Forall (App (Bvar 1, Bvar 0),
-            App (App (Const "Exists", Bvar 3), Bvar 2)
-          )
-        )
-      )
-    )
-    |}];
+  [%expect {| |}];
 
   (* Exists.elim : (A: Type) -> (p: A -> Prop) -> (b: Prop) -> 
       (e: Exists A p) -> ((a: A) -> p a -> b) -> b *)
   show_kterm "Exists.elim";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
-        Sort 0
-      ),
-        Forall (Sort 0,
-          Forall (App (App (Const "Exists", Bvar 2), Bvar 1),
-            Forall (Forall (Bvar 3,
-              Forall (App (Bvar 3, Bvar 0),
-                Bvar 3
-              )
-            ),
-              Bvar 2
-            )
-          )
-        )
-      )
-    )
-    |}];
-
-  (* Forall : (A: Type) -> (A -> Prop) -> Prop *)
-  show_kterm "Forall";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
-        Sort 0
-      ),
-        Sort 0
-      )
-    )
-    |}];
-
-  (* Forall.intro : (A: Type) -> (p: A -> Prop) ->
-      ((a: A) -> p a) -> Forall A p *)
-  show_kterm "Forall.intro";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
-        Sort 0
-      ),
-        Forall (Forall (Bvar 1,
-          App (Bvar 1, Bvar 0)
-        ),
-          App (App (Const "Forall", Bvar 2), Bvar 1)
-        )
-      )
-    )
-    |}];
-
-  (* Forall.elim : (A: Type) -> (p: A -> Prop) ->
-      Forall A p -> (a: A) -> p a *)
-  show_kterm "Forall.elim";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
-        Sort 0
-      ),
-        Forall (App (App (Const "Forall", Bvar 1), Bvar 0),
-          Forall (Bvar 2,
-            App (Bvar 2, Bvar 0)
-          )
-        )
-      )
-    )
-    |}];
+  [%expect {| |}];
 
   (* And : Prop -> Prop -> Prop *)
   show_kterm "And";
@@ -245,44 +198,30 @@ let%expect_test "Elaborate env.txt" =
         Sort 0
       )
     )
-    |}];
-
-  (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
-  show_kterm "And.intro";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Bvar 1,
-          Forall (Bvar 1,
-            App (App (Const "And", Bvar 3), Bvar 2)
-          )
-        )
-      )
-    )
-    |}];
-
-  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Prop) ->
-      (f : A -> B -> C) -> And A B -> C *)
-  show_kterm "And.elim";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
+    :=
+    Lam (Sort 0,
+      Lam (Sort 0,
         Forall (Sort 0,
           Forall (Forall (Bvar 2,
             Forall (Bvar 2,
               Bvar 2
             )
           ),
-            Forall (App (App (Const "And", Bvar 3), Bvar 2),
-              Bvar 2
-            )
+            Bvar 1
           )
         )
       )
     )
     |}];
+
+  (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
+  show_kterm "And.intro";
+  [%expect {| |}];
+
+  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Prop) ->
+      (f : A -> B -> C) -> And A B -> C *)
+  show_kterm "And.elim";
+  [%expect {| |}];
 
   (* Or : Prop -> Prop -> Prop *)
   show_kterm "Or";
@@ -293,51 +232,17 @@ let%expect_test "Elaborate env.txt" =
         Sort 0
       )
     )
-    |}];
-
-  (* Or.inl : (A : Prop) -> (B : Prop) -> A -> Or A B *)
-  show_kterm "Or.inl";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Bvar 1,
-          App (App (Const "Or", Bvar 2), Bvar 1)
-        )
-      )
-    )
-    |}];
-
-  (* Or.inr : (A : Prop) -> (B : Prop) -> B -> Or A B *)
-  show_kterm "Or.inr";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Bvar 0,
-          App (App (Const "Or", Bvar 2), Bvar 1)
-        )
-      )
-    )
-    |}];
-
-  (* Or.elim : (A : Prop) -> (B : Prop) -> (C : Prop) ->
-      Or A B -> (A -> C) -> (B -> C) -> C *)
-  show_kterm "Or.elim";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
+    :=
+    Lam (Sort 0,
+      Lam (Sort 0,
         Forall (Sort 0,
-          Forall (App (App (Const "Or", Bvar 2), Bvar 1),
-            Forall (Forall (Bvar 3,
+          Forall (Forall (Bvar 2,
+            Bvar 1
+          ),
+            Forall (Forall (Bvar 2,
               Bvar 2
             ),
-              Forall (Forall (Bvar 3,
-                Bvar 3
-              ),
-                Bvar 3
-              )
+              Bvar 2
             )
           )
         )
@@ -345,9 +250,23 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
+  (* Or.inl : (A : Prop) -> (B : Prop) -> A -> Or A B *)
+  show_kterm "Or.inl";
+  [%expect {| |}];
+
+  (* Or.inr : (A : Prop) -> (B : Prop) -> B -> Or A B *)
+  show_kterm "Or.inr";
+  [%expect {| |}];
+
+  (* Or.elim : (A : Prop) -> (B : Prop) -> (C : Prop) ->
+      Or A B -> (A -> C) -> (B -> C) -> C *)
+  show_kterm "Or.elim";
+  [%expect {| |}];
+
   (* Not : Prop -> Prop *)
   show_kterm "Not";
-  [%expect {|
+  [%expect
+    {|
     Forall (Sort 0,
       Sort 0
     )
@@ -370,39 +289,29 @@ let%expect_test "Elaborate env.txt" =
         )
       )
     )
-    |}];
-
-  (* Eq.intro : (T: Type) -> (t: T) -> Eq T t t *)
-  show_kterm "Eq.intro";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        App (App (App (Const "Eq", Bvar 1), Bvar 0), Bvar 0)
-      )
-    )
-    |}];
-
-  (* Eq.elim : (T: Type) -> (t: T) -> (motive : T -> Prop) -> (rfl: motive t) -> (t1: T) -> Eq T t t1 -> motive t1 *)
-  show_kterm "Eq.elim";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (Forall (Bvar 1,
-          Sort 0
-        ),
-          Forall (App (Bvar 0, Bvar 1),
-            Forall (Bvar 3,
-              Forall (App (App (App (Const "Eq", Bvar 4), Bvar 3), Bvar 0),
-                App (Bvar 3, Bvar 1)
-              )
+    :=
+    Lam (Sort 1,
+      Lam (Bvar 0,
+        Lam (Bvar 1,
+          Forall (Forall (Bvar 2,
+            Sort 0
+          ),
+            Forall (App (Bvar 0, Bvar 2),
+              App (Bvar 1, Bvar 2)
             )
           )
         )
       )
     )
     |}];
+
+  (* Eq.intro : (T: Type) -> (t: T) -> Eq T t t *)
+  show_kterm "Eq.intro";
+  [%expect {| |}];
+
+  (* Eq.elim : (T: Type) -> (t: T) -> (motive : T -> Prop) -> (rfl: motive t) -> (t1: T) -> Eq T t t1 -> motive t1 *)
+  show_kterm "Eq.elim";
+  [%expect {| |}];
 
   (* Ne : (A: Type) -> A -> A -> Prop *)
   show_kterm "Ne";

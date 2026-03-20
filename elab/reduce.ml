@@ -43,3 +43,26 @@ let rec reduce (e : Types.ctx) (tm : term) : term =
       let ty_ret = reduce e ty_ret in
       { inner = Arrow (arg, bid, ty_arg, ty_ret); loc = tm.loc }
   | _ -> tm
+
+(** Needs to be trusted for faithfulness of meaning. *)
+let rec delta_reduce (e : Types.ctx) (tm : term) (full : bool) : term =
+  match tm.inner with
+  | Name name -> (
+      match Hashtbl.find_opt e.env name with
+      (* we need to uniquify binder ids here when replacing with the definition *)
+      | Some { data = Def (_, body, opaque); _ } when full || not opaque ->
+          delta_reduce e (uniquify_bids body) full
+      | _ -> tm)
+  | Fun (arg, bid, ty_arg, body) ->
+      let ty_arg_red = delta_reduce e ty_arg full in
+      let body_red = delta_reduce e body full in
+      { inner = Fun (arg, bid, ty_arg_red, body_red); loc = tm.loc }
+  | Arrow (arg, bid, ty_arg, ty_ret) ->
+      let ty_arg_red = delta_reduce e ty_arg full in
+      let ty_ret_red = delta_reduce e ty_ret full in
+      { inner = Arrow (arg, bid, ty_arg_red, ty_ret_red); loc = tm.loc }
+  | App (f, arg) ->
+      let f_red = delta_reduce e f full in
+      let arg_red = delta_reduce e arg full in
+      { inner = App (f_red, arg_red); loc = tm.loc }
+  | _ -> tm

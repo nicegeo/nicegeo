@@ -54,10 +54,16 @@ let rec uniquify_bids (tm : term) : term =
   | Fun (arg, bid, ty_arg, body) ->
       let new_bid = gen_binder_id () in
       let body = subst body (Bvar bid) (Bvar new_bid) in
-      { inner = Fun (arg, new_bid, uniquify_bids ty_arg, uniquify_bids body); loc = tm.loc }
+      {
+        inner = Fun (arg, new_bid, uniquify_bids ty_arg, uniquify_bids body);
+        loc = tm.loc;
+      }
   | Arrow (arg, bid, ty_arg, ty_ret) ->
       let new_bid = gen_binder_id () in
       let ty_ret = subst ty_ret (Bvar bid) (Bvar new_bid) in
-      { inner = Arrow (arg, new_bid, uniquify_bids ty_arg, uniquify_bids ty_ret); loc = tm.loc }
+      {
+        inner = Arrow (arg, new_bid, uniquify_bids ty_arg, uniquify_bids ty_ret);
+        loc = tm.loc;
+      }
   | App (f, arg) -> { inner = App (uniquify_bids f, uniquify_bids arg); loc = tm.loc }
   | _ -> tm

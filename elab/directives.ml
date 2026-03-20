@@ -8,7 +8,7 @@ let process_directive (e : ctx) (dir : directive) : unit =
       match Hashtbl.find_opt e.env prop_name with
       | Some record -> (
           match record.data with
-          | Theorem used_axioms | Def (used_axioms, _) ->
+          | Theorem used_axioms | Def (used_axioms, _, _) ->
               print_endline (prefix ^ "Axioms used in " ^ prop_name ^ ":");
               List.iter print_endline used_axioms
           | Axiom -> print_endline (prefix ^ prop_name ^ " is an axiom itself."))
@@ -34,3 +34,19 @@ let process_directive (e : ctx) (dir : directive) : unit =
       let t = Typecheck.elaborate e t None in
       let reduced_term = Reduce.reduce e t in
       print_endline (prefix ^ "#reduce: " ^ Pretty.term_to_string e reduced_term)
+  | Opaque (name, loc) -> (
+      match Hashtbl.find_opt e.env name with
+      | Some record -> (
+          match record.data with
+          | Def (axioms, body, false) ->
+              Hashtbl.replace e.env name { record with data = Def (axioms, body, true) }
+          | Def (_, _, true) ->
+              print_endline
+                ("[" ^ Pretty.pp_loc loc ^ "] Warning: '" ^ name ^ "' is already opaque.")
+          | _ ->
+              print_endline
+                ("[" ^ Pretty.pp_loc loc ^ "] Error: '" ^ name
+               ^ "' exists but is not a definition."))
+      | None ->
+          print_endline
+            ("[" ^ Pretty.pp_loc loc ^ "] Error: Definition '" ^ name ^ "' not found."))

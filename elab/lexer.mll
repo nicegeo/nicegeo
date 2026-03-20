@@ -39,6 +39,7 @@ rule token = parse
   | "#infer"    { INFER_DIRECTIVE }
   | "#check"    { CHECK_DIRECTIVE }
   | "#reduce"   { REDUCE_DIRECTIVE }
+  | "#opaque"   { OPAQUE_DIRECTIVE }
   | ident as id {
       IDENT id
     }
