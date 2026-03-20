@@ -1,0 +1,2308 @@
+=== Kernel term pretty-printing ===
+
+Kernel term: Forall (Sort 1, Forall (Sort 0, Sort 0))
+  Pretty:         (_0 : Type) -> (_1 : Prop) -> Prop
+
+Kernel term with Bvars: (A : Type) -> (B : Prop) -> And A B
+  Pretty: (_0 : Type) -> (_1 : Prop) -> And _0 _1
+
+With default names: (_0 : Type) -> (_1 : Prop) -> _1
+With custom names (for Bvars): (_2 : Type) -> (_3 : Prop) -> _3
+
+App spine f a b c:
+  Pretty: f a b c
+
+=== Elaborator term pretty-printing ===
+
+Elab term (A : Type) -> (B : Prop) -> B:
+  fun (A : Type) (B : Prop) => B
+
+Axiom Point : Type  =>  Axiom Point : Type
+Theorem id : (A : Type) -> (x : A) -> A := ...  => 
+Theorem id : (A : Type) -> (x : f2) -> A := fun (x3 : Type) (x4 : f4) => f4
+
+Testing `elab'.
+This run has ID `IZ3VKR0P'.
+
+  [OK]          Pretty-printing                 0   Function args flattened.
+  [OK]          Pretty-printing                 1   Elab hole.
+  [OK]          Pretty-printing                 2   Elab arrow no name.
+  [OK]          Kernel Pretty-printing          0   Kernel sort names.
+  [OK]          Nice Messages                   0   Default tone.
+  [OK]          Nice Messages                   1   Cheerful tone.
+  [OK]          Nice Messages                   2   Pick message after error.
+
+Full test results in `~/dev/system-e-kernel/_build/default/test/elab/_build/_tests/elab'.
+Test Successful in 0.001s. 7 tests run.
+=== Kernel term pretty-printing ===
+
+Kernel term: Forall (Sort 1, Forall (Sort 0, Sort 0))
+  Pretty:         (_0 : Type) -> (_1 : Prop) -> Prop
+
+Kernel term with Bvars: (A : Type) -> (B : Prop) -> And A B
+  Pretty: (_0 : Type) -> (_1 : Prop) -> And _0 _1
+
+With default names: (_0 : Type) -> (_1 : Prop) -> _1
+With custom names (for Bvars): (_2 : Type) -> (_3 : Prop) -> _3
+
+App spine f a b c:
+  Pretty: f a b c
+
+=== Elaborator term pretty-printing ===
+
+Elab term (A : Type) -> (B : Prop) -> B:
+  fun (A : Type) (B : Prop) => B
+
+Axiom Point : Type  =>  Axiom Point : Type
+Theorem id : (A : Type) -> (x : A) -> A := ...  => 
+Theorem id : (A : Type) -> (x : f2) -> A := fun (x3 : Type) (x4 : f4) => f4
+
+Testing `elab'.
+This run has ID `IZ3VKR0P'.
+
+  [OK]          Pretty-printing                 0   Function args flattened.
+  [OK]          Pretty-printing                 1   Elab hole.
+  [OK]          Pretty-printing                 2   Elab arrow no name.
+  [OK]          Kernel Pretty-printing          0   Kernel sort names.
+  [OK]          Nice Messages                   0   Default tone.
+  [OK]          Nice Messages                   1   Cheerful tone.
+  [OK]          Nice Messages                   2   Pick message after error.
+
+Full test results in `~/dev/system-e-kernel/_build/default/test/elab/_build/_tests/elab'.
+Test Successful in 0.001s. 7 tests run.
+Testing `kernel'.
+This run has ID `I7T5RZMQ'.
+
+  [OK]          kernel          0   Constant lookup.
+  [OK]          kernel          1   Free variable lookup.
+  [OK]          kernel          2   Unknown free variable should raise.
+  [OK]          kernel          3   Unknown constant should raise.
+  [OK]          kernel          4   Empty constants.
+  [OK]          kernel          5   And constants.
+  [OK]          kernel          6   Infer function type.
+  [OK]          kernel          7   Infer forall.
+  [OK]          kernel          8   Infer function application.
+  [OK]          kernel          9   Substitution of bound variables.
+  [OK]          kernel         10   Rebinding bound variables.
+  [OK]          kernel         11   Symmetry of equality.
+  [OK]          kernel         12   Measure sanity checks.
+  [OK]          kernel         13   Measure application.
+  [OK]          kernel         14   Kernel reduction.
+
+Full test results in `~/dev/system-e-kernel/_build/default/test/kernel/_build/_tests/kernel'.
+Test Successful in 0.041s. 15 tests run.
+Testing `kernel'.
+This run has ID `I7T5RZMQ'.
+
+  [OK]          kernel          0   Constant lookup.
+  [OK]          kernel          1   Free variable lookup.
+  [OK]          kernel          2   Unknown free variable should raise.
+  [OK]          kernel          3   Unknown constant should raise.
+  [OK]          kernel          4   Empty constants.
+  [OK]          kernel          5   And constants.
+  [OK]          kernel          6   Infer function type.
+  [OK]          kernel          7   Infer forall.
+  [OK]          kernel          8   Infer function application.
+  [OK]          kernel          9   Substitution of bound variables.
+  [OK]          kernel         10   Rebinding bound variables.
+  [OK]          kernel         11   Symmetry of equality.
+  [OK]          kernel         12   Measure sanity checks.
+  [OK]          kernel         13   Measure application.
+  [OK]          kernel         14   Kernel reduction.
+
+Full test results in `~/dev/system-e-kernel/_build/default/test/kernel/_build/_tests/kernel'.
+Test Successful in 0.041s. 15 tests run.
+File "test/synthetic/tests.ml", line 1, characters 0-0:
+diff --git a/_build/default/test/synthetic/tests.ml b/_build/.sandbox/1b897cb6d60e0e5be6b6a439426279c2/default/test/synthetic/tests.ml.corrected
+index ac8fecb..11e180b 100644
+--- a/_build/default/test/synthetic/tests.ml
++++ b/_build/.sandbox/1b897cb6d60e0e5be6b6a439426279c2/default/test/synthetic/tests.ml.corrected
+@@ -351,6 +351,12 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Sort 0,
+       Sort 0
+     )
++    :=
++    Lam (Sort 0,
++      Forall (Bvar 0,
++        Const "False"
++      )
++    )
+     |}];
+ 
+   (* Eq : (T: Type) -> T -> T -> Prop *)
+@@ -409,6 +415,14 @@ let%expect_test "Elaborate env.txt" =
+         )
+       )
+     )
++    :=
++    Lam (Sort 1,
++      Lam (Bvar 0,
++        Lam (Bvar 1,
++          App (Const "Not", App (App (App (Const "Eq", Bvar 2), Bvar 1), Bvar 0))
++        )
++      )
++    )
+     |}];
+ 
+   (* Iff : Prop -> Prop -> Prop *)
+@@ -420,6 +434,16 @@ let%expect_test "Elaborate env.txt" =
+         Sort 0
+       )
+     )
++    :=
++    Lam (Sort 0,
++      Lam (Sort 0,
++        App (App (Const "And", Forall (Bvar 1,
++          Bvar 1
++        )), Forall (Bvar 0,
++          Bvar 2
++        ))
++      )
++    )
+     |}];
+ 
+   (* List : Type -> Type *)
+@@ -470,9 +494,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Sort 1,
+       Forall (Bvar 0,
+-        Forall (App (App (App (Const "List.mem", Bvar 1), Bvar 0), App (Const "List.nil", Bvar 1)),
+-          Const "False"
+-        )
++        App (Const "Not", App (App (App (Const "List.mem", Bvar 1), Bvar 0), App (Const "List.nil", Bvar 1)))
+       )
+     )
+     |}];
+@@ -487,11 +509,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Bvar 0,
+         Forall (Bvar 1,
+           Forall (App (Const "List", Bvar 2),
+-            App (App (Const "And", Forall (App (App (App (Const "List.mem", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0)),
+-              App (App (Const "Or", App (App (App (Const "Eq", Bvar 4), Bvar 3), Bvar 2)), App (App (App (Const "List.mem", Bvar 4), Bvar 3), Bvar 1))
+-            )), Forall (App (App (Const "Or", App (App (App (Const "Eq", Bvar 3), Bvar 2), Bvar 1)), App (App (App (Const "List.mem", Bvar 3), Bvar 2), Bvar 0)),
+-              App (App (App (Const "List.mem", Bvar 4), Bvar 3), App (App (App (Const "List.cons", Bvar 4), Bvar 2), Bvar 1))
+-            ))
++            App (App (Const "Iff", App (App (App (Const "List.mem", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0))), App (App (Const "Or", App (App (App (Const "Eq", Bvar 3), Bvar 2), Bvar 1)), App (App (App (Const "List.mem", Bvar 3), Bvar 2), Bvar 0)))
+           )
+         )
+       )
+@@ -538,11 +556,7 @@ let%expect_test "Elaborate env.txt" =
+       ),
+         Forall (Bvar 1,
+           Forall (App (Const "List", Bvar 2),
+-            App (App (Const "And", Forall (App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0)),
+-              App (App (Const "And", App (Bvar 3, Bvar 2)), App (App (App (Const "List.forall", Bvar 4), Bvar 3), Bvar 1))
+-            )), Forall (App (App (Const "And", App (Bvar 2, Bvar 1)), App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)),
+-              App (App (App (Const "List.forall", Bvar 4), Bvar 3), App (App (App (Const "List.cons", Bvar 4), Bvar 2), Bvar 1))
+-            ))
++            App (App (Const "Iff", App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0))), App (App (Const "And", App (Bvar 2, Bvar 1)), App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)))
+           )
+         )
+       )
+@@ -581,9 +595,7 @@ let%expect_test "Elaborate env.txt" =
+   [%expect
+     {|
+     Forall (Const "Measure",
+-      Forall (App (App (Const "Lt", Bvar 0), Bvar 0),
+-        Const "False"
+-      )
++      App (Const "Not", App (App (Const "Lt", Bvar 0), Bvar 0))
+     )
+     |}];
+ 
+@@ -622,9 +634,7 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Measure",
+  File "test/synthetic/tests.ml", line 1, characters 0-0:
+diff --git a/_build/default/test/synthetic/tests.ml b/_build/.sandbox/1b897cb6d60e0e5be6b6a439426279c2/default/test/synthetic/tests.ml.corrected
+index ac8fecb..11e180b 100644
+--- a/_build/default/test/synthetic/tests.ml
++++ b/_build/.sandbox/1b897cb6d60e0e5be6b6a439426279c2/default/test/synthetic/tests.ml.corrected
+@@ -351,6 +351,12 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Sort 0,
+       Sort 0
+     )
++    :=
++    Lam (Sort 0,
++      Forall (Bvar 0,
++        Const "False"
++      )
++    )
+     |}];
+ 
+   (* Eq : (T: Type) -> T -> T -> Prop *)
+@@ -409,6 +415,14 @@ let%expect_test "Elaborate env.txt" =
+         )
+       )
+     )
++    :=
++    Lam (Sort 1,
++      Lam (Bvar 0,
++        Lam (Bvar 1,
++          App (Const "Not", App (App (App (Const "Eq", Bvar 2), Bvar 1), Bvar 0))
++        )
++      )
++    )
+     |}];
+ 
+   (* Iff : Prop -> Prop -> Prop *)
+@@ -420,6 +434,16 @@ let%expect_test "Elaborate env.txt" =
+         Sort 0
+       )
+     )
++    :=
++    Lam (Sort 0,
++      Lam (Sort 0,
++        App (App (Const "And", Forall (Bvar 1,
++          Bvar 1
++        )), Forall (Bvar 0,
++          Bvar 2
++        ))
++      )
++    )
+     |}];
+ 
+   (* List : Type -> Type *)
+@@ -470,9 +494,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Sort 1,
+       Forall (Bvar 0,
+-        Forall (App (App (App (Const "List.mem", Bvar 1), Bvar 0), App (Const "List.nil", Bvar 1)),
+-          Const "False"
+-        )
++        App (Const "Not", App (App (App (Const "List.mem", Bvar 1), Bvar 0), App (Const "List.nil", Bvar 1)))
+       )
+     )
+     |}];
+@@ -487,11 +509,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Bvar 0,
+         Forall (Bvar 1,
+           Forall (App (Const "List", Bvar 2),
+-            App (App (Const "And", Forall (App (App (App (Const "List.mem", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0)),
+-              App (App (Const "Or", App (App (App (Const "Eq", Bvar 4), Bvar 3), Bvar 2)), App (App (App (Const "List.mem", Bvar 4), Bvar 3), Bvar 1))
+-            )), Forall (App (App (Const "Or", App (App (App (Const "Eq", Bvar 3), Bvar 2), Bvar 1)), App (App (App (Const "List.mem", Bvar 3), Bvar 2), Bvar 0)),
+-              App (App (App (Const "List.mem", Bvar 4), Bvar 3), App (App (App (Const "List.cons", Bvar 4), Bvar 2), Bvar 1))
+-            ))
++            App (App (Const "Iff", App (App (App (Const "List.mem", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0))), App (App (Const "Or", App (App (App (Const "Eq", Bvar 3), Bvar 2), Bvar 1)), App (App (App (Const "List.mem", Bvar 3), Bvar 2), Bvar 0)))
+           )
+         )
+       )
+@@ -538,11 +556,7 @@ let%expect_test "Elaborate env.txt" =
+       ),
+         Forall (Bvar 1,
+           Forall (App (Const "List", Bvar 2),
+-            App (App (Const "And", Forall (App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0)),
+-              App (App (Const "And", App (Bvar 3, Bvar 2)), App (App (App (Const "List.forall", Bvar 4), Bvar 3), Bvar 1))
+-            )), Forall (App (App (Const "And", App (Bvar 2, Bvar 1)), App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)),
+-              App (App (App (Const "List.forall", Bvar 4), Bvar 3), App (App (App (Const "List.cons", Bvar 4), Bvar 2), Bvar 1))
+-            ))
++            App (App (Const "Iff", App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0))), App (App (Const "And", App (Bvar 2, Bvar 1)), App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)))
+           )
+         )
+       )
+@@ -581,9 +595,7 @@ let%expect_test "Elaborate env.txt" =
+   [%expect
+     {|
+     Forall (Const "Measure",
+-      Forall (App (App (Const "Lt", Bvar 0), Bvar 0),
+-        Const "False"
+-      )
++      App (Const "Not", App (App (Const "Lt", Bvar 0), Bvar 0))
+     )
+     |}];
+ 
+@@ -622,9 +634,7 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Measure",
+       Forall (Const "Measure",
+         Forall (App (App (Const "Lt", Bvar 1), Bvar 0),
+-          Forall (App (App (Const "Lt", Bvar 1), Bvar 2),
+-            Const "False"
+-          )
++          App (Const "Not", App (App (Const "Lt", Bvar 1), Bvar 2))
+         )
+       )
+     )
+@@ -859,6 +869,20 @@ let%expect_test "Elaborate env.txt" =
+         )
+       )
+     )
++    :=
++    Lam (Const "Point",
++      Lam (App (Const "List", Const "Point"),
++        Lam (App (Const "List", Const "Line"),
++          Lam (App (Const "List", Const "Circle"),
++            App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 3), Bvar 2))), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
++              App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 0))
++            )), Bvar 1))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
++              App (Const "Not", App (App (Const "OnCircle", Bvar 4), Bvar 0))
++            )), Bvar 0))
++          )
++        )
++      )
++    )
+     |}];
+ 
+   (* pt_exists :
+@@ -871,17 +895,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (App (Const "List", Const "Line"),
+         Forall (App (Const "List", Const "Circle"),
+           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-            App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 3),
+-              Const "False"
+-            )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-              Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                Const "False"
+-              )
+-            )), Bvar 2))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-              Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                Const "False"
+-              )
+-            )), Bvar 1))
++            App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1)
+           ))
+         )
+       )
+@@ -899,21 +913,9 @@ let%expect_test "Elaborate env.txt" =
+       Forall (App (Const "List", Const "Point"),
+         Forall (App (Const "List", Const "Line"),
+           Forall (App (Const "List", Const "Circle"),
+-            Forall (Forall (App (App (App (Const "List.mem", Const "Line"), Bvar 3), Bvar 1),
+-              Const "False"
+-            ),
++            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 3), Bvar 1)),
+               App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 5)), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 4),
+-                  Const "False"
+-                )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                  Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                    Const "False"
+-                  )
+-                )), Bvar 3))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                  Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                    Const "False"
+-                  )
+-                )), Bvar 2)))
++                App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+               ))
+             )
+           )
+@@ -938,24 +940,10 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (Const "List", Const "Circle"),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 5),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 6),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4),
+-               Forall (Const "Measure",
+         Forall (App (App (Const "Lt", Bvar 1), Bvar 0),
+-          Forall (App (App (Const "Lt", Bvar 1), Bvar 2),
+-            Const "False"
+-          )
++          App (Const "Not", App (App (Const "Lt", Bvar 1), Bvar 2))
+         )
+       )
+     )
+@@ -859,6 +869,20 @@ let%expect_test "Elaborate env.txt" =
+         )
+       )
+     )
++    :=
++    Lam (Const "Point",
++      Lam (App (Const "List", Const "Point"),
++        Lam (App (Const "List", Const "Line"),
++          Lam (App (Const "List", Const "Circle"),
++            App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 3), Bvar 2))), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
++              App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 0))
++            )), Bvar 1))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
++              App (Const "Not", App (App (Const "OnCircle", Bvar 4), Bvar 0))
++            )), Bvar 0))
++          )
++        )
++      )
++    )
+     |}];
+ 
+   (* pt_exists :
+@@ -871,17 +895,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (App (Const "List", Const "Line"),
+         Forall (App (Const "List", Const "Circle"),
+           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-            App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 3),
+-              Const "False"
+-            )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-              Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                Const "False"
+-              )
+-            )), Bvar 2))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-              Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                Const "False"
+-              )
+-            )), Bvar 1))
++            App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1)
+           ))
+         )
+       )
+@@ -899,21 +913,9 @@ let%expect_test "Elaborate env.txt" =
+       Forall (App (Const "List", Const "Point"),
+         Forall (App (Const "List", Const "Line"),
+           Forall (App (Const "List", Const "Circle"),
+-            Forall (Forall (App (App (App (Const "List.mem", Const "Line"), Bvar 3), Bvar 1),
+-              Const "False"
+-            ),
++            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 3), Bvar 1)),
+               App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 5)), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 4),
+-                  Const "False"
+-                )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                  Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                    Const "False"
+-                  )
+-                )), Bvar 3))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                  Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                    Const "False"
+-                  )
+-                )), Bvar 2)))
++                App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+               ))
+             )
+           )
+@@ -938,24 +940,10 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (Const "List", Const "Circle"),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 5),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 6),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4),
+-                        Const "False"
+-                      ),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
++                      Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
+                         App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 0), Bvar 8))), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 7),
+-                            Const "False"
+-                          )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                            Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                              Const "False"
+-                            )
+-                          )), Bvar 6))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                            Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                              Const "False"
+-                            )
+-                          )), Bvar 5)))
++                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 0), Bvar 8))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                         ))
+                       )
+                     )
+@@ -985,24 +973,10 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (Const "List", Const "Circle"),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 5),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 6),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4),
+-                        Const "False"
+-                      ),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
++                      Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
+                         App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 0))), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 7),
+-                            Const "False"
+-                          )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                            Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                              Const "False"
+-                            )
+-                          )), Bvar 6))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                            Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                              Const "False"
+-                            )
+-                          )), Bvar 5)))
++                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 0))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                         ))
+                       )
+                     )
+@@ -1028,21 +1002,9 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (Const "List", Const "Point"),
+           Forall (App (Const "List", Const "Line"),
+             Forall (App (Const "List", Const "Circle"),
+-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 4),
+-                Const "False"
+-              ),
++                        Const "False"
+-                      ),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
++                      Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
+                         App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 0), Bvar 8))), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 7),
+-                            Const "False"
+-                          )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                            Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                              Const "False"
+-                            )
+-                          )), Bvar 6))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                            Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                              Const "False"
+-                            )
+-                          )), Bvar 5)))
++                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 0), Bvar 8))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                         ))
+                       )
+                     )
+@@ -985,24 +973,10 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (Const "List", Const "Circle"),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 5),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 6),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4),
+-                        Const "False"
+-                      ),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
++                      Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
+                         App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 0))), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 7),
+-                            Const "False"
+-                          )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                            Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                              Const "False"
+-                            )
+-                          )), Bvar 6))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                            Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                              Const "False"
+-                            )
+-                          )), Bvar 5)))
++                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 0))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                         ))
+                       )
+                     )
+@@ -1028,21 +1002,9 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (Const "List", Const "Point"),
+           Forall (App (Const "List", Const "Line"),
+             Forall (App (Const "List", Const "Circle"),
+-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 4),
+-                Const "False"
+-              ),
++              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 4)),
+                 App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                  App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 4),
+-                    Const "False"
+-                  )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                    Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                      Const "False"
+-                    )
+-                  )), Bvar 3))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                    Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                      Const "False"
+-                    )
+-                  )), Bvar 2)))
++                  App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                 ))
+               )
+             )
+@@ -1066,25 +1028,9 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (Const "List", Const "Point"),
+           Forall (App (Const "List", Const "Line"),
+             Forall (App (Const "List", Const "Circle"),
+-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 4),
+-                Const "False"
+-              ),
++              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 4)),
+                 App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                  App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0), Bvar 6),
+-                    Const "False"
+-                  )), Forall (App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6),
+-                    Const "False"
+-                  ))), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 4),
+-                    Const "False"
+-                  )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                    Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                      Const "False"
+-                    )
+-                  )), Bvar 3))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                    Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                      Const "False"
+-                    )
+-                  )), Bvar 2)))
++                  App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 6))), App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                 ))
+               )
+             )
+@@ -1104,21 +1050,9 @@ let%expect_test "Elaborate env.txt" =
+       Forall (App (Const "List", Const "Point"),
+         Forall (App (Const "List", Const "Line"),
+           Forall (App (Const "List", Const "Circle"),
+-            Forall (Forall (App (App (App (Const "List.mem", Const "Circle"), Bvar 3), Bvar 0),
+-              Const "False"
+-            ),
++            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Circle"), Bvar 3), Bvar 0)),
+               App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 5)), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 4),
+-                  Const "False"
+-                )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                  Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                    Const "False"
+-                  )
+-                )), Bvar 3))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                  Fo    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 4)),
+                 App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                  App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 4),
+-                    Const "False"
+-                  )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                    Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                      Const "False"
+-                    )
+-                  )), Bvar 3))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                    Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                      Const "False"
+-                    )
+-                  )), Bvar 2)))
++                  App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                 ))
+               )
+             )
+@@ -1066,25 +1028,9 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (Const "List", Const "Point"),
+           Forall (App (Const "List", Const "Line"),
+             Forall (App (Const "List", Const "Circle"),
+-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 4),
+-                Const "False"
+-              ),
++              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 4)),
+                 App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                  App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0), Bvar 6),
+-                    Const "False"
+-                  )), Forall (App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6),
+-                    Const "False"
+-                  ))), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 4),
+-                    Const "False"
+-                  )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                    Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                      Const "False"
+-                    )
+-                  )), Bvar 3))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                    Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                      Const "False"
+-                    )
+-                  )), Bvar 2)))
++                  App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 6))), App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                 ))
+               )
+             )
+@@ -1104,21 +1050,9 @@ let%expect_test "Elaborate env.txt" =
+       Forall (App (Const "List", Const "Point"),
+         Forall (App (Const "List", Const "Line"),
+           Forall (App (Const "List", Const "Circle"),
+-            Forall (Forall (App (App (App (Const "List.mem", Const "Circle"), Bvar 3), Bvar 0),
+-              Const "False"
+-            ),
++            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Circle"), Bvar 3), Bvar 0)),
+               App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 5)), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 4),
+-                  Const "False"
+-                )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                  Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                    Const "False"
+-                  )
+-                )), Bvar 3))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                  Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                    Const "False"
+-                  )
+-                )), Bvar 2)))
++                App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+               ))
+             )
+           )
+@@ -1138,17 +1072,7 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (Const "List", Const "Line"),
+           Forall (App (Const "List", Const "Circle"),
+             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-              App (App (Const "And", App (App (Const "InCircle", Bvar 0), Bvar 4)), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 3),
+-                Const "False"
+-              )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                  Const "False"
+-                )
+-              )), Bvar 2))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                  Const "False"
+-                )
+-              )), Bvar 1)))
++              App (App (Const "And", App (App (Const "InCircle", Bvar 0), Bvar 4)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+             ))
+           )
+         )
+@@ -1169,21 +1093,7 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (Const "List", Const "Line"),
+           Forall (App (Const "List", Const "Circle"),
+             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-              App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnCircle", Bvar 0), Bvar 4),
+-                Const "False"
+-              )), Forall (App (App (Const "InCircle", Bvar 0), Bvar 4),
+-                Const "False"
+-              ))), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 3),
+-                Const "False"
+-              )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                  Const "False"
+-                )
+-              )), Bvar 2))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                  Const "False"
+-                )
+-              )), Bvar 1)))
++              App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (Const "OnCircle", Bvar 0), Bvar 4))), App (Const "Not", App (App (Const "InCircle", Bvar 0), Bvar 4)))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+             ))
+           )
+         )
+@@ -1200,9 +1110,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Const "Point",
+       Forall (Const "Point",
+-        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+-          Const "False"
+-        ),
++        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0),
+           App (App (Const "Exists", Const "Line"), Lam (Const "Line",
+             App (App (Const "And", App (App (Const "OnLine", Bvar 3), Bvar 0)), App (App (Const "OnLine", Bvar 2), Bvar 0))
+           ))
+@@ -1220,9 +1128,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Const "Point",
+       Forall (Const "Point",
+-        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+-          Const "False"
+-        ),
++        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0),
+           App (App (Const "Exists", Const "Circle"), Lam (Const "Circle",
+             App (App (Const "And", App (App (Const "CenterCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 2), Bvar 0))
+           ))
+@@ -1283,9 +1189,7 @@ let%expect_test "Elaborate env.txt" =
+   rall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                    Const "False"
+-                  )
+-                )), Bvar 2)))
++                App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+               ))
+             )
+           )
+@@ -1138,17 +1072,7 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (Const "List", Const "Line"),
+           Forall (App (Const "List", Const "Circle"),
+             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-              App (App (Const "And", App (App (Const "InCircle", Bvar 0), Bvar 4)), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 3),
+-                Const "False"
+-              )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                  Const "False"
+-                )
+-              )), Bvar 2))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                  Const "False"
+-                )
+-              )), Bvar 1)))
++              App (App (Const "And", App (App (Const "InCircle", Bvar 0), Bvar 4)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+             ))
+           )
+         )
+@@ -1169,21 +1093,7 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (Const "List", Const "Line"),
+           Forall (App (Const "List", Const "Circle"),
+             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-              App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnCircle", Bvar 0), Bvar 4),
+-                Const "False"
+-              )), Forall (App (App (Const "InCircle", Bvar 0), Bvar 4),
+-                Const "False"
+-              ))), App (App (Const "And", App (App (Const "And", Forall (App (App (App (Const "List.mem", Const "Point"), Bvar 0), Bvar 3),
+-                Const "False"
+-              )), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+-                Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-                  Const "False"
+-                )
+-              )), Bvar 2))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+-                Forall (App (App (Const "OnCircle", Bvar 1), Bvar 0),
+-                  Const "False"
+-                )
+-              )), Bvar 1)))
++              App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (Const "OnCircle", Bvar 0), Bvar 4))), App (Const "Not", App (App (Const "InCircle", Bvar 0), Bvar 4)))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+             ))
+           )
+         )
+@@ -1200,9 +1110,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Const "Point",
+       Forall (Const "Point",
+-        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+-          Const "False"
+-        ),
++        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0),
+           App (App (Const "Exists", Const "Line"), Lam (Const "Line",
+             App (App (Const "And", App (App (Const "OnLine", Bvar 3), Bvar 0)), App (App (Const "OnLine", Bvar 2), Bvar 0))
+           ))
+@@ -1220,9 +1128,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Const "Point",
+       Forall (Const "Point",
+-        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+-          Const "False"
+-        ),
++        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0),
+           App (App (Const "Exists", Const "Circle"), Lam (Const "Circle",
+             App (App (Const "And", App (App (Const "CenterCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 2), Bvar 0))
+           ))
+@@ -1283,9 +1189,7 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
+           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+-                Const "False"
+-              )), App (App (Const "And", App (App (Const "OnLine", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
++              App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)), App (App (Const "And", App (App (Const "OnLine", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+             ))
+           ))
+         )
+@@ -1311,12 +1215,8 @@ let%expect_test "Elaborate env.txt" =
+             Forall (App (App (Const "OnLine", Bvar 1), Bvar 3),
+               Forall (App (App (Const "OnLine", Bvar 1), Bvar 4),
+                 Forall (App (App (Const "InCircle", Bvar 3), Bvar 4),
+-                  Forall (Forall (App (App (Const "OnCircle", Bvar 3), Bvar 5),
+-                    Const "False"
+-                  ),
+-                    Forall (Forall (App (App (Const "InCircle", Bvar 4), Bvar 6),
+-                      Const "False"
+-                    ),
++                  Forall (App (Const "Not", App (App (Const "OnCircle", Bvar 3), Bvar 5)),
++                    Forall (App (Const "Not", App (App (Const "InCircle", Bvar 4), Bvar 6)),
+                       App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+                         App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 9)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (App (Const "Between", Bvar 7), Bvar 0), Bvar 6)))
+                       ))
+@@ -1349,9 +1249,7 @@ let%expect_test "Elaborate env.txt" =
+             Forall (App (App (Const "OnLine", Bvar 1), Bvar 3),
+               Forall (App (App (Const "OnLine", Bvar 1), Bvar 4),
+                 Forall (App (App (Const "InCircle", Bvar 3), Bvar 4),
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 4),
+-                    Const "False"
+-                  ),
++                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 4),
+                     App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+                       App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 8)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 7)), App (App (App (Const "Between", Bvar 0), Bvar 6), Bvar 5)))
+                     ))
+@@ -1399,9 +1297,7 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (App (Const "CirclesInter", Bvar 1), Bvar 0),
+           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+-                Const "False"
+-              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 4)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
++              App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 4)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+             ))
+           ))
+         )
+@@ -1427,9 +1323,7 @@ let%expect_test "Elaborate env.txt" =
+               Foral      Forall (App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
+           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+-                Const "False"
+-              )), App (App (Const "And", App (App (Const "OnLine", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
++              App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)), App (App (Const "And", App (App (Const "OnLine", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+             ))
+           ))
+         )
+@@ -1311,12 +1215,8 @@ let%expect_test "Elaborate env.txt" =
+             Forall (App (App (Const "OnLine", Bvar 1), Bvar 3),
+               Forall (App (App (Const "OnLine", Bvar 1), Bvar 4),
+                 Forall (App (App (Const "InCircle", Bvar 3), Bvar 4),
+-                  Forall (Forall (App (App (Const "OnCircle", Bvar 3), Bvar 5),
+-                    Const "False"
+-                  ),
+-                    Forall (Forall (App (App (Const "InCircle", Bvar 4), Bvar 6),
+-                      Const "False"
+-                    ),
++                  Forall (App (Const "Not", App (App (Const "OnCircle", Bvar 3), Bvar 5)),
++                    Forall (App (Const "Not", App (App (Const "InCircle", Bvar 4), Bvar 6)),
+                       App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+                         App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 9)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (App (Const "Between", Bvar 7), Bvar 0), Bvar 6)))
+                       ))
+@@ -1349,9 +1249,7 @@ let%expect_test "Elaborate env.txt" =
+             Forall (App (App (Const "OnLine", Bvar 1), Bvar 3),
+               Forall (App (App (Const "OnLine", Bvar 1), Bvar 4),
+                 Forall (App (App (Const "InCircle", Bvar 3), Bvar 4),
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 4),
+-                    Const "False"
+-                  ),
++                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 4),
+                     App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+                       App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 8)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 7)), App (App (App (Const "Between", Bvar 0), Bvar 6), Bvar 5)))
+                     ))
+@@ -1399,9 +1297,7 @@ let%expect_test "Elaborate env.txt" =
+         Forall (App (App (Const "CirclesInter", Bvar 1), Bvar 0),
+           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
+-                Const "False"
+-              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 4)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
++              App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 4)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+             ))
+           ))
+         )
+@@ -1427,9 +1323,7 @@ let%expect_test "Elaborate env.txt" =
+               Forall (Const "Circle",
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+-                    Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
+-                      Const "False"
+-                    ),
++                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 4)),
+                       Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
+                         Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
+                           Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
+@@ -1469,18 +1363,12 @@ let%expect_test "Elaborate env.txt" =
+               Forall (Const "Circle",
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+-                    Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
+-                      Const "False"
+-                    ),
++                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 4)),
+                       Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
+                         Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
+                           Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
+                             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                              App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0), Bvar 9),
+-                                Const "False"
+-                              )), App (App (Const "And", Forall (App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9),
+-                                Const "False"
+-                              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7))))
++                              App (App (Const "And", App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 9))), App (App (Const "And", App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9))), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7))))
+                             ))
+                           )
+                         )
+@@ -1508,9 +1396,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Line",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
+-              Const "False"
+-            ),
++            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2),
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+                   Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+@@ -1571,9 +1457,7 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Point",
+       Forall (Const "Circle",
+         Forall (App (App (Const "InCircle", Bvar 1), Bvar 0),
+-          Forall (App (App (Const "OnCircle", Bvar 2), Bvar 1),
+-            Const "False"
+-          )
++          App (Const "Not", App (App (Const "OnCircle", Bvar 2), Bvar 1))
+         )
+       )
+     )
+@@ -1593,13 +1477,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Point",
+           Forall (App (App (App (Const "Between", Bvar 2), Bvar 1), Bvar 0),
+-            App (App (Const "And", App (App (App (Const "Between", Bvar 1), Bvar 2), Bvar 3)), App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
+-              Const "False"
+-            )), App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 1),
+-              Const "False"
+-            )), Forall (App (App (App (Const "Between", Bvar 2), Bvar 3), Bvar 1),
+-              Const "False"
+-            ))))
++            App (App (Const "And", App (App (App (Const "Between", Bvar l (Const "Circle",
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+-                    Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
+-                      Const "False"
+-                    ),
++                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 4)),
+                       Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
+                         Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
+                           Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
+@@ -1469,18 +1363,12 @@ let%expect_test "Elaborate env.txt" =
+               Forall (Const "Circle",
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+-                    Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
+-                      Const "False"
+-                    ),
++                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 4)),
+                       Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
+                         Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
+                           Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
+                             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
+-                              App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0), Bvar 9),
+-                                Const "False"
+-                              )), App (App (Const "And", Forall (App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9),
+-                                Const "False"
+-                              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7))))
++                              App (App (Const "And", App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 9))), App (App (Const "And", App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9))), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7))))
+                             ))
+                           )
+                         )
+@@ -1508,9 +1396,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Line",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
+-              Const "False"
+-            ),
++            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2),
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+                   Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+@@ -1571,9 +1457,7 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Point",
+       Forall (Const "Circle",
+         Forall (App (App (Const "InCircle", Bvar 1), Bvar 0),
+-          Forall (App (App (Const "OnCircle", Bvar 2), Bvar 1),
+-            Const "False"
+-          )
++          App (Const "Not", App (App (Const "OnCircle", Bvar 2), Bvar 1))
+         )
+       )
+     )
+@@ -1593,13 +1477,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Point",
+           Forall (App (App (App (Const "Between", Bvar 2), Bvar 1), Bvar 0),
+-            App (App (Const "And", App (App (App (Const "Between", Bvar 1), Bvar 2), Bvar 3)), App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
+-              Const "False"
+-            )), App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 1),
+-              Const "False"
+-            )), Forall (App (App (App (Const "Between", Bvar 2), Bvar 3), Bvar 1),
+-              Const "False"
+-            ))))
++            App (App (Const "And", App (App (App (Const "Between", Bvar 1), Bvar 2), Bvar 3)), App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2)), App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 1)), App (Const "Not", App (App (App (Const "Between", Bvar 2), Bvar 3), Bvar 1)))))
+           )
+         )
+       )
+@@ -1708,15 +1586,9 @@ let%expect_test "Elaborate env.txt" =
+             Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
+               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+                 Forall (App (App (Const "OnLine", Bvar 3), Bvar 2),
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+-                    Const "False"
+-                  ),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 8), Bvar 6),
+-                        Const "False"
+-                      ),
++                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
++                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 8), Bvar 6),
+                         App (App (Const "Or", App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 7)), App (App (Const "Or", App (App (App (Const "Between", Bvar 8), Bvar 9), Bvar 7)), App (App (App (Const "Between", Bvar 9), Bvar 7), Bvar 8)))
+                       )
+                     )
+@@ -1742,9 +1614,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Point",
+             Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
+               Forall (App (App (App (Const "Between", Bvar 4), Bvar 3), Bvar 1),
+-                Forall (App (App (App (Const "Between", Bvar 3), Bvar 4), Bvar 2),
+-                  Const "False"
+-                )
++                App (Const "Not", App (App (App (Const "Between", Bvar 3), Bvar 4), Bvar 2))
+               )
+             )
+           )
+@@ -1761,9 +1631,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Const "Point",
+       Forall (Const "Line",
+-        Forall (Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-          Const "False"
+-        ),
++        Forall (App (Const "Not", App (App (Const "OnLine", Bvar 1), Bvar 0)),
+           App (App (App (Const "SameSide", Bvar 2), Bvar 2), Bvar 1)
+         )
+       )
+@@ -1797,9 +1665,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Line",
+           Forall (App (App (App (Const "SameSide", Bvar 2), Bvar 1), Bvar 0),
+-            Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-              Const "False"
+-            )
++            App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1))
+           )
+         )
+       )
+@@ -1841,18 +1707,10 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Point",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
+-              Const "False"
+-            ),
+-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-                Const "False"
+-              ),
+-                Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 2),
+-                  Const "False"
+-                ),
+-                  Forall (Forall (App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 3),
+-                    Const "False"
+-                  ),
++            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 0)),
++              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1)),
++                Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 2)),
++                  Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 3)),
+                     App (App (Const "Or", App (App (App (Const "SameSide", Bvar 7), B1), Bvar 2), Bvar 3)), App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2)), App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 1)), App (Const "Not", App (App (App (Const "Between", Bvar 2), Bvar 3), Bvar 1)))))
+           )
+         )
+       )
+@@ -1708,15 +1586,9 @@ let%expect_test "Elaborate env.txt" =
+             Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
+               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+                 Forall (App (App (Const "OnLine", Bvar 3), Bvar 2),
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+-                    Const "False"
+-                  ),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 8), Bvar 6),
+-                        Const "False"
+-                      ),
++                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
++                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 8), Bvar 6),
+                         App (App (Const "Or", App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 7)), App (App (Const "Or", App (App (App (Const "Between", Bvar 8), Bvar 9), Bvar 7)), App (App (App (Const "Between", Bvar 9), Bvar 7), Bvar 8)))
+                       )
+                     )
+@@ -1742,9 +1614,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Point",
+             Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
+               Forall (App (App (App (Const "Between", Bvar 4), Bvar 3), Bvar 1),
+-                Forall (App (App (App (Const "Between", Bvar 3), Bvar 4), Bvar 2),
+-                  Const "False"
+-                )
++                App (Const "Not", App (App (App (Const "Between", Bvar 3), Bvar 4), Bvar 2))
+               )
+             )
+           )
+@@ -1761,9 +1631,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Const "Point",
+       Forall (Const "Line",
+-        Forall (Forall (App (App (Const "OnLine", Bvar 1), Bvar 0),
+-          Const "False"
+-        ),
++        Forall (App (Const "Not", App (App (Const "OnLine", Bvar 1), Bvar 0)),
+           App (App (App (Const "SameSide", Bvar 2), Bvar 2), Bvar 1)
+         )
+       )
+@@ -1797,9 +1665,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Line",
+           Forall (App (App (App (Const "SameSide", Bvar 2), Bvar 1), Bvar 0),
+-            Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-              Const "False"
+-            )
++            App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1))
+           )
+         )
+       )
+@@ -1841,18 +1707,10 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Point",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
+-              Const "False"
+-            ),
+-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-                Const "False"
+-              ),
+-                Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 2),
+-                  Const "False"
+-                ),
+-                  Forall (Forall (App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 3),
+-                    Const "False"
+-                  ),
++            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 0)),
++              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1)),
++                Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 2)),
++                  Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 3)),
+                     App (App (Const "Or", App (App (App (Const "SameSide", Bvar 7), Bvar 5), Bvar 4)), App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 4))
+                   )
+                 )
+@@ -1899,9 +1757,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Line",
+             Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+-                Forall (Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+-                  Const "False"
+-                ),
++                Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 2)),
+                   App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)
+                 )
+               )
+@@ -1925,9 +1781,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Line",
+             Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
+               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-                Forall (App (App (App (Const "SameSide", Bvar 5), Bvar 3), Bvar 2),
+-                  Const "False"
+-                )
++                App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 3), Bvar 2))
+               )
+             )
+           )
+@@ -1952,22 +1806,14 @@ let%expect_test "Elaborate env.txt" =
+         Forall (Const "Point",
+           Forall (Const "Line",
+             Forall (Const "Line",
+-              Forall (Forall (App (App (App (Const "Eq", Const "Line"), Bvar 1), Bvar 0),
+-                Const "False"
+-              ),
++              Forall (App (App (App (Const "Ne", Const "Line"), Bvar 1), Bvar 0),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
+                     Forall (App (App (Const "OnLine", Bvar 7), Bvar 3),
+                       Forall (App (App (Const "OnLine", Bvar 6), Bvar 4),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 8), Bvar 9),
+-                            Const "False"
+-                          ),
+-                            Forall (Forall (App (App (App (Const "SameSide", Bvar 11), Bvar 9), Bvar 8),
+-                              Const "False"
+-                            ),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
++                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 8), Bvar 9),
++                            Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 11), Bvar 9), Bvar 8)),
+                               App (App (App (Const "Between", Bvar 12), Bvar 11), Bvar 10)
+                             )
+                           )
+@@ -2009,9 +1855,7 @@ let%expect_test "Elaborate env.txt" =
+                             Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
+                               Forall (App (App (App (Const "SameSide", Bvar 10), Bvar 9), Bvar 8),
+                                 Forall (App (App (App (Const "SameSide", Bvar 12), Bvar 11), Bvar 7),
+-                                  Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 11), Bvar 9),
+-                                    Const "False"
+-                                  )
++                                  App (Const "Not", App (App (App (Const "SameSide", Bvar 13), Bvar 11), Bvar 9))
+                                 )
+                               )
+                             )
+@@ -2055,15 +1899,9 @@ let%expect_test "Elaborate env.txt" =
+                           Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
+                             Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
+                               Forall (App (App (App (Const "SameSide", Bvar 10), Bvar 9), Bvar 8),
+-                                Forall (Forall (App (App (App (Const "SameSide", Bvar 12), Bvar 10), Bvar 8),
+-                                  Consvar 5), Bvar 4)), App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 4))
+                   )
+                 )
+@@ -1899,9 +1757,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Line",
+             Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+-                Forall (Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+-                  Const "False"
+-                ),
++                Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 2)),
+                   App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)
+                 )
+               )
+@@ -1925,9 +1781,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Line",
+             Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
+               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-                Forall (App (App (App (Const "SameSide", Bvar 5), Bvar 3), Bvar 2),
+-                  Const "False"
+-                )
++                App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 3), Bvar 2))
+               )
+             )
+           )
+@@ -1952,22 +1806,14 @@ let%expect_test "Elaborate env.txt" =
+         Forall (Const "Point",
+           Forall (Const "Line",
+             Forall (Const "Line",
+-              Forall (Forall (App (App (App (Const "Eq", Const "Line"), Bvar 1), Bvar 0),
+-                Const "False"
+-              ),
++              Forall (App (App (App (Const "Ne", Const "Line"), Bvar 1), Bvar 0),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
+                     Forall (App (App (Const "OnLine", Bvar 7), Bvar 3),
+                       Forall (App (App (Const "OnLine", Bvar 6), Bvar 4),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 8), Bvar 9),
+-                            Const "False"
+-                          ),
+-                            Forall (Forall (App (App (App (Const "SameSide", Bvar 11), Bvar 9), Bvar 8),
+-                              Const "False"
+-                            ),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
++                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 8), Bvar 9),
++                            Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 11), Bvar 9), Bvar 8)),
+                               App (App (App (Const "Between", Bvar 12), Bvar 11), Bvar 10)
+                             )
+                           )
+@@ -2009,9 +1855,7 @@ let%expect_test "Elaborate env.txt" =
+                             Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
+                               Forall (App (App (App (Const "SameSide", Bvar 10), Bvar 9), Bvar 8),
+                                 Forall (App (App (App (Const "SameSide", Bvar 12), Bvar 11), Bvar 7),
+-                                  Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 11), Bvar 9),
+-                                    Const "False"
+-                                  )
++                                  App (Const "Not", App (App (App (Const "SameSide", Bvar 13), Bvar 11), Bvar 9))
+                                 )
+                               )
+                             )
+@@ -2055,15 +1899,9 @@ let%expect_test "Elaborate env.txt" =
+                           Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
+                             Forall (App (App (Const "OnLine", Bvar 8), Bvar 5),
+                               Forall (App (App (App (Const "SameSide", Bvar 10), Bvar 9), Bvar 8),
+-                                Forall (Forall (App (App (App (Const "SameSide", Bvar 12), Bvar 10), Bvar 8),
+-                                  Const "False"
+-                                ),
+-                                  Forall (Forall (App (App (Const "OnLine", Bvar 11), Bvar 9),
+-                                    Const "False"
+-                                  ),
+-                                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 14), Bvar 15),
+-                                      Const "False"
+-                                    ),
++                                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 12), Bvar 10), Bvar 8)),
++                                  Forall (App (Const "Not", App (App (Const "OnLine", Bvar 11), Bvar 9)),
++                                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 14), Bvar 15),
+                                       App (App (App (Const "SameSide", Bvar 15), Bvar 14), Bvar 10)
+                                     )
+                                   )
+@@ -2155,9 +1993,7 @@ let%expect_test "Elaborate env.txt" =
+                     Forall (App (App (Const "InCircle", Bvar 7), Bvar 3),
+                       Forall (App (App (Const "OnCircle", Bvar 7), Bvar 4),
+                         Forall (App (App (Const "OnCircle", Bvar 7), Bvar 5),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                            Const "False"
+-                          ),
++                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
+                             App (App (App (Const "Between", Bvar 10), Bvar 11), Bvar 9)
+                           )
+                         )
+@@ -2211,15 +2047,9 @@ let%expect_test "Elaborate env.txt" =
+         Forall (Const "Point",
+           Forall (Const "Circle",
+             Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+-              Forall (Forall (App (App (Const "InCircle", Bvar 2), Bvar 1),
+-                Const "False"
+-              ),
++              Forall (App (Const "Not", App (App (Const "InCircle", Bvar 2), Bvar 1)),
+                 Forall (App (App (App (Const "Between", Bvar 5), Bvar 3), Bvar 4),
+-                  App (App (Const "And", Forall (App (App (Const "InCircle", Bvar 5), Bvar 3),
+-                    Const "False"
+-                  )), Forall (App (App (Const "OnCircle", Bvar 5), Bvar 3),
+-                    Const "False"
+-                  ))
++                  App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3)))
+                 )
+               )
+             )
+@@ -2250,23 +2080,17 @@ let%expect_test "Elaborate env.txt" =
+             Forall (Const "Line",
+               Forall (Const "Circle",
+                 Forall (Const "Circle",
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Circle"), Bvar 1), Bvar 0),
+-                    Const "False"
+-                  ),
++                  Forall (App (App (App (Const "Ne", Const "Circle"), Bvar 1), Bvar 0),
+                     Forall (App (App (Const "OnCircle", Bvar 5), Bvar 2),
+                       Forall (App (App (Const "OnCircle", Bvar 6), Bvar 2),
+                         Forall (App (App (Const "OnCircle", Bvar 6), Bvar 4),
+                           Forall (App (App (Const "OnCircle", Bvar 7), Bvar 4),
+-                            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                              Const "False"
+-                            ),
++                            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
+                               Forall (App (App (Const "CenterCircle", Bvar 12), Bvar 7),
+                                 Forall (App (App (Const "CenterCircle", Bvar 12), Bvar 7),
+                                   Forall (App (App (Const "OnLine", Bvar 14), Bvar 10),
+                                     Forall (App (App (Const "OnLine", Bvar 14), Bvar 11),
+- t "False"
+-                                ),
+-                                  Forall (Forall (App (App (Const "OnLine", Bvar 11), Bvar 9),
+-                                    Const "False"
+-                                  ),
+-                                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 14), Bvar 15),
+-                                      Const "False"
+-                                    ),
++                                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 12), Bvar 10), Bvar 8)),
++                                  Forall (App (Const "Not", App (App (Const "OnLine", Bvar 11), Bvar 9)),
++                                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 14), Bvar 15),
+                                       App (App (App (Const "SameSide", Bvar 15), Bvar 14), Bvar 10)
+                                     )
+                                   )
+@@ -2155,9 +1993,7 @@ let%expect_test "Elaborate env.txt" =
+                     Forall (App (App (Const "InCircle", Bvar 7), Bvar 3),
+                       Forall (App (App (Const "OnCircle", Bvar 7), Bvar 4),
+                         Forall (App (App (Const "OnCircle", Bvar 7), Bvar 5),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                            Const "False"
+-                          ),
++                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
+                             App (App (App (Const "Between", Bvar 10), Bvar 11), Bvar 9)
+                           )
+                         )
+@@ -2211,15 +2047,9 @@ let%expect_test "Elaborate env.txt" =
+         Forall (Const "Point",
+           Forall (Const "Circle",
+             Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+-              Forall (Forall (App (App (Const "InCircle", Bvar 2), Bvar 1),
+-                Const "False"
+-              ),
++              Forall (App (Const "Not", App (App (Const "InCircle", Bvar 2), Bvar 1)),
+                 Forall (App (App (App (Const "Between", Bvar 5), Bvar 3), Bvar 4),
+-                  App (App (Const "And", Forall (App (App (Const "InCircle", Bvar 5), Bvar 3),
+-                    Const "False"
+-                  )), Forall (App (App (Const "OnCircle", Bvar 5), Bvar 3),
+-                    Const "False"
+-                  ))
++                  App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3)))
+                 )
+               )
+             )
+@@ -2250,23 +2080,17 @@ let%expect_test "Elaborate env.txt" =
+             Forall (Const "Line",
+               Forall (Const "Circle",
+                 Forall (Const "Circle",
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Circle"), Bvar 1), Bvar 0),
+-                    Const "False"
+-                  ),
++                  Forall (App (App (App (Const "Ne", Const "Circle"), Bvar 1), Bvar 0),
+                     Forall (App (App (Const "OnCircle", Bvar 5), Bvar 2),
+                       Forall (App (App (Const "OnCircle", Bvar 6), Bvar 2),
+                         Forall (App (App (Const "OnCircle", Bvar 6), Bvar 4),
+                           Forall (App (App (Const "OnCircle", Bvar 7), Bvar 4),
+-                            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                              Const "False"
+-                            ),
++                            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
+                               Forall (App (App (Const "CenterCircle", Bvar 12), Bvar 7),
+                                 Forall (App (App (Const "CenterCircle", Bvar 12), Bvar 7),
+                                   Forall (App (App (Const "OnLine", Bvar 14), Bvar 10),
+                                     Forall (App (App (Const "OnLine", Bvar 14), Bvar 11),
+-                                      Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 13), Bvar 12),
+-                                        Const "False"
+-                                      )
++                                      App (Const "Not", App (App (App (Const "SameSide", Bvar 14), Bvar 13), Bvar 12))
+                                     )
+                                   )
+                                 )
+@@ -2298,9 +2122,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Line",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (App (Const "SameSide", Bvar 3), Bvar 2), Bvar 1),
+-              Const "False"
+-            ),
++            Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 3), Bvar 2), Bvar 1)),
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                   App (App (Const "LinesInter", Bvar 4), Bvar 3)
+@@ -2327,9 +2149,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Circle",
+             Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+               Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
+-                Forall (Forall (App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3),
+-                  Const "False"
+-                ),
++                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)),
+                   App (App (Const "LineCircleInter", Bvar 4), Bvar 3)
+                 )
+               )
+@@ -2376,11 +2196,7 @@ let%expect_test "Elaborate env.txt" =
+             Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
+               Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 2)), App (App (Const "OnCircle", Bvar 3), Bvar 2)),
+                 Forall (App (App (Const "InCircle", Bvar 5), Bvar 2),
+-                  Forall (App (App (Const "And", Forall (App (App (Const "InCircle", Bvar 5), Bvar 3),
+-                    Const "False"
+-                  )), Forall (App (App (Const "OnCircle", Bvar 5), Bvar 3),
+-                    Const "False"
+-                  )),
++                  Forall (App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3))),
+                     App (App (Const "CirclesInter", Bvar 5), Bvar 4)
+                   )
+                 )
+@@ -2455,9 +2271,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Const "Point",
+       Forall (Const "Point",
+-        Forall (App (App (Const "Lt", App (App (Const "Length", Bvar 1), Bvar 0)), Const "Zero"),
+-          Const "False"
+-        )
++        App (Const "Not", App (App (Const "Lt", App (App (Const "Length", Bvar 1), Bvar 0)), Const "Zero"))
+       )
+     )
+     |}];
+@@ -2483,12 +2297,8 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Point",
+       Forall (Const "Point",
+         Forall (Const "Point",
+-          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 2), Bvar 1),
+-            Const "False"
+-          ),
+-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 2), Bvar 1),
+-              Const "False"
+-            ),
++          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 2), Bvar 1),
++            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 2), Bvar 1),
+               App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 4), Bvar 3), Bvar 2)), App (App (App (Const "Angle", Bvar 2), Bvar 3), Bvar 4))
+             )
+           )
+@@ -2506,12 +2316,8 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Point",
+       Forall (Const "Point",
+         Forall (Const "Point",
+-          Forall (Forall (App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), C                                     Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 13), Bvar 12),
+-                                        Const "False"
+-                                      )
++                                      App (Const "Not", App (App (App (Const "SameSide", Bvar 14), Bvar 13), Bvar 12))
+                                     )
+                                   )
+                                 )
+@@ -2298,9 +2122,7 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Line",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (App (Const "SameSide", Bvar 3), Bvar 2), Bvar 1),
+-              Const "False"
+-            ),
++            Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 3), Bvar 2), Bvar 1)),
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                   App (App (Const "LinesInter", Bvar 4), Bvar 3)
+@@ -2327,9 +2149,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Circle",
+             Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+               Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
+-                Forall (Forall (App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3),
+-                  Const "False"
+-                ),
++                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)),
+                   App (App (Const "LineCircleInter", Bvar 4), Bvar 3)
+                 )
+               )
+@@ -2376,11 +2196,7 @@ let%expect_test "Elaborate env.txt" =
+             Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
+               Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 2)), App (App (Const "OnCircle", Bvar 3), Bvar 2)),
+                 Forall (App (App (Const "InCircle", Bvar 5), Bvar 2),
+-                  Forall (App (App (Const "And", Forall (App (App (Const "InCircle", Bvar 5), Bvar 3),
+-                    Const "False"
+-                  )), Forall (App (App (Const "OnCircle", Bvar 5), Bvar 3),
+-                    Const "False"
+-                  )),
++                  Forall (App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3))),
+                     App (App (Const "CirclesInter", Bvar 5), Bvar 4)
+                   )
+                 )
+@@ -2455,9 +2271,7 @@ let%expect_test "Elaborate env.txt" =
+     {|
+     Forall (Const "Point",
+       Forall (Const "Point",
+-        Forall (App (App (Const "Lt", App (App (Const "Length", Bvar 1), Bvar 0)), Const "Zero"),
+-          Const "False"
+-        )
++        App (Const "Not", App (App (Const "Lt", App (App (Const "Length", Bvar 1), Bvar 0)), Const "Zero"))
+       )
+     )
+     |}];
+@@ -2483,12 +2297,8 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Point",
+       Forall (Const "Point",
+         Forall (Const "Point",
+-          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 2), Bvar 1),
+-            Const "False"
+-          ),
+-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 2), Bvar 1),
+-              Const "False"
+-            ),
++          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 2), Bvar 1),
++            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 2), Bvar 1),
+               App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 4), Bvar 3), Bvar 2)), App (App (App (Const "Angle", Bvar 2), Bvar 3), Bvar 4))
+             )
+           )
+@@ -2506,12 +2316,8 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Point",
+       Forall (Const "Point",
+         Forall (Const "Point",
+-          Forall (Forall (App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"),
+-            Const "False"
+-          ),
+-            Forall (App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 3), Bvar 2), Bvar 1)),
+-              Const "False"
+-            )
++          Forall (App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero")),
++            App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 3), Bvar 2), Bvar 1)))
+           )
+         )
+       )
+@@ -2538,9 +2344,7 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Point",
+       Forall (Const "Point",
+         Forall (Const "Point",
+-          Forall (App (App (Const "Lt", App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"),
+-            Const "False"
+-          )
++          App (Const "Not", App (App (Const "Lt", App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))
+         )
+       )
+     )
+@@ -2760,18 +2564,12 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Point",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
+-              Const "False"
+-            ),
+-              Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 4), Bvar 2),
+-                Const "False"
+-              ),
++            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2),
++              Forall (App (App (App (Const "Ne", Const "Point"), Bvar 4), Bvar 2),
+                 Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 3),
+                     Forall (App (App (Const "OnLine", Bvar 5), Bvar 4),
+-                      Forall (Forall (App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6),
+-                        Const "False"
+-                      ),
++                      Forall (App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)),
+                         App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8), Bvar 9), Bvar 7)), Const "Zero")
+                       )
+                     )
+@@ -2799,18 +2597,12 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Point",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
+-              Const "False"
+-            ),
+-              Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 4), Bvar 2),
+-                Const "False"
+-              ),
++            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2),
++              Forall (App (App (App (Const "Ne", Const "Point"), Bvar 4), Bvar 2),
+                 Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 3),
+                     Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 6), Bvar 7), Bvar 5)), Const "Zero"),
+-                      App (App (Const "And", App (App (Const "OnLine", Bvar 6), Bvar 5)), Forall (App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6),
+-                        Const "False"
+-                      ))
++                      App (App (Const "And", App (App (Const "OnLine", Bvar 6), Bvar 5)), App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)))
+                     )
+                   )
+                 )
+@@ -2844,21 +2636,11 @@ let%expect_test "Elaborate env.txt" =
+                   Forall (App (App (Const "OnLine", Bvar 6), Bvar 1),
+                     Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+                       Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                          Constonst "Zero"),
+-            Const "False"
+-          ),
+-            Forall (App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 3), Bvar 2), Bvar 1)),
+-              Const "False"
+-            )
++          Forall (App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero")),
++            App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 3), Bvar 2), Bvar 1)))
+           )
+         )
+       )
+@@ -2538,9 +2344,7 @@ let%expect_test "Elaborate env.txt" =
+     Forall (Const "Point",
+       Forall (Const "Point",
+         Forall (Const "Point",
+-          Forall (App (App (Const "Lt", App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"),
+-            Const "False"
+-          )
++          App (Const "Not", App (App (Const "Lt", App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))
+         )
+       )
+     )
+@@ -2760,18 +2564,12 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Point",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
+-              Const "False"
+-            ),
+-              Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 4), Bvar 2),
+-                Const "False"
+-              ),
++            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2),
++              Forall (App (App (App (Const "Ne", Const "Point"), Bvar 4), Bvar 2),
+                 Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 3),
+                     Forall (App (App (Const "OnLine", Bvar 5), Bvar 4),
+-                      Forall (Forall (App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6),
+-                        Const "False"
+-                      ),
++                      Forall (App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)),
+                         App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8), Bvar 9), Bvar 7)), Const "Zero")
+                       )
+                     )
+@@ -2799,18 +2597,12 @@ let%expect_test "Elaborate env.txt" =
+       Forall (Const "Point",
+         Forall (Const "Point",
+           Forall (Const "Line",
+-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
+-              Const "False"
+-            ),
+-              Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 4), Bvar 2),
+-                Const "False"
+-              ),
++            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2),
++              Forall (App (App (App (Const "Ne", Const "Point"), Bvar 4), Bvar 2),
+                 Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
+                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 3),
+                     Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 6), Bvar 7), Bvar 5)), Const "Zero"),
+-                      App (App (Const "And", App (App (Const "OnLine", Bvar 6), Bvar 5)), Forall (App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6),
+-                        Const "False"
+-                      ))
++                      App (App (Const "And", App (App (Const "OnLine", Bvar 6), Bvar 5)), App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)))
+                     )
+                   )
+                 )
+@@ -2844,21 +2636,11 @@ let%expect_test "Elaborate env.txt" =
+                   Forall (App (App (Const "OnLine", Bvar 6), Bvar 1),
+                     Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+                       Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 10), Bvar 8),
+-                            Const "False"
+-                          ),
+-                            Forall (Forall (App (App (Const "OnLine", Bvar 8), Bvar 7),
+-                              Const "False"
+-                            ),
+-                              Forall (Forall (App (App (Const "OnLine", Bvar 9), Bvar 7),
+-                                Const "False"
+-                              ),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Line"), Bvar 9), Bvar 8),
+-                                  Const "False"
+-                                ),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
++                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 10), Bvar 8),
++                            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8), Bvar 7)),
++                              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9), Bvar 7)),
++                                Forall (App (App (App (Const "Ne", Const "Line"), Bvar 9), Bvar 8),
+                                   Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 11), Bvar 9),
+                                     Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11),
+                                       App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 15), Bvar 16), Bvar 14)), App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 16), Bvar 13)), App (App (App (Const "Angle", Bvar 13), Bvar 16), Bvar 14)))
+@@ -2903,21 +2685,11 @@ let%expect_test "Elaborate env.txt" =
+                   Forall (App (App (Const "OnLine", Bvar 6), Bvar 1),
+                     Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+                       Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 10), Bvar 8),
+-                            Const "False"
+-                          ),
+-                            Forall (Forall (App (App (Const "OnLine", Bvar 8), Bvar 7),
+-                              Const "False"
+-                            ),
+-                              Forall (Forall (App (App (Const "OnLine", Bvar 9), Bvar 7),
+-                                Const "False"
+-                              ),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Line"), Bvar 9), Bvar 8),
+-                                  Const "False"
+-                                ),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
++                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 10), Bvar 8),
++                            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8), Bvar 7)),
++                              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9), Bvar 7)),
++                                Forall (App (App (App (Const "Ne", Const "Line"), Bvar 9), Bvar 8),
+                                   Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 12)), App (App (Const "Add", App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 11)), App (App (App (Const "Angle", Bvar 11), Bvar 14), Bvar 12))),
+                                     App (App (Const "And", App (App (App (Const "SameSide", Bvar 14), Bvar 12), Bvar 10)), App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11))
+                                   )
+@@ -2955,9 +2727,7 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
+                 Forall (App (App (Const "OnLi "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 10), Bvar 8),
+-                            Const "False"
+-                          ),
+-                            Forall (Forall (App (App (Const "OnLine", Bvar 8), Bvar 7),
+-                              Const "False"
+-                            ),
+-                              Forall (Forall (App (App (Const "OnLine", Bvar 9), Bvar 7),
+-                                Const "False"
+-                              ),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Line"), Bvar 9), Bvar 8),
+-                                  Const "False"
+-                                ),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
++                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 10), Bvar 8),
++                            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8), Bvar 7)),
++                              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9), Bvar 7)),
++                                Forall (App (App (App (Const "Ne", Const "Line"), Bvar 9), Bvar 8),
+                                   Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 11), Bvar 9),
+                                     Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11),
+                                       App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 15), Bvar 16), Bvar 14)), App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 16), Bvar 13)), App (App (App (Const "Angle", Bvar 13), Bvar 16), Bvar 14)))
+@@ -2903,21 +2685,11 @@ let%expect_test "Elaborate env.txt" =
+                   Forall (App (App (Const "OnLine", Bvar 6), Bvar 1),
+                     Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+                       Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 10), Bvar 8),
+-                            Const "False"
+-                          ),
+-                            Forall (Forall (App (App (Const "OnLine", Bvar 8), Bvar 7),
+-                              Const "False"
+-                            ),
+-                              Forall (Forall (App (App (Const "OnLine", Bvar 9), Bvar 7),
+-                                Const "False"
+-                              ),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Line"), Bvar 9), Bvar 8),
+-                                  Const "False"
+-                                ),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
++                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 10), Bvar 8),
++                            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8), Bvar 7)),
++                              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9), Bvar 7)),
++                                Forall (App (App (App (Const "Ne", Const "Line"), Bvar 9), Bvar 8),
+                                   Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 12)), App (App (Const "Add", App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 11)), App (App (App (Const "Angle", Bvar 11), Bvar 14), Bvar 12))),
+                                     App (App (Const "And", App (App (App (Const "SameSide", Bvar 14), Bvar 12), Bvar 10)), App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11))
+                                   )
+@@ -2955,9 +2727,7 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                   Forall (App (App (App (Const "Between", Bvar 6), Bvar 4), Bvar 5),
+-                    Forall (Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+-                      Const "False"
+-                    ),
++                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 3)),
+                       Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8), Bvar 6), Bvar 5)), App (App (App (Const "Angle", Bvar 5), Bvar 6), Bvar 7)),
+                         App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 9), Bvar 7), Bvar 6)), Const "RightAngle")
+                       )
+@@ -2989,9 +2759,7 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                   Forall (App (App (App (Const "Between", Bvar 6), Bvar 4), Bvar 5),
+-                    Forall (Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+-                      Const "False"
+-                    ),
++                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 3)),
+                       Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8), Bvar 6), Bvar 5)), Const "RightAngle"),
+                         App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 9), Bvar 7), Bvar 6)), App (App (App (Const "Angle", Bvar 6), Bvar 7), Bvar 8))
+                       )
+@@ -3031,24 +2799,12 @@ let%expect_test "Elaborate env.txt" =
+                         Forall (App (App (Const "OnLine", Bvar 9), Bvar 3),
+                           Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
+                             Forall (App (App (Const "OnLine", Bvar 7), Bvar 5),
+-                              Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 12),
+-                                Const "False"
+-                              ),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 13),
+-                                  Const "False"
+-                                ),
+-                                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 14),
+-                                    Const "False"
+-                                  ),
+-                                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 15),
+-                                      Const "False"
+-                                    ),
+-                                      Forall (Forall (App (App (App (Const "Between", Bvar 15), Bvar 16), Bvar 14),
+-                                        Const "False"
+-                                      ),
+-                                        Forall (Forall (App (App (App (Const "Between", Bvar 14), Bvar 17), Bvar 13),
+-                                          Const "False"
+-                                        ),
++                              Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 12),
++                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 13)),
++                                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 14),
++                                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 15)),
++                                      Forall (App (Const "Not", App (App (App (Const "Between", Bvar 15), Bvar 16), Bvar 14)),
++                                        Forall (App (Const "Not", App (App (App (Const "Between", Bvar 14), Bvar 17), Bvar 13)),
+                                           App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 17), Bvar 18), Bvar 15)), App (App (App (Const "Angle", Bvar 16), Bvar 18), Bvar 14))
+                                         )
+  ne", Bvar 4), Bvar 1),
+                   Forall (App (App (App (Const "Between", Bvar 6), Bvar 4), Bvar 5),
+-                    Forall (Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+-                      Const "False"
+-                    ),
++                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 3)),
+                       Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8), Bvar 6), Bvar 5)), App (App (App (Const "Angle", Bvar 5), Bvar 6), Bvar 7)),
+                         App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 9), Bvar 7), Bvar 6)), Const "RightAngle")
+                       )
+@@ -2989,9 +2759,7 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                   Forall (App (App (App (Const "Between", Bvar 6), Bvar 4), Bvar 5),
+-                    Forall (Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+-                      Const "False"
+-                    ),
++                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 3)),
+                       Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 8), Bvar 6), Bvar 5)), Const "RightAngle"),
+                         App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 9), Bvar 7), Bvar 6)), App (App (App (Const "Angle", Bvar 6), Bvar 7), Bvar 8))
+                       )
+@@ -3031,24 +2799,12 @@ let%expect_test "Elaborate env.txt" =
+                         Forall (App (App (Const "OnLine", Bvar 9), Bvar 3),
+                           Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
+                             Forall (App (App (Const "OnLine", Bvar 7), Bvar 5),
+-                              Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 12),
+-                                Const "False"
+-                              ),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 13),
+-                                  Const "False"
+-                                ),
+-                                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 14),
+-                                    Const "False"
+-                                  ),
+-                                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 15),
+-                                      Const "False"
+-                                    ),
+-                                      Forall (Forall (App (App (App (Const "Between", Bvar 15), Bvar 16), Bvar 14),
+-                                        Const "False"
+-                                      ),
+-                                        Forall (Forall (App (App (App (Const "Between", Bvar 14), Bvar 17), Bvar 13),
+-                                          Const "False"
+-                                        ),
++                              Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 12),
++                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 13)),
++                                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 14),
++                                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 15)),
++                                      Forall (App (Const "Not", App (App (App (Const "Between", Bvar 15), Bvar 16), Bvar 14)),
++                                        Forall (App (Const "Not", App (App (App (Const "Between", Bvar 14), Bvar 17), Bvar 13)),
+                                           App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 17), Bvar 18), Bvar 15)), App (App (App (Const "Angle", Bvar 16), Bvar 18), Bvar 14))
+                                         )
+                                       )
+@@ -3097,9 +2853,7 @@ let%expect_test "Elaborate env.txt" =
+                           Forall (App (App (Const "OnLine", Bvar 8), Bvar 4),
+                             Forall (App (App (Const "OnLine", Bvar 9), Bvar 4),
+                               Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 12), Bvar 11),
+-                                  Const "False"
+-                                ),
++                                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 12), Bvar 11),
+                                   Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 11), Bvar 8),
+                                     Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
+                                       App (App (Const "LinesInter", Bvar 11), Bvar 9)
+@@ -3149,9 +2903,7 @@ let%expect_test "Elaborate env.txt" =
+                           Forall (App (App (Const "OnLine", Bvar 8), Bvar 4),
+                             Forall (App (App (Const "OnLine", Bvar 9), Bvar 4),
+                               Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 12), Bvar 11),
+-                                  Const "False"
+-                                ),
++                                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 12), Bvar 11),
+                                   Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 11), Bvar 8),
+                                     Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
+                                       Forall (App (App (Const "OnLine", Bvar 12), Bvar 11),
+@@ -3191,9 +2943,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Line",
+             Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
+               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                  Const "False"
+-                ),
++                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                   Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 6), Bvar 5), Bvar 4)), Const "Zero"),
+                     App (App (Const "OnLine", Bvar 5), Bvar 4)
+                   )
+@@ -3219,9 +2969,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Line",
+             Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
+               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                  Const "False"
+-                ),
++                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+                     App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 7), Bvar 6), Bvar 5)), Const "Zero")
+                   )
+@@ -3251,18 +2999,10 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar                                     )
+@@ -3097,9 +2853,7 @@ let%expect_test "Elaborate env.txt" =
+                           Forall (App (App (Const "OnLine", Bvar 8), Bvar 4),
+                             Forall (App (App (Const "OnLine", Bvar 9), Bvar 4),
+                               Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 12), Bvar 11),
+-                                  Const "False"
+-                                ),
++                                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 12), Bvar 11),
+                                   Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 11), Bvar 8),
+                                     Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
+                                       App (App (Const "LinesInter", Bvar 11), Bvar 9)
+@@ -3149,9 +2903,7 @@ let%expect_test "Elaborate env.txt" =
+                           Forall (App (App (Const "OnLine", Bvar 8), Bvar 4),
+                             Forall (App (App (Const "OnLine", Bvar 9), Bvar 4),
+                               Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
+-                                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 12), Bvar 11),
+-                                  Const "False"
+-                                ),
++                                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 12), Bvar 11),
+                                   Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 11), Bvar 8),
+                                     Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
+                                       Forall (App (App (Const "OnLine", Bvar 12), Bvar 11),
+@@ -3191,9 +2943,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Line",
+             Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
+               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                  Const "False"
+-                ),
++                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                   Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 6), Bvar 5), Bvar 4)), Const "Zero"),
+                     App (App (Const "OnLine", Bvar 5), Bvar 4)
+                   )
+@@ -3219,9 +2969,7 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Line",
+             Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
+               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
+-                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                  Const "False"
+-                ),
++                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
+                     App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 7), Bvar 6), Bvar 5)), Const "Zero")
+                   )
+@@ -3251,18 +2999,10 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6),
+-                        Const "False"
+-                      ),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 7),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 6),
+-                            Const "False"
+-                          ),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
++                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 7),
++                          Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 6)),
+                             Forall (App (App (App (Const "Between", Bvar 11), Bvar 9), Bvar 10),
+                               App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 12), Bvar 10), Bvar 9)), App (App (App (Const "Area", Bvar 9), Bvar 10), Bvar 11))), App (App (App (Const "Area", Bvar 12), Bvar 9), Bvar 11))
+                             )
+@@ -3297,18 +3037,10 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6),
+-                        Const "False"
+-                      ),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 7),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 6),
+-                            Const "False"
+-                          ),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
++                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 7),
++                          Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 6)),
+                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 11), Bvar 9), Bvar 8)), App (App (App (Const "Area", Bvar 8), Bvar 9), Bvar 10))), App (App (App (Const "Area", Bvar 11), Bvar 8), Bvar 10)),
+                               App (App (App (Const "Between", Bvar 12), Bvar 10), Bvar 11)
+                             )
+@@ -3344,24 +3076,12 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Point",
+             Forall (Const "Point",
+               Forall (Const "Point",
+-                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                  Const "False"
+-                ),
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                    Const "False"
+-                  ),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                        Const "False"
+-                      ),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5),
+-                            Const "False"
+-                          ),
++                Forall (App (Const "Not", App (App (App (Const "Eq" 6),
+-                        Const "False"
+-                      ),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 7),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 6),
+-                            Const "False"
+-                          ),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
++                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 7),
++                          Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 6)),
+                             Forall (App (App (App (Const "Between", Bvar 11), Bvar 9), Bvar 10),
+                               App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 12), Bvar 10), Bvar 9)), App (App (App (Const "Area", Bvar 9), Bvar 10), Bvar 11))), App (App (App (Const "Area", Bvar 12), Bvar 9), Bvar 11))
+                             )
+@@ -3297,18 +3037,10 @@ let%expect_test "Elaborate env.txt" =
+               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
+                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6),
+-                        Const "False"
+-                      ),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 7),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 6),
+-                            Const "False"
+-                          ),
++                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
++                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
++                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 7),
++                          Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 6)),
+                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 11), Bvar 9), Bvar 8)), App (App (App (Const "Area", Bvar 8), Bvar 9), Bvar 10))), App (App (App (Const "Area", Bvar 11), Bvar 8), Bvar 10)),
+                               App (App (App (Const "Between", Bvar 12), Bvar 10), Bvar 11)
+                             )
+@@ -3344,24 +3076,12 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Point",
+             Forall (Const "Point",
+               Forall (Const "Point",
+-                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                  Const "False"
+-                ),
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                    Const "False"
+-                  ),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                        Const "False"
+-                      ),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5),
+-                            Const "False"
+-                          ),
++                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
++                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 13)), App (App (Const "Length", Bvar 8), Bvar 10)),
+@@ -3402,24 +3122,12 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Point",
+             Forall (Const "Point",
+               Forall (Const "Point",
+-                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                  Const "False"
+-                ),
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                    Const "False"
+-                  ),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                        Const "False"
+-                      ),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5),
+-                            Const "False"
+-                          ),
++                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
++                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 11)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 8)),
+@@ -3446,9 +3154,7 @@ let%expect_test "Elaborate env.txt" =
+   [%expect
+     {|
+     Forall (Sort 0,
+-      Forall (Forall (Forall (Bvar 0,
+-        Const "False"
+-      ),
++      Forall (Forall (App (Const "Not", Bvar 0),
+         Const "False"
+       ),
+         Bvar 1
+, Const "Point"), Bvar 5), Bvar 4)),
++                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
++                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 13)), App (App (Const "Length", Bvar 8), Bvar 10)),
+@@ -3402,24 +3122,12 @@ let%expect_test "Elaborate env.txt" =
+           Forall (Const "Point",
+             Forall (Const "Point",
+               Forall (Const "Point",
+-                Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                  Const "False"
+-                ),
+-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                    Const "False"
+-                  ),
+-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5),
+-                      Const "False"
+-                    ),
+-                      Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                        Const "False"
+-                      ),
+-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4),
+-                          Const "False"
+-                        ),
+-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5),
+-                            Const "False"
+-                          ),
++                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
++                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
++                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
+                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 11)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 8)),
+@@ -3446,9 +3154,7 @@ let%expect_test "Elaborate env.txt" =
+   [%expect
+     {|
+     Forall (Sort 0,
+-      Forall (Forall (Forall (Bvar 0,
+-        Const "False"
+-      ),
++      Forall (Forall (App (Const "Not", Bvar 0),
+         Const "False"
+       ),
+         Bvar 1

@@ -505,7 +505,9 @@ let rec delta_reduce (e : ctx) (tm : term) : term =
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   let tm_delta = delta_reduce e tm in
   create_metas e tm_delta [];
-  (match ty with Some ty -> checktype e tm_delta ty | None -> ignore (infertype e tm_delta));
+  (match ty with
+  | Some ty -> checktype e tm_delta ty
+  | None -> ignore (infertype e tm_delta));
   let tm_filled = replace_metas e tm_delta in
   Hashtbl.clear e.metas;
   let tm_reduced = Reduce.reduce e tm_filled in
@@ -543,10 +545,11 @@ let process_decl (e : ctx) (d : declaration) : unit =
                 {
                   name = d.name;
                   ty = ty_filled;
-                  data = match d.kind with
-                          | Theorem _ -> Theorem (list_axioms_used e proof_filled)
-                          | Def _ -> Def (list_axioms_used e proof_filled, proof_filled)
-                          | Axiom -> Axiom
+                  data =
+                    (match d.kind with
+                    | Theorem _ -> Theorem (list_axioms_used e proof_filled)
+                    | Def _ -> Def (list_axioms_used e proof_filled, proof_filled)
+                    | Axiom -> Axiom);
                 };
               Hashtbl.add e.kenv d.name ty_k)
             else
