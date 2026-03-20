@@ -486,7 +486,8 @@ let rec delta_reduce (e : ctx) (tm : term) : term =
   match tm.inner with
   | Name name -> (
       match Hashtbl.find_opt e.env name with
-      | Some { data = Def (_, body); _ } -> delta_reduce e body
+      (* we need to uniquify binder ids here when replacing with the definition *)
+      | Some { data = Def (_, body); _ } -> delta_reduce e (uniquify_bids body)
       | _ -> tm)
   | Fun (arg, bid, ty_arg, body) ->
       let ty_arg_red = delta_reduce e ty_arg in
