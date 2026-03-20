@@ -157,9 +157,9 @@ let rec valid_pattern (e : ctx) (graph : rw_graph) (m : int) (tm : term)
   | Bvar bid ->
       (* either bound in the solution itself or part of the hole's own context *)
       (* print_endline ("checking if bound variable " ^ string_of_int bid ^ " is valid in solution for ?m" ^ string_of_int m);
-    print_endline ("current context: " ^ String.concat ", " (List.map string_of_int ctx));
-    print_endline ("current hole context: " ^ String.concat ", " (List.map string_of_int (Hashtbl.find e.metas m).context));
-    print_endline ("original bid of " ^ string_of_int bid ^ " is " ^ string_of_int (original_bid graph bid)); *)
+      print_endline ("current context: " ^ String.concat ", " (List.map string_of_int ctx));
+      print_endline ("current hole context: " ^ String.concat ", " (List.map string_of_int (Hashtbl.find e.metas m).context));
+      print_endline ("original bid of " ^ string_of_int bid ^ " is " ^ string_of_int (original_bid graph bid)); *)
       List.exists (fun context_bid -> context_bid = bid) sol_bids
       || (Hashtbl.find e.metas m).context
          |> List.exists (fun context_bid -> original_bid graph bid = context_bid)

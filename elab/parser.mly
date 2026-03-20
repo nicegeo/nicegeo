@@ -42,17 +42,15 @@ term:
       let params_flat = List.concat params in
       List.fold_right
         (fun (x, ty) acc ->
-           let pat = {Term.inner=Term.Name x; loc} in
            let bid = Term.gen_binder_id () in
-           {Term.inner=Term.Fun (Some x, bid, ty, Term.subst acc pat.inner (Term.Bvar bid)); loc})
+           {Term.inner=Term.Fun (Some x, bid, ty, Term.subst acc (Term.Name x) (Term.Bvar bid)); loc})
         params_flat body
     }
   | LPAREN x = IDENT COLON ty = term RPAREN FORALL rettype = term
     {
       let loc = { Term.start = $startpos; Term.end_ = $endpos } in
-      let pat = {Term.inner=Term.Name x; loc} in
       let bid = Term.gen_binder_id () in
-      {Term.inner=Term.Arrow (Some x, bid, ty, Term.subst rettype pat.inner (Term.Bvar bid)); loc}
+      {Term.inner=Term.Arrow (Some x, bid, ty, Term.subst rettype (Term.Name x) (Term.Bvar bid)); loc}
     }
   | ty = app_term FORALL rettype = term
     {

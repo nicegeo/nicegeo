@@ -32,5 +32,5 @@ type ctx = {
   metas : (int, metavar) Hashtbl.t;
       (** Mapping from hole ids to their metavariable records. *)
   lctx : (int, string option * term) Hashtbl.t;
-      (** mapping binder ids to their optional name and type. *)
+      (** Mapping from binder ids to their optional name and type. *)
 }

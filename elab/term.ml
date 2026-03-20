@@ -15,11 +15,10 @@ type term = {
 
 and termkind =
   | Name of string
-    (* a name in the code (refers to a const or the nearest bound variable of the same name during parsing) *)
   | Bvar of int
   | Hole of int
-  | Fun of string option * int * term * term (* argument name, type, body *)
-  | Arrow of string option * int * term * term (* argument name, type, return type *)
+  | Fun of string option * int * term * term
+  | Arrow of string option * int * term * term
   | App of term * term
   | Sort of int
 
