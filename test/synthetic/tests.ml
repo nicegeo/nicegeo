@@ -366,29 +366,6 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* List.mem : (A : Type) -> A -> List A -> Prop := fun (A: Type) (a: A) (L: List A) => Not (List.forall A (fun (x : A) => Ne A a x) L) *)
-  show_kterm "List.mem";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (App (Const "List", Bvar 1),
-          Sort 0
-        )
-      )
-    )
-    :=
-    Lam (Sort 1,
-      Lam (Bvar 0,
-        Lam (App (Const "List", Bvar 1),
-          App (Const "Not", App (App (App (Const "List.forall", Bvar 2), Lam (Bvar 2,
-            App (App (App (Const "Ne", Bvar 3), Bvar 2), Bvar 0)
-          )), Bvar 0))
-        )
-      )
-    )
-    |}];
-
   (* List.forall : (A : Type) -> (A -> Prop) -> List A -> Prop *)
   show_kterm "List.forall";
   [%expect
@@ -418,8 +395,7 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* List.forall_cons : (A : Type) -> (p : A -> Prop) -> (a : A) -> (L : List A) ->
-    And (List.forall A p (List.cons A a L) -> And (p a) (List.forall A p L))
-        (And (p a) (List.forall A p L) -> List.forall A p (List.cons A a L)) *)
+      Iff (List.forall A p (List.cons A a L)) (And (p a) (List.forall A p L)) *)
   show_kterm "List.forall_cons";
   [%expect
     {|
@@ -431,6 +407,29 @@ let%expect_test "Elaborate env.txt" =
           Forall (App (Const "List", Bvar 2),
             App (App (Const "Iff", App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0))), App (App (Const "And", App (Bvar 2, Bvar 1)), App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)))
           )
+        )
+      )
+    )
+    |}];
+
+  (* List.mem : (A : Type) -> A -> List A -> Prop := fun (A: Type) (a: A) (L: List A) => Not (List.forall A (fun (x : A) => Ne A a x) L) *)
+  show_kterm "List.mem";
+  [%expect
+    {|
+    Forall (Sort 1,
+      Forall (Bvar 0,
+        Forall (App (Const "List", Bvar 1),
+          Sort 0
+        )
+      )
+    )
+    :=
+    Lam (Sort 1,
+      Lam (Bvar 0,
+        Lam (App (Const "List", Bvar 1),
+          App (Const "Not", App (App (App (Const "List.forall", Bvar 2), Lam (Bvar 2,
+            App (App (App (Const "Ne", Bvar 3), Bvar 2), Bvar 0)
+          )), Bvar 0))
         )
       )
     )
@@ -463,7 +462,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* LtIrrefl : (a : Measure) -> (Lt a a -> False) *)
+  (* LtIrrefl : (a : Measure) -> Not (Lt a a) *)
   show_kterm "LtIrrefl";
   [%expect
     {|
@@ -500,7 +499,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* LtAntisymm : (a: Measure) -> (b: Measure) -> Lt a b -> Lt b a -> False *)
+  (* LtAntisymm : (a: Measure) -> (b: Measure) -> Lt a b -> Not (Lt b a) *)
   show_kterm "LtAntisymm";
   [%expect
     {|
@@ -802,7 +801,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* pt_between_on_line :
     (L : Line) -> (b : Point) -> (c : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    OnLine b L -> OnLine c L -> (Eq Point b c -> False) -> (Not (List.mem Line L l_list)) ->
+    OnLine b L -> OnLine c L -> Ne Point b c -> (Not (List.mem Line L l_list)) ->
     Exists Point (fun (a : Point) =>
       And (And (OnLine a L) (Between b a c)) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_between_on_line";
@@ -835,7 +834,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* pt_extension_on_line :
     (L : Line) -> (b : Point) -> (c : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    OnLine b L -> OnLine c L -> (Eq Point b c -> False) -> (Not (List.mem Line L l_list)) ->
+    OnLine b L -> OnLine c L -> Ne Point b c -> (Not (List.mem Line L l_list)) ->
     Exists Point (fun (a : Point) =>
       And (And (OnLine a L) (Between b c a)) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_extension_on_line";
@@ -868,7 +867,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* pt_sameside_of_not_online :
     (L : Line) -> (b : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    (OnLine b L -> False) ->
+    Not (OnLine b L) ->
     Exists Point (fun (a : Point) => And (SameSide a b L) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_sameside_of_not_online";
   [%expect
@@ -892,10 +891,10 @@ let%expect_test "Elaborate env.txt" =
 
   (* pt_oppositeside_of_not_online :
     (L : Line) -> (b : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    (OnLine b L -> False) ->
+    Not (OnLine b L) ->
     Exists Point (fun (a : Point) =>
-      And (And (OnLine a L -> False)
-          (SameSide a b L -> False)) (distinct_from a p_list l_list c_list)) *)
+      And (And (Not (OnLine a L))
+          (Not (SameSide a b L))) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_oppositeside_of_not_online";
   [%expect
     {|
@@ -959,8 +958,8 @@ let%expect_test "Elaborate env.txt" =
   (* pt_outside_circle :
     (aa : Circle) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
     Exists Point (fun (a : Point) =>
-      And (And (OnCircle a aa -> False)
-          (InCircle a aa -> False)) (distinct_from a p_list l_list c_list)) *)
+      And (And (Not (OnCircle a aa))
+          (Not (InCircle a aa))) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_outside_circle";
   [%expect
     {|
@@ -978,7 +977,7 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* line_of_pts :
-    (a : Point) -> (b : Point) -> (Eq Point a b -> False) ->
+    (a : Point) -> (b : Point) -> Ne Point a b ->
     Exists Line (fun (L : Line) =>
       And (OnLine a L) (OnLine b L)) *)
   show_kterm "line_of_pts";
@@ -996,7 +995,7 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* circle_of_ne :
-    (a : Point) -> (b : Point) -> (Eq Point a b -> False) ->
+    (a : Point) -> (b : Point) -> Ne Point a b ->
     Exists Circle (fun (aa : Circle) =>
       And (CenterCircle a aa) (OnCircle b aa)) *)
   show_kterm "circle_of_ne";
@@ -1053,7 +1052,7 @@ let%expect_test "Elaborate env.txt" =
     (L : Line) -> (aa : Circle) -> LineCircleInter L aa ->
     Exists Point (fun (a : Point) =>
       Exists Point (fun (b : Point) =>
-        And (Eq Point a b -> False)
+        And (Ne Point a b)
         (And (OnLine a L)
         (And (OnLine b L)
         (And (OnCircle a aa) (OnCircle b aa)))))) *)
@@ -1077,7 +1076,7 @@ let%expect_test "Elaborate env.txt" =
     (L : Line) -> (aa : Circle) -> (b : Point) -> (c : Point) ->
     OnLine b L -> OnLine c L ->
     InCircle b aa ->
-    (OnCircle c aa -> False) -> (InCircle c aa -> False) ->
+    Not (OnCircle c aa) -> Not (InCircle c aa) ->
     Exists Point (fun (a : Point) =>
       And (OnLine a L)
       (And (OnCircle a aa) (Between b a c))) *)
@@ -1111,7 +1110,7 @@ let%expect_test "Elaborate env.txt" =
     (L : Line) -> (aa : Circle) -> (b : Point) -> (c : Point) ->
     OnLine b L -> OnLine c L ->
     InCircle b aa ->
-    (Eq Point c b -> False) ->
+    Ne Point c b ->
     Exists Point (fun (a : Point) =>
       And (OnLine a L)
       (And (OnCircle a aa) (Between a b c))) *)
@@ -1161,7 +1160,7 @@ let%expect_test "Elaborate env.txt" =
     (aa : Circle) -> (bb : Circle) -> CirclesInter aa bb ->
     Exists Point (fun (a : Point) =>
       Exists Point (fun (b : Point) =>
-        And (Eq Point a b -> False)
+        And (Ne Point a b)
         (And (OnCircle a aa)
         (And (OnCircle a bb)
         (And (OnCircle b aa) (OnCircle b bb)))))) *)
@@ -1183,7 +1182,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* pt_sameside_of_circlesinter :
     (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (aa : Circle) -> (bb : Circle) ->
-    OnLine c L -> OnLine d L -> (OnLine b L -> False) ->
+    OnLine c L -> OnLine d L -> Not (OnLine b L) ->
     CenterCircle c aa -> CenterCircle d bb -> CirclesInter aa bb ->
     Exists Point (fun (a : Point) =>
       And (SameSide a b L)
@@ -1222,11 +1221,11 @@ let%expect_test "Elaborate env.txt" =
 
   (* pt_oppositeside_of_circlesinter :
     (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (aa : Circle) -> (bb : Circle) ->
-    OnLine c L -> OnLine d L -> (OnLine b L -> False) ->
+    OnLine c L -> OnLine d L -> Not (OnLine b L) ->
     CenterCircle c aa -> CenterCircle d bb -> CirclesInter aa bb ->
     Exists Point (fun (a : Point) =>
-      And (OnLine a L -> False)
-      (And (SameSide a b L -> False)
+      And (Not (OnLine a L))
+      (And (Not (SameSide a b L))
           (And (OnCircle a aa) (OnCircle a bb)))) *)
   show_kterm "pt_oppositeside_of_circlesinter";
   [%expect
@@ -1262,7 +1261,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* two_distinct_points_determine_unique_line :
     (a: Point) -> (b : Point) -> (L : Line) -> (M : Line) -> 
-    (Eq Point a b -> False) ->
+    Ne Point a b ->
     OnLine a L -> OnLine b L -> OnLine a M -> OnLine b M ->
     Eq Line L M *)
   show_kterm "two_distinct_points_determine_unique_line";
@@ -1326,7 +1325,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* inside_implies_not_on_circle :
     (a: Point) -> (aa: Circle) ->
-    InCircle a aa -> (OnCircle a aa -> False) *)
+    InCircle a aa -> Not (OnCircle a aa) *)
   show_kterm "inside_implies_not_on_circle";
   [%expect
     {|
@@ -1342,8 +1341,8 @@ let%expect_test "Elaborate env.txt" =
   (* between_distinct: (a: Point) -> (b: Point) -> (c : Point) -> 
   (Between a b c) -> 
   (And (Between c b a)
-  (And (Not (Eq Point a b)) 
-  (And (Not (Eq Point a c))
+  (And (Ne Point a b)
+  (And (Ne Point a c)
       (Not (Between b a c))
   ))) *)
   show_kterm "between_distinct";
@@ -1450,7 +1449,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* between_linear: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
   (OnLine a L) -> (OnLine b L) -> (OnLine c L) ->
-  (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
+  (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
     (Or (Between a b c) (Or (Between b a c) (Between a c b))) *)
   show_kterm "between_linear";
   [%expect
@@ -1622,7 +1621,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* pasch_online_sameside :
     (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    Between a b c -> OnLine a L -> (OnLine b L -> False) ->
+    Between a b c -> OnLine a L -> Not (OnLine b L) ->
     SameSide b c L *)
   show_kterm "pasch_online_sameside";
   [%expect
@@ -1647,7 +1646,7 @@ let%expect_test "Elaborate env.txt" =
   (* pasch_online_not_sameside :
     (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
     Between a b c -> OnLine b L ->
-    (SameSide a c L -> False) *)
+    Not (SameSide a c L) *)
   show_kterm "pasch_online_not_sameside";
   [%expect
     {|
@@ -1668,11 +1667,11 @@ let%expect_test "Elaborate env.txt" =
 
   (* pasch_intersection_between :
     (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) -> (M : Line) ->
-    (Eq Line L M -> False) ->
+    Ne Line L M ->
     OnLine b L -> OnLine b M ->
     OnLine a M -> OnLine c M ->
-    (Eq Point a b -> False) -> (Eq Point c b -> False) ->
-    (SameSide a c L -> False) ->
+    Ne Point a b -> Ne Point c b ->
+    Not (SameSide a c L) ->
     Between a b c *)
   show_kterm "pasch_intersection_between";
   [%expect
@@ -1756,7 +1755,7 @@ let%expect_test "Elaborate env.txt" =
     (SameSide c d L) ->
     (Not (SameSide b d M)) ->
     (Not (OnLine d M)) ->
-    (Not (Eq Point b a)) ->
+    (Ne Point b a) ->
     (SameSide b c N) *)
   show_kterm "triple_incidence_2";
   [%expect
@@ -1853,7 +1852,7 @@ let%expect_test "Elaborate env.txt" =
     (OnLine a L) -> (OnLine b L) -> (OnLine c L) ->
     (InCircle a aa) -> 
     (OnCircle b aa) -> (OnCircle c aa) ->
-    (Not (Eq Point b c)) ->
+    (Ne Point b c) ->
     (Between b a c) *)
   show_kterm "circle_chord_between";
   [%expect
@@ -1938,10 +1937,10 @@ let%expect_test "Elaborate env.txt" =
   (* circle_intersect_opposite_sides: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> 
   (L : Line) ->
   (aa : Circle) -> (bb : Circle) ->
-    (Not (Eq Circle aa bb)) ->
+    (Ne Circle aa bb) ->
     (OnCircle c aa) -> (OnCircle c bb) ->
     (OnCircle d aa) -> (OnCircle d bb) ->
-    (Not (Eq Point c d)) ->
+    (Ne Point c d) ->
     (CenterCircle a aa) -> (CenterCircle b bb) ->
     (OnLine a L) ->
     (OnLine b L) ->
@@ -2165,7 +2164,7 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* angle_symm: (a : Point) -> (b : Point) -> (c : Point) ->
-    (Not (Eq Point a b)) -> (Not (Eq Point b c)) ->
+    (Ne Point a b) -> (Ne Point b c) ->
     (Eq Measure (Angle a b c) (Angle c b a)) *)
   show_kterm "angle_symm";
   [%expect
@@ -2427,8 +2426,8 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* angle_zero_if_on_line: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    (Not (Eq Point a b)) ->
-    (Not (Eq Point a c)) ->
+    (Ne Point a b) ->
+    (Ne Point a c) ->
     (OnLine a L) ->
     (OnLine b L) ->
     (OnLine c L) -> (Not (Between b a c)) ->
@@ -2460,8 +2459,8 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* on_line_if_angle_zero: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    (Not (Eq Point a b)) ->
-    (Not (Eq Point a c)) ->
+    (Ne Point a b) ->
+    (Ne Point a c) ->
     (OnLine a L) ->
     (OnLine b L) ->
     (Eq Measure (Angle b a c) Zero) ->
@@ -2493,10 +2492,10 @@ let%expect_test "Elaborate env.txt" =
   (* angle_add_if_same_side: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (M : Line) ->
     (OnLine a L) -> (OnLine a M) ->
     (OnLine b L) -> (OnLine c M) ->
-    (Not (Eq Point a b)) -> 
-    (Not (Eq Point a c)) ->
+    (Ne Point a b) ->
+    (Ne Point a c) ->
     (Not (OnLine d L)) -> (Not (OnLine d M)) ->
-    (Not (Eq Line L M)) ->
+    (Ne Line L M) ->
     (SameSide b d M) -> (SameSide c d L) ->
     (Eq Measure (Angle b a c) (Add (Angle b a d) (Angle d a c))) *)
   show_kterm "angle_add_if_same_side";
@@ -2542,10 +2541,10 @@ let%expect_test "Elaborate env.txt" =
   (* same_side_if_angle_add: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (M : Line) ->
     (OnLine a L) -> (OnLine a M) ->
     (OnLine b L) -> (OnLine c M) ->
-    (Not (Eq Point a b)) ->
-    (Not (Eq Point a c)) ->
+    (Ne Point a b) ->
+    (Ne Point a c) ->
     (Not (OnLine d L)) -> (Not (OnLine d M)) ->
-    (Not (Eq Line L M)) ->
+    (Ne Line L M) ->
     (Eq Measure (Angle b a c) (Add (Angle b a d) (Angle d a c))) ->
     (And (SameSide b d M) (SameSide c d L)) *)
   show_kterm "same_side_if_angle_add";
@@ -2654,8 +2653,8 @@ let%expect_test "Elaborate env.txt" =
     (L : Line) -> (M : Line) ->
     (OnLine a L) -> (OnLine b L) -> (OnLine b' L) ->
     (OnLine a M) -> (OnLine c M) -> (OnLine c' M) ->
-    (Not (Eq Point b a)) -> (Not (Eq Point b' a)) ->
-    (Not (Eq Point c a)) -> (Not (Eq Point c' a)) ->
+    (Ne Point b a) -> (Ne Point b' a) ->
+    (Ne Point c a) -> (Ne Point c' a) ->
     (Not (Between b a b')) ->
     (Not (Between c a c')) ->
     (Eq Measure (Angle b a c) (Angle b' a c')) *)
@@ -2708,7 +2707,7 @@ let%expect_test "Elaborate env.txt" =
     (OnLine a L) -> (OnLine b L) ->
     (OnLine b M) ->(OnLine c M) ->
     (OnLine c N) -> (OnLine d N) ->
-    (Not (Eq Point b c)) ->
+    (Ne Point b c) ->
     (SameSide a d M) ->
     (Lt (Add (Angle a b c) (Angle b c d)) (Add RightAngle RightAngle)) ->
     (LinesInter L N) *)
@@ -2757,7 +2756,7 @@ let%expect_test "Elaborate env.txt" =
     (OnLine a L) -> (OnLine b L) ->
     (OnLine b M) ->(OnLine c M) ->
     (OnLine c N) -> (OnLine d N) ->
-    (Not (Eq Point b c)) ->
+    (Ne Point b c) ->
     (SameSide a d M) ->
     (Lt (Add (Angle a b c) (Angle b c d)) (Add RightAngle RightAngle)) ->   
     (OnLine e L) -> (OnLine e N) ->
@@ -2807,7 +2806,7 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* on_line_if_area_zero: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    (OnLine a L) -> (OnLine b L) -> (Not (Eq Point a b)) ->
+    (OnLine a L) -> (OnLine b L) -> (Ne Point a b) ->
     (Eq Measure (Area a b c) Zero) ->
     (OnLine c L) *)
   show_kterm "on_line_if_area_zero";
@@ -2833,7 +2832,7 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* area_zero_if_on_line: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    (OnLine a L) -> (OnLine b L) -> (Not (Eq Point a b)) ->
+    (OnLine a L) -> (OnLine b L) -> (Ne Point a b) ->
     (OnLine c L) -> 
     (Eq Measure (Area a b c) Zero) *)
   show_kterm "area_zero_if_on_line";
@@ -2860,7 +2859,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* area_add_if_between: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) ->
     (OnLine a L) -> (OnLine b L) -> (OnLine c L) ->
-    (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
+    (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
     (Not (OnLine d L)) ->
     (Between a c b) ->
     (Eq Measure (Add (Area a c d) (Area d c b)) (Area a d b)) *)
@@ -2898,7 +2897,7 @@ let%expect_test "Elaborate env.txt" =
 
   (* between_if_area_add: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) ->
     (OnLine a L) -> (OnLine b L) -> (OnLine c L) ->
-    (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
+    (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
     (Not (OnLine d L)) ->
     (Eq Measure (Add (Area a c d) (Area d c b)) (Area a d b)) ->
     (Between a c b) *)
@@ -2935,8 +2934,8 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* sss_congruence: (a : Point) -> (b : Point) -> (c : Point) -> (a' : Point) -> (b' : Point) -> (c' : Point) ->
-  (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
-  (Not (Eq Point a' b')) -> (Not (Eq Point b' c')) -> (Not (Eq Point a' c')) ->
+  (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
+  (Ne Point a' b') -> (Ne Point b' c') -> (Ne Point a' c') ->
   (Eq Measure (Length a b) (Length a' b')) -> (Eq Measure (Length b c) (Length b' c')) -> 
   (Eq Measure (Length c a) (Length c' a')) ->
   (And 
@@ -2980,8 +2979,8 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* sas_congruence: (a : Point) -> (b : Point) -> (c : Point) -> (a' : Point) -> (b' : Point) -> (c' : Point) ->
-  (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
-  (Not (Eq Point a' b')) -> (Not (Eq Point b' c')) -> (Not (Eq Point a' c')) ->
+  (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
+  (Ne Point a' b') -> (Ne Point b' c') -> (Ne Point a' c') ->
   (Eq Measure (Length a b) (Length a' b')) ->
   (Eq Measure (Length b c) (Length b' c')) ->
   (Eq Measure (Angle a b c) (Angle a' b' c')) ->
