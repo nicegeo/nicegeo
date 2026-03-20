@@ -46,6 +46,8 @@ open Types
 module KInfer = Kernel.Infer
 module KExceptions = Kernel.Exceptions
 
+let subst = Reduce.subst
+
 let raise_at (tm : term) (e : Error.error_type) : 'a =
   let loc = Some tm.loc in
   raise (Error.ElabError { context = { loc; decl_name = None }; error_type = e })
@@ -66,30 +68,6 @@ type normterm =
 (** A rewrite graph corresponds to a term. If [rw_graph[bid1] = bid2], any occurrence of
     Bvar bid1 in the term originally referred to Bvar bid2. *)
 type rw_graph = (int, int) Hashtbl.t
-
-(** [subst e tm pat replacement] substitutes all occurrences of `pat` with `replacement`
-    in `tm`, recursing into known metavariable solutions. *)
-let rec subst (e : ctx) (tm : term) (pat : termkind) (replacement : termkind) =
-  match tm.inner with
-  | Name _ | Bvar _ ->
-      if tm.inner = pat then { inner = replacement; loc = tm.loc } else tm
-  | Fun (x, bid, ty, body) ->
-      let ty_subst = subst e ty pat replacement in
-      let body_subst = subst e body pat replacement in
-      { inner = Fun (x, bid, ty_subst, body_subst); loc = tm.loc }
-  | Arrow (x, bid, ty_arg, ty_ret) ->
-      let ty_arg_subst = subst e ty_arg pat replacement in
-      let ty_ret_subst = subst e ty_ret pat replacement in
-      { inner = Arrow (x, bid, ty_arg_subst, ty_ret_subst); loc = tm.loc }
-  | App (f, arg) ->
-      let f_subst = subst e f pat replacement in
-      let arg_subst = subst e arg pat replacement in
-      { inner = App (f_subst, arg_subst); loc = tm.loc }
-  | Hole m -> (
-      match Hashtbl.find_opt e.metas m with
-      | Some { sol = Some tm_sol; _ } -> subst e tm_sol pat replacement
-      | _ -> tm)
-  | _ -> tm
 
 (** [whnf_beta e tm] computes the weak head normal form of `tm` with respect to the
     context `e`, recursing into known metavariable solutions. *)
@@ -510,14 +488,14 @@ let rec delta_reduce (e : ctx) (tm : term) : term =
       match Hashtbl.find_opt e.env name with
       | Some { data = Def (_, body); _ } -> delta_reduce e body
       | _ -> tm)
-  | Fun (arg, ty_arg, body) ->
+  | Fun (arg, bid, ty_arg, body) ->
       let ty_arg_red = delta_reduce e ty_arg in
       let body_red = delta_reduce e body in
-      { inner = Fun (arg, ty_arg_red, body_red); loc = tm.loc }
-  | Arrow (arg, ty_arg, ty_ret) ->
+      { inner = Fun (arg, bid, ty_arg_red, body_red); loc = tm.loc }
+  | Arrow (arg, bid, ty_arg, ty_ret) ->
       let ty_arg_red = delta_reduce e ty_arg in
       let ty_ret_red = delta_reduce e ty_ret in
-      { inner = Arrow (arg, ty_arg_red, ty_ret_red); loc = tm.loc }
+      { inner = Arrow (arg, bid, ty_arg_red, ty_ret_red); loc = tm.loc }
   | App (f, arg) ->
       let f_red = delta_reduce e f in
       let arg_red = delta_reduce e arg in
@@ -525,72 +503,72 @@ let rec delta_reduce (e : ctx) (tm : term) : term =
   | _ -> tm
 
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
-  create_metas e tm [];
-  (match ty with Some ty -> checktype e tm ty | None -> ignore (infertype e tm));
-  let tm_filled = replace_metas e tm in
+  let tm_delta = delta_reduce e tm in
+  create_metas e tm_delta [];
+  (match ty with Some ty -> checktype e tm_delta ty | None -> ignore (infertype e tm_delta));
+  let tm_filled = replace_metas e tm_delta in
   Hashtbl.clear e.metas;
-  tm_filled
+  let tm_reduced = Reduce.reduce e tm_filled in
+  tm_reduced
 
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
   try
-    match d.kind with
-    | Theorem proof -> (
-        if Hashtbl.mem e.env d.name then
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.AlreadyDefined d.name;
-               });
-        let ty_filled = elaborate e d.ty None in
-        check_is_type e ty_filled;
-        let proof_filled = elaborate e proof (Some ty_filled) in
-        let ty_k = conv_to_kterm ty_filled in
-        let proof_k = conv_to_kterm proof_filled in
+    if Hashtbl.mem e.env d.name then
+      raise
+        (Error.ElabError
+           {
+             context = { loc = Some d.name_loc; decl_name = Some d.name };
+             error_type = Error.AlreadyDefined d.name;
+           })
+    else
+      match d.kind with
+      | Theorem body | Def body -> (
+          let ty_filled = elaborate e d.ty None in
+          check_is_type e ty_filled;
+          let proof_filled = elaborate e body (Some ty_filled) in
+          let ty_k = conv_to_kterm ty_filled in
+          let proof_k = conv_to_kterm proof_filled in
 
-        try
-          let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
-          let isValidProof = KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k in
+          try
+            let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
+            let isValidProof =
+              KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k
+            in
 
-          if isValidProof then (
-            Hashtbl.add
-              e.env
-              d.name
-              {
-                name = d.name;
-                ty = ty_filled;
-                data = Theorem (list_axioms_used e proof_filled);
-              };
-            Hashtbl.add e.kenv d.name ty_k)
-          else
+            if isValidProof then (
+              Hashtbl.add
+                e.env
+                d.name
+                {
+                  name = d.name;
+                  ty = ty_filled;
+                  data = match d.kind with
+                          | Theorem _ -> Theorem (list_axioms_used e proof_filled)
+                          | Def _ -> Def (list_axioms_used e proof_filled, proof_filled)
+                          | Axiom -> Axiom
+                };
+              Hashtbl.add e.kenv d.name ty_k)
+            else
+              raise
+                (Error.ElabError
+                   {
+                     context = { loc = Some d.name_loc; decl_name = Some d.name };
+                     error_type = Error.InternalError "kernel did not accept proof\n";
+                   })
+          with KExceptions.TypeError msg ->
             raise
               (Error.ElabError
                  {
                    context = { loc = Some d.name_loc; decl_name = Some d.name };
-                   error_type = Error.InternalError "kernel did not accept proof\n";
-                 })
-        with KExceptions.TypeError msg ->
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.KernelError { kernel_exn = msg };
-               }))
-    | Axiom ->
-        if Hashtbl.mem e.env d.name then
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.AlreadyDefined d.name;
-               });
-
-        let ty_filled = elaborate e d.ty None in
-        check_is_type e ty_filled;
-        let ty_k = conv_to_kterm ty_filled in
-        Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
-        Hashtbl.add e.kenv d.name ty_k
+                   error_type = Error.KernelError { kernel_exn = msg };
+                 }))
+      | Axiom ->
+          let ty_filled = elaborate e d.ty None in
+          check_is_type e ty_filled;
+          let ty_k = conv_to_kterm ty_filled in
+          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
+          Hashtbl.add e.kenv d.name ty_k
   with Error.ElabError x ->
     raise
       (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })

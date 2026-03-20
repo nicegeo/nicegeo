@@ -136,11 +136,11 @@ Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> Eq T a b -> Eq T b 
 
 Theorem ne_13_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> Eq _ a c -> False :=
     fun a b c Babc => 
-    Not.elim _ (fst _ _ (snd _ _ (snd _ _ (between_distinct a b c Babc))))
+    fst _ _ (snd _ _ (snd _ _ (between_distinct a b c Babc)))
 
 Theorem ne_23_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> Eq _ b c -> False :=
     fun a b c Babc => 
-    Ne.symm _ _ _ (Not.elim _ (fst _ _ (snd _ _ (between_distinct c b a (fst _ _ (between_distinct a b c Babc))))))
+    Ne.symm _ _ _ (fst _ _ (snd _ _ (between_distinct c b a (fst _ _ (between_distinct a b c Babc)))))
 
 Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     -> (bc : Eq _ b c -> False) -> (ab : Eq _ a b -> False)

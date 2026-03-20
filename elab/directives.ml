@@ -31,6 +31,6 @@ let process_directive (e : ctx) (dir : directive) : unit =
         ^ Pretty.term_to_string e ty_filled)
   | Reduce (t, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
-      let t_meta = Typecheck.hole_to_meta e [] t in
-      let reduced_term = Reduce.reduce e t_meta in
+      let t = Typecheck.elaborate e t None in
+      let reduced_term = Reduce.reduce e t in
       print_endline (prefix ^ "#reduce: " ^ Pretty.term_to_string e reduced_term)
