@@ -112,18 +112,18 @@ let%expect_test "Elaborate env.txt" =
 
   (* False : Prop *)
   show_kterm "False";
-  [%expect {| Sort 0 |}];
+  [%expect {|
+    Sort 0
+    :=
+    Forall (Sort 0,
+      Bvar 0
+    )
+    |}];
 
   (* False.elim : (P: Prop) -> False -> P *)
   show_kterm "False.elim";
   [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Const "False",
-        Bvar 1
-      )
-    )
-    |}];
+    {| |}];
 
   (* True : Prop *)
   show_kterm "True";
@@ -2800,9 +2800,9 @@ let%expect_test "Elaborate env.txt" =
                           Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
                             Forall (App (App (Const "OnLine", Bvar 7), Bvar 5),
                               Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 12),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 13)),
+                                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 13),
                                   Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 14),
-                                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 15)),
+                                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 15),
                                       Forall (App (Const "Not", App (App (App (Const "Between", Bvar 15), Bvar 16), Bvar 14)),
                                         Forall (App (Const "Not", App (App (App (Const "Between", Bvar 14), Bvar 17), Bvar 13)),
                                           App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 17), Bvar 18), Bvar 15)), App (App (App (Const "Angle", Bvar 16), Bvar 18), Bvar 14))
@@ -3076,12 +3076,12 @@ let%expect_test "Elaborate env.txt" =
           Forall (Const "Point",
             Forall (Const "Point",
               Forall (Const "Point",
-                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 5),
+                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 5),
                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 13)), App (App (Const "Length", Bvar 8), Bvar 10)),
@@ -3122,12 +3122,12 @@ let%expect_test "Elaborate env.txt" =
           Forall (Const "Point",
             Forall (Const "Point",
               Forall (Const "Point",
-                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 5),
+                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 5),
                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 11)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 8)),
