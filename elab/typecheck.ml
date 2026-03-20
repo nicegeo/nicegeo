@@ -509,35 +509,6 @@ let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   let tm_reduced = Reduce.reduce e tm_filled in
   tm_reduced
 
-(* ok i think what i want to do is impossible with the current kernel interface.
-like i can't have
-- no definitions in kernel
-- delta-reduced theorems in kernel
-- un-delta-reduced theorems in kernel
-- not keep around the definitions after opaquification
-like when i opaquify, i technically would need to like
-go back to all previous declarations and un-delta-reduce their types
-- no. 
-or never delta reduce them in the first place
-- strictly better than the above. but then what would i do. have the kernel typecheck the
-  delta-reduced version of the theorem but just insert the un-delta-reduced term? this is 
-  strictly what needs to happen. so might as well just add definitions to the kernel...
-
-ok to summarize why definitions in the kernel are needed:
-- we want to have those "definition-like axioms" as definitions rather than actual axioms. in other words we want
-to *prove* things like False, Exists, And, etc. and their constructors/eliminators rather than providing them as axioms.
-- with these definitions, we cannot work with fully delta-reduced terms in the elaborator. i think this intuitively 
-makes sense, expanding all definitions complicates terms and the unification algorithm stops being able to handle it.
-- in particular, when typechecking we almost never want to delta-reduce Exists, And, Or, Eq in the elaborator. we only 
-want to do so inside their respective constructor & eliminator proofs, and have all other proofs use those. 
-(Not, Ne can stay as they're simple enough that it doesn't cause issues)
-- so, when we create a definition and prove their cons and elim, we can write #opaque name afterwards to mark that definition
-as "opaque" so that it won't be delta-reduced in the future. 
-- we could just do allat in the elaborator. but then stuff wouldnt be kernel trusted. but we already trust delta reduction for
-faithfulness of meaning so it doesnt actually make anything worse. ok.
-- it's still a concern. i would slightly lean towards having definitions in the kernel just to make it closer to what the user types.
-*)
-
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
   try
