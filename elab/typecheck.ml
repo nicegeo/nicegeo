@@ -51,7 +51,6 @@ let subst = Reduce.subst
 let raise_at (tm : term) (e : Error.error_type) : 'a =
   let loc = Some tm.loc in
   raise (Error.ElabError { context = { loc; decl_name = None }; error_type = e })
-(* failwith "erm" *)
 
 type normterm =
   | Fun of string option * int * term * term

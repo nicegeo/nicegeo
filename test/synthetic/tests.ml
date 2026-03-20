@@ -29,6 +29,21 @@ let kterm_to_repr (term : Kernel.Term.term) =
   in
   kterm_to_repr_helper term 0
 
+(** Delta-reduces kernel terms (since definitions don't exist in the kernel). Used to
+    compare the unreduced representation with the reduced terms in the kernel environment.
+*)
+let rec kdelta_reduce (e : Elab.Types.ctx) (tm : Kernel.Term.term) : Kernel.Term.term =
+  match tm with
+  | Const name -> (
+      match Hashtbl.find_opt e.env name with
+      | Some { data = Def (_, body, _); _ } ->
+          kdelta_reduce e (Elab.Convert.conv_to_kterm body)
+      | _ -> tm)
+  | Lam (ty, body) -> Lam (kdelta_reduce e ty, kdelta_reduce e body)
+  | Forall (ty, ret) -> Forall (kdelta_reduce e ty, kdelta_reduce e ret)
+  | App (f, arg) -> App (kdelta_reduce e f, kdelta_reduce e arg)
+  | Bvar _ | Fvar _ | Sort _ -> tm
+
 (** These are the regression tests for the axioms in env.txt. If [dune runtest] yields
     errors here, inspect the diff to ensure that all changes in the kernel terms make
     sense. Assume changes in the term representation of the axioms are regressions unless
@@ -51,46 +66,41 @@ let kterm_to_repr (term : Kernel.Term.term) =
     Running [dune runtest] again will fill in the expect with the kernel term
     representation. Ensure this representation is correct before promoting and pushing. *)
 
-let rec kdelta_reduce (e : Elab.Types.ctx) (tm : Kernel.Term.term) : Kernel.Term.term =
-  match tm with
-  | Const name -> (
-      match Hashtbl.find_opt e.env name with
-      | Some { data = Def (_, body, _); _ } ->
-          kdelta_reduce e (Elab.Convert.conv_to_kterm body)
-      | _ -> tm)
-  | Lam (ty, body) -> Lam (kdelta_reduce e ty, kdelta_reduce e body)
-  | Forall (ty, ret) -> Forall (kdelta_reduce e ty, kdelta_reduce e ret)
-  | App (f, arg) -> App (kdelta_reduce e f, kdelta_reduce e arg)
-  | Bvar _ | Fvar _ | Sort _ -> tm
-
 let%expect_test "Elaborate env.txt" =
-  let env = Elab.Interface.create_with_env_path "../../../../../../synthetic/env.txt" in
-  let env_statements = Hashtbl.create 100 in
-  Elab.Interface.parse_statements "../../../../../../synthetic/env.txt"
+  let env_path = "../../../../../../synthetic/env.txt" in
+  let env = Elab.Interface.create_with_env_path env_path in
+  let env_decls = Hashtbl.create 100 in
+  Elab.Interface.parse_statements env_path
   |> List.iter (function
-    | Elab.Statement.Declaration decl -> Hashtbl.add env_statements decl.name decl
+    | Elab.Statement.Declaration decl -> Hashtbl.add env_decls decl.name decl
     | Elab.Statement.Directive _ -> ());
-  let kenv = Hashtbl.copy env.kenv in
-  (* Remove theorems from kenv *)
-  Hashtbl.iter (fun name _ ->
-    match Hashtbl.find_opt env_statements name with
-    | Some { kind = Theorem _; _ } -> Hashtbl.remove kenv name
-    | _ -> ()
-  ) kenv;
+
+  (* keeps track of unprocessed declarations so we don't miss any axioms/definitions *)
+  let unprocessed_decls = Hashtbl.copy env.kenv in
+  (* Remove theorems from unprocessed_decls; they are typechecked from axioms. *)
+  Hashtbl.iter
+    (fun name _ ->
+      match Hashtbl.find_opt env_decls name with
+      | Some { kind = Theorem _; _ } -> Hashtbl.remove unprocessed_decls name
+      | _ -> ())
+    unprocessed_decls;
 
   let show_kterm name =
-    let decl = Hashtbl.find env_statements name in
+    let decl = Hashtbl.find env_decls name in
     (match decl.kind with
-    | Theorem _ -> ()
+    | Theorem _ -> () (* Theorem statements don't need to be checked *)
     | Def body ->
+        (* Print definition type and body *)
         let delta_unreduced_ty = decl.ty |> Elab.Convert.conv_to_kterm in
         print_endline (kterm_to_repr delta_unreduced_ty);
         print_endline ":=";
         print_endline (kterm_to_repr (Elab.Convert.conv_to_kterm body))
     | Axiom ->
+        (* Print delta-unreduced kernel term *)
         let delta_unreduced = decl.ty |> Elab.Convert.conv_to_kterm in
         let repr = kterm_to_repr delta_unreduced in
         print_endline repr;
+        (* then ensure it [kdelta_reduce |> reduce]s into the actual kernel term *)
         let expanded_kterm = kdelta_reduce env delta_unreduced in
         let expanded_kterm_red =
           Kernel.Infer.reduce env.kenv (Hashtbl.create 0) expanded_kterm
@@ -106,8 +116,8 @@ let%expect_test "Elaborate env.txt" =
           print_endline (kterm_to_repr kenv_kterm);
           failwith "Term repr does not delta reduce to kenv term!"));
 
-    (* Delete entry from kenv so we can check this is empty at the end *)
-    Hashtbl.remove kenv name;
+    (* Delete entry so we can check this is empty at the end *)
+    Hashtbl.remove unprocessed_decls name;
     ()
   in
 
@@ -229,7 +239,7 @@ let%expect_test "Elaborate env.txt" =
       )
     )
     |}];
-  
+
   (* Not : Prop -> Prop := fun (P: Prop) => (P -> False) *)
   show_kterm "Not";
   [%expect
@@ -3015,7 +3025,7 @@ let%expect_test "Elaborate env.txt" =
     )
     |}];
 
-  (* Check kenv is empty at the end *)
-  if Hashtbl.length kenv <> 0 then (
-    Seq.iter print_endline (Hashtbl.to_seq_keys kenv);
+  (* Check unprocessed_decls is empty at the end *)
+  if Hashtbl.length unprocessed_decls <> 0 then (
+    Seq.iter print_endline (Hashtbl.to_seq_keys unprocessed_decls);
     [%expect.unreachable])
