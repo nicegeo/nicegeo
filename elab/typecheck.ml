@@ -323,7 +323,8 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
       (* special case: checking type of fun. the algorithm would still work if this was together with
         the remaining cases, but it would solve less cases, as this is a common case. *)
       let ty_whnf = whnf_beta e ty in
-      match ty_whnf.inner with
+      let ty_norm = to_norm e ty_whnf in
+      match ty_norm with
       | Arrow (_, bid_ex, ty_arg_ex, ty_ret_ex) ->
           (* unify argument types first *)
           (try
@@ -338,13 +339,26 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
              raise_at
                ty_arg
                (Error.TypeMismatch
-                  { term = ty_arg; inferred_type = ty_arg_ex; expected_type = ty_arg }));
+                  {
+                    term = { inner = Hole 0; loc = ty.loc };
+                    inferred_type = ty_arg;
+                    expected_type = ty_arg_ex;
+                  }));
           check_is_type ~depth:(depth + 1) e ty_arg;
           (* check body type by substituting the appropriate bound variable *)
           let ty_ret_ex_subst = subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in
           Hashtbl.add e.lctx bid (arg, ty_arg);
           checktype ~depth:(depth + 1) e body ty_ret_ex_subst;
           Hashtbl.remove e.lctx bid
+      | MetaSpine _ -> (
+          (* if the expected type is a hole, go normally *)
+          let infer_ty = infertype ~depth:(depth + 1) e tm in
+          try unify ~depth:(depth + 1) e infer_ty (Hashtbl.create 0) ty (Hashtbl.create 0)
+          with Failure _ ->
+            raise_at
+              tm
+              (Error.TypeMismatch
+                 { term = tm; inferred_type = infer_ty; expected_type = ty }))
       | _ ->
           let unk = { inner = Hole 0; loc = ty.loc } in
           raise_at
