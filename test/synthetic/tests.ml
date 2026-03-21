@@ -2183,8 +2183,8 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* angle_range: (a : Point) -> (b : Point) -> (c : Point) ->
-    (Not (Lt (Angle a b c) Zero)) ->
-    (Not (Lt (Add RightAngle RightAngle) (Angle a b c))) *)
+    And (Not (Lt (Angle a b c) Zero))
+        (Not (Lt (Add RightAngle RightAngle) (Angle a b c))) *)
   show_kterm "angle_range";
   [%expect
     {|
