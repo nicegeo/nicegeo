@@ -2191,9 +2191,7 @@ let%expect_test "Elaborate env.txt" =
     Forall (Const "Point",
       Forall (Const "Point",
         Forall (Const "Point",
-          Forall (App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero")),
-            App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 3), Bvar 2), Bvar 1)))
-          )
+          App (App (Const "And", App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))), App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0))))
         )
       )
     )
