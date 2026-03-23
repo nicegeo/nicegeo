@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "NiceGeo",
+  "patterns": [
+    {
+      "include": "#keywords"
+    }
+  ],
+  "repository": {
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.nicegeo",
+          "match": "\\b(?!)\\b"
+        }
+      ]
+    }
+  },
+  "scopeName": "source.nicegeo"
+}
