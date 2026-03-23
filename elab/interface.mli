@@ -8,7 +8,7 @@ val create : unit -> Types.ctx
 val create_with_env_path : string -> Types.ctx
 
 (** [create_with_env ()] creates an elaboration context using the default environment file
-    at ["elab/env.txt"]. *)
+    at ["synthetic/env.ncg"]. *)
 val create_with_env : unit -> Types.ctx
 
 (** [parse_term s] parses a single term from the string [s]. *)

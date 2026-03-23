@@ -62,7 +62,7 @@ let test_const_unknown_fails () =
       | _ -> false)
     (fun () -> ignore (try_infer env (Hashtbl.create 0) (Const "Unknown")))
 
-let path_to_env = "../../../../synthetic/env.txt"
+let path_to_env = "../../../../synthetic/env.ncg"
 
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
