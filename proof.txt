@@ -1,5 +1,3 @@
-#infer LtAntisymm
-
 Theorem LtNe : (a: Measure) -> (b: Measure) -> Lt a b -> Eq _ a b -> False :=
   fun (a: Measure) (b: Measure) (lt_ab: Lt a b) (eq_ab: Eq _ a b) =>
     LtAntisymm b b
