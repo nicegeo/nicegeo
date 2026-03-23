@@ -13,7 +13,7 @@ let () =
     try Elab.Interface.create_with_env ()
     with Error.ElabError info ->
       print_endline
-        ("Internal error while processing env.txt: "
+        ("Internal error while processing env.ncg: "
         ^ Error.pp_exn
             {
               env = Hashtbl.create 0;
