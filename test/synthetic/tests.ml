@@ -29,7 +29,7 @@ let kterm_to_repr (term : Kernel.Term.term) =
   in
   kterm_to_repr_helper term 0
 
-(** These are the regression tests for the axioms in env.txt. If [dune runtest] yields
+(** These are the regression tests for the axioms in env.ncg. If [dune runtest] yields
     errors here, inspect the diff to ensure that all changes in the kernel terms make
     sense. Assume changes in the term representation of the axioms are regressions unless
     you fully understand what the change represents.
@@ -51,8 +51,8 @@ let kterm_to_repr (term : Kernel.Term.term) =
     Running [dune runtest] again will fill in the expect with the kernel term
     representation. Ensure this representation is correct before promoting and pushing. *)
 
-let%expect_test "Elaborate env.txt" =
-  let env = Elab.Interface.create_with_env_path "../../../../../../synthetic/env.txt" in
+let%expect_test "Elaborate env.ncg" =
+  let env = Elab.Interface.create_with_env_path "../../../../../../synthetic/env.ncg" in
   let kenv = Hashtbl.copy env.kenv in
 
   let show_kterm name =
