@@ -11,7 +11,7 @@ val create : unit -> Types.ctx
 val process_file : Types.ctx -> string -> unit
 
 (** [process_env env] populates [env] with the axioms from the default environment file at
-    ["elab/env.txt"]. *)
+    ["elab/env.ncg"]. *)
 val process_env : Types.ctx -> unit
 
 (** [list_axioms env name] returns the list of axiom names that the theorem [name]

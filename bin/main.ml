@@ -13,7 +13,7 @@ let () =
   let env = Elab.Interface.create () in
   (try Elab.Interface.process_env env
    with Error.ElabError info ->
-     print_endline ("Internal error while processing env.txt: " ^ Error.pp_exn env info);
+     print_endline ("Internal error while processing env.ncg: " ^ Error.pp_exn env info);
      exit 255);
 
   let tone = Nice_messages.tone_from_env () in

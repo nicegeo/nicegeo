@@ -29,7 +29,7 @@ let kterm_to_repr (term : Kernel.Term.term) =
   in
   kterm_to_repr_helper term 0
 
-(** These are the regression tests for the axioms in env.txt. If [dune runtest] yields
+(** These are the regression tests for the axioms in env.ncg. If [dune runtest] yields
     errors here, inspect the diff to ensure that all changes in the kernel terms make
     sense. Assume changes in the term representation of the axioms are regressions unless
     you fully understand what the change represents.
@@ -43,21 +43,21 @@ let kterm_to_repr (term : Kernel.Term.term) =
     definitions are indeed missing axioms, and then add a section like this for each:
 
     {[
-      (* Name : Type *)
-      show_kterm "Name";
-      [%expect]
+    (* Name : Type *)
+    show_kterm "Name";
+    [%expect]
     ]}
 
     Running [dune runtest] again will fill in the expect with the kernel term
     representation. Ensure this representation is correct before promoting and pushing. *)
-let path_to_env = "../../../../../../synthetic/env.txt"
+let path_to_env = "../../../../../../synthetic/env.ncg"
 
 let create_env_with_env () =
   let env = Elab.Interface.create () in
   Elab.Interface.process_file env path_to_env;
   env
 
-let%expect_test "Elaborate env.txt" =
+let%expect_test "Elaborate env.ncg" =
   let env = create_env_with_env () in
   let kenv = Hashtbl.copy env.kenv in
 
@@ -2366,17 +2366,15 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* angle_range: (a : Point) -> (b : Point) -> (c : Point) ->
-    (Not (Lt (Angle a b c) Zero)) ->
-    (Not (Lt (Add RightAngle RightAngle) (Angle a b c))) *)
+    And (Not (Lt (Angle a b c) Zero))
+        (Not (Lt (Add RightAngle RightAngle) (Angle a b c))) *)
   show_kterm "angle_range";
   [%expect
     {|
     Forall (Const "Point",
       Forall (Const "Point",
         Forall (Const "Point",
-          Forall (App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero")),
-            App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 3), Bvar 2), Bvar 1)))
-          )
+          App (App (Const "And", App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))), App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0))))
         )
       )
     )
