@@ -3,17 +3,62 @@
   "name": "NiceGeo",
   "patterns": [
     {
+      "include": "#declaration"
+    },
+    {
+      "include": "#paramList"
+    },
+    {
+      "include": "#type"
+    },
+    {
       "include": "#keywords"
+    },
+    {
+      "include": "#comment"
     }
   ],
   "repository": {
-    "keywords": {
+    "declaration": {
+      "name": "meta.declaration.nicegeo",
+      "begin": "(Axiom|Theorem)\\s+",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.other.lean4"
+        }
+      },
+      "end": ":",
       "patterns": [
         {
-          "name": "keyword.control.nicegeo",
-          "match": "\\b(?!)\\b"
+          "include": "#name"
         }
       ]
+    },
+    "paramList": {
+      "match": "\\(\\s*(?:([a-zA-Z_.][a-zA-Z0-9_.']*)\\s*)+:",
+      "captures": {
+        "1": {
+          "name": "variable.parameter"
+        }
+      }
+    },
+    "type": {
+      "match": "\\b(Type|Prop)\\b",
+      "name": "storage.type.nicegeo"
+    },
+    "keywords": {
+      "match": "\\b(fun|_|#print|#infer|#check|#reduce)\\b",
+      "name": "keyword.other.nicegeo"
+    },
+    "comment": {
+      "name": "comment.block.nicegeo",
+      "begin": "\\(\\*",
+      "end": "\\*\\)",
+      "contentName": "comment.block.nicegeo"
+    },
+    "name": {
+      "match": "[a-zA-Z_.][a-zA-Z0-9_.']*",
+      "name": "entity.name.function.nicegeo"
     }
   },
   "scopeName": "source.nicegeo"
