@@ -1,2 +1,0 @@
-Axiom p : Prop
-Theorem good : Prop := p

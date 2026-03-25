@@ -175,6 +175,16 @@ let line_text_from_file (filename : string) (line_no : int) : string option =
     loop 1
   with _ -> None
 
+(*
+ * Produce a caret underline for a source range.
+ *
+ * Column indices are 1-based and the range is INCLUSIVE on both ends:
+ *   caret_line 5 5  -> highlights column 5
+ *   caret_line 5 7  -> highlights columns 5,6,7
+ *
+ * Ensures at least one caret is printed.
+ *)
+
 let caret_line (start_col : int) (end_col : int) : string =
   let start_col = max 1 start_col in
   let end_col = max start_col end_col in
@@ -201,7 +211,7 @@ let pp_context (ctx : error_context) : string =
   | Some n -> parts := !parts @ [ Printf.sprintf "while checking '%s'" n ]
   | None -> ());
   (match ctx.loc with
-  | Some r -> parts := !parts @ [ Printf.sprintf "at %s" (pp_loc r) ]
+  | Some r -> parts := !parts @ [ Printf.sprintf "at %s" (Pretty.pp_loc r) ]
   | None -> ());
   match !parts with [] -> "" | xs -> " " ^ String.concat " " xs
 
