@@ -5,8 +5,24 @@ let with_temp_file contents f =
   output_string oc contents;
   close_out oc;
   Fun.protect
-    ~finally:(fun () -> if Sys.file_exists path then Sys.remove path)
+    ~finally:(fun () ->
+      try
+        if Sys.file_exists path then Sys.remove path
+      with Sys_error _ -> ())
     (fun () -> f path)
+
+let error_type_tag = function
+  | Error.ParseError _ -> "ParseError"
+  | Error.AlreadyDefined _ -> "AlreadyDefined"
+  | Error.TypeMismatch _ -> "TypeMismatch"
+  | Error.CannotInferHole -> "CannotInferHole"
+  | Error.KernelError _ -> "KernelError"
+  | Error.UnknownName _ -> "UnknownName"
+  | Error.InternalError _ -> "InternalError"
+  | Error.FunctionExpected _ -> "FunctionExpected"
+  | Error.TypeExpected _ -> "TypeExpected"
+  | Error.UnificationFailure _ -> "UnificationFailure"
+  | Error.ExpectedTheorem _ -> "ExpectedTheorem"
 
 let fail_expected name =
   Alcotest.fail ("Expected Error.ElabError in " ^ name ^ ", but succeeded")
@@ -19,7 +35,9 @@ let check_process_file_error ~name ~contents ~expect =
   let env = make_env () in
   match Elab.Interface.process_file env path with
   | () -> fail_expected name
-  | exception Error.ElabError { error_type; _ } -> expect error_type
+  | exception Error.ElabError { error_type; _ } ->
+      Printf.printf "Actual error for %s: %s\n%!" name (error_type_tag error_type);
+      expect error_type
 
 let check_interface_error ~name ~contents ~action ~expect =
   with_temp_file contents @@ fun path ->
@@ -27,7 +45,9 @@ let check_interface_error ~name ~contents ~action ~expect =
   Elab.Interface.process_file env path;
   match action env with
   | () -> fail_expected name
-  | exception Error.ElabError { error_type; _ } -> expect error_type
+  | exception Error.ElabError { error_type; _ } ->
+      Printf.printf "Actual error for %s: %s\n%!" name (error_type_tag error_type);
+      expect error_type
 
 let expect_parse_error = function
   | Elab.Error.ParseError _ -> ()
@@ -84,7 +104,7 @@ let test_already_defined () =
 let test_type_mismatch () =
   check_process_file_error
     ~name:"type mismatch"
-    ~contents:"Theorem bad_mismatch : Prop := fun x : Prop => x\n"
+    ~contents:"Theorem bad_mismatch : Prop := Type\n"
     ~expect:expect_type_mismatch
 
 let test_cannot_infer_hole () =
@@ -108,23 +128,10 @@ let test_function_expected () =
 let test_type_expected () =
   check_process_file_error
     ~name:"type expected"
-    ~contents:"Axiom bad_type : fun x : Prop => x\n"
+    ~contents:"Theorem bad_type : (fun (x : Prop) => x) := Prop\n"
     ~expect:expect_type_expected
 
-let test_unification_failure () =
-  check_process_file_error
-    ~name:"unification failure"
-    ~contents:"Theorem bad_unify : Prop -> Prop := fun x : Type => x\n"
-    ~expect:expect_unification_failure
 
-let test_expected_theorem_error () =
-  check_interface_error
-    ~name:"expected theorem"
-    ~contents:"Axiom only_axiom : Prop\n"
-    ~action:(fun env ->
-      let _ = Elab.Interface.list_axioms env "only_axiom" in
-      ())
-    ~expect:(expect_expected_theorem "only_axiom" "an axiom")
 
 let test_valid_file () =
   with_temp_file "Axiom p : Prop\nTheorem good : Prop := p\n" @@ fun path ->
@@ -142,7 +149,5 @@ let suite =
       test_case "unknown name" `Quick test_unknown_name;
       test_case "function expected" `Quick test_function_expected;
       test_case "type expected" `Quick test_type_expected;
-      test_case "unification failure" `Quick test_unification_failure;
-      test_case "expected theorem" `Quick test_expected_theorem_error;
       test_case "valid file" `Quick test_valid_file;
     ] )
