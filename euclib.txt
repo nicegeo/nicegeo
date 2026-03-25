@@ -1,0 +1,58 @@
+Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
+	fun (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab
+
+Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b -> False) -> (Eq A b a -> False) :=
+	fun (A: Type) (a b: A) (ne_ab: Eq A a b -> False) => fun (eq_ba: Eq A b a) =>
+		ne_ab (Eq.symm A b a eq_ba)
+
+Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> And A B -> (f: A -> B -> C) -> C :=
+    fun A B C h f => And.elim A B C f h
+
+Theorem on_circle_iff_length_eq : (a : Point) -> (b : Point) -> (c : Point) -> (d : Circle) ->
+    CenterCircle a d -> OnCircle b d -> 
+    (And (Eq _ (Length a b) (Length a c) -> OnCircle c d)
+         (OnCircle c d -> Eq _ (Length a b) (Length a c))) :=
+    fun (a b c : Point) (d : Circle) (ad : CenterCircle a d) (bd : OnCircle b d) =>
+    And.intro (Eq _ (Length a b) (Length a c) -> OnCircle c d) (OnCircle c d -> Eq _ (Length a b) (Length a c)) 
+    (fun h => on_circle_if_eq_radius a b c d ad bd (Eq.symm _ _ _ h)) 
+    (fun h => Eq.symm _ _ _ (eq_radius_if_on_circle a b c d ad bd h))
+
+Theorem fst : (A: Prop) -> (B: Prop) -> And A B -> A :=
+    fun A B h => And.elim1 A B A h (fun a b => a)
+
+Theorem snd : (A: Prop) -> (B: Prop) -> And A B -> B :=
+    fun A B h => And.elim1 A B B h (fun a b => b)
+
+(* Proposition I.I: To construct an equilateral triangle on a given finite straight line. *)
+Theorem prop1 :
+(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
+Exists Point (fun (c : Point) =>
+    And (Eq Measure (Length a b) (Length a c))
+        (Eq Measure (Length b c) (Length b a)))
+:= fun (a b : Point) (ab : Eq Point a b -> False) =>
+   	Exists.elim _ _ _ (circle_of_ne a b ab)
+    (fun (aa : Circle) (center_and_on : (And (CenterCircle a aa) (OnCircle b aa))) =>
+
+    And.elim1 _ _ _ center_and_on
+    (fun (aaa : CenterCircle a aa) (baa : OnCircle b aa) =>
+
+    Exists.elim _ _ _ (circle_of_ne b a (Ne.symm _ _ _ ab))
+    (fun (bb : Circle) (b_center_and_on : And (CenterCircle b bb) (OnCircle a bb)) =>
+
+    And.elim1 _ _ _ b_center_and_on
+    (fun (bbb : CenterCircle b bb) (abb : OnCircle a bb) =>
+
+   	Exists.elim _ _ _ (pt_of_circlesinter aa bb (circles_inter_if_on_in b a aa bb baa
+        (center_lies_inside_circle a aa aaa) 
+		(center_lies_inside_circle b bb bbb) abb
+	))
+    (fun (c : Point) (facts : And (OnCircle c aa) (OnCircle c bb)) =>
+
+    And.elim1 _ _ _ facts
+    (fun (caa : OnCircle c aa) (cbb : OnCircle c bb) =>
+
+    Exists.intro Point (fun (c : Point) =>
+		And (Eq Measure (Length a b) (Length a c))
+			(Eq Measure (Length b c) (Length b a)))
+    c (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
+	))))))

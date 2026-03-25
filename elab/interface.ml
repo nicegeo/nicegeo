@@ -1,30 +1,5 @@
 module KTerm = Kernel.Term
 
-let create () : Types.ctx =
-  {
-    env = Hashtbl.create 16;
-    kenv = Hashtbl.create 16;
-    metas = Hashtbl.create 16;
-    lctx = Hashtbl.create 16;
-  }
-
-let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
-  match stmt with
-  | Statement.Declaration decl -> Typecheck.process_decl env decl
-  | Statement.Directive dir -> Directives.process_directive env dir
-
-(* Creates an elaborator environment by parsing the environment file at `path_to_env`. *)
-let create_with_env_path (path_to_env : string) : Types.ctx =
-  let e = create () in
-  let ic = open_in path_to_env in
-  let lexbuf = Lexing.from_channel ic in
-  let stmts = Parser.main Lexer.token lexbuf in
-  let _ = List.map (process_statement e) stmts in
-  e
-
-(* Creates an elaborator environment with the default environment path. *)
-let create_with_env () : Types.ctx = create_with_env_path "synthetic/env.txt"
-
 let parse_term (s : string) : Term.term =
   let lexbuf = Lexing.from_string s in
   Parser.single_term Lexer.token lexbuf
@@ -49,9 +24,35 @@ let parse_statements (filename : string) : Statement.statement list =
   in
   decls
 
-let process_file (env : Types.ctx) (filename : string) : unit =
+let rec process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
+  match stmt with (* TODO: Ensure Imports are all at the top *)
+  | Statement.Declaration decl -> Typecheck.process_decl env decl
+  | Statement.Directive dir -> Directives.process_directive env dir
+  | Statement.Import import -> process_file env import.filename
+
+and process_file (env : Types.ctx) (filename : string) : unit =
   let stmts = parse_statements filename in
   List.iter (process_statement env) stmts
+
+let create () : Types.ctx =
+  {
+    env = Hashtbl.create 16;
+    kenv = Hashtbl.create 16;
+    metas = Hashtbl.create 16;
+    lctx = Hashtbl.create 16;
+  }
+
+(* Creates an elaborator environment by parsing the environment file at `path_to_env`. *)
+let create_with_env_path (path_to_env : string) : Types.ctx =
+  let e = create () in
+  let ic = open_in path_to_env in
+  let lexbuf = Lexing.from_channel ic in
+  let stmts = Parser.main Lexer.token lexbuf in
+  let _ = List.map (process_statement e) stmts in
+  e
+
+(* Creates an elaborator environment with the default environment path. *)
+let create_with_env () : Types.ctx = create_with_env_path "synthetic/env.txt"
 
 (* Returns the list of axioms used by the theorem `name`. *)
 let list_axioms (env : Types.ctx) (name : string) =

@@ -25,6 +25,10 @@ type directive =
   | Check of term * term * range  (** [Check(t, ty, loc)] corresponds to #check t : ty. *)
   | Reduce of term * range  (** [Reduce(t, loc)] corresponds to #reduce t. *)
 
+type import = {
+  filename : string;
+}
+
 (** A parsed statement (either a declaration or a directive). *)
 type statement =
   | Declaration of declaration
@@ -32,3 +36,5 @@ type statement =
           environment. *)
   | Directive of directive
       (** [Directive(dir)] is a parsed directive, printing information to stdout. *)
+  | Import of import
+      (** [Import(import)] is a parsed import statement, intended to be processed by reading the specified file and elaborating its contents. *)

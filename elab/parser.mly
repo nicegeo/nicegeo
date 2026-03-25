@@ -1,6 +1,6 @@
-%token <string> IDENT
+%token <string> IDENT FILENAME
 %token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE
-%token THEOREM AXIOM DEFEQ
+%token THEOREM AXIOM DEFEQ IMPORT
 %token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE
 %start <Statement.statement list> main
 %start <Term.term> single_term
@@ -15,6 +15,10 @@ single_term:
 statement:
   | d = declaration { Statement.Declaration d }
   | d = directive { Statement.Directive d }
+  | i = import { Statement.Import i }
+
+import:
+  | IMPORT fn = FILENAME { Statement.{filename=fn} }
 
 declaration:
   | AXIOM name = IDENT COLON ty = term { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Axiom} }

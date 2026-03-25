@@ -17,6 +17,11 @@ type directive =
   | Check of term * term * range
   | Reduce of term * range
 
+type import = {
+  filename : string;
+}
+
 type statement =
   | Declaration of declaration
   | Directive of directive
+  | Import of import
