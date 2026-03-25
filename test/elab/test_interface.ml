@@ -1,3 +1,5 @@
+module Error = Elab.Error
+
 let with_temp_file contents f =
   let path, oc = Filename.open_temp_file "nicegeo-interface-" ".txt" in
   output_string oc contents;
@@ -9,20 +11,23 @@ let with_temp_file contents f =
 let fail_expected name =
   Alcotest.fail ("Expected Error.ElabError in " ^ name ^ ", but succeeded")
 
+let make_env () =
+  Elab.Interface.create_with_env_path "../../../synthetic/env.ncg"
+
 let check_process_file_error ~name ~contents ~expect =
   with_temp_file contents @@ fun path ->
-  let env = Elab.Interface.create_with_env () in
+  let env = make_env () in
   match Elab.Interface.process_file env path with
   | () -> fail_expected name
-  | exception Elab.Error.ElabError { error_type; _ } -> expect error_type
+  | exception Error.ElabError { error_type; _ } -> expect error_type
 
 let check_interface_error ~name ~contents ~action ~expect =
   with_temp_file contents @@ fun path ->
-  let env = Elab.Interface.create_with_env () in
+  let env = make_env () in
   Elab.Interface.process_file env path;
   match action env with
   | () -> fail_expected name
-  | exception Elab.Error.ElabError { error_type; _ } -> expect error_type
+  | exception Error.ElabError { error_type; _ } -> expect error_type
 
 let expect_parse_error = function
   | Elab.Error.ParseError _ -> ()
@@ -123,7 +128,7 @@ let test_expected_theorem_error () =
 
 let test_valid_file () =
   with_temp_file "Axiom p : Prop\nTheorem good : Prop := p\n" @@ fun path ->
-  let env = Elab.Interface.create_with_env () in
+  let env = make_env () in
   Elab.Interface.process_file env path
 
 let suite =
