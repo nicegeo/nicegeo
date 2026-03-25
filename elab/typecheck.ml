@@ -46,8 +46,6 @@ open Types
 module KInfer = Kernel.Infer
 module KExceptions = Kernel.Exceptions
 
-let subst = Reduce.subst
-
 let raise_at (tm : term) (e : Error.error_type) : 'a =
   let loc = Some tm.loc in
   raise (Error.ElabError { context = { loc; decl_name = None }; error_type = e })
@@ -76,7 +74,7 @@ let rec whnf_beta (e : ctx) (tm : term) : term =
   | App (f, arg) -> (
       let fn = whnf_beta e f in
       match fn.inner with
-      | Fun (_, bid, _, body) -> whnf_beta e (subst e body (Bvar bid) arg.inner)
+      | Fun (_, bid, _, body) -> whnf_beta e (Reduce.subst e body (Bvar bid) arg.inner)
       | _ -> { inner = App (fn, arg); loc = tm.loc })
   | Hole m -> (
       match Hashtbl.find_opt e.metas m with
@@ -253,7 +251,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
         if bid1 <> bid2 then (
           (* make them equal *)
           Hashtbl.replace g2 bid1 bid2;
-          subst e ty_ret2 (Bvar bid2) (Bvar bid1))
+          Reduce.subst e ty_ret2 (Bvar bid2) (Bvar bid1))
         else ty_ret2
       in
       unify ~depth:(depth + 1) e ty_ret1 g1 ty_ret2 g2;
@@ -269,7 +267,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
         if bid1 <> bid2 then (
           (* make them equal *)
           Hashtbl.replace g2 bid2 bid1;
-          subst e body2 (Bvar bid2) (Bvar bid1))
+          Reduce.subst e body2 (Bvar bid2) (Bvar bid1))
         else body2
       in
       unify ~depth:(depth + 1) e body1 g1 body2 g2;
@@ -324,7 +322,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
                   }));
           check_is_type ~depth:(depth + 1) e ty_arg;
           (* check body type by substituting the appropriate bound variable *)
-          let ty_ret_ex_subst = subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in
+          let ty_ret_ex_subst = Reduce.subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in
           Hashtbl.add e.lctx bid (arg, ty_arg);
           checktype ~depth:(depth + 1) e body ty_ret_ex_subst;
           Hashtbl.remove e.lctx bid
@@ -380,7 +378,7 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
     | Fun (arg, bid, ty_arg, body) ->
         check_is_type ~depth:(depth + 1) e ty_arg;
         let new_bid = gen_binder_id () in
-        let body = subst e body (Bvar bid) (Bvar new_bid) in
+        let body = Reduce.subst e body (Bvar bid) (Bvar new_bid) in
         Hashtbl.add e.lctx new_bid (arg, ty_arg);
         let ty_body = infertype ~depth:(depth + 1) e body in
         Hashtbl.remove e.lctx new_bid;
@@ -412,7 +410,7 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
         match f_type.inner with
         | Arrow (_, bid, ty_arg, ty_ret) ->
             checktype ~depth:(depth + 1) e arg ty_arg;
-            subst e ty_ret (Bvar bid) arg.inner
+            Reduce.subst e ty_ret (Bvar bid) arg.inner
         | _ ->
             raise_at
               f
