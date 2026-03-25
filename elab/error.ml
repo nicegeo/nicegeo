@@ -250,5 +250,5 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         (Pretty.term_to_string e not_type)
         (Pretty.term_to_string e not_type_infer)
   | ImportNotAtTop ->
-    Printf.sprintf
+      Printf.sprintf
         "Import statement not at top of file" (* TODO: add context information *)

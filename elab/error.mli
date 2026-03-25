@@ -75,7 +75,7 @@ type error_type =
           requires a type. [info] carries details about the term and its type. *)
   | ImportNotAtTop
       (** [ImportNotAtTop] indicates that an import statement was encountered after a
-            declaration or directive in the file. *)
+          declaration or directive in the file. *)
 
 (** The complete error record raised by the elaborator. *)
 type elab_error_info = {
