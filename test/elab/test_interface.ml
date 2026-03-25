@@ -12,7 +12,7 @@ let fail_expected name =
   Alcotest.fail ("Expected Error.ElabError in " ^ name ^ ", but succeeded")
 
 let make_env () =
-  Elab.Interface.create_with_env_path "../../../synthetic/env.ncg"
+  Elab.Interface.create_with_env_path "../../../../synthetic/env.ncg"
 
 let check_process_file_error ~name ~contents ~expect =
   with_temp_file contents @@ fun path ->
