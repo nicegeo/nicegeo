@@ -24,7 +24,7 @@
       "begin": "(Axiom|Theorem)\\s+",
       "beginCaptures": {
         "1": {
-          "name": "keyword.other.lean4"
+          "name": "keyword.other.nicegeo"
         }
       },
       "end": ":",
