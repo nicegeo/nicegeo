@@ -60,14 +60,32 @@ type expected_theorem_info = {
 (** The type of error raised in an [ElabError]. *)
 type error_type =
   | ParseError of parse_error_info
+      (** [ParseError(info)] indicated a parsing failure. [info] carries the offending
+          source and the error message. *)
   | AlreadyDefined of string
+      (** [AlreadyDefined(name)] indicates that a declaration [name] already exists in the
+          environment. *)
   | TypeMismatch of type_mismatch_info
+      (** [TypeMismatch(info)] indicates a type mismatch. [info] carries details about the
+          term, its inferred type, and the expected type. *)
   | CannotInferHole
+      (** [CannotInferHole] indicates that a hole ([_]) was encountered that could not be
+          solved or its type inferred. *)
   | KernelError of kernel_error_info
+      (** [KernelError(info)] indicates that the trusted kernel rejected a term. [info]
+          contains the error received from the kernel. *)
   | UnknownName of unknown_name_info
+      (** [UnknownName(info)] indicates that a name was used that is not bound in the
+          current environment. [info] carries the unknown name. *)
   | InternalError of string
+      (** [InternalError(info)] indicates that an invariant was violated inside the
+          elaborator (indicates a bug). *)
   | FunctionExpected of function_expected_info
+      (** [FunctionExpected(info)] indicates that a non-function term was applied to an
+          argument. [info] carries details about the term, its type and the argument. *)
   | TypeExpected of type_expected_info
+      (** [TypeExpected(info)] indicates that a non-type term was used in a position that
+          requires a type. [info] carries details about the term and its type. *)
   | UnificationFailure of unification_failure_info
   | ExpectedTheorem of expected_theorem_info
 

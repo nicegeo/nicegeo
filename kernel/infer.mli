@@ -2,16 +2,17 @@
     definitional equality, and other functions relevant to basic kernel functionality. *)
 open Term
 
-(** Reduce a term to normal form *)
+(** [reduce env ctx term] reduces a term to normal form *)
 val reduce : environment -> localcontext -> term -> term
 
-(** Definitional equality: reduce and check exact equality *)
+(** [isDefEq env ctx term1 term2] checks if two terms are definitionally equal *)
 val isDefEq : environment -> localcontext -> term -> term -> bool
 
-(** Core type inference algorithm. When this fails, throws a TypeError. *)
+(** [inferType env ctx term] infers the type of a term. When this fails, throws a
+    [TypeError]. *)
 val inferType : environment -> localcontext -> term -> term
 
-(** The internal kernal functionality is exposed in an Internals module for testing
+(** The internal kernel functionality is exposed in an [Internals] module for testing
     purposes. These functions are not meant to be interacted with by non-kernel code
     otherwise, but OCaml does not have a good way to enforce this. *)
 module Internals : sig

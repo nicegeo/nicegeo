@@ -142,14 +142,14 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
             raise (TypeError { env; ctx = localCtx; trm = t; err_kind })
       | _ ->
           (* Error: Tried to apply non-function to an argument *)
-          let err_kind = AppNonFuncError in
+          let err_kind = AppNonFuncError func_type in
           raise (TypeError { env; ctx = localCtx; trm = t; err_kind }))
   | Lam (domainType, body) ->
       let new_fvar_name = gen_new_fvar_name () in
       let domainTypeType = inferType env localCtx domainType in
       if not (isSort env domainTypeType) then
         (* Invalid domain type for lambda *)
-        let err_kind = LamDomainError in
+        let err_kind = LamDomainError domainTypeType in
         raise (TypeError { env; ctx = localCtx; trm = t; err_kind })
       else
         (* add mapping new_fvar_name -> domainType to localCtx in recursive call *)
@@ -190,7 +190,7 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
           raise (TypeError { env; ctx; trm; err_kind }))
   | Sort level -> Sort (level + 1)
 
-(** The internal kernal functionality is exposed in an Internals module for testing
+(** The internal kernel functionality is exposed in an [Internals] module for testing
     purposes. These functions are not meant to be interacted with by non-kernel code
     otherwise, but OCaml does not have a good way to enforce this. *)
 module Internals = struct

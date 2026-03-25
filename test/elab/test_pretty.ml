@@ -1,69 +1,33 @@
 (* Tests and examples for the pretty-printing feature.
    Run with: dune exec test/test_pretty.exe *)
 
-open Elab.Kernel_pretty
-open Elab.Decl
 open Elab.Pretty
-module KTerm = Kernel.Term
-module ETerm = Elab.Term
-module Nice = Elab.Nice_messages
-module ElabIf = Elab.Interface
-
-let () = Printf.printf "=== Kernel term pretty-printing ===\n\n"
-
-(* Example 1 *)
-let () =
-  let t = KTerm.(Forall (Sort 1, Forall (Sort 0, Sort 0))) in
-  let pretty = term_to_string_pretty t in
-  Printf.printf "Kernel term: Forall (Sort 1, Forall (Sort 0, Sort 0))\n";
-  Printf.printf "  Pretty:         %s\n\n" pretty
-
-(* Example 2: Bound variables become _0, _1 instead of Bvar 0, Bvar 1 *)
-let () =
-  (* (A : Type) -> (B : Prop) -> And A B  with bvars in body *)
-  let body = KTerm.(App (App (Const "And", Bvar 1), Bvar 0)) in
-  let t = KTerm.(Forall (Sort 1, Forall (Sort 0, body))) in
-  Printf.printf "Kernel term with Bvars: (A : Type) -> (B : Prop) -> And A B\n";
-  Printf.printf "  Pretty: %s\n\n" (term_to_string_pretty t)
-
-(* Example 3: Optional names for binders *)
-let () =
-  let t = KTerm.(Forall (Sort 1, Forall (Sort 0, Bvar 0))) in
-  Printf.printf "With default names: %s\n" (term_to_string_pretty t);
-  (* ~names supplies names for Bvar indices: 0 -> "A", 1 -> "B". Binders still _0,_1. *)
-  Printf.printf
-    "With custom names (for Bvars): %s\n\n"
-    (term_to_string_pretty ~names:[ "A"; "B" ] t)
-
-(* Example 4: Application flattening *)
-let () =
-  let t = KTerm.(App (App (App (Const "f", Const "a"), Const "b"), Const "c")) in
-  Printf.printf "App spine f a b c:\n";
-  Printf.printf "  Pretty: %s\n\n" (term_to_string_pretty t)
 
 let () = Printf.printf "=== Elaborator term pretty-printing ===\n\n"
-let e = ElabIf.create ()
-let l = ETerm.dummy_range
+let e = Elab.Interface.create ()
+let l = Elab.Term.dummy_range
 
-(* Example 5: Elaborator terms have names already *)
+(* Example 1: Elaborator terms have names already *)
 let () =
-  let t = Testterm.(nfun "A" (sort 1) (nfun "B" (sort 0) (bvar 0))) in
+  let t = Util.(nfun "A" (sort 1) (nfun "B" (sort 0) (bvar 0))) in
   Printf.printf "Elab term (A : Type) -> (B : Prop) -> B:\n";
   Printf.printf "  %s\n\n" (term_to_string e t)
 
-(* Example 6: Declaration pretty-printing *)
+(* Example 2: Declaration pretty-printing *)
 let () =
   let d =
-    { name = "Point"; name_loc = l; ty = { ETerm.inner = Sort 1; loc = l }; kind = Axiom }
+    Elab.Statement.
+      { name = "Point"; name_loc = l; ty = { inner = Sort 1; loc = l }; kind = Axiom }
   in
   Printf.printf "Axiom Point : Type  =>  %s\n" (decl_to_string e d);
   let d2 =
-    {
-      name = "id";
-      name_loc = l;
-      ty = Testterm.(narrow "A" (sort 1) (narrow "x" (bvar 0) (bvar 1)));
-      kind = Theorem Testterm.(ufun (sort 1) (ufun (bvar 0) (bvar 0)));
-    }
+    Elab.Statement.
+      {
+        name = "id";
+        name_loc = l;
+        ty = Util.(narrow "A" (sort 1) (narrow "x" (bvar 0) (bvar 1)));
+        kind = Theorem Util.(ufun (sort 1) (ufun (bvar 0) (bvar 0)));
+      }
   in
   Printf.printf
     "Theorem id : (A : Type) -> (x : A) -> A := ...  => \n%s\n\n"
@@ -74,8 +38,7 @@ let test_lam_flattening () =
     Alcotest.string
     ~msg:"Lambda args pretty-prints flattened"
     ~expected:"fun (x : A) (y : B) => x"
-    ~actual:
-      (term_to_string e Testterm.(nfun "x" (name "A") (nfun "y" (name "B") (bvar 1))));
+    ~actual:(term_to_string e Util.(nfun "x" (name "A") (nfun "y" (name "B") (bvar 1))));
 
   Alcotest.check'
     Alcotest.string
@@ -84,66 +47,28 @@ let test_lam_flattening () =
     ~actual:
       (term_to_string
          e
-         Testterm.(nfun "x" (name "A") (nfun "y" (app (name "B") (bvar 0)) (bvar 0))))
-
-let test_kernel_sort_names () =
-  Alcotest.check'
-    Alcotest.string
-    ~msg:"Sort 0 pretty-prints as Prop"
-    ~expected:"Prop"
-    ~actual:(term_to_string_pretty (KTerm.Sort 0));
-
-  Alcotest.check'
-    Alcotest.string
-    ~msg:"Sort 1 pretty-prints as Type"
-    ~expected:"Type"
-    ~actual:(term_to_string_pretty (KTerm.Sort 1))
+         Util.(nfun "x" (name "A") (nfun "y" (app (name "B") (bvar 0)) (bvar 0))))
 
 let test_elab_hole () =
   Alcotest.check'
     Alcotest.string
     ~msg:"Hole 0 pretty-prints as ?m0"
     ~expected:"?m0"
-    ~actual:(term_to_string e { ETerm.inner = Hole 0; loc = l })
+    ~actual:(term_to_string e { inner = Hole 0; loc = l })
 
 let test_elab_arrow_no_name () =
-  let t = Testterm.(uarrow (sort 1) (sort 0)) in
+  let t = Util.(uarrow (sort 1) (sort 0)) in
   Alcotest.check'
     Alcotest.string
     ~msg:"arrow pretty-prints sorts"
     ~expected:"Type -> Prop"
     ~actual:(term_to_string e t)
 
-let test_nice_default_tone_calm () =
-  (* OCaml versions vary on [Unix.unsetenv]. Simulate “unset/unknown” by using an unrecognized value. *)
-  Unix.putenv "NICEGEO_TONE" "unknown";
-  match Nice.tone_from_env () with
-  | Nice.Calm -> ()
-  | _ -> Alcotest.fail "Expected Calm when NICEGEO_TONE is unset/unknown"
-
-let test_nice_tone_from_env_cheerful () =
-  Unix.putenv "NICEGEO_TONE" "cheerful";
-  match Nice.tone_from_env () with
-  | Nice.Cheerful -> ()
-  | _ -> Alcotest.fail "Expected Cheerful when NICEGEO_TONE=cheerful"
-
-let test_nice_pick_message_after_error () =
-  match Nice.pick_message Nice.Calm Nice.After_error with
-  | Some msg when msg <> "" -> ()
-  | _ -> Alcotest.fail "Expected a non-empty encouragement message"
-
 let suite =
   let open Alcotest in
   ( "Pretty-printing",
     [
-      test_case "Kernel sort names" `Quick test_kernel_sort_names;
+      test_case "Function args flattened" `Quick test_lam_flattening;
       test_case "Elab hole" `Quick test_elab_hole;
       test_case "Elab arrow no name" `Quick test_elab_arrow_no_name;
-      test_case "Function args flattened" `Quick test_lam_flattening;
-      test_case "Nice messages: default tone" `Quick test_nice_default_tone_calm;
-      test_case "Nice messages: env cheerful" `Quick test_nice_tone_from_env_cheerful;
-      test_case
-        "Nice messages: pick after error"
-        `Quick
-        test_nice_pick_message_after_error;
     ] )

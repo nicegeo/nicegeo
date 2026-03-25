@@ -29,7 +29,7 @@
 
     See lecture 3 of https://github.com/andrejbauer/faux-type-theory for more information
     on the algorithm. *)
-open Decl
+open Statement
 
 open Term
 open Convert

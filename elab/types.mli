@@ -13,8 +13,9 @@ type metavar = {
 
 (** Data associated with each entry in the environment. *)
 type enventry_data =
-  | Theorem of string list  (** The list of axiom names the theorem depends on. *)
-  | Axiom  (** No data for axioms *)
+  | Theorem of string list
+      (** [Theorem(axioms)] describes the axioms a theorem depends on. *)
+  | Axiom  (** [Axiom] represents an axiom with no additional data. *)
 
 (** An entry in the elaboration environment. *)
 type enventry = {

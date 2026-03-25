@@ -43,4 +43,4 @@ Records provide a baseline level of documentation on the meanings of their field
 While mutual recursion is sometimes necessary, it can also make code more difficult to understand and modify, so it should be avoided when possible.
 
 ## AI Usage
-Do not use LLMs for the kernel. AI may be used outside the kernel, but you must disclose the scope of any usage of AI tools (i.e. which functions AI was used for, and how it was used) in the PR or commit messages.
+Do not use LLMs for writing code in the kernel (`kernel/`) or synthetic layer (`synthetic`, `test/synthetic`). However, you may use AI to "red-team" and find kernel or synthetic layer bugs, as long as the fixes are human. AI may be used for code elsewhere, but you must disclose the scope of any usage of AI tools (i.e. which functions AI was used for, and how it was used) in the PR or commit messages. 

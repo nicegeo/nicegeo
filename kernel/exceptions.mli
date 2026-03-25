@@ -4,22 +4,27 @@ open Term
 
 (* --- Exception types --- *)
 
-(** Kinds of type errors that the kernel can throw.
-
-    UnknownConstError: Unknown constant where the string encodes the name
-    UnknownFreeVarError: Unknown free variable where the string encodes the name
-    BoundVarScopeError: Bound variable scope error, where the int is the index
-    AppArgTypeError: Type error for the argument of a function application, where the
-    terms represent (1) the function, (2) the argument, (3) the type of the function, (4)
-    the expected type of the argument, and (5) the actual type of the argument. *)
+(** Kinds of type errors that the kernel can throw. *)
 type type_error_kind =
   | UnknownConstError of string
+      (** [UnknownConstError(name)] indicates an unknown constant [name]. *)
   | UnknownFreeVarError of string
+      (** [UnknownFreeVarError(name)] indicates an unknown free variable [name]. *)
   | BoundVarScopeError of int
+      (** [BoundVarScopeError(idx)] indicates a bound variable scope error at index [idx].
+      *)
   | AppArgTypeError of term * term * term * term * term
-  | AppNonFuncError
-  | LamDomainError
+      (** [AppArgTypeError(func, arg, func_type, expected_arg_type, actual_arg_type)]
+          indicates a type error in the argument of a function application. *)
+  | AppNonFuncError of term
+      (** [AppNonFuncError(func_type)] indicates an attempt to apply with a non-function
+          term. *)
+  | LamDomainError of term
+      (** [LamDomainError(domain_type_type)] indicates that the domain of a lambda
+          abstraction is not a valid type. *)
   | ForallSortError of term * term
+      (** [ForallSortError(domain_type_type, return_type_type)] indicates that either the
+          domain type or the return type is not a valid sort. *)
 
 (** Type error information that the kernel passes on. *)
 type type_error_info = {

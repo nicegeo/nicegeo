@@ -13,16 +13,13 @@ type context = After_error
 (** The default tone to use if no environment variable is set. *)
 val default_tone : tone
 
-(** Reads the [NICEGEO_TONE] environment variable to select a tone. Defaults to
-    [default_tone] if absent or unrecognised. *)
+(** [tone_from_env ()] reads the [NICEGEO_TONE] environment variable to select a tone.
+    Defaults to [default_tone] if absent or unrecognised. *)
 val tone_from_env : unit -> tone
 
-(** Return all available messages for the given tone and context. *)
-val messages_for : tone -> context -> string list
-
-(** Pick a random message for the given tone and context, or [None] if no messages exist.
-*)
+(** [pick_message tone context] picks a random message for the given tone and context, or
+    [None] if no messages exist. *)
 val pick_message : tone -> context -> string option
 
-(** Adds newlines to a message for output. *)
+(** [format_for_output msg] adds newlines to a message for output. *)
 val format_for_output : string -> string

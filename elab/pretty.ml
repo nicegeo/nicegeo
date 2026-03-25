@@ -5,7 +5,7 @@
     [lctx] and [metas]). *)
 
 open Term
-open Decl
+open Statement
 
 (* Sort 0 = Prop, Sort 1 = Type; for n >= 2 display as "Sort n". *)
 let sort_to_string = function 0 -> "Prop" | 1 -> "Type" | n -> "Sort " ^ string_of_int n
@@ -46,6 +46,23 @@ let rec flatten_fun (t : term) (bctx : string list) (fmt : string list -> term -
       let binders, new_body, new_bctx = flatten_fun body (x_s :: bctx) fmt in
       (binder :: binders, new_body, new_bctx)
   | _ -> ([], t, bctx)
+
+let pp_loc (r : range) =
+  if r.start.pos_lnum = r.end_.pos_lnum then
+    Printf.sprintf
+      "%s:%d:%d-%d"
+      r.start.pos_fname
+      r.start.pos_lnum
+      (r.start.pos_cnum - r.start.pos_bol + 1)
+      (r.end_.pos_cnum - r.end_.pos_bol + 1)
+  else
+    Printf.sprintf
+      "%s:%d:%d to %d:%d"
+      r.start.pos_fname
+      r.start.pos_lnum
+      (r.start.pos_cnum - r.start.pos_bol + 1)
+      r.end_.pos_lnum
+      (r.end_.pos_cnum - r.end_.pos_bol + 1)
 
 let bvar_to_string (bctx : string list) (idx : int) : string =
   if idx < List.length bctx then List.nth bctx idx else "_" ^ string_of_int idx
