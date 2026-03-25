@@ -9,7 +9,7 @@ val term_to_string : Types.ctx -> Term.term -> string
     ["Theorem name : ty := proof"]. *)
 val decl_to_string : Types.ctx -> Statement.declaration -> string
 
-(** [pp_loc loc] formats a file range as a string, e.g. proof.txt:334:8-49 *)
+(** [pp_loc loc] formats a file range as a string, e.g. proof.ncg:334:8-49 *)
 val pp_loc : range -> string
 
 (** [reduce ctx t] beta-reduces the term [t] in the context [ctx]. Ideally this is in a

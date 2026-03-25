@@ -73,7 +73,7 @@ let create_with_env_path (path_to_env : string) : Types.ctx =
   e
 
 (* Creates an elaborator environment with the default environment path. *)
-let create_with_env () : Types.ctx = create_with_env_path "synthetic/env.txt"
+let create_with_env () : Types.ctx = create_with_env_path "synthetic/env.ncg"
 
 (* Returns the list of axioms used by the theorem `name`. *)
 let list_axioms (env : Types.ctx) (name : string) =
