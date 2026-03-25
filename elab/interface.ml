@@ -24,15 +24,36 @@ let parse_statements (filename : string) : Statement.statement list =
   in
   decls
 
-let rec process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
-  match stmt with (* TODO: Ensure Imports are all at the top *)
-  | Statement.Declaration decl -> Typecheck.process_decl env decl
-  | Statement.Directive dir -> Directives.process_directive env dir
-  | Statement.Import import -> process_file env import.filename
+let rec process_statement_inner (env : Types.ctx) (stmt : Statement.statement)
+    (can_import : bool) : bool =
+  match stmt with
+  | Statement.Declaration decl ->
+      Typecheck.process_decl env decl;
+      false
+  | Statement.Directive dir ->
+      Directives.process_directive env dir;
+      false
+  | Statement.Import import ->
+      if can_import then (
+        process_file env import.filename;
+        true)
+      else
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None };
+               error_type = Error.ImportNotAtTop;
+             })
+(* TODO: Deal with clashing names in imports *)
 
 and process_file (env : Types.ctx) (filename : string) : unit =
   let stmts = parse_statements filename in
-  List.iter (process_statement env) stmts
+  ignore
+    (List.fold_left (fun acc stmt -> process_statement_inner env stmt acc) true stmts)
+(* TODO: There's probably a better way to do this *)
+
+let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
+  ignore (process_statement_inner env stmt true)
 
 let create () : Types.ctx =
   {

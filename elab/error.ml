@@ -43,6 +43,7 @@ type error_type =
   | InternalError of string
   | FunctionExpected of function_expected_info
   | TypeExpected of type_expected_info
+  | ImportNotAtTop
 
 type elab_error_info = {
   context : error_context;
@@ -248,3 +249,6 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         loc_str
         (Pretty.term_to_string e not_type)
         (Pretty.term_to_string e not_type_infer)
+  | ImportNotAtTop ->
+    Printf.sprintf
+        "Import statement not at top of file" (* TODO: add context information *)

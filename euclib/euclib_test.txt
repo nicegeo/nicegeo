@@ -1,4 +1,4 @@
-Import "euclib.txt"
+Import "euclib/euclib.txt" (* TODO: move to alcotest *)
 
 Theorem prop1_test :
 (a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
