@@ -10,9 +10,9 @@ let () =
 
   let filename = Sys.argv.(1) in
   let env = Elab.Interface.create () in
-  (try Elab.Interface.process_file env "synthetic/env.txt"
+  (try Elab.Interface.process_file env "synthetic/env.ncg"
    with Error.ElabError info ->
-     print_endline ("Internal error while processing env.txt: " ^ Error.pp_exn env info);
+     print_endline ("Internal error while processing env.ncg: " ^ Error.pp_exn env info);
      (* Uncomment this to get a stack trace *)
      (* raise exn *)
      exit 255);

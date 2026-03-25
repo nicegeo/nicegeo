@@ -44,7 +44,7 @@ let rec kdelta_reduce (e : Elab.Types.ctx) (tm : Kernel.Term.term) : Kernel.Term
   | App (f, arg) -> App (kdelta_reduce e f, kdelta_reduce e arg)
   | Bvar _ | Fvar _ | Sort _ -> tm
 
-(** These are the regression tests for the axioms in env.txt. If [dune runtest] yields
+(** These are the regression tests for the axioms in env.ncg. If [dune runtest] yields
     errors here, inspect the diff to ensure that all changes in the kernel terms make
     sense. Assume changes in the term representation of the axioms are regressions unless
     you fully understand what the change represents.
@@ -66,24 +66,9 @@ let rec kdelta_reduce (e : Elab.Types.ctx) (tm : Kernel.Term.term) : Kernel.Term
     Running [dune runtest] again will fill in the expect with the kernel term
     representation. Ensure this representation is correct before promoting and pushing. *)
 
-let%expect_test "Elaborate env.txt" =
-  let env_path = "../../../../../../synthetic/env.txt" in
-  let env = Elab.Interface.create_with_env_path env_path in
-  let env_decls = Hashtbl.create 100 in
-  Elab.Interface.parse_statements env_path
-  |> List.iter (function
-    | Elab.Statement.Declaration decl -> Hashtbl.add env_decls decl.name decl
-    | Elab.Statement.Directive _ -> ());
-
-  (* keeps track of unprocessed declarations so we don't miss any axioms/definitions *)
-  let unprocessed_decls = Hashtbl.copy env.kenv in
-  (* Remove theorems from unprocessed_decls; they are typechecked from axioms. *)
-  Hashtbl.iter
-    (fun name _ ->
-      match Hashtbl.find_opt env_decls name with
-      | Some { kind = Theorem _; _ } -> Hashtbl.remove unprocessed_decls name
-      | _ -> ())
-    unprocessed_decls;
+let%expect_test "Elaborate env.ncg" =
+  let env = Elab.Interface.create_with_env_path "../../../../../../synthetic/env.ncg" in
+  let kenv = Hashtbl.copy env.kenv in
 
   let show_kterm name =
     let decl = Hashtbl.find env_decls name in
@@ -2183,17 +2168,15 @@ let%expect_test "Elaborate env.txt" =
     |}];
 
   (* angle_range: (a : Point) -> (b : Point) -> (c : Point) ->
-    (Not (Lt (Angle a b c) Zero)) ->
-    (Not (Lt (Add RightAngle RightAngle) (Angle a b c))) *)
+    And (Not (Lt (Angle a b c) Zero))
+        (Not (Lt (Add RightAngle RightAngle) (Angle a b c))) *)
   show_kterm "angle_range";
   [%expect
     {|
     Forall (Const "Point",
       Forall (Const "Point",
         Forall (Const "Point",
-          Forall (App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero")),
-            App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 3), Bvar 2), Bvar 1)))
-          )
+          App (App (Const "And", App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))), App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0))))
         )
       )
     )
