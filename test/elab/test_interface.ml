@@ -6,9 +6,7 @@ let with_temp_file contents f =
   close_out oc;
   Fun.protect
     ~finally:(fun () ->
-      try
-        if Sys.file_exists path then Sys.remove path
-      with Sys_error _ -> ())
+      try if Sys.file_exists path then Sys.remove path with Sys_error _ -> ())
     (fun () -> f path)
 
 let error_type_tag = function
@@ -27,8 +25,7 @@ let error_type_tag = function
 let fail_expected name =
   Alcotest.fail ("Expected Error.ElabError in " ^ name ^ ", but succeeded")
 
-let make_env () =
-  Elab.Interface.create_with_env_path "../../../../synthetic/env.ncg"
+let make_env () = Elab.Interface.create_with_env_path "../../../../synthetic/env.ncg"
 
 let check_process_file_error ~name ~contents ~expect =
   with_temp_file contents @@ fun path ->
@@ -130,8 +127,6 @@ let test_type_expected () =
     ~name:"type expected"
     ~contents:"Theorem bad_type : (fun (x : Prop) => x) := Prop\n"
     ~expect:expect_type_expected
-
-
 
 let test_valid_file () =
   with_temp_file "Axiom p : Prop\nTheorem good : Prop := p\n" @@ fun path ->
