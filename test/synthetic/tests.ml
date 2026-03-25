@@ -67,8 +67,23 @@ let rec kdelta_reduce (e : Elab.Types.ctx) (tm : Kernel.Term.term) : Kernel.Term
     representation. Ensure this representation is correct before promoting and pushing. *)
 
 let%expect_test "Elaborate env.ncg" =
-  let env = Elab.Interface.create_with_env_path "../../../../../../synthetic/env.ncg" in
-  let kenv = Hashtbl.copy env.kenv in
+  let env_path = "../../../../../../synthetic/env.ncg" in
+  let env = Elab.Interface.create_with_env_path env_path in
+  let env_decls = Hashtbl.create 100 in
+  Elab.Interface.parse_statements env_path
+  |> List.iter (function
+    | Elab.Statement.Declaration decl -> Hashtbl.add env_decls decl.name decl
+    | Elab.Statement.Directive _ -> ());
+
+  (* keeps track of unprocessed declarations so we don't miss any axioms/definitions *)
+  let unprocessed_decls = Hashtbl.copy env.kenv in
+  (* Remove theorems from unprocessed_decls; they are typechecked from axioms. *)
+  Hashtbl.iter
+    (fun name _ ->
+      match Hashtbl.find_opt env_decls name with
+      | Some { kind = Theorem _; _ } -> Hashtbl.remove unprocessed_decls name
+      | _ -> ())
+    unprocessed_decls;
 
   let show_kterm name =
     let decl = Hashtbl.find env_decls name in
