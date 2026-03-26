@@ -16,33 +16,22 @@ let process_directive (e : ctx) (dir : directive) : unit =
           print_endline (prefix ^ "Error: Proposition '" ^ prop_name ^ "' not found."))
   | Infer (t, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
-      (* create hole for elaborator to solve *)
-      let t_meta = Typecheck.hole_to_meta e [] t in
       (* infer type *)
-      let ty_term = Typecheck.infertype e t_meta in
-      (* replace holes *)
-      let ty_filled = Typecheck.replace_metas e ty_term in
-      Hashtbl.clear e.metas;
-      print_endline (prefix ^ "#infer: " ^ Pretty.term_to_string e ty_filled)
+      let t = Typecheck.elaborate e t None in
+      let ty_term = Typecheck.infertype e t in
+      print_endline (prefix ^ "#infer: " ^ Pretty.term_to_string e ty_term)
   | Check (t, ty, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
       (* process provided type to make sure valid type *)
-      let ty_meta = Typecheck.hole_to_meta e [] ty in
-      Typecheck.check_is_type e ty_meta;
-      let ty_filled = Typecheck.replace_metas e ty_meta in
-      Hashtbl.clear e.metas;
-      (* process term provided *)
-      let t_meta = Typecheck.hole_to_meta e [] t in
-      (* call elaborator to check if term matches type *)
-      Typecheck.checktype e t_meta ty_filled;
-      let _ = Typecheck.replace_metas e t_meta in
-      Hashtbl.clear e.metas;
+      let ty_filled = Typecheck.elaborate e ty None in
+      ignore (Typecheck.elaborate e t (Some ty_filled));
 
       print_endline
         (prefix ^ "#check successful: Term is well-typed as "
         ^ Pretty.term_to_string e ty_filled)
   | Reduce (t, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
-      let t_meta = Typecheck.hole_to_meta e [] t in
-      let reduced_term = Pretty.reduce e t_meta in
+      let reduced_term = Typecheck.elaborate e t None in
+      print_endline
+        "WARNING: #reduce is currently unimplemented and just prints the original term.";
       print_endline (prefix ^ "#reduce: " ^ Pretty.term_to_string e reduced_term)
