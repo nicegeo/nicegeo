@@ -503,8 +503,10 @@ let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   | None -> ignore (infertype e tm_delta));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
-  let tm_reduced = Reduce.reduce e tm_filled in
-  tm_reduced
+  (match ty with
+  | Some ty -> checktype e tm_filled ty
+  | None -> ignore (infertype e tm_filled));
+  tm_filled
 
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
