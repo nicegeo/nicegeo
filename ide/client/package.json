@@ -2,6 +2,10 @@
   "name": "nicegeo-ide",
   "displayName": "NiceGeo IDE",
   "description": "NiceGeo language support and diagnostics",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicegeo/nicegeo.git"
+  },
   "version": "0.0.1",
   "publisher": "nicegeo",
   "engines": {
