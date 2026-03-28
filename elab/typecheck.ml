@@ -131,12 +131,7 @@ let rec valid_pattern (e : ctx) (graph : rw_graph) (m : int) (tm : term)
     (sol_bids : int list) : bool =
   match tm.inner with
   | Bvar bid ->
-      (* either bound in the solution itself or part of the hole's own context. We only call 
-         [original_bid] on bids that appear in [tm] since that is the term that could have been 
-         rewritten. [sol_bids] is "local" to this function and contains only the bids encountered in
-         this function, so they won't be renamed. The bids in e.metas[m].context are the original bids
-         that we are comparing with. *)
-
+      (* either bound in the solution itself or part of the hole's own context *)
       (* print_endline ("checking if bound variable " ^ string_of_int bid ^ " is valid in solution for ?m" ^ string_of_int m);
       print_endline ("current context: " ^ String.concat ", " (List.map string_of_int ctx));
       print_endline ("current hole context: " ^ String.concat ", " (List.map string_of_int (Hashtbl.find e.metas m).context));
@@ -229,8 +224,8 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
       else (
         (if m1 = m2 then ()
          else
-           (* Have the hole with the smaller ID point to the larger ID to ensure that there 
-           aren't any holes that refer to each other in a cycle *)
+           (* Have the hole with the smaller ID point to the larger ID to ensure that there aren't any holes that refer to each other
+    in a cycle *)
            let m1, m2 = if m1 < m2 then (m1, m2) else (m2, m1) in
            Hashtbl.replace
              e.metas
@@ -254,8 +249,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
       unify ~depth:(depth + 1) e ty_arg1 g1 ty_arg2 g2;
       let ty_ret2 =
         if bid1 <> bid2 then (
-          (* make them equal: rewrite the second body to use the first's bids. we could alternatively
-             rewrite both of them to a fresh bid. *)
+          (* make them equal *)
           Hashtbl.replace g2 bid1 bid2;
           Reduce.subst e ty_ret2 (Bvar bid2) (Bvar bid1))
         else ty_ret2
@@ -342,20 +336,13 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
               (Error.TypeMismatch
                  { term = tm; inferred_type = infer_ty; expected_type = ty }))
       | _ ->
-          (* HACK: since TypeMismatch expects an inferred type but we don't actually infer the type of [tm] in this case,
-             we still want to provide a meaningful error message, so we provide ty_arg -> ?m0 as the inferred type of [tm] as
-             we know it's a Fun. We don't actually want to call infer on [tm] since it might fail, and we're already in an error
-             case. *)
+          let unk = { inner = Hole 0; loc = ty.loc } in
           raise_at
             ty
             (Error.TypeMismatch
                {
                  term = tm;
-                 inferred_type =
-                   {
-                     inner = Arrow (arg, bid, ty_arg, { inner = Hole 0; loc = ty.loc });
-                     loc = ty.loc;
-                   };
+                 inferred_type = { inner = Arrow (None, 0, unk, unk); loc = ty.loc };
                  expected_type = ty;
                }))
   | App _ | Name _ | Arrow _ | Sort _ | Bvar _ -> (
@@ -516,10 +503,8 @@ let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   | None -> ignore (infertype e tm_delta));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
-  (match ty with
-  | Some ty -> checktype e tm_filled ty
-  | None -> ignore (infertype e tm_filled));
-  tm_filled
+  let tm_reduced = Reduce.reduce e tm_filled in
+  tm_reduced
 
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
