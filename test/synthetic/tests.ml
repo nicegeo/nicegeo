@@ -728,6 +728,44 @@ let%expect_test "Elaborate env.ncg" =
   show_kterm "RightAngle";
   [%expect {| Const "Measure" |}];
 
+  (* Le : Measure -> Measure -> Prop := fun (a: Measure) (b: Measure) => Not (Lt b a) *)
+  show_kterm "Le";
+  [%expect
+    {|
+    Forall (Const "Measure",
+      Forall (Const "Measure",
+        Sort 0
+      )
+    )
+    :=
+    Lam (Const "Measure",
+      Lam (Const "Measure",
+        App (Const "Not", App (App (Const "Lt", Bvar 0), Bvar 1))
+      )
+    )
+    |}];
+
+  (* DiffSide : Point -> Point -> Line -> Prop := fun (a b: Point) (L: Line) => And (Not (OnLine a L)) (And (Not (OnLine b L)) (Not (SameSide a b L))) *)
+  show_kterm "DiffSide";
+  [%expect
+    {|
+    Forall (Const "Point",
+      Forall (Const "Point",
+        Forall (Const "Line",
+          Sort 0
+        )
+      )
+    )
+    :=
+    Lam (Const "Point",
+      Lam (Const "Point",
+        Lam (Const "Line",
+          App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (Const "OnLine", Bvar 2), Bvar 0))), App (Const "Not", App (App (Const "OnLine", Bvar 1), Bvar 0)))), App (Const "Not", App (App (App (Const "SameSide", Bvar 2), Bvar 1), Bvar 0)))
+        )
+      )
+    )
+    |}];
+
   (* distinct_from : Point -> List Point -> List Line -> List Circle -> Prop
   := 
   fun (a: Point) (p_list : List Point) (l_list : List Line) (c_list : List Circle) => 
@@ -1986,7 +2024,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* lines_inter_if_diff_sides: (a : Point) -> (b : Point) -> (L : Line) -> (M : Line) ->
-    (Not (SameSide a b L)) ->
+    (DiffSide a b L) ->
     (OnLine a M) ->
     (OnLine b M) ->
     (LinesInter L M) *)
@@ -1997,7 +2035,7 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Line",
           Forall (Const "Line",
-            Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 3), Bvar 2), Bvar 1)),
+            Forall (App (App (App (Const "DiffSide", Bvar 3), Bvar 2), Bvar 1),
               Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
                   App (App (Const "LinesInter", Bvar 4), Bvar 3)
@@ -2013,7 +2051,7 @@ let%expect_test "Elaborate env.ncg" =
   (* line_circle_inter_if_diff_sides: (a : Point) -> (b : Point) -> (L : Line) -> (aa : Circle) ->
     (Or (InCircle a aa) (OnCircle a aa)) ->
     (Or (InCircle b aa) (OnCircle b aa)) ->
-    (Not (SameSide a b L)) ->
+    (DiffSide a b L) ->
     (LineCircleInter L aa) *)
   show_kterm "line_circle_inter_if_diff_sides";
   [%expect
@@ -2024,7 +2062,7 @@ let%expect_test "Elaborate env.ncg" =
           Forall (Const "Circle",
             Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
               Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
-                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)),
+                Forall (App (App (App (Const "DiffSide", Bvar 5), Bvar 4), Bvar 3),
                   App (App (Const "LineCircleInter", Bvar 4), Bvar 3)
                 )
               )
