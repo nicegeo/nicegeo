@@ -27,10 +27,25 @@ let () =
       exit 255
   in
   let tone = Nice_messages.tone_from_env () in
+  let had_errors = ref false in
   try
-    Elab.Interface.process_file env filename;
-    print_endline "Valid proofs!"
+    let stmts = Elab.Interface.parse_statements filename in
+    List.iter
+      (fun stmt ->
+        try Elab.Interface.process_statement env stmt
+        with Error.ElabError e ->
+          had_errors := true;
+          print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env e))
+      stmts;
+    if !had_errors then (
+      (match Nice_messages.pick_message tone Nice_messages.After_error with
+      | Some extra -> Printf.printf "%s" (Nice_messages.format_for_output extra)
+      | None -> ());
+      exit 1)
+    else print_endline "Valid proofs!"
+  
   with Error.ElabError e ->
+    (* Parse-level errors still abort early because later statements cannot be recovered. *)
     print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env e);
     (match Nice_messages.pick_message tone Nice_messages.After_error with
     | Some extra -> Printf.printf "%s" (Nice_messages.format_for_output extra)
