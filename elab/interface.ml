@@ -52,12 +52,3 @@ let parse_statements (filename : string) : Statement.statement list =
 let process_file (env : Types.ctx) (filename : string) : unit =
   let stmts = parse_statements filename in
   List.iter (process_statement env) stmts
-
-(* Returns the list of axioms used by the theorem `name`. *)
-let list_axioms (env : Types.ctx) (name : string) =
-  match Hashtbl.find_opt env.env name with
-  | Some entry -> (
-      match entry.data with
-      | Types.Axiom -> failwith (name ^ " is an axiom")
-      | Types.Theorem axioms -> axioms)
-  | None -> failwith ("unknown declaration: " ^ name)

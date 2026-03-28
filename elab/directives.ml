@@ -8,7 +8,7 @@ let process_directive (e : ctx) (dir : directive) : unit =
       match Hashtbl.find_opt e.env prop_name with
       | Some record -> (
           match record.data with
-          | Theorem used_axioms ->
+          | Theorem used_axioms | Def (used_axioms, _, _) ->
               print_endline (prefix ^ "Axioms used in " ^ prop_name ^ ":");
               List.iter print_endline used_axioms
           | Axiom -> print_endline (prefix ^ prop_name ^ " is an axiom itself."))
@@ -18,7 +18,8 @@ let process_directive (e : ctx) (dir : directive) : unit =
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
       (* infer type *)
       let t = Typecheck.elaborate e t None in
-      let ty_term = Typecheck.infertype e t in
+      let t_delta = Reduce.delta_reduce e t false in
+      let ty_term = Typecheck.infertype e t_delta in
       print_endline (prefix ^ "#infer: " ^ Pretty.term_to_string e ty_term)
   | Check (t, ty, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
@@ -31,7 +32,22 @@ let process_directive (e : ctx) (dir : directive) : unit =
         ^ Pretty.term_to_string e ty_filled)
   | Reduce (t, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
-      let reduced_term = Typecheck.elaborate e t None in
-      print_endline
-        "WARNING: #reduce is currently unimplemented and just prints the original term.";
+      let t = Typecheck.elaborate e t None in
+      let reduced_term = Reduce.reduce e t in
       print_endline (prefix ^ "#reduce: " ^ Pretty.term_to_string e reduced_term)
+  | Opaque (name, loc) -> (
+      match Hashtbl.find_opt e.env name with
+      | Some record -> (
+          match record.data with
+          | Def (axioms, body, false) ->
+              Hashtbl.replace e.env name { record with data = Def (axioms, body, true) }
+          | Def (_, _, true) ->
+              print_endline
+                ("[" ^ Pretty.pp_loc loc ^ "] Warning: '" ^ name ^ "' is already opaque.")
+          | _ ->
+              print_endline
+                ("[" ^ Pretty.pp_loc loc ^ "] Error: '" ^ name
+               ^ "' exists but is not a definition."))
+      | None ->
+          print_endline
+            ("[" ^ Pretty.pp_loc loc ^ "] Error: Definition '" ^ name ^ "' not found."))

@@ -54,3 +54,6 @@ val gen_binder_id : unit -> int
     Name or Bvar. Note that this recurses into subterms but not into metavariable
     solutions. *)
 val subst : term -> termkind -> termkind -> term
+
+(** [uniquify_bids tm] generates fresh binder ids for all binders in [tm]. *)
+val uniquify_bids : term -> term

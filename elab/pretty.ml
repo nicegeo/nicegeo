@@ -55,7 +55,7 @@ let bvar_to_string (e : Types.ctx) (idx : int) : string =
   | None -> "!" ^ string_of_int idx
 
 let rec term_to_string (e : Types.ctx) (t : term) : string =
-  (* let t = reduce e t in *)
+  let t = Reduce.reduce e t in
   match t.inner with
   | Name x -> x
   | Bvar idx -> bvar_to_string e idx
@@ -108,3 +108,5 @@ let decl_to_string (e : Types.ctx) (d : declaration) =
   | Theorem proof ->
       "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := "
       ^ term_to_string e proof
+  | Def body ->
+      "Def " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e body

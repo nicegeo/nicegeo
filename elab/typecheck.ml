@@ -67,30 +67,6 @@ type normterm =
     Bvar bid1 in the term originally referred to Bvar bid2. *)
 type rw_graph = (int, int) Hashtbl.t
 
-(** [subst e tm pat replacement] substitutes all occurrences of `pat` with `replacement`
-    in `tm`, recursing into known metavariable solutions. *)
-let rec subst (e : ctx) (tm : term) (pat : termkind) (replacement : termkind) =
-  match tm.inner with
-  | Name _ | Bvar _ ->
-      if tm.inner = pat then { inner = replacement; loc = tm.loc } else tm
-  | Fun (x, bid, ty, body) ->
-      let ty_subst = subst e ty pat replacement in
-      let body_subst = subst e body pat replacement in
-      { inner = Fun (x, bid, ty_subst, body_subst); loc = tm.loc }
-  | Arrow (x, bid, ty_arg, ty_ret) ->
-      let ty_arg_subst = subst e ty_arg pat replacement in
-      let ty_ret_subst = subst e ty_ret pat replacement in
-      { inner = Arrow (x, bid, ty_arg_subst, ty_ret_subst); loc = tm.loc }
-  | App (f, arg) ->
-      let f_subst = subst e f pat replacement in
-      let arg_subst = subst e arg pat replacement in
-      { inner = App (f_subst, arg_subst); loc = tm.loc }
-  | Hole m -> (
-      match Hashtbl.find_opt e.metas m with
-      | Some { sol = Some tm_sol; _ } -> subst e tm_sol pat replacement
-      | _ -> tm)
-  | _ -> tm
-
 (** [whnf_beta e tm] computes the weak head normal form of `tm` with respect to the
     context `e`, recursing into known metavariable solutions. *)
 let rec whnf_beta (e : ctx) (tm : term) : term =
@@ -98,7 +74,7 @@ let rec whnf_beta (e : ctx) (tm : term) : term =
   | App (f, arg) -> (
       let fn = whnf_beta e f in
       match fn.inner with
-      | Fun (_, bid, _, body) -> whnf_beta e (subst e body (Bvar bid) arg.inner)
+      | Fun (_, bid, _, body) -> whnf_beta e (Reduce.subst e body (Bvar bid) arg.inner)
       | _ -> { inner = App (fn, arg); loc = tm.loc })
   | Hole m -> (
       match Hashtbl.find_opt e.metas m with
@@ -155,12 +131,7 @@ let rec valid_pattern (e : ctx) (graph : rw_graph) (m : int) (tm : term)
     (sol_bids : int list) : bool =
   match tm.inner with
   | Bvar bid ->
-      (* either bound in the solution itself or part of the hole's own context. We only call 
-         [original_bid] on bids that appear in [tm] since that is the term that could have been 
-         rewritten. [sol_bids] is "local" to this function and contains only the bids encountered in
-         this function, so they won't be renamed. The bids in e.metas[m].context are the original bids
-         that we are comparing with. *)
-
+      (* either bound in the solution itself or part of the hole's own context *)
       (* print_endline ("checking if bound variable " ^ string_of_int bid ^ " is valid in solution for ?m" ^ string_of_int m);
       print_endline ("current context: " ^ String.concat ", " (List.map string_of_int ctx));
       print_endline ("current hole context: " ^ String.concat ", " (List.map string_of_int (Hashtbl.find e.metas m).context));
@@ -253,8 +224,8 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
       else (
         (if m1 = m2 then ()
          else
-           (* Have the hole with the smaller ID point to the larger ID to ensure that there 
-           aren't any holes that refer to each other in a cycle *)
+           (* Have the hole with the smaller ID point to the larger ID to ensure that there aren't any holes that refer to each other
+    in a cycle *)
            let m1, m2 = if m1 < m2 then (m1, m2) else (m2, m1) in
            Hashtbl.replace
              e.metas
@@ -278,10 +249,9 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
       unify ~depth:(depth + 1) e ty_arg1 g1 ty_arg2 g2;
       let ty_ret2 =
         if bid1 <> bid2 then (
-          (* make them equal: rewrite the second body to use the first's bids. we could alternatively
-             rewrite both of them to a fresh bid. *)
+          (* make them equal *)
           Hashtbl.replace g2 bid1 bid2;
-          subst e ty_ret2 (Bvar bid2) (Bvar bid1))
+          Reduce.subst e ty_ret2 (Bvar bid2) (Bvar bid1))
         else ty_ret2
       in
       unify ~depth:(depth + 1) e ty_ret1 g1 ty_ret2 g2;
@@ -297,7 +267,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
         if bid1 <> bid2 then (
           (* make them equal *)
           Hashtbl.replace g2 bid2 bid1;
-          subst e body2 (Bvar bid2) (Bvar bid1))
+          Reduce.subst e body2 (Bvar bid2) (Bvar bid1))
         else body2
       in
       unify ~depth:(depth + 1) e body1 g1 body2 g2;
@@ -352,7 +322,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
                   }));
           check_is_type ~depth:(depth + 1) e ty_arg;
           (* check body type by substituting the appropriate bound variable *)
-          let ty_ret_ex_subst = subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in
+          let ty_ret_ex_subst = Reduce.subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in
           Hashtbl.add e.lctx bid (arg, ty_arg);
           checktype ~depth:(depth + 1) e body ty_ret_ex_subst;
           Hashtbl.remove e.lctx bid
@@ -366,20 +336,13 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
               (Error.TypeMismatch
                  { term = tm; inferred_type = infer_ty; expected_type = ty }))
       | _ ->
-          (* HACK: since TypeMismatch expects an inferred type but we don't actually infer the type of [tm] in this case,
-             we still want to provide a meaningful error message, so we provide ty_arg -> ?m0 as the inferred type of [tm] as
-             we know it's a Fun. We don't actually want to call infer on [tm] since it might fail, and we're already in an error
-             case. *)
+          let unk = { inner = Hole 0; loc = ty.loc } in
           raise_at
             ty
             (Error.TypeMismatch
                {
                  term = tm;
-                 inferred_type =
-                   {
-                     inner = Arrow (arg, bid, ty_arg, { inner = Hole 0; loc = ty.loc });
-                     loc = ty.loc;
-                   };
+                 inferred_type = { inner = Arrow (None, 0, unk, unk); loc = ty.loc };
                  expected_type = ty;
                }))
   | App _ | Name _ | Arrow _ | Sort _ | Bvar _ -> (
@@ -410,14 +373,16 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
         | _ -> raise_at tm Error.CannotInferHole)
     | Name name -> (
         match Hashtbl.find_opt e.env name with
-        | Some entry -> entry.ty
+        | Some entry -> uniquify_bids (Reduce.delta_reduce e entry.ty false)
         | None -> raise_at tm (Error.UnknownName { name }))
     | Fun (arg, bid, ty_arg, body) ->
         check_is_type ~depth:(depth + 1) e ty_arg;
-        Hashtbl.add e.lctx bid (arg, ty_arg);
+        let new_bid = gen_binder_id () in
+        let body = Reduce.subst e body (Bvar bid) (Bvar new_bid) in
+        Hashtbl.add e.lctx new_bid (arg, ty_arg);
         let ty_body = infertype ~depth:(depth + 1) e body in
-        Hashtbl.remove e.lctx bid;
-        { inner = Arrow (arg, bid, ty_arg, ty_body); loc = tm.loc }
+        Hashtbl.remove e.lctx new_bid;
+        { inner = Arrow (arg, new_bid, ty_arg, ty_body); loc = tm.loc }
     | Arrow (arg, bid, ty_arg, ty_ret) ->
         let ty_arg_ty = whnf_beta e (infertype ~depth:(depth + 1) e ty_arg) in
         let arg_sort =
@@ -445,7 +410,7 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
         match f_type.inner with
         | Arrow (_, bid, ty_arg, ty_ret) ->
             checktype ~depth:(depth + 1) e arg ty_arg;
-            subst e ty_ret (Bvar bid) arg.inner
+            Reduce.subst e ty_ret (Bvar bid) arg.inner
         | _ ->
             raise_at
               f
@@ -520,6 +485,7 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | Name name -> (
       match Hashtbl.find_opt e.env name with
       | Some { data = Theorem axioms; _ } -> axioms
+      | Some { data = Def (axioms, _, _); _ } -> axioms
       | Some { data = Axiom; _ } -> [ name ]
       | None -> raise_at tm (Error.UnknownName { name }))
   | Fun (_, _, ty_arg, body) ->
@@ -531,74 +497,82 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
 
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   create_metas e tm [];
-  (match ty with Some ty -> checktype e tm ty | None -> ignore (infertype e tm));
+  let tm_delta = Reduce.delta_reduce e tm false in
+  (match ty with
+  | Some ty -> checktype e tm_delta ty
+  | None -> ignore (infertype e tm_delta));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
-  (match ty with
-  | Some ty -> checktype e tm_filled ty
-  | None -> ignore (infertype e tm_filled));
-  tm_filled
+  let tm_reduced = Reduce.reduce e tm_filled in
+  tm_reduced
 
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
   try
-    match d.kind with
-    | Theorem proof -> (
-        if Hashtbl.mem e.env d.name then
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.AlreadyDefined d.name;
-               });
-        let ty_filled = elaborate e d.ty None in
-        check_is_type e ty_filled;
-        let proof_filled = elaborate e proof (Some ty_filled) in
-        let ty_k = conv_to_kterm ty_filled in
-        let proof_k = conv_to_kterm proof_filled in
+    if Hashtbl.mem e.env d.name then
+      raise
+        (Error.ElabError
+           {
+             context = { loc = Some d.name_loc; decl_name = Some d.name };
+             error_type = Error.AlreadyDefined d.name;
+           })
+    else
+      match d.kind with
+      | Theorem body | Def body -> (
+          let ty_filled = elaborate e d.ty None in
+          check_is_type e ty_filled;
+          let proof_filled =
+            elaborate e body (Some (Reduce.delta_reduce e ty_filled false))
+          in
+          let ty_k =
+            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
+          in
+          let proof_k =
+            Reduce.delta_reduce e proof_filled true |> Reduce.reduce e |> conv_to_kterm
+          in
 
-        try
-          let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
-          let isValidProof = KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k in
+          try
+            let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
+            let isValidProof =
+              KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k
+            in
 
-          if isValidProof then (
-            Hashtbl.add
-              e.env
-              d.name
-              {
-                name = d.name;
-                ty = ty_filled;
-                data = Theorem (list_axioms_used e proof_filled);
-              };
-            Hashtbl.add e.kenv d.name ty_k)
-          else
+            if isValidProof then (
+              Hashtbl.add
+                e.env
+                d.name
+                {
+                  name = d.name;
+                  ty = ty_filled;
+                  data =
+                    (match d.kind with
+                    | Theorem _ -> Theorem (list_axioms_used e proof_filled)
+                    | Def _ -> Def (list_axioms_used e proof_filled, proof_filled, false)
+                    | Axiom -> assert false);
+                };
+              Hashtbl.add e.kenv d.name ty_k)
+            else
+              raise
+                (Error.ElabError
+                   {
+                     context = { loc = Some d.name_loc; decl_name = Some d.name };
+                     error_type = Error.InternalError "kernel did not accept proof\n";
+                   })
+          with KExceptions.TypeError msg ->
             raise
               (Error.ElabError
                  {
                    context = { loc = Some d.name_loc; decl_name = Some d.name };
-                   error_type = Error.InternalError "kernel did not accept proof\n";
-                 })
-        with KExceptions.TypeError msg ->
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.KernelError { kernel_exn = msg };
-               }))
-    | Axiom ->
-        if Hashtbl.mem e.env d.name then
-          raise
-            (Error.ElabError
-               {
-                 context = { loc = Some d.name_loc; decl_name = Some d.name };
-                 error_type = Error.AlreadyDefined d.name;
-               });
-
-        let ty_filled = elaborate e d.ty None in
-        check_is_type e ty_filled;
-        let ty_k = conv_to_kterm ty_filled in
-        Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
-        Hashtbl.add e.kenv d.name ty_k
+                   error_type = Error.KernelError { kernel_exn = msg };
+                 }))
+      | Axiom ->
+          let ty_filled = elaborate e d.ty None in
+          check_is_type e ty_filled;
+          let ty_k =
+            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
+          in
+          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom };
+          Hashtbl.add e.kenv d.name ty_k
   with Error.ElabError x ->
     raise
       (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })
