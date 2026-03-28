@@ -46,16 +46,21 @@
     "languages": [
       {
         "id": "nicegeo",
-        "aliases": ["NiceGeo", "nicegeo"],
-        "extensions": [".ncg"],
-        "configuration": "../language-configuration.json"
+        "aliases": [
+          "NiceGeo",
+          "nicegeo"
+        ],
+        "extensions": [
+          ".ncg"
+        ],
+        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
         "language": "nicegeo",
         "scopeName": "source.nicegeo",
-        "path": "../syntaxes/nicegeo.tmLanguage.json"
+        "path": "./syntaxes/nicegeo.tmLanguage.json"
       }
     ],
     "configuration": {
@@ -64,7 +69,11 @@
         "nicegeo.diagnostics.trigger": {
           "type": "string",
           "default": "onSave",
-          "enum": ["onSave", "onType", "both"],
+          "enum": [
+            "onSave",
+            "onType",
+            "both"
+          ],
           "description": "When to run NiceGeo diagnostics."
         },
         "nicegeo.diagnostics.debounceMs": {
@@ -78,4 +87,3 @@
     }
   }
 }
-
