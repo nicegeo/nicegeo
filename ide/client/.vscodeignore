@@ -1,0 +1,9 @@
+.vscode/**
+.vscode-test/**
+.gitignore
+vsc-extension-quickstart.md
+src/**
+tsconfig.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

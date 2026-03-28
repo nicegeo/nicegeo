@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-nicegeo-ide",
+      "type": "shell",
+      "command": "npm --prefix \"ide/server\" run compile && npm --prefix \"ide/client\" run compile",
+      "problemMatcher": ["$tsc"],
+      "group": "build"
+    }
+  ]
+}
+

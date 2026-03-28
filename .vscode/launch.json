@@ -1,0 +1,22 @@
+// Launch the NiceGeo VS Code extension from the repo root workspace.
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "NiceGeo IDE (Extension Host)",
+      "type": "extensionHost",
+      "request": "launch",
+      "preLaunchTask": "build-nicegeo-ide",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/ide/client",
+        "--disable-extensions",
+        "--disable-workspace-trust",
+        "--disable-workspace-trust",
+        "--disable-restore-windows",
+        "${workspaceFolder}/ide/demo-files",
+        "${workspaceFolder}/ide/demo-files/proof.ncg"
+      ]
+    }
+  ]
+}
+
