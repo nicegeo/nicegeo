@@ -14,8 +14,10 @@ __pycache__
 # emacs lock files
 .#*
 
-# vscode settings
-.vscode
+# VS Code (repo root only): commit shared debug/build; ignore personal files
+/.vscode/*
+!/.vscode/launch.json
+!/.vscode/tasks.json
 
 # git-ps hooks
 .git-ps
@@ -36,3 +38,8 @@ flake*
 perf.data
 perf.data.old
 profile.json.gz
+
+# IDE / TypeScript extension (ide/client, ide/server)
+ide/**/node_modules/
+ide/**/out/
+ide/**/*.tsbuildinfo
