@@ -1,0 +1,4 @@
+(* Demo file: triggers UnknownName suggestions and NiceGeo messages. *)
+
+Theorem unknown_name_demo : Prop := HELLO
+
