@@ -43,7 +43,6 @@ let () =
       | None -> ());
       exit 1)
     else print_endline "Valid proofs!"
-  
   with Error.ElabError e ->
     (* Parse-level errors still abort early because later statements cannot be recovered. *)
     print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env e);
