@@ -46,3 +46,52 @@ let fresh_goal (st : proof_state) (ctx : local_ctx) (ty : term) : term * proof_s
 
 let close_goal (id : int) (st : proof_state) : proof_state = 
   {st with open_goals = List.filter (fun g -> g.goal_id <> id) st.open_goals}
+
+let assign_meta (id : int) (tm :term) (st : proof_state) : proof_state = 
+  let existing = Hashtbl.find_opt st.elab_ctx.metas id in 
+  let context = Option.fold ~none:[] ~some:(fun m -> m.context) existing in 
+  let ty = Option.bind existing (fun m -> m.ty) in 
+  Hashtbl.replace st.elab_ctx.metas id {ty; context; sol = Some tm};
+  st 
+
+let current_goal (st : proof_state) : goal option = 
+  match st.open_goals with 
+  | [] -> None 
+  | g :: _ -> Some g 
+
+
+let is_complete (st : proof_state) : bool = st.open_goals = [] 
+
+let init_state ?(elab_ctx = Interface.create()) (ty : term) : proof_state = 
+  let id = fresh_id () in 
+  Hashtbl.replace elab_ctx.metas id {ty = Some ty; context = []; sol = None}; 
+  let g = {ctx = []; goal_type = ty; goal_id = id} in 
+  {statement = mk_hole id; open_goals = [g]; elab_ctx}
+
+(** Apply current meta assignments throughout a term, chasing chains.
+    Unsolved holes are left in place. *)
+let rec apply_meta (ectx : ctx) (tm : term) : term = 
+  match tm.inner with 
+  | Hole i ->
+      (match Hashtbl.find_opt ectx.metas i with
+        |Some {sol = Some t; _} -> apply_meta ectx t
+        |_ -> tm
+      ) 
+  | Fun (x, bid, ty, body) -> 
+      mk_term (Fun (x, bid, apply_meta ectx ty, apply_meta ectx body))
+  | Arrow (x, bid, ty, ret) -> 
+      mk_term (Arrow (x, bid, apply_meta ectx ty, apply_meta ectx ret))
+  | App (f, a) -> 
+      mk_term (App (apply_meta ectx f, apply_meta ectx a))
+  | _ -> tm 
+
+
+
+
+
+
+
+
+
+
+
