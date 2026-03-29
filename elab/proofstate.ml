@@ -86,6 +86,8 @@ let rec apply_meta (ectx : ctx) (tm : term) : term =
   | _ -> tm 
 
 
+let pp_term (ectx : ctx) (tm : term) : string =
+  Pretty.term_to_string ectx tm
 
 
 
