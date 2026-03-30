@@ -9,7 +9,8 @@ type tactic_result =
 let succeed st  = Success st
 let fail    msg = Failure msg 
 
-let catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
+(* Used by future tactics that need to catch elaboration errors and return a Failure. *)
+let _catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
   try f ()
   with Error.ElabError info -> Failure (Error.pp_exn ectx info)
 
@@ -35,8 +36,9 @@ let rec def_eq (e : ctx) (t1 : term) (t2 : term) : bool =
       def_eq e r1 (Reduce.subst e r2 (Bvar bid2) (Bvar bid1))
   | _ -> false
 
-let goal_stack (g : goal) : int list = 
-	List.map (fun h -> h.hyp_bid) g.ctx 
+(* Used by future tactics that need to pass the in-scope bids when creating subgoals. *)
+let _goal_stack (g : goal) : int list =
+	List.map (fun h -> h.hyp_bid) g.ctx
 
 (*[Eq A lhs rhs] when [lhs] and [rhs] are definitionally equal, proof term is [@refl A lhs].*)
 let reflexivity (st : proof_state) : tactic_result =
