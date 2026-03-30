@@ -3,14 +3,14 @@
 
 open Term
 
-(** The body of a declaration: either a proof term or an axiom. *)
+(** The body of a declaration: either a proof term or definition body or an axiom. *)
 type decl_type =
   | Theorem of term
-      (** [Theorem(term)] is the type of theorems with definition [term]. *)
+      (** [Theorem(term)] is the type of theorems with proof [term]. *)
   | Axiom  (** [Axiom] is the type of axioms. *)
   | Def of term  (** [Def(term)] is the type of definitions with body [term]. *)
 
-(** A parsed declaration (axiom or theorem). *)
+(** A parsed declaration (axiom, theorem, or definition). *)
 type declaration = {
   name : string;
   name_loc : range;

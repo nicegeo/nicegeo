@@ -47,8 +47,8 @@ module KInfer = Kernel.Infer
 module KExceptions = Kernel.Exceptions
 
 let raise_at (tm : term) (e : Error.error_type) : 'a =
-  let loc = Some tm.loc in
-  raise (Error.ElabError { context = { loc; decl_name = None }; error_type = e })
+  raise
+    (Error.ElabError { context = { loc = Some tm.loc; decl_name = None }; error_type = e })
 
 type normterm =
   | Fun of string option * int * term * term
@@ -277,9 +277,12 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
         Hashtbl.remove g2 bid2)
   | Sort n1, Sort n2 when n1 = n2 -> ()
   | _ ->
-      failwith
-        ("failed to unify non-matching terms " ^ Pretty.term_to_string e t1 ^ " and "
-       ^ Pretty.term_to_string e t2)
+      raise
+        (Error.ElabError
+           {
+             context = { loc = Some t1.loc; decl_name = None };
+             error_type = Error.UnificationFailure { left = t1; right = t2 };
+           })
 
 (** checks that tm has expected type ty, trying to fill in metavariables (holes). If it
     fails it throws an ElabError. *)
