@@ -1,3 +1,4 @@
+open Term
 open Proofstate
 
 type tactic_result =
@@ -10,3 +11,14 @@ val reflexivity : proof_state -> tactic_result
     Logically unsound — will not pass kernel checking.
     Use only during development to defer proof obligations. *)
 val sorry : proof_state -> tactic_result
+
+(** [exact tm st] closes the current goal if [tm]'s inferred type is definitionally
+    equal to the goal type. Returns [Failure] if the types don't match, the term is
+    ill-typed, or no goals remain. *)
+val exact : term -> proof_state -> tactic_result
+
+(** [apply name st] looks up [name] as a hypothesis or global lemma and attempts to
+    close the current goal. If the lemma type is [A -> B] and [B] matches the goal,
+    the goal is closed and a new subgoal for [A] is opened. If the type directly
+    matches the goal (no arrow), it behaves like [exact]. *)
+val apply : string -> proof_state -> tactic_result
