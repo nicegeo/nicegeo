@@ -149,7 +149,7 @@ let pp_local_ctx (e : Types.ctx) : string =
   Hashtbl.fold
     (fun k v acc ->
       acc
-      ^ Pretty.term_to_string e { inner = Fvar k; loc = dummy_range }
+      ^ Pretty.term_to_string e { inner = Bvar k; loc = dummy_range }
       ^ " : "
       ^ Pretty.term_to_string e (snd v)
       ^ "\n")

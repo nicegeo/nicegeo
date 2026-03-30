@@ -1,4 +1,7 @@
-(** Elaboration-level term representation. *)
+(** Elaboration-level term representation. Terms are represented in "binder id" form,
+    which are like names but unique: every Fun and Arrow has an associated binder id, and
+    a [Bvar id] refers to the variable bound with that id. They still also have the
+    original source code name for error reporting. *)
 
 (** Source location range. *)
 type range = {
@@ -20,19 +23,23 @@ and termkind =
   | Name of string
       (** [Name(name)] represents a name from the source (resolved to a constant or the
           nearest bound variable of the same name during parsing). *)
-  | Bvar of int  (** [Bvar(idx)] represents a De Bruijn indexed bound variable. *)
-  | Fvar of int
-      (** [Fvar(idx)] represents a free variable (introduced during internal processing).
-          [idx] is a unique id. *)
+  | Bvar of int
+      (** [Bvar(id)] represents a bound variable, referring to the binder with the same
+          id. *)
   | Hole of int
       (** [Hole(idx)] represents a hole (underscore) to be filled by elaboration. [idx] is
           a unique id. *)
-  | Fun of string option * term * term
-      (** [Fun(name, domain_type, body)] represents a lambda abstraction, where [name] is
-          the optional parameter name. *)
-  | Arrow of string option * term * term
-      (** [Arrow(name, domain_type, return_type)] represents a dependent function type,
-          where [name] is the optional parameter name. *)
+  | Fun of string option * int * term * term
+      (** [Fun(arg_name, arg_id, arg_ty, body)] represents a function (lambda). [arg_name]
+          is the optional original source name, [arg_id] is the binder id of the lambda,
+          [arg_ty] is the type of the argument, and [body] is the body of the function.
+          Any [Bvar arg_id] in [body] refers to this lambda's argument. *)
+  | Arrow of string option * int * term * term
+      (** [Arrow(arg_name, arg_id, arg_ty, ret_ty)] represents an arrow (Pi/function
+          type). [arg_name] is the optional original source name, [arg_id] is the binder
+          id of the argument, [arg_ty] is the type of the argument, and [ret_ty] is the
+          return type. Any [Bvar arg_id] in [ret_ty] refers to this argument (and would be
+          a dependent arrow). *)
   | App of term * term  (** [App(func, arg)] represents applying [func] to [arg]. *)
   | Sort of int
       (** [Sort(level)] represents a universe level. Sort 0 = Prop, Sort 1 = Type. *)
@@ -40,16 +47,10 @@ and termkind =
 (** [gen_hole_id ()] generates a fresh hole id. *)
 val gen_hole_id : unit -> int
 
-(** [gen_fvar_id ()] generates a fresh free-variable id. Alias for [gen_hole_id]. *)
-val gen_fvar_id : unit -> int
+(** [gen_binder_id ()] generates a fresh binder id. Aliased to [gen_hole_id]. *)
+val gen_binder_id : unit -> int
 
-(** [bind_bvar tm bvar_idx pat] replaces all occurrences of [pat] in [tm] with a reference
-    to the bound variable at de Bruijn depth [bvar_idx]. *)
-val bind_bvar : term -> int -> term -> term
-
-(** [replace_bvar tm bvar_idx replacement] substitutes the bound variable at de Bruijn
-    index [bvar_idx] (relative to the top of [tm]) with [replacement]. *)
-val replace_bvar : term -> int -> term -> term
-
-(** [is_sort] returns [true] if the term is literally a [Sort _]. *)
-val is_sort : term -> bool
+(** [subst tm pat replacement] substitutes [replacement] for [pat] in [tm], if [pat] is a
+    Name or Bvar. Note that this recurses into subterms but not into metavariable
+    solutions. *)
+val subst : term -> termkind -> termkind -> term
