@@ -1,6 +1,6 @@
 open Elab.Term
 open Elab.Proofstate
-open Elab.Tactic
+open Elab.Tactics
 
 let e = Elab.Interface.create ()
 
@@ -11,7 +11,7 @@ let app f x   = t (App (f, x))
 
 let eq_term a lhs rhs = app (app (app (name "Eq") a) lhs) rhs
 
-let start ty = initial_state ~elab_ctx:e ty
+let start ty = init_state ~elab_ctx:e ty
 
 (* [Eq A a a] : both sides are syntactically identical Names. No beta-reduction needed. *)
 let test_refl_identical () =

@@ -61,3 +61,23 @@ let reflexivity (st : proof_state) : tactic_result =
              "reflexivity: goal '%s' is not of the form 'Eq A t t'."
              (pp_term st.elab_ctx ty)))
       		 (* need to map to existing error categories*)
+
+let ensure_sorry_ax (st : proof_state) : unit = 
+  if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then
+    let bid = Term.gen_binder_id () in
+    let elab_ty = mk_arrow (Some "A") bid (mk_sort 0) (mk_bvar bid) in
+    let k_ty = Convert.conv_to_kterm elab_ty in
+    Hashtbl.add st.elab_ctx.env "sorry_ax"
+      { name = "sorry_ax"; ty = elab_ty; data = Axiom};
+    Hashtbl.add st.elab_ctx.kenv "sorry_ax" k_ty
+
+let sorry (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g ->
+      Printf.eprintf "Warning: proof used sorry - this proof is not valid. \n";
+      ensure_sorry_ax st;
+      let proof = mk_app (mk_name "sorry_ax") g.goal_type in
+      let st = assign_meta g.goal_id proof st in
+      let st = close_goal  g.goal_id st in
+      succeed st
