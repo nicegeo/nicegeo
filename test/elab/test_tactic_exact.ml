@@ -52,6 +52,14 @@ let test_exact_no_goals () =
       Alcotest.(check string) "no goals message" "No goals remaining." msg
   | Success _ -> Alcotest.fail "expected Failure on completed state"
 
+(* Ill-typed or unknown terms should come back as [Failure], not escape as exceptions. *)
+let test_exact_elab_error () =
+  let st = start (t (Sort 0)) in
+  match exact (t (Name "no_such_term")) st with
+  | Success _ -> Alcotest.fail "expected Failure but got Success"
+  | Failure msg ->
+      Alcotest.(check bool) "error message is non-empty" true (String.length msg > 0)
+
 let suite =
   let open Alcotest in
   ( "Tactic.exact",
@@ -60,4 +68,5 @@ let suite =
       test_case "fails on type mismatch"         `Quick test_exact_wrong_type;
       test_case "closes goal via hypothesis"     `Quick test_exact_hyp;
       test_case "fails when no goals remain"     `Quick test_exact_no_goals;
+      test_case "catches elaboration errors"     `Quick test_exact_elab_error;
     ] )

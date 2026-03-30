@@ -43,9 +43,12 @@ let test_apply_conclusion_mismatch () =
   let arrow_bid = gen_binder_id () in
   let h_ty = t (Arrow (None, arrow_bid, t (Sort 1), t (Sort 1))) in
   let st = start_with_hyp "h" h_ty (t (Sort 0)) in
+  let meta_count_before = Hashtbl.length st.elab_ctx.metas in
   match apply "h" st with
   | Success _ -> Alcotest.fail "expected Failure"
   | Failure msg ->
+      Alcotest.(check int) "failed apply does not leak a fresh meta"
+        meta_count_before (Hashtbl.length st.elab_ctx.metas);
       Alcotest.(check bool) "message mentions apply"
         true (String.length msg >= 6 && String.sub msg 0 6 = "apply:")
 
