@@ -20,7 +20,6 @@ let error_type_tag = function
   | Error.FunctionExpected _ -> "FunctionExpected"
   | Error.TypeExpected _ -> "TypeExpected"
   | Error.UnificationFailure _ -> "UnificationFailure"
-  | Error.ExpectedTheorem _ -> "ExpectedTheorem"
 
 let fail_expected name =
   Alcotest.fail ("Expected Error.ElabError in " ^ name ^ ", but succeeded")
@@ -79,12 +78,6 @@ let expect_type_expected = function
 let expect_unification_failure = function
   | Elab.Error.UnificationFailure _ -> ()
   | _ -> Alcotest.fail "Expected UnificationFailure"
-
-let expect_expected_theorem expected_name expected_actual = function
-  | Elab.Error.ExpectedTheorem { name; actual } ->
-      Alcotest.(check string) "theorem name" expected_name name;
-      Alcotest.(check string) "actual kind" expected_actual actual
-  | _ -> Alcotest.fail "Expected ExpectedTheorem"
 
 let test_parse_error () =
   check_process_file_error

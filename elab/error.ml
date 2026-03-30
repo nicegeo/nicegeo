@@ -38,11 +38,6 @@ type unification_failure_info = {
   right : term;
 }
 
-type expected_theorem_info = {
-  name : string;
-  actual : string;
-}
-
 type error_type =
   | ParseError of parse_error_info
   | AlreadyDefined of string
@@ -54,7 +49,6 @@ type error_type =
   | FunctionExpected of function_expected_info
   | TypeExpected of type_expected_info
   | UnificationFailure of unification_failure_info
-  | ExpectedTheorem of expected_theorem_info
 
 type elab_error_info = {
   context : error_context;
@@ -305,5 +299,3 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         snippet
         (Pretty.term_to_string e left)
         (Pretty.term_to_string e right)
-  | ExpectedTheorem { name; actual } ->
-      Printf.sprintf "Error%s: expected theorem '%s', but it is %s" ctx_str name actual

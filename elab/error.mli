@@ -50,12 +50,6 @@ type unification_failure_info = {
   right : term;  (** Right-hand side of the failed unification. *)
 }
 
-(** Payload for an expected-theorem error. *)
-type expected_theorem_info = {
-  name : string;  (** Name that was expected to refer to a theorem. *)
-  actual : string;  (** What it actually referred to instead. *)
-}
-
 (** The type of error raised in an [ElabError]. *)
 type error_type =
   | ParseError of parse_error_info
@@ -86,7 +80,6 @@ type error_type =
       (** [TypeExpected(info)] indicates that a non-type term was used in a position that
           requires a type. [info] carries details about the term and its type. *)
   | UnificationFailure of unification_failure_info
-  | ExpectedTheorem of expected_theorem_info
 
 (** The complete error record raised by the elaborator. *)
 type elab_error_info = {
