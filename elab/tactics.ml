@@ -133,7 +133,7 @@ let apply (name : string) (st : proof_state) : tactic_result =
           (match f_ty.inner with
           | Arrow (_, bid, premise_ty, conclusion_ty) ->
               (* Check the instantiated conclusion before opening the subgoal,
-                 so a failed [apply] does not leak a fresh meta. *)
+                so a failed [apply] does not leak a fresh meta. *)
               let hole_id = gen_hole_id () in
               let hole = mk_hole hole_id in
               let conclusion = Reduce.subst st.elab_ctx conclusion_ty (Bvar bid) hole.inner in
