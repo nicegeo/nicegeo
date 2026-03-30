@@ -101,6 +101,56 @@ let exact (tm : term) (st : proof_state) : tactic_result =
         )
       )
 
+(* Resolve [name] to a proof term and its type: hypotheses shadow global names. *)
+let resolve (name : string) (g : goal) (st : proof_state)
+    : (term * term) option =
+  match List.find_opt (fun h -> h.hyp_name = name) g.ctx with
+  | Some h -> Some (mk_bvar h.hyp_bid, h.hyp_type)
+  | None ->
+      match Hashtbl.find_opt st.elab_ctx.env name with
+      | Some entry -> Some (mk_name name, entry.ty)
+      | None -> None
+
+(* [apply name st] looks up [name] as a hypothesis or global lemma, then:
+   - if its type is [A -> B] and [B] matches the goal, closes the goal and
+     opens a new subgoal for [A];
+   - if its type directly matches the goal (no arrow), closes it like [exact]. *)
+let apply (name : string) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g ->
+      match resolve name g st with
+      | None -> fail (Printf.sprintf "apply: unknown name '%s'." name)
+      | Some (tm, f_ty) ->
+          let f_ty = beta_nf st.elab_ctx f_ty in
+          (match f_ty.inner with
+          | Arrow (_, bid, premise_ty, conclusion_ty) ->
+              (* Open a subgoal for the premise; substitute the bvar with its
+                 hole in the conclusion so the types line up. *)
+              let (hole, st) = fresh_goal st g.ctx premise_ty in
+              let conclusion = Reduce.subst st.elab_ctx conclusion_ty (Bvar bid) hole.inner in
+              if def_eq st.elab_ctx conclusion g.goal_type then
+                let st = assign_meta g.goal_id (mk_app tm hole) st in
+                let st = close_goal g.goal_id st in
+                succeed st
+              else
+                fail (Printf.sprintf
+                  "apply: conclusion '%s' does not match goal '%s'."
+                  (pp_term st.elab_ctx conclusion)
+                  (pp_term st.elab_ctx g.goal_type))
+          | _ ->
+              (* No arrow — fall back to exact-style check. *)
+              if def_eq st.elab_ctx f_ty g.goal_type then
+                let st = assign_meta g.goal_id tm st in
+                let st = close_goal g.goal_id st in
+                succeed st
+              else
+                fail (Printf.sprintf
+                  "apply: '%s' has type '%s' but goal is '%s'."
+                  name
+                  (pp_term st.elab_ctx f_ty)
+                  (pp_term st.elab_ctx g.goal_type)))
+
 let ensure_sorry_ax (st : proof_state) : unit = 
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then
     let bid = Term.gen_binder_id () in
