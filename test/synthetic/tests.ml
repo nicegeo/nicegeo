@@ -44,7 +44,7 @@ let rec kdelta_reduce (e : Elab.Types.ctx) (tm : Kernel.Term.term) : Kernel.Term
   | App (f, arg) -> App (kdelta_reduce e f, kdelta_reduce e arg)
   | Bvar _ | Fvar _ | Sort _ -> tm
 
-(** These are the regression tests for the axioms in env.txt. If [dune runtest] yields
+(** These are the regression tests for the axioms in env.ncg. If [dune runtest] yields
     errors here, inspect the diff to ensure that all changes in the kernel terms make
     sense. Assume changes in the term representation of the axioms are regressions unless
     you fully understand what the change represents.
