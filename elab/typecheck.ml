@@ -528,9 +528,15 @@ let process_decl (e : ctx) (d : declaration) : unit =
       | Theorem body | Def body -> (
           let ty_filled = elaborate e d.ty None in
           check_is_type e ty_filled;
-          let proof_filled = elaborate e body (Some (Reduce.delta_reduce e ty_filled false)) in
-          let ty_k = Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm in
-          let proof_k = Reduce.delta_reduce e proof_filled true |> Reduce.reduce e |> conv_to_kterm in
+          let proof_filled =
+            elaborate e body (Some (Reduce.delta_reduce e ty_filled false))
+          in
+          let ty_k =
+            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
+          in
+          let proof_k =
+            Reduce.delta_reduce e proof_filled true |> Reduce.reduce e |> conv_to_kterm
+          in
 
           try
             Kernel.Interface.add_theorem e.kenv d.name ty_k proof_k;
@@ -540,11 +546,11 @@ let process_decl (e : ctx) (d : declaration) : unit =
               {
                 name = d.name;
                 ty = ty_filled;
-                data = (match d.kind with 
-                | Theorem _ -> Theorem (list_axioms_used e proof_filled);
-                | Def _ -> Def (list_axioms_used e proof_filled, proof_filled, false)
-                | Axiom -> assert false
-                );
+                data =
+                  (match d.kind with
+                  | Theorem _ -> Theorem (list_axioms_used e proof_filled)
+                  | Def _ -> Def (list_axioms_used e proof_filled, proof_filled, false)
+                  | Axiom -> assert false);
               }
           with KExceptions.TypeError msg ->
             raise
@@ -556,7 +562,9 @@ let process_decl (e : ctx) (d : declaration) : unit =
       | Axiom -> (
           let ty_filled = elaborate e d.ty None in
           check_is_type e ty_filled;
-          let ty_k = Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm in
+          let ty_k =
+            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
+          in
           try
             Kernel.Interface.add_axiom e.kenv d.name ty_k;
             Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom }
