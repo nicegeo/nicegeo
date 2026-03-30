@@ -8,11 +8,14 @@ type tactic_result =
 
 let succeed st  = Success st
 let fail    msg = Failure msg 
+let failf fmt = Printf.ksprintf fail fmt
+
+let no_goals_msg = "No goals remaining."
 
 (* Used by future tactics that need to catch elaboration errors and return a Failure. *)
-let _catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
+let catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
   try f ()
-  with Error.ElabError info -> Failure (Error.pp_exn ectx info)
+  with Error.ElabError info -> fail (Error.pp_exn ectx info)
 
 
 let beta_nf (e : ctx) (tm : term) : term = Reduce.reduce e tm
@@ -71,35 +74,70 @@ let with_hyps (st : proof_state) (g : goal) (f : unit -> tactic_result) : tactic
   List.iter (fun h ->
     Hashtbl.add st.elab_ctx.lctx h.hyp_bid (Some h.hyp_name, h.hyp_type)
   ) g.ctx;
-  let result = f () in
-  List.iter (fun h ->
-    Hashtbl.remove st.elab_ctx.lctx h.hyp_bid
-  ) g.ctx;
-  result
+  try
+    let result = f () in
+    List.iter (fun h ->
+      Hashtbl.remove st.elab_ctx.lctx h.hyp_bid
+    ) g.ctx;
+    result
+  with exn ->
+    List.iter (fun h ->
+      Hashtbl.remove st.elab_ctx.lctx h.hyp_bid
+    ) g.ctx;
+    raise exn
+
+let with_current_goal (st : proof_state) (f : goal -> tactic_result) : tactic_result =
+  match current_goal st with
+  | None -> fail no_goals_msg
+  | Some g -> f g
+
+let solve_goal (g : goal) (proof : term) (st : proof_state) : tactic_result =
+  succeed (close_goal g.goal_id (assign_meta g.goal_id proof st))
+
+let fail_goal_type_mismatch
+    (tactic : string)
+    (subject : string)
+    (ectx : ctx)
+    (actual_ty : term)
+    (goal_ty : term) : tactic_result =
+  failf "%s: %s has type '%s' but goal is '%s'."
+    tactic
+    subject
+    (pp_term ectx actual_ty)
+    (pp_term ectx goal_ty)
+
+let solve_if_goal_type_matches
+    (tactic : string)
+    (subject : string)
+    (proof : term)
+    (proof_ty : term)
+    (g : goal)
+    (st : proof_state) : tactic_result =
+  if def_eq st.elab_ctx proof_ty g.goal_type then
+    solve_goal g proof st
+  else
+    fail_goal_type_mismatch tactic subject st.elab_ctx proof_ty g.goal_type
+
+let open_subgoal
+    (st : proof_state)
+    (ctx : local_ctx)
+    (goal_id : int)
+    (goal_type : term) : term * proof_state =
+  let hole = mk_hole goal_id in
+  let context = List.map (fun h -> h.hyp_bid) ctx in
+  Hashtbl.replace st.elab_ctx.metas goal_id { ty = Some goal_type; context; sol = None };
+  let g = { ctx; goal_type; goal_id } in
+  (hole, { st with open_goals = st.open_goals @ [g] })
 
 let exact (tm : term) (st : proof_state) : tactic_result =
-  match current_goal st with
-  | None -> fail "No goals remaining."
-  | Some g ->
-      with_hyps st g (fun () ->
-        (* Catch ill-typed or unknown-name errors from infertype as Failure
-           rather than letting them escape as exceptions. *)
-        _catch_elab st.elab_ctx (fun () ->
-          (* Ask the elaborator what type [tm] actually has. *)
-          let inferred_ty = Typecheck.infertype st.elab_ctx tm in
-          (* Accept if the inferred type is definitionally equal to the goal type
-             (beta-reduces both sides before comparing). *)
-          if def_eq st.elab_ctx inferred_ty g.goal_type then
-            let st = assign_meta g.goal_id tm st in
-            let st = close_goal g.goal_id st in
-            succeed st
-          else
-            fail (Printf.sprintf
-              "exact: term has type '%s' but goal is '%s'."
-              (pp_term st.elab_ctx inferred_ty)
-              (pp_term st.elab_ctx g.goal_type))
-        )
+  with_current_goal st (fun g ->
+    with_hyps st g (fun () ->
+      catch_elab st.elab_ctx (fun () ->
+        let inferred_ty = Typecheck.infertype st.elab_ctx tm in
+        solve_if_goal_type_matches "exact" "term" tm inferred_ty g st
       )
+    )
+  )
 
 (* Resolve [name] to a proof term and its type: hypotheses shadow global names. *)
 let resolve (name : string) (g : goal) (st : proof_state)
@@ -116,40 +154,34 @@ let resolve (name : string) (g : goal) (st : proof_state)
      opens a new subgoal for [A];
    - if its type directly matches the goal (no arrow), closes it like [exact]. *)
 let apply (name : string) (st : proof_state) : tactic_result =
-  match current_goal st with
-  | None -> fail "No goals remaining."
-  | Some g ->
-      match resolve name g st with
-      | None -> fail (Printf.sprintf "apply: unknown name '%s'." name)
-      | Some (tm, f_ty) ->
-          let f_ty = beta_nf st.elab_ctx f_ty in
-          (match f_ty.inner with
-          | Arrow (_, bid, premise_ty, conclusion_ty) ->
-              (* Open a subgoal for the premise; substitute the bvar with its
-                 hole in the conclusion so the types line up. *)
-              let (hole, st) = fresh_goal st g.ctx premise_ty in
-              let conclusion = Reduce.subst st.elab_ctx conclusion_ty (Bvar bid) hole.inner in
-              if def_eq st.elab_ctx conclusion g.goal_type then
-                let st = assign_meta g.goal_id (mk_app tm hole) st in
-                let st = close_goal g.goal_id st in
-                succeed st
-              else
-                fail (Printf.sprintf
-                  "apply: conclusion '%s' does not match goal '%s'."
-                  (pp_term st.elab_ctx conclusion)
-                  (pp_term st.elab_ctx g.goal_type))
-          | _ ->
-              (* No arrow — fall back to exact-style check. *)
-              if def_eq st.elab_ctx f_ty g.goal_type then
-                let st = assign_meta g.goal_id tm st in
-                let st = close_goal g.goal_id st in
-                succeed st
-              else
-                fail (Printf.sprintf
-                  "apply: '%s' has type '%s' but goal is '%s'."
-                  name
-                  (pp_term st.elab_ctx f_ty)
-                  (pp_term st.elab_ctx g.goal_type)))
+  with_current_goal st (fun g ->
+    match resolve name g st with
+    | None -> failf "apply: unknown name '%s'." name
+    | Some (tm, f_ty) ->
+        let f_ty = beta_nf st.elab_ctx f_ty in
+        match f_ty.inner with
+        | Arrow (_, bid, premise_ty, conclusion_ty) ->
+            let hole_id = gen_hole_id () in
+            let preview_hole = mk_hole hole_id in
+            let conclusion =
+              Reduce.subst st.elab_ctx conclusion_ty (Bvar bid) preview_hole.inner
+            in
+            if def_eq st.elab_ctx conclusion g.goal_type then
+              let (hole, st) = open_subgoal st g.ctx hole_id premise_ty in
+              solve_goal g (mk_app tm hole) st
+            else
+              failf "apply: conclusion '%s' does not match goal '%s'."
+                (pp_term st.elab_ctx conclusion)
+                (pp_term st.elab_ctx g.goal_type)
+        | _ ->
+            solve_if_goal_type_matches
+              "apply"
+              (Printf.sprintf "'%s'" name)
+              tm
+              f_ty
+              g
+              st
+  )
 
 let ensure_sorry_ax (st : proof_state) : unit = 
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then
