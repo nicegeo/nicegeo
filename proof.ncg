@@ -4,7 +4,6 @@ Theorem LtNe : (a: Measure) -> (b: Measure) -> Lt a b -> Eq _ a b -> False :=
       (Eq.elim Measure a (fun (x: Measure) => Lt x b) lt_ab b eq_ab)
       (Eq.elim Measure a (fun (x: Measure) => Lt x b) lt_ab b eq_ab)
 
-
 Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
 	fun A a b eq_ab => Eq.elim A a (fun x => Eq A x a) (Eq.intro A a) b eq_ab
 
