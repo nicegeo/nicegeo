@@ -192,7 +192,7 @@ let pp_source_snippet (r : range) : string =
     else start_col
   in
   match line_text_from_file filename line_no with
-  | Some line -> Printf.sprintf "\n%s\n%s" line (caret_line start_col end_col)
+  | Some line -> Printf.sprintf "\n%s\n%s" line (caret_line start_col (end_col - 1))
   | None -> ""
 
 let pp_context (ctx : error_context) : string =
