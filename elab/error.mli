@@ -7,7 +7,6 @@ type error_context = {
   loc : range option;  (** Source location of the offending term, if available. *)
   decl_name : string option;
       (** Name of the declaration being processed when the error occurred, if known. *)
-  term_name : string option;  (** Name of the nearest useful term/binder, if known. *)
 }
 
 (** Payload for a parse failure. *)

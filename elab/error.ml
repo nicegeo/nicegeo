@@ -6,8 +6,7 @@ type error_context = {
   loc : range option; (* loc - where the error is happening *)
   decl_name : string option;
       (* decl_name - name of the declaration that caused the error *)
-  term_name : string option; (* term_name - nearest useful term/binder if any *)
-}
+ }
 
 type parse_error_info = {
   input : string; (* the input that failed to parse *)
@@ -206,9 +205,6 @@ let pp_context (ctx : error_context) : string =
   let parts = ref [] in
   (match ctx.decl_name with
   | Some n -> parts := !parts @ [ Printf.sprintf "in declaration '%s'" n ]
-  | None -> ());
-  (match ctx.term_name with
-  | Some n -> parts := !parts @ [ Printf.sprintf "while checking '%s'" n ]
   | None -> ());
   (match ctx.loc with
   | Some r -> parts := !parts @ [ Printf.sprintf "at %s" (Pretty.pp_loc r) ]

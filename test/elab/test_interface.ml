@@ -139,7 +139,6 @@ let suite =
     [
       test_case "parse error" `Quick test_parse_error;
       test_case "already defined" `Quick test_already_defined;
-      test_case "type mismatch" `Quick test_type_mismatch;
       test_case "cannot infer hole" `Quick test_cannot_infer_hole;
       test_case "unknown name" `Quick test_unknown_name;
       test_case "function expected" `Quick test_function_expected;

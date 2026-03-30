@@ -46,22 +46,12 @@ open Types
 module KInfer = Kernel.Infer
 module KExceptions = Kernel.Exceptions
 
-let rec term_name_of (tm : term) : string option =
-  match tm.inner with
-  | Name x -> Some x
-  | Fun (Some x, _, _) -> Some x
-  | Arrow (Some x, _, _) -> Some x
-  | Hole m -> Some ("_" ^ string_of_int m)
-  | Fvar i -> Some ("f" ^ string_of_int i)
-  | Bvar i -> Some ("#" ^ string_of_int i)
-  | App (f, _) -> term_name_of f
-  | _ -> None
 
 let raise_at (tm : term) (e : Error.error_type) : 'a =
   raise
     (Error.ElabError
        {
-         context = { loc = Some tm.loc; decl_name = None; term_name = term_name_of tm };
+         context = { loc = Some tm.loc; decl_name = None };
          error_type = e;
        })
 
@@ -326,7 +316,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
         (Error.ElabError
            {
              context =
-               { loc = Some t1.loc; decl_name = None; term_name = term_name_of t1 };
+               { loc = Some t1.loc; decl_name = None };
              error_type = Error.UnificationFailure { left = t1; right = t2 };
            })
 
@@ -571,7 +561,6 @@ let process_decl (e : ctx) (d : declaration) : unit =
                    {
                      loc = Some d.name_loc;
                      decl_name = Some d.name;
-                     term_name = Some d.name;
                    };
                  error_type = Error.AlreadyDefined d.name;
                });
@@ -618,7 +607,6 @@ let process_decl (e : ctx) (d : declaration) : unit =
                    {
                      loc = Some d.name_loc;
                      decl_name = Some d.name;
-                     term_name = Some d.name;
                    };
                  error_type = Error.AlreadyDefined d.name;
                });

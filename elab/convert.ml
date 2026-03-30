@@ -1,16 +1,7 @@
 open Term
 module KTerm = Kernel.Term
 
-let rec term_name_of (tm : term) : string option =
-  match tm.inner with
-  | Name x -> Some x
-  | Fun (Some x, _, _) -> Some x
-  | Arrow (Some x, _, _) -> Some x
-  | Hole m -> Some ("_" ^ string_of_int m)
-  | Fvar i -> Some ("f" ^ string_of_int i)
-  | Bvar i -> Some ("#" ^ string_of_int i)
-  | App (f, _) -> term_name_of f
-  | _ -> None
+
 
 (* Converts an elaboration-level term to a kernel-level term. tm must not have any holes *)
 let conv_to_kterm (tm : term) : KTerm.term =
