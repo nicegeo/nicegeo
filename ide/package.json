@@ -1,0 +1,37 @@
+{
+  "name": "nicegeo-ide",
+  "displayName": "NiceGeo IDE",
+  "description": "",
+  "repository": {
+    "url": "github.com/nicegeo/nicegeo"
+  },
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.110.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "nicegeo",
+        "aliases": [
+          "NiceGeo",
+          "nicegeo"
+        ],
+        "extensions": [
+          ".ncg"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nicegeo",
+        "scopeName": "source.nicegeo",
+        "path": "./syntaxes/nicegeo.tmLanguage.json"
+      }
+    ]
+  }
+}
