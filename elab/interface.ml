@@ -42,11 +42,7 @@ let parse_statements (filename : string) : Statement.statement list =
       raise
         (Error.ElabError
            {
-             context =
-               {
-                 loc = Some { start = pos1; end_ = pos2 };
-                 decl_name = None;
-               };
+             context = { loc = Some { start = pos1; end_ = pos2 }; decl_name = None };
              error_type =
                Error.ParseError { input = Lexing.lexeme lexbuf; error_msg = msg };
            })

@@ -1,8 +1,6 @@
 open Term
 module KTerm = Kernel.Term
 
-
-
 (* Converts an elaboration-level term to a kernel-level term. tm must not have any holes *)
 let conv_to_kterm (tm : term) : KTerm.term =
   (* [stack] is a list of binder IDs in scope; the de Bruijn index of a [Bvar bid] is the 

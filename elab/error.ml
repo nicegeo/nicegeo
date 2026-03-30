@@ -6,7 +6,7 @@ type error_context = {
   loc : range option; (* loc - where the error is happening *)
   decl_name : string option;
       (* decl_name - name of the declaration that caused the error *)
- }
+}
 
 type parse_error_info = {
   input : string; (* the input that failed to parse *)
