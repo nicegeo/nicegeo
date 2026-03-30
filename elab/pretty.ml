@@ -4,19 +4,6 @@ open Statement
 (* Sort 0 = Prop, Sort 1 = Type; for n >= 2 display as "Sort n". *)
 let sort_to_string = function 0 -> "Prop" | 1 -> "Type" | n -> "Sort " ^ string_of_int n
 
-let is_atomic x =
-  match x.inner with
-  | Name _ | Bvar _ | Sort _ -> true
-  | Hole _ | Fun _ | Arrow _ | App _ -> false
-
-(** Flatten application spine. *)
-let rec flatten_app t =
-  match t.inner with
-  | App (f, a) ->
-      let head, args = flatten_app f in
-      (head, args @ [ a ])
-  | _ -> (t, [])
-
 (* Return a list of argument names, list of argument types, and the remaining body of 
 the lambda to format, after processing them all.
 *)
@@ -54,53 +41,71 @@ let bvar_to_string (e : Types.ctx) (idx : int) : string =
   | Some (None, _) -> "x" ^ string_of_int idx
   | None -> "!" ^ string_of_int idx
 
-let rec term_to_string (e : Types.ctx) (t : term) : string =
-  let t = Reduce.reduce e t in
+(* Precedence levels for terms for parentheses, corresponding to term rules in the parser. 
+  Lower means tighter binding. *)
+let prec_term = 20
+let prec_app = 10
+let prec_atomic = 0
+
+let rec get_prec (e : Types.ctx) (t : term) : int =
   match t.inner with
-  | Name x -> x
-  | Bvar idx -> bvar_to_string e idx
-  | Hole idx -> (
-      match Hashtbl.find_opt e.metas idx with
-      | Some { sol = Some tm_sol; _ } -> term_to_string e tm_sol
-      | _ -> "?m" ^ string_of_int idx)
-  | Sort n -> sort_to_string n
-  | Fun _ ->
-      let saved_lctx = Hashtbl.copy e.lctx in
-      let xs, args, body = flatten_fun e t in
-      let res =
-        "fun "
-        ^ String.concat
-            " "
-            (List.map2 (fun x ty -> "(" ^ x ^ " : " ^ term_to_string e ty ^ ")") xs args)
-        ^ " => " ^ term_to_string e body
-      in
-      Hashtbl.clear e.lctx;
-      Hashtbl.iter (Hashtbl.add e.lctx) saved_lctx;
-      res
-  | Arrow (x, bid, ty, ret) -> (
-      match x with
-      | None ->
-          let ty_s = term_to_string e ty in
-          let ret_s = term_to_string e ret in
-          ty_s ^ " -> " ^ ret_s
-      | Some name ->
-          let ty_s = term_to_string e ty in
-          Hashtbl.add e.lctx bid (Some name, ty);
-          let ret_s = term_to_string e ret in
-          Hashtbl.remove e.lctx bid;
-          "(" ^ name (* "[" ^ string_of_int bid ^ "]" ^ *) ^ " : "
-          ^ ty_s ^ ") -> " ^ ret_s)
-  | App _ -> (
-      let head, args = flatten_app t in
-      let head_s = term_to_string e head in
-      let args_s =
-        List.map
-          (fun a ->
-            let s = term_to_string e a in
-            if is_atomic a then s else "(" ^ s ^ ")")
-          args
-      in
-      match args_s with [] -> head_s | _ -> head_s ^ " " ^ String.concat " " args_s)
+  | Name _ | Bvar _ | Sort 0 | Sort 1 -> prec_atomic
+  | Sort _ | App _ -> prec_app
+  | Fun _ | Arrow _ -> prec_term
+  | Hole m -> (
+      match Hashtbl.find_opt e.metas m with
+      | Some { sol = Some tm_sol; _ } -> get_prec e tm_sol
+      | _ -> prec_atomic)
+
+let term_to_string (e : Types.ctx) (t : term) : string =
+  let rec term_to_string_helper (e : Types.ctx) (t : term) (level : int) : string =
+    if level < get_prec e t then "(" ^ term_to_string_helper e t prec_term ^ ")"
+    else
+      match t.inner with
+      | Name x -> x
+      | Bvar idx -> bvar_to_string e idx
+      | Hole idx -> (
+          match Hashtbl.find_opt e.metas idx with
+          | Some { sol = Some tm_sol; _ } -> term_to_string_helper e tm_sol level
+          | _ -> "?m" ^ string_of_int idx)
+      | Sort n -> sort_to_string n
+      | Fun _ ->
+          let saved_lctx = Hashtbl.copy e.lctx in
+          let xs, args, body = flatten_fun e t in
+          let res =
+            "fun "
+            ^ String.concat
+                " "
+                (List.map2
+                   (fun x ty ->
+                     "(" ^ x ^ " : " ^ term_to_string_helper e ty prec_term ^ ")")
+                   xs
+                   args)
+            ^ " => "
+            ^ term_to_string_helper e body prec_term
+          in
+          Hashtbl.clear e.lctx;
+          Hashtbl.iter (Hashtbl.add e.lctx) saved_lctx;
+          res
+      | Arrow (x, bid, ty, ret) -> (
+          match x with
+          | None ->
+              let ty_s = term_to_string_helper e ty prec_app in
+              let ret_s = term_to_string_helper e ret prec_term in
+              ty_s ^ " -> " ^ ret_s
+          | Some name ->
+              let ty_s = term_to_string_helper e ty prec_term in
+              Hashtbl.add e.lctx bid (Some name, ty);
+              let ret_s = term_to_string_helper e ret prec_term in
+              Hashtbl.remove e.lctx bid;
+              "(" ^ name (* "[" ^ string_of_int bid ^ "]" ^ *) ^ " : "
+              ^ ty_s ^ ") -> " ^ ret_s)
+      | App (f, arg) ->
+          term_to_string_helper e f prec_app
+          ^ " "
+          ^ term_to_string_helper e arg prec_atomic
+  in
+  term_to_string_helper e t prec_term
 
 let decl_to_string (e : Types.ctx) (d : declaration) =
   match d.kind with
