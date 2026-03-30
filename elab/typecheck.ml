@@ -505,6 +505,11 @@ let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   | None -> ignore (infertype e tm_delta));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
+  (* Re-typecheck term to validate meta solutions *)
+  let tm_filled_delta = Reduce.delta_reduce e tm_filled false in
+  (match ty with
+  | Some ty -> checktype e tm_filled_delta ty
+  | None -> ignore (infertype e tm_filled_delta));
   let tm_reduced = Reduce.reduce e tm_filled in
   tm_reduced
 
