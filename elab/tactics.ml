@@ -64,6 +64,43 @@ let reflexivity (st : proof_state) : tactic_result =
              (pp_term st.elab_ctx ty)))
       		 (* need to map to existing error categories*)
 
+(* [infertype] looks up [Bvar] nodes in [lctx]. Hypotheses live in the goal's
+   local context but are not in [lctx] yet — populate it for the duration of [f],
+   then remove them so we leave [lctx] exactly as we found it. *)
+let with_hyps (st : proof_state) (g : goal) (f : unit -> tactic_result) : tactic_result =
+  List.iter (fun h ->
+    Hashtbl.add st.elab_ctx.lctx h.hyp_bid (Some h.hyp_name, h.hyp_type)
+  ) g.ctx;
+  let result = f () in
+  List.iter (fun h ->
+    Hashtbl.remove st.elab_ctx.lctx h.hyp_bid
+  ) g.ctx;
+  result
+
+let exact (tm : term) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g ->
+      with_hyps st g (fun () ->
+        (* Catch ill-typed or unknown-name errors from infertype as Failure
+           rather than letting them escape as exceptions. *)
+        _catch_elab st.elab_ctx (fun () ->
+          (* Ask the elaborator what type [tm] actually has. *)
+          let inferred_ty = Typecheck.infertype st.elab_ctx tm in
+          (* Accept if the inferred type is definitionally equal to the goal type
+             (beta-reduces both sides before comparing). *)
+          if def_eq st.elab_ctx inferred_ty g.goal_type then
+            let st = assign_meta g.goal_id tm st in
+            let st = close_goal g.goal_id st in
+            succeed st
+          else
+            fail (Printf.sprintf
+              "exact: term has type '%s' but goal is '%s'."
+              (pp_term st.elab_ctx inferred_ty)
+              (pp_term st.elab_ctx g.goal_type))
+        )
+      )
+
 let ensure_sorry_ax (st : proof_state) : unit = 
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then
     let bid = Term.gen_binder_id () in
