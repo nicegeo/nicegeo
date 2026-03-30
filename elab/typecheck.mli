@@ -1,10 +1,9 @@
 open Term
 
-(** Type-checking and elaboration of declarations.
+(** Type-checking and elaboration of terms and declarations.
 
     Implements bidirectional type-checking with pattern-unification–based hole inference.
-    Holes written by the user as [_] are replaced by metavariable spines, constraints are
-    gathered during type-checking, and pattern unification fills in solutions. Solved
+    Holes written by the user as [_] are automatically filled in based on context. Solved
     terms are then verified by the trusted kernel before being committed to the
     environment.
 
@@ -14,31 +13,10 @@ open Term
     context. *)
 val process_decl : Types.ctx -> Statement.declaration -> unit
 
-(** [elaborate ctx tm expected_ty] elaborates the term [tm] in context [ctx], filling in
-    holes. If [expected_ty] is provided, it is used as the expected type for the term for
-    filling. Otherwise, [tm] is expected to be a type. *)
+(** [elaborate ctx tm ty] elaborates term [tm] in context [ctx] with an optional expected
+    type [ty]. Returns a filled term with type [ty], or raises [Error.ElabError]. *)
 val elaborate : Types.ctx -> term -> term option -> term
 
-(** [hole_to_meta ctx stack tm] returns tm unchanged except for replacing holes with
-    metavariable spines.
-
-    `stack` is the types of all of the bound variables introduced outside of the term,
-    where the first element is the innermost definition (i.e. what `Bvar 0` would
-    correspond to) *)
-val hole_to_meta : Types.ctx -> term list -> term -> term
-
-(** [infertype ctx tm] returns the inferred type of term [tm] in context [ctx], filling in
-    metavariables. *)
-val infertype : Types.ctx -> term -> term
-
-(** [replace_metas ctx tm] replaces all holes in [tm] with their solutions in context
-    [ctx]. *)
-val replace_metas : Types.ctx -> term -> term
-
-(** [check_is_type ctx tm] checks that [tm] is a type in context [ctx], filling in
-    metavariables. *)
-val check_is_type : Types.ctx -> term -> unit
-
-(** [checktype ctx tm ty] checks that [tm] has type [ty] in context [ctx], filling in
-    metavariables. *)
-val checktype : Types.ctx -> term -> term -> unit
+(** [infertype ctx tm] returns the inferred type of term [tm] in context [ctx]. [tm] must
+    be elaborated first. *)
+val infertype : ?depth:int -> Types.ctx -> term -> term

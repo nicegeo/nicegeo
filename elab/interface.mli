@@ -13,8 +13,3 @@ val process_file : Types.ctx -> string -> unit
 (** [process_env env] populates [env] with the axioms from the default environment file at
     ["elab/env.ncg"]. *)
 val process_env : Types.ctx -> unit
-
-(** [list_axioms env name] returns the list of axiom names that the theorem [name]
-    transitively depends on. Raises [Failure] if [name] is not found or is itself an
-    axiom. *)
-val list_axioms : Types.ctx -> string -> string list

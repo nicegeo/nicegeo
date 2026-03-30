@@ -43,12 +43,3 @@ let process_file (env : Types.ctx) (filename : string) : unit =
 
 (* Creates an elaborator environment with the default environment path. *)
 let process_env (env : Types.ctx) : unit = process_file env "synthetic/env.ncg"
-
-(* Returns the list of axioms used by the theorem `name`. *)
-let list_axioms (env : Types.ctx) (name : string) =
-  match Hashtbl.find_opt env.env name with
-  | Some entry -> (
-      match entry.data with
-      | Types.Axiom -> failwith (name ^ " is an axiom")
-      | Types.Theorem axioms -> axioms)
-  | None -> failwith ("unknown declaration: " ^ name)

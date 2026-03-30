@@ -44,7 +44,13 @@ type type_expected_info = {
   not_type_infer : term;  (** The inferred type of [not_type]. *)
 }
 
-(** The type of error raised in an ElabError. *)
+(** Payload for a unification failure. *)
+type unification_failure_info = {
+  left : term;  (** Left-hand side of the failed unification. *)
+  right : term;  (** Right-hand side of the failed unification. *)
+}
+
+(** The type of error raised in an [ElabError]. *)
 type error_type =
   | ParseError of parse_error_info
       (** [ParseError(info)] indicated a parsing failure. [info] carries the offending
@@ -73,6 +79,7 @@ type error_type =
   | TypeExpected of type_expected_info
       (** [TypeExpected(info)] indicates that a non-type term was used in a position that
           requires a type. [info] carries details about the term and its type. *)
+  | UnificationFailure of unification_failure_info
 
 (** The complete error record raised by the elaborator. *)
 type elab_error_info = {
