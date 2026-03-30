@@ -1,7 +1,7 @@
 %token <string> IDENT
 %token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE
-%token THEOREM AXIOM DEFEQ
-%token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE
+%token THEOREM AXIOM DEFINITION DEFEQ
+%token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE OPAQUE_DIRECTIVE
 %start <Statement.statement list> main
 %start <Term.term> single_term
 %%
@@ -20,6 +20,8 @@ declaration:
   | AXIOM name = IDENT COLON ty = term { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Axiom} }
   | THEOREM name = IDENT COLON ty = term DEFEQ proof = term
     { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem proof} }
+  | DEFINITION name = IDENT COLON ty = term DEFEQ body = term
+    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Def body} }
 
 directive:
   (* print all axioms used in proposition: #print axioms prop1 *)
@@ -33,6 +35,8 @@ directive:
     { Statement.Check (t, ty, { Term.start = $startpos(t); Term.end_ = $endpos(ty) }) }
   | REDUCE_DIRECTIVE t = term
     { Statement.Reduce (t, { Term.start = $startpos(t); Term.end_ = $endpos(t) }) }
+  | OPAQUE_DIRECTIVE name = IDENT
+    { Statement.Opaque (name, { Term.start = $startpos(name); Term.end_ = $endpos(name) }) }
 
 term:
   | t = app_term { t }
