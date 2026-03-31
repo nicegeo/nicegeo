@@ -43,9 +43,9 @@ let kterm_to_repr (term : Kernel.Term.term) =
     definitions are indeed missing axioms, and then add a section like this for each:
 
     {[
-    (* Name : Type *)
-    show_kterm "Name";
-    [%expect]
+      (* Name : Type *)
+      show_kterm "Name";
+      [%expect]
     ]}
 
     Running [dune runtest] again will fill in the expect with the kernel term
