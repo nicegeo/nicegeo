@@ -1,17 +1,19 @@
-// A launch configuration that launches the extension inside a new window
-// Use IntelliSense to learn about possible attributes.
-// Hover to view descriptions of existing attributes.
-// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
 {
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"name": "Extension",
-			"type": "extensionHost",
-			"request": "launch",
-			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}/ide"
-			]
-		}
-	]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "NiceGeo IDE (Extension Host)",
+      "type": "extensionHost",
+      "request": "launch",
+      "preLaunchTask": "build-nicegeo-ide",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--disable-extensions",
+        "--disable-workspace-trust",
+        "--disable-restore-windows",
+        "${workspaceFolder}/examples",
+        "${workspaceFolder}/examples/proof.ncg"
+      ]
+    }
+  ]
 }

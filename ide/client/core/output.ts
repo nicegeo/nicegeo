@@ -15,4 +15,3 @@ export class NiceGeoOutput {
     this.channel.appendLine(line);
   }
 }
-

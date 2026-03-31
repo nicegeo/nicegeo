@@ -19,12 +19,15 @@
     "onStartupFinished"
   ],
   "scripts": {
-    "compile": "tsc -p .",
+    "compile:server": "tsc -p server/tsconfig.json",
+    "compile": "npm run compile:server && tsc -p .",
     "watch": "tsc -w -p .",
     "vscode:prepublish": "npm run compile"
   },
   "dependencies": {
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

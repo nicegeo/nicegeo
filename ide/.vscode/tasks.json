@@ -4,7 +4,7 @@
     {
       "label": "build-nicegeo-ide",
       "type": "shell",
-      "command": "npm --prefix \"ide/server\" run compile && npm --prefix \"ide/client\" run compile",
+      "command": "npm run compile",
       "problemMatcher": ["$tsc"],
       "group": "build"
     }

@@ -2,20 +2,11 @@ import * as fs from "fs";
 import * as path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
-import {
-  Diagnostic,
-  DiagnosticSeverity,
-  Range,
-} from "vscode-languageserver/node";
+import { Diagnostic, DiagnosticSeverity, Range } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 export type DiagnosticsTriggerMode = "onSave" | "onType" | "both";
-
-export interface NiceGeoSettings {
-  trigger: DiagnosticsTriggerMode;
-  debounceMs: number;
-}
-
+export interface NiceGeoSettings { trigger: DiagnosticsTriggerMode; debounceMs: number }
 export interface StatusReporter {
   checking: (uri: string, detail: string) => void;
   ok: (uri: string) => void;
@@ -43,7 +34,6 @@ function parseLocFromLine(line: string): ParsedLoc | null {
       col2: Number(m2.groups.col2),
     };
   }
-
   const m1 = line.match(singleLineLocRe);
   if (m1?.groups) {
     return {
@@ -73,13 +63,11 @@ function normalizeFsPath(p: string): string {
 }
 
 function resolveLocPath(locFile: string, cwd: string): string {
-  if (path.isAbsolute(locFile)) return locFile;
-  return path.resolve(cwd, locFile);
+  return path.isAbsolute(locFile) ? locFile : path.resolve(cwd, locFile);
 }
 
 function lineLength(doc: TextDocument, zeroBasedLine: number): number {
-  const text = doc.getText();
-  const lines = text.split(/\r?\n/);
+  const lines = doc.getText().split(/\r?\n/);
   if (zeroBasedLine < 0 || zeroBasedLine >= lines.length) return 0;
   return lines[zeroBasedLine].length;
 }
@@ -87,10 +75,7 @@ function lineLength(doc: TextDocument, zeroBasedLine: number): number {
 function toRange(loc: ParsedLoc, doc: TextDocument): Range {
   const maxLine = Math.max(0, doc.lineCount - 1);
   const clampLine = (n: number) => Math.max(0, Math.min(maxLine, n));
-  const clampCol = (line: number, col: number) => {
-    const maxCol = lineLength(doc, clampLine(line));
-    return Math.max(0, Math.min(maxCol, col));
-  };
+  const clampCol = (line: number, col: number) => Math.max(0, Math.min(lineLength(doc, clampLine(line)), col));
 
   if (loc.kind === "single") {
     const line0 = clampLine(loc.line - 1);
@@ -102,9 +87,7 @@ function toRange(loc: ParsedLoc, doc: TextDocument): Range {
 
   const lineStart0 = clampLine(loc.line1 - 1);
   const lineEnd0 = clampLine(loc.line2 - 1);
-  const startChar = clampCol(lineStart0, loc.col1 - 1);
-  const endChar = clampCol(lineEnd0, loc.col2 - 1);
-  return Range.create(lineStart0, startChar, lineEnd0, endChar);
+  return Range.create(lineStart0, clampCol(lineStart0, loc.col1 - 1), lineEnd0, clampCol(lineEnd0, loc.col2 - 1));
 }
 
 function parseDiagnostics(output: string, doc: TextDocument, cwd: string): Diagnostic[] {
@@ -116,15 +99,13 @@ function parseDiagnostics(output: string, doc: TextDocument, cwd: string): Diagn
     const line = lines[i];
     const loc = parseLocFromLine(line.trim());
     if (!loc) continue;
-
     const locPath = normalizeFsPath(resolveLocPath(loc.file, cwd));
     if (locPath !== docPath) continue;
 
     let message = line.trim();
     const next = lines[i + 1]?.trim() ?? "";
-    if (next.startsWith("Did you mean:")) {
-      message = `${message}\n${next}`;
-    }
+    if (next.startsWith("Did you mean:")) message = `${message}
+${next}`;
 
     diagnostics.push({
       range: toRange(loc, doc),
@@ -142,7 +123,6 @@ function parseDiagnostics(output: string, doc: TextDocument, cwd: string): Diagn
       message: output.trim(),
     });
   }
-
   return diagnostics;
 }
 
@@ -178,17 +158,9 @@ export class DiagnosticsService {
     const existing = this.timers.get(key);
     if (existing) clearTimeout(existing);
 
-    if (debounce > 0) {
-      this.timers.set(
-        key,
-        setTimeout(() => {
-          this.timers.delete(key);
-          void this.runNow(doc, workspaceRoot);
-        }, debounce),
-      );
-    } else {
-      void this.runNow(doc, workspaceRoot);
-    }
+    const run = () => void this.runNow(doc, workspaceRoot);
+    if (debounce > 0) this.timers.set(key, setTimeout(run, debounce));
+    else run();
   }
 
   async runNow(doc: TextDocument, workspaceRoot?: string) {
@@ -201,7 +173,6 @@ export class DiagnosticsService {
     const filePath = fileURLToPath(doc.uri);
     const repoRoot = findRepoRoot(filePath);
     const cwd = repoRoot ?? workspaceRoot ?? process.cwd();
-
     this.status.checking(doc.uri, `dune exec nicegeo -- ${filePath}`);
 
     const result = await new Promise<{ seq: number; exitCode: number | null; output: string }>((resolve) => {
@@ -210,30 +181,23 @@ export class DiagnosticsService {
       const onData = (b: Buffer) => chunks.push(b);
       child.stdout.on("data", onData);
       child.stderr.on("data", onData);
-
       const current = this.running.get(key);
       if (current) current.child = child;
-
-      child.on("close", (exitCode) => {
-        resolve({ seq, exitCode, output: Buffer.concat(chunks).toString("utf8") });
-      });
-      child.on("error", (err) => {
-        resolve({ seq, exitCode: 1, output: String(err?.message ?? err) });
-      });
+      child.on("close", (exitCode) =>
+        resolve({ seq, exitCode, output: Buffer.concat(chunks).toString("utf8") }),
+      );
+      child.on("error", (err) => resolve({ seq, exitCode: 1, output: String(err?.message ?? err) }));
     });
 
     const latest = this.running.get(key);
     if (!latest || latest.seq !== result.seq) return;
-
     if (result.exitCode === 0) {
       this.publish(doc.uri, []);
       this.status.ok(doc.uri);
       return;
     }
-
     const diagnostics = parseDiagnostics(result.output, doc, cwd);
     this.publish(doc.uri, diagnostics);
     this.status.issues(doc.uri, diagnostics.length);
   }
 }
-

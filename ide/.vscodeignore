@@ -2,8 +2,10 @@
 .vscode-test/**
 .gitignore
 vsc-extension-quickstart.md
-src/**
+client/**
 tsconfig.json
+server/src/**
+server/tsconfig.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

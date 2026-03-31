@@ -24,7 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
   const status = new NiceGeoStatusBar("nicegeo.diagnostics.showOutput");
   status.init();
 
-  const serverModule = context.asAbsolutePath(path.join("..", "server", "out", "server.js"));
+  const serverModule = context.asAbsolutePath(path.join("server", "out", "server.js"));
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.stdio },
     debug: { module: serverModule, transport: TransportKind.stdio },
@@ -67,4 +67,3 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
-

@@ -8,12 +8,7 @@ import {
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { fileURLToPath } from "url";
-
-import {
-  DiagnosticsService,
-  NiceGeoSettings,
-  DiagnosticsTriggerMode,
-} from "./providers/diagnostics";
+import { DiagnosticsService, NiceGeoSettings, DiagnosticsTriggerMode } from "./providers/diagnostics";
 
 const STATUS_NOTIFICATION = "nicegeo/status";
 const RUN_DIAGNOSTICS_NOTIFICATION = "nicegeo/runDiagnostics";
@@ -43,14 +38,13 @@ function normalizeSettings(raw: unknown): NiceGeoSettings {
 
 function getDocumentSettings(resource: string): Thenable<NiceGeoSettings> {
   if (!hasConfigurationCapability) return Promise.resolve(defaultSettings);
-  let result = documentSettings.get(resource);
-  if (!result) {
-    result = connection.workspace
-      .getConfiguration({ scopeUri: resource, section: "nicegeo" })
-      .then((cfg) => normalizeSettings(cfg));
-    documentSettings.set(resource, result);
-  }
-  return result;
+  const existing = documentSettings.get(resource);
+  if (existing) return existing;
+  const created = connection.workspace
+    .getConfiguration({ scopeUri: resource, section: "nicegeo" })
+    .then((cfg: unknown) => normalizeSettings(cfg));
+  documentSettings.set(resource, created);
+  return created;
 }
 
 const diagnostics = new DiagnosticsService(
@@ -63,24 +57,13 @@ const diagnostics = new DiagnosticsService(
 );
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
-  const capabilities = params.capabilities;
-  hasConfigurationCapability = !!capabilities.workspace?.configuration;
+  hasConfigurationCapability = !!params.capabilities.workspace?.configuration;
   workspaceRoot = params.rootUri ? fileURLToPath(params.rootUri) : undefined;
-
-  return {
-    capabilities: {
-      textDocumentSync: TextDocumentSyncKind.Incremental,
-    },
-  };
+  return { capabilities: { textDocumentSync: TextDocumentSyncKind.Incremental } };
 });
 
-connection.onInitialized(() => {
-  connection.sendNotification(STATUS_NOTIFICATION, { kind: "idle" });
-});
-
-connection.onDidChangeConfiguration(() => {
-  documentSettings.clear();
-});
+connection.onInitialized(() => connection.sendNotification(STATUS_NOTIFICATION, { kind: "idle" }));
+connection.onDidChangeConfiguration(() => documentSettings.clear());
 
 documents.onDidClose((e: { document: TextDocument }) => {
   documentSettings.delete(e.document.uri);
@@ -97,17 +80,14 @@ documents.onDidChangeContent(async (e: { document: TextDocument }) => {
   diagnostics.request(e.document, "type", settings, workspaceRoot);
 });
 
-connection.onNotification(RUN_DIAGNOSTICS_NOTIFICATION, async (params: { uri?: string }) => {
+connection.onNotification(RUN_DIAGNOSTICS_NOTIFICATION, (params: { uri?: string }) => {
   if (!params?.uri) return;
   const doc = documents.get(params.uri);
   if (!doc) return;
-  diagnostics.runNow(doc, workspaceRoot);
+  void diagnostics.runNow(doc, workspaceRoot);
 });
 
-connection.onShutdown(() => {
-  diagnostics.dispose();
-});
+connection.onShutdown(() => diagnostics.dispose());
 
 documents.listen(connection);
 connection.listen();
-
