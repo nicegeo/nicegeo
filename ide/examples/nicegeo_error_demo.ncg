@@ -1,7 +1,3 @@
 (* Demo file: intentionally fails, to show NiceGeo encouraging messages. *)
 
 Theorem nicegeo_error_demo : Prop := does_not_exist
-
-(* Demo file: triggers UnknownName suggestions and NiceGeo messages. *)
-
-Theorem unknown_name_demo : Prop := HELLO
