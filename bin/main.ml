@@ -27,17 +27,21 @@ let () =
       exit 255
   in
   let tone = Nice_messages.tone_from_env () in
-  let had_errors = ref false in
   try
     let stmts = Elab.Interface.parse_statements filename in
-    List.iter
-      (fun stmt ->
-        try Elab.Interface.process_statement env stmt
-        with Error.ElabError e ->
-          had_errors := true;
-          print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env e))
-      stmts;
-    if !had_errors then (
+    let had_errors =
+      List.fold_left
+        (fun acc stmt ->
+          try
+            Elab.Interface.process_statement env stmt;
+            acc (* If no error, keep the accumulator (error state) unchanged *)
+          with Error.ElabError e ->
+            print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env e);
+            true (* If there was an error, set the accumulator to true *))
+        false (* Begin by assuming there are no errors *)
+        stmts
+    in
+    if had_errors then (
       (match Nice_messages.pick_message tone Nice_messages.After_error with
       | Some extra -> Printf.printf "%s" (Nice_messages.format_for_output extra)
       | None -> ());
