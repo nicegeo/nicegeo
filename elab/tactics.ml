@@ -17,6 +17,28 @@ let _catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
 
 let beta_nf (e : ctx) (tm : term) : term = Reduce.reduce e tm
 
+type tactic = proof_state -> tactic_result
+
+(** [seq t1 t2] applies t1 to the state. If it succeeds, it applies t2 to the new state. *)
+let seq (t1 : tactic) (t2 : tactic) (st : proof_state) : tactic_result =
+  match t1 st with
+  | Failure msg -> Failure msg
+  | Success st_new -> t2 st_new
+
+(** [try_tac t] attempts to apply t. If t fails, it simply does nothing and succeeds with the original state. *)
+let try_tac (t : tactic) (st : proof_state) : tactic_result =
+  match t st with
+  | Success st_new -> Success st_new
+  | Failure _ -> succeed st
+
+(** [repeat t] applies t over and over until it fails, then returns the last successful state. *)
+let rec repeat (t : tactic) (st : proof_state) : tactic_result =
+  match t st with
+  | Failure _ -> succeed st (* Stop repeating and return current state *)
+  | Success st_new -> repeat t st_new
+
+(* sequencing operator *)
+let ( >> ) = seq
 
 let rec def_eq (e : ctx) (t1 : term) (t2 : term) : bool =
   let t1 = beta_nf e t1 in
@@ -183,3 +205,4 @@ let sorry (st : proof_state) : tactic_result =
       let st = assign_meta g.goal_id proof st in
       let st = close_goal  g.goal_id st in
       succeed st
+

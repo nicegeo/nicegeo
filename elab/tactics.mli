@@ -5,6 +5,8 @@ type tactic_result =
   | Success of proof_state
   | Failure of string
 
+type tactic = proof_state -> tactic_result
+
 val reflexivity : proof_state -> tactic_result
 
 (** [sorry st] closes any goal with a placeholder proof.
@@ -22,3 +24,12 @@ val exact : term -> proof_state -> tactic_result
     the goal is closed and a new subgoal for [A] is opened. If the type directly
     matches the goal (no arrow), it behaves like [exact]. *)
 val apply : string -> proof_state -> tactic_result
+
+(* sequences tactics *)
+val seq : tactic -> tactic -> tactic
+(* tries tactic. If succeeds then return new state, if fail then return original state*)
+val try_tac : tactic -> tactic
+(* repeat tactic application *)
+val repeat : tactic -> tactic
+
+val ( >> ) : tactic -> tactic -> tactic
