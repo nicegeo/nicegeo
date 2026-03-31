@@ -14,8 +14,8 @@ __pycache__
 # emacs lock files
 .#*
 
-# VS Code (repo root only)
-/.vscode/
+# vscode settings
+.vscode
 
 # git-ps hooks
 .git-ps
