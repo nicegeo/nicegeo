@@ -33,6 +33,11 @@ type type_expected_info = {
   not_type_infer : term;
 }
 
+type unification_failure_info = {
+  left : term;
+  right : term;
+}
+
 type error_type =
   | ParseError of parse_error_info
   | AlreadyDefined of string
@@ -43,6 +48,7 @@ type error_type =
   | InternalError of string
   | FunctionExpected of function_expected_info
   | TypeExpected of type_expected_info
+  | UnificationFailure of unification_failure_info
 
 type elab_error_info = {
   context : error_context;
@@ -145,11 +151,65 @@ let ktype_err_to_string (info : KExceptions.type_error_info) : string =
   ^ Kernel_pretty.term_to_string_pretty info.trm
   ^ "\n" ^ specific_err
 
+let line_text_from_file (filename : string) (line_no : int) : string option =
+  try
+    let ic = open_in filename in
+    let rec loop n =
+      match input_line ic with
+      | line ->
+          if n = line_no then (
+            close_in ic;
+            Some line)
+          else loop (n + 1)
+      | exception End_of_file ->
+          close_in ic;
+          None
+    in
+    loop 1
+  with _ -> None
+
+(*
+ * Produce a caret underline for a source range.
+ *
+ * Column indices are 1-based and the range is INCLUSIVE on both ends:
+ *   caret_line 5 5  -> highlights column 5
+ *   caret_line 5 7  -> highlights columns 5,6,7
+ *
+ * Ensures at least one caret is printed.
+ *)
+
+let caret_line (start_col : int) (end_col : int) : string =
+  let start_col = max 1 start_col in
+  let end_col = max start_col end_col in
+  String.make (start_col - 1) ' ' ^ String.make (max 1 (end_col - start_col + 1)) '^'
+
+let pp_source_snippet (r : range) : string =
+  let filename = r.start.pos_fname in
+  let line_no = r.start.pos_lnum in
+  let start_col = r.start.pos_cnum - r.start.pos_bol + 1 in
+  let end_col =
+    if r.start.pos_lnum = r.end_.pos_lnum then r.end_.pos_cnum - r.end_.pos_bol + 1
+    else start_col
+  in
+  match line_text_from_file filename line_no with
+  | Some line -> Printf.sprintf "\n%s\n%s" line (caret_line start_col (end_col - 1))
+  | None -> ""
+
+let pp_context (ctx : error_context) : string =
+  let parts = ref [] in
+  (match ctx.decl_name with
+  | Some n -> parts := !parts @ [ Printf.sprintf "in declaration '%s'" n ]
+  | None -> ());
+  (match ctx.loc with
+  | Some r -> parts := !parts @ [ Printf.sprintf "at %s" (Pretty.pp_loc r) ]
+  | None -> ());
+  match !parts with [] -> "" | xs -> " " ^ String.concat " " xs
+
 let pp_local_ctx (e : Types.ctx) : string =
   Hashtbl.fold
     (fun k v acc ->
       acc
-      ^ Pretty.term_to_string e { inner = Fvar k; loc = dummy_range }
+      ^ Pretty.term_to_string e { inner = Bvar k; loc = dummy_range }
       ^ " : "
       ^ Pretty.term_to_string e (snd v)
       ^ "\n")
@@ -157,55 +217,42 @@ let pp_local_ctx (e : Types.ctx) : string =
     ""
 
 let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
-  let loc_str =
-    match info.context.loc with Some r -> Pretty.pp_loc r | None -> "unknown location"
-  in
-  let decl_str =
-    match info.context.decl_name with
-    | Some n -> Printf.sprintf "declaration '%s'" n
-    | None -> "unknown declaration"
-  in
+  let ctx_str = pp_context info.context in
   let local_ctx_str = pp_local_ctx e in
+  let snippet =
+    match info.context.loc with Some r -> pp_source_snippet r | None -> ""
+  in
   match info.error_type with
   | ParseError { input; error_msg } ->
-      Printf.sprintf
-        "Parse error in %s at %s: %s (input: '%s')"
-        decl_str
-        loc_str
-        error_msg
-        input
-  | AlreadyDefined name ->
-      Printf.sprintf "Error in %s: %s is already defined" decl_str name
+      Printf.sprintf "Parse error%s:%s\n%s (input: '%s')" ctx_str snippet error_msg input
+  | AlreadyDefined name -> Printf.sprintf "Error%s: %s is already defined" ctx_str name
   | TypeMismatch { term; inferred_type; expected_type } ->
       Printf.sprintf
         "Local context:\n\
          %s\n\
-         Type mismatch in %s at %s: term\n\
+         Type mismatch%s: %s\n\
+         term\n\
          %s\n\
          has type\n\
          %s\n\
          but expected\n\
          %s\n"
         local_ctx_str
-        decl_str
-        loc_str
+        ctx_str
+        snippet
         (Pretty.term_to_string e term)
         (Pretty.term_to_string e inferred_type)
         (Pretty.term_to_string e expected_type)
   | CannotInferHole ->
       Printf.sprintf
-        "Local context:\n%s\nCannot infer hole in %s at %s"
+        "Local context:\n%s\nCannot infer hole%s%s"
         local_ctx_str
-        decl_str
-        loc_str
+        ctx_str
+        snippet
   | KernelError { kernel_exn } ->
-      Printf.sprintf
-        "Kernel error in %s at %s: %s"
-        decl_str
-        loc_str
-        (ktype_err_to_string kernel_exn)
+      Printf.sprintf "Kernel error%s: %s" ctx_str (ktype_err_to_string kernel_exn)
   | UnknownName { name } -> (
-      let base = Printf.sprintf "Unknown name '%s' in %s at %s" name decl_str loc_str in
+      let base = Printf.sprintf "Unknown name '%s'%s%s" name ctx_str snippet in
       let suggestions = suggest_similar_names name e in
       match suggestions with
       | [] -> base
@@ -214,37 +261,41 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
           base ^ Printf.sprintf "\nDid you mean: %s?" sugg_str)
   | InternalError msg ->
       Printf.sprintf
-        "Local context:\n%s\nInternal error in %s at %s: %s"
+        "Local context:\n%s\nInternal error%s%s: %s"
         local_ctx_str
-        decl_str
-        loc_str
+        ctx_str
+        snippet
         msg
   | FunctionExpected { not_func; not_func_type; arg } ->
       Printf.sprintf
         "Local context:\n\
          %s\n\
-         Expected a function in %s at %s, but got\n\
+         Expected a function%s:%s\n\
+         but got\n\
          %s\n\
          of type\n\
          %s\n\
          when applying to argument\n\
          %s\n"
         local_ctx_str
-        decl_str
-        loc_str
+        ctx_str
+        snippet
         (Pretty.term_to_string e not_func)
         (Pretty.term_to_string e not_func_type)
         (Pretty.term_to_string e arg)
   | TypeExpected { not_type; not_type_infer } ->
       Printf.sprintf
-        "Local context:\n\
-         %s\n\
-         Expected a type in %s at %s, but got\n\
-         %s\n\
-         which has type\n\
-         %s\n"
+        "Local context:\n%s\nExpected a type%s:%s\nbut got\n%s\nwhich has type\n%s\n"
         local_ctx_str
-        decl_str
-        loc_str
+        ctx_str
+        snippet
         (Pretty.term_to_string e not_type)
         (Pretty.term_to_string e not_type_infer)
+  | UnificationFailure { left; right } ->
+      Printf.sprintf
+        "Local context:\n%s\nFailed to unify%s:%s\n%s\nwith\n%s\n"
+        local_ctx_str
+        ctx_str
+        snippet
+        (Pretty.term_to_string e left)
+        (Pretty.term_to_string e right)

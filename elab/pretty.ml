@@ -1,51 +1,22 @@
-(** Pretty-printing for elaborator terms.
-
-    Elaborator terms now contain [Bvar] and [Fvar]s and only optional binder names. To
-    print readable names we consult the elaborator context stored in [Types.ctx] (notably
-    [lctx] and [metas]). *)
-
 open Term
 open Statement
 
 (* Sort 0 = Prop, Sort 1 = Type; for n >= 2 display as "Sort n". *)
 let sort_to_string = function 0 -> "Prop" | 1 -> "Type" | n -> "Sort " ^ string_of_int n
 
-let is_atomic x =
-  match x.inner with
-  | Name _ | Bvar _ | Fvar _ | Hole _ | Sort _ -> true
-  | Fun _ | Arrow _ | App _ -> false
-
-(** Flatten application spine. *)
-let rec flatten_app t =
-  match t.inner with
-  | App (f, a) ->
-      let head, args = flatten_app f in
-      (head, args @ [ a ])
-  | _ -> (t, [])
-
-let ctr = ref 0
-
-let gen_fresh_name () =
-  let name = "x" ^ string_of_int !ctr in
-  incr ctr;
-  name
-
-let opt_name_to_string = function Some x -> x | None -> gen_fresh_name ()
-let fmt_binder (name : string) (ty : string) : string = "(" ^ name ^ " : " ^ ty ^ ")"
-
-(* Return a list of formatted arguments to the lambdas,
-  the remaining body to format, and the new `bctx` after processing them all.
+(* Return a list of argument names, list of argument types, and the remaining body of 
+the lambda to format, after processing them all.
 *)
-let rec flatten_fun (t : term) (bctx : string list) (fmt : string list -> term -> string)
-    : string list * term * string list =
+let rec flatten_fun (e : Types.ctx) (t : term) : string list * term list * term =
   match t.inner with
-  | Fun (x, ty, body) ->
-      let x_s : string = opt_name_to_string x in
-      let ty_s : string = fmt bctx ty in
-      let binder = fmt_binder x_s ty_s in
-      let binders, new_body, new_bctx = flatten_fun body (x_s :: bctx) fmt in
-      (binder :: binders, new_body, new_bctx)
-  | _ -> ([], t, bctx)
+  | Fun (x, bid, ty, body) ->
+      let x_s : string =
+        match x with Some name -> name | None -> "x" ^ string_of_int bid
+      in
+      Hashtbl.add e.lctx bid (x, ty);
+      let xs, args, body = flatten_fun e body in
+      (x_s :: xs, ty :: args, body)
+  | _ -> ([], [], t)
 
 let pp_loc (r : range) =
   if r.start.pos_lnum = r.end_.pos_lnum then
@@ -64,76 +35,77 @@ let pp_loc (r : range) =
       r.end_.pos_lnum
       (r.end_.pos_cnum - r.end_.pos_bol + 1)
 
-let bvar_to_string (bctx : string list) (idx : int) : string =
-  if idx < List.length bctx then List.nth bctx idx else "_" ^ string_of_int idx
-
-let fvar_to_string (e : Types.ctx) (idx : int) : string =
+let bvar_to_string (e : Types.ctx) (idx : int) : string =
   match Hashtbl.find_opt e.lctx idx with
-  | Some (Some name, _) -> name
-  | _ -> "f" ^ string_of_int idx
+  | Some (Some name, _) -> name (* ^ "[" ^ string_of_int idx ^ "]" *)
+  | Some (None, _) -> "x" ^ string_of_int idx
+  | None -> "!" ^ string_of_int idx
 
-let rec reduce (e : Types.ctx) (tm : term) : term =
-  match tm.inner with
-  | App (f, arg) -> (
-      let fn = reduce e f in
-      match fn.inner with
-      | Fun (_, _, body) -> reduce e (replace_bvar body 0 arg)
-      | _ -> { inner = App (fn, arg); loc = tm.loc })
-  (* do we need to recurse into holes? possibly *)
+(* Precedence levels for terms for parentheses, corresponding to term rules in the parser. 
+  Lower means tighter binding. *)
+let prec_term = 20
+let prec_app = 10
+let prec_atomic = 0
+
+let rec get_prec (e : Types.ctx) (t : term) : int =
+  match t.inner with
+  | Name _ | Bvar _ | Sort 0 | Sort 1 -> prec_atomic
+  | Sort _ | App _ -> prec_app
+  | Fun _ | Arrow _ -> prec_term
   | Hole m -> (
       match Hashtbl.find_opt e.metas m with
-      | Some { sol = Some tm_sol; _ } -> reduce e tm_sol
-      | _ -> tm)
-  | Fun (arg, ty, body) ->
-      let x = gen_fvar_id () in
-      let ty' = reduce e ty in
-      let body' = reduce e (replace_bvar body 0 { inner = Fvar x; loc = tm.loc }) in
-      let body'' = bind_bvar body' 0 { inner = Fvar x; loc = tm.loc } in
-      { inner = Fun (arg, ty', body''); loc = tm.loc }
-  | Arrow (arg, ty, ret) ->
-      let x = gen_fvar_id () in
-      let ty' = reduce e ty in
-      let ret' = reduce e (replace_bvar ret 0 { inner = Fvar x; loc = tm.loc }) in
-      let ret'' = bind_bvar ret' 0 { inner = Fvar x; loc = tm.loc } in
-      { inner = Arrow (arg, ty', ret''); loc = tm.loc }
-  | _ -> tm
+      | Some { sol = Some tm_sol; _ } -> get_prec e tm_sol
+      | _ -> prec_atomic)
 
-let rec term_to_string_with (e : Types.ctx) (bctx : string list) (t : term) : string =
-  let t = reduce e t in
-  match t.inner with
-  | Name x -> x
-  | Bvar idx -> bvar_to_string bctx idx
-  | Fvar idx -> fvar_to_string e idx
-  | Hole idx -> (
-      match Hashtbl.find_opt e.metas idx with
-      | Some { sol = Some tm_sol; _ } -> term_to_string_with e bctx tm_sol
-      | _ -> "?m" ^ string_of_int idx)
-  | Sort n -> sort_to_string n
-  | Fun _ ->
-      let (binders : string list), (new_body : term), (new_bctx : string list) =
-        flatten_fun t bctx (term_to_string_with e)
-      in
-      let body_s = term_to_string_with e new_bctx new_body in
-      "fun " ^ String.concat " " binders ^ " => " ^ body_s
-  | Arrow (x, ty, ret) ->
-      let x_s = opt_name_to_string x in
-      let ty_s = term_to_string_with e bctx ty in
-      let ret_s = term_to_string_with e (x_s :: bctx) ret in
-      if x = None then ty_s ^ " -> " ^ ret_s
-      else "(" ^ x_s ^ " : " ^ ty_s ^ ") -> " ^ ret_s
-  | App _ -> (
-      let head, args = flatten_app t in
-      let head_s = term_to_string_with e bctx head in
-      let args_s =
-        List.map
-          (fun a ->
-            let s = term_to_string_with e bctx a in
-            if is_atomic a then s else "(" ^ s ^ ")")
-          args
-      in
-      match args_s with [] -> head_s | _ -> head_s ^ " " ^ String.concat " " args_s)
-
-let term_to_string (e : Types.ctx) (t : term) : string = term_to_string_with e [] t
+let term_to_string (e : Types.ctx) (t : term) : string =
+  let rec term_to_string_helper (e : Types.ctx) (t : term) (level : int) : string =
+    if level < get_prec e t then "(" ^ term_to_string_helper e t prec_term ^ ")"
+    else
+      match t.inner with
+      | Name x -> x
+      | Bvar idx -> bvar_to_string e idx
+      | Hole idx -> (
+          match Hashtbl.find_opt e.metas idx with
+          | Some { sol = Some tm_sol; _ } -> term_to_string_helper e tm_sol level
+          | _ -> "?m" ^ string_of_int idx)
+      | Sort n -> sort_to_string n
+      | Fun _ ->
+          let saved_lctx = Hashtbl.copy e.lctx in
+          let xs, args, body = flatten_fun e t in
+          let res =
+            "fun "
+            ^ String.concat
+                " "
+                (List.map2
+                   (fun x ty ->
+                     "(" ^ x ^ " : " ^ term_to_string_helper e ty prec_term ^ ")")
+                   xs
+                   args)
+            ^ " => "
+            ^ term_to_string_helper e body prec_term
+          in
+          Hashtbl.clear e.lctx;
+          Hashtbl.iter (Hashtbl.add e.lctx) saved_lctx;
+          res
+      | Arrow (x, bid, ty, ret) -> (
+          match x with
+          | None ->
+              let ty_s = term_to_string_helper e ty prec_app in
+              let ret_s = term_to_string_helper e ret prec_term in
+              ty_s ^ " -> " ^ ret_s
+          | Some name ->
+              let ty_s = term_to_string_helper e ty prec_term in
+              Hashtbl.add e.lctx bid (Some name, ty);
+              let ret_s = term_to_string_helper e ret prec_term in
+              Hashtbl.remove e.lctx bid;
+              "(" ^ name (* "[" ^ string_of_int bid ^ "]" ^ *) ^ " : "
+              ^ ty_s ^ ") -> " ^ ret_s)
+      | App (f, arg) ->
+          term_to_string_helper e f prec_app
+          ^ " "
+          ^ term_to_string_helper e arg prec_atomic
+  in
+  term_to_string_helper e t prec_term
 
 let decl_to_string (e : Types.ctx) (d : declaration) =
   match d.kind with
@@ -141,3 +113,5 @@ let decl_to_string (e : Types.ctx) (d : declaration) =
   | Theorem proof ->
       "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := "
       ^ term_to_string e proof
+  | Def body ->
+      "Def " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e body
