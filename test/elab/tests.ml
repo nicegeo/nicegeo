@@ -11,4 +11,5 @@ let () =
       Test_tactic_sorry.suite;
       Test_tactic_exact.suite;
       Test_tactic_apply.suite;
+      Test_tacticals.suite;
     ]
