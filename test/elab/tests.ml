@@ -12,4 +12,5 @@ let () =
       Test_tactic_exact.suite;
       Test_tactic_apply.suite;
       Test_tacticals.suite;
+      Test_tactic_context.suite;
     ]
