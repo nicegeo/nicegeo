@@ -36,3 +36,6 @@ val ( >> ) : tactic -> tactic -> tactic
 val have : string -> term -> tactic
 val intro : string -> tactic
 val intros : string list -> tactic
+
+val rewrite : term -> proof_state -> tactic_result
+val beta_nf : Types.ctx -> term -> term

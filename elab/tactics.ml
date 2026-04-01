@@ -1,6 +1,7 @@
 open Term
 open Types
-open Proofstate
+open Proofstate 
+open Typecheck
 
 type tactic_result =
   | Success of proof_state
@@ -55,34 +56,32 @@ let rec def_eq (e : ctx) (t1 : term) (t2 : term) : bool =
 (* Used by future tactics that need to pass the in-scope bids when creating subgoals. *)
 let _goal_stack (g : goal) : int list = List.map (fun h -> h.hyp_bid) g.ctx
 
+let destruct_eq (e : ctx) (t : term) : term * term * term =
+  let t = beta_nf e t in
+  match t.inner with
+  | App ({ inner = App ({ inner = App ({ inner = Name "Eq"; _ }, a); _ }, lhs); _ }, rhs) ->
+      (a, lhs, rhs)
+  | _ ->
+      failwith (Printf.sprintf "expected 'Eq A lhs rhs', got '%s'" (pp_term e t))
+
 (** [Eq A lhs rhs] when [lhs] and [rhs] are definitionally equal, proof term is
-    [@refl A lhs].*)
++    [@refl A lhs]. *)
 let reflexivity (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
-  | Some g -> (
+  | Some g ->
       let ty = beta_nf st.elab_ctx g.goal_type in
-      match ty.inner with
-      | App
-          ( { inner = App ({ inner = App ({ inner = Name "Eq"; _ }, _a); _ }, lhs); _ },
-            rhs ) ->
-          if def_eq st.elab_ctx lhs rhs then
-            let proof = mk_app (mk_app (mk_name "refl") _a) lhs in
-            let st = assign_meta g.goal_id proof st in
-            let st = close_goal g.goal_id st in
-            succeed st
-          else
-            fail
-              (Printf.sprintf
-                 "reflexivity: lhs '%s' and rhs '%s' are not definitionally equal."
-                 (pp_term st.elab_ctx lhs)
-                 (pp_term st.elab_ctx rhs)) (* need to map to existing error categories*)
-      | _ ->
-          fail
-            (Printf.sprintf
-               "reflexivity: goal '%s' is not of the form 'Eq A t t'."
-               (pp_term st.elab_ctx ty)))
-(* need to map to existing error categories*)
+      let (_a, lhs, rhs) = destruct_eq st.elab_ctx ty in
+      if def_eq st.elab_ctx lhs rhs then
+        let proof = mk_app (mk_app (mk_name "Eq.intro") _a) lhs in
+        let st = assign_meta g.goal_id proof st in
+        let st = close_goal  g.goal_id st in
+        succeed st
+      else
+        fail (Printf.sprintf
+          "reflexivity: lhs '%s' and rhs '%s' are not definitionally equal."
+          (pp_term st.elab_ctx lhs) (pp_term st.elab_ctx rhs))
+          (* need to map to existing error categories*)
 
 (** [infertype] looks up [Bvar] nodes in [lctx]. Hypotheses live in the goal's local
     context but are not in [lctx] yet — populate it for the duration of [f], then remove
@@ -262,3 +261,92 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
       let remaining_goals = List.tl st_assigned.open_goals in
 
       Success { st_assigned with open_goals = proof_goal :: cont_goal :: remaining_goals }
+
+
+(*
+  Fold the function `f` over all the children of the given term.
+
+  Inspired by Rocq's fold functions
+*)
+let term_fold (f : 'a -> term -> 'a) (t : term) (acc : 'a) : 'a =
+  match t.inner with
+  | Fun (_, _, t1, t2) -> f (f acc t1) t2
+  | Arrow (_, _, t1, t2) -> f (f acc t1) t2
+  | App (t1, t2) -> f (f acc t1) t2
+  | _ -> acc
+
+(*
+  Apply the function `f` to all the children of the given term.
+
+  Inspired by Rocq's fold functions
+*)
+let term_map (f : term -> term) (t : term) : term =
+  match t.inner with
+  | Fun (a, b, t1, t2) -> { loc = t.loc; inner = Fun (a, b, f t1, f t2)}
+  | Arrow (a, b, t1, t2) -> {loc = t.loc; inner = Arrow (a, b, f t1, f t2)}
+  | App (t1, t2) -> {loc = t.loc; inner = App ((f t1), (f t2))}
+  | _ -> t
+
+(*
+  Abstract out all subterms that are defeq to the given pattern.
+  Returns the binder id used and the new term.
+
+  Inspired by Lean's kabstract function
+*)
+let abstract_pat (ctx : ctx) (t : term) (pat : term) : int * term =
+  let bid = gen_binder_id () in
+  let rec go (t : term) = 
+    try
+      (* If they unify, then replace the term with a bvar *)
+      unify ctx t (Hashtbl.create 0) pat (Hashtbl.create 0);
+      {loc = t.loc; inner = Bvar bid}
+    with _ ->
+      term_map (fun term -> go term) t in
+  (bid, go t)
+
+(*
+  Check if the term contains the given binder id anywhere iside of it
+*)
+let rec has_bid ?(acc = false) (bid : int) (t : term) : bool =
+  acc || match t.inner with
+  | Bvar i -> i == bid
+  | _ -> term_fold (fun acc term -> has_bid ~acc:acc bid term) t acc
+
+(*
+  Get the list of possible motives to rewrite with.
+  We currently only return one motive, the one that abstacts out eerything.
+*)
+let get_rewrite_motives (ctx : ctx) (t : term) (ty : term) (pat : term) : term list =
+  let (bid, abstracted) = abstract_pat ctx t pat in
+  if has_bid bid abstracted then
+    [mk_fun (Some "x") bid ty abstracted]
+  else
+    []
+
+(*
+  Given a term `t : lhs = rhs`, it rewrites all occurrences of `lhs`
+  to being `rhs` in the new goal.
+*)
+let rewrite (t : term) (st : proof_state) : tactic_result =
+   match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g ->
+    let t_ty = beta_nf st.elab_ctx (infertype st.elab_ctx t) in
+    let (eq_ty, lhs, rhs) = destruct_eq st.elab_ctx t_ty in
+    let motives = get_rewrite_motives st.elab_ctx g.goal_type eq_ty lhs in
+    match motives with
+    | p :: _ ->
+      let new_goal_ty = mk_app p rhs in
+      let (new_hole, st) = fresh_goal st g.ctx new_goal_ty in
+      (* Eq.symm A lhs rhs t *)
+      let sym = mk_app (mk_app (mk_app (mk_app (mk_name "Eq.symm") eq_ty) lhs) rhs) t in
+      (* Eq.elim A rhs P new_hole lhs (Eq.symm A lhs rhs t) *)
+      let proof = mk_app (mk_app (mk_app (mk_app (mk_app (mk_app
+        (mk_name "Eq.elim") eq_ty) rhs) p) new_hole) lhs) sym in
+      let st = assign_meta g.goal_id proof st in
+      let st = close_goal g.goal_id st in
+      succeed st
+    | [] ->
+      fail (Printf.sprintf
+        "rewrite: failed to find instance of '%s' in goal '%s'"
+        (pp_term st.elab_ctx lhs) (pp_term st.elab_ctx g.goal_type))
