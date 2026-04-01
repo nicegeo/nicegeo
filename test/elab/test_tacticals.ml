@@ -10,8 +10,8 @@ let eq_term a lhs rhs = app (app (app (name "Eq") a) lhs) rhs
 
 let setup_env () =
   let ctx = Elab.Interface.create () in
-  Hashtbl.add ctx.env "A" { name = "A"; ty = t (Sort 0); data = Axiom} ;
-  Hashtbl.add ctx.env "x" { name = "x"; ty = t (Sort 0); data = Axiom} ;
+  Hashtbl.add ctx.env "A" { name = "A"; ty = t (Sort 0); data = Axiom };
+  Hashtbl.add ctx.env "x" { name = "x"; ty = t (Sort 0); data = Axiom };
   ctx
 
 let start ctx ty = init_state ~elab_ctx:ctx ty
