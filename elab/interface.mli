@@ -24,8 +24,3 @@ val process_statement : Types.ctx -> Statement.statement -> unit
 (** [process_file env filename] parses and processes all statements in [filename], adding
     them to [env]. *)
 val process_file : Types.ctx -> string -> unit
-
-(** [list_axioms env name] returns the list of axiom names that the theorem [name]
-    transitively depends on. Raises [Failure] if [name] is not found or is itself an
-    axiom. *)
-val list_axioms : Types.ctx -> string -> string list

@@ -1,1 +1,6 @@
 !.vscode/
+
+# IDE package artifacts
+**/node_modules/
+**/out/
+**/*.tsbuildinfo
