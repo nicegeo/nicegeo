@@ -1,18 +1,50 @@
 {
   "name": "nicegeo-ide",
   "displayName": "NiceGeo IDE",
-  "description": "",
+  "description": "NiceGeo language support and diagnostics",
   "repository": {
-    "url": "github.com/nicegeo/nicegeo"
+    "type": "git",
+    "url": "https://github.com/nicegeo/nicegeo.git"
   },
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "publisher": "nicegeo",
   "engines": {
-    "vscode": "^1.110.0"
+    "vscode": "^1.80.0"
   },
   "categories": [
     "Programming Languages"
   ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "compile:server": "tsc -p server/tsconfig.json",
+    "compile": "npm run compile:server && tsc -p .",
+    "watch": "tsc -w -p .",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.8.2"
+  },
   "contributes": {
+    "commands": [
+      {
+        "command": "nicegeo.diagnostics.showOutput",
+        "title": "NiceGeo: Show Diagnostics Output"
+      },
+      {
+        "command": "nicegeo.diagnostics.run",
+        "title": "NiceGeo: Run Diagnostics"
+      }
+    ],
     "languages": [
       {
         "id": "nicegeo",
@@ -32,6 +64,28 @@
         "scopeName": "source.nicegeo",
         "path": "./syntaxes/nicegeo.tmLanguage.json"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "NiceGeo",
+      "properties": {
+        "nicegeo.diagnostics.trigger": {
+          "type": "string",
+          "default": "onSave",
+          "enum": [
+            "onSave",
+            "onType",
+            "both"
+          ],
+          "description": "When to run NiceGeo diagnostics."
+        },
+        "nicegeo.diagnostics.debounceMs": {
+          "type": "number",
+          "default": 650,
+          "minimum": 100,
+          "maximum": 10000,
+          "description": "Debounce delay in milliseconds for on-type diagnostics."
+        }
+      }
+    }
   }
 }
