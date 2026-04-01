@@ -65,8 +65,8 @@ let suite =
   ( "Tactic.exact",
     [
       test_case "closes goal with matching type" `Quick test_exact_sort;
-      test_case "fails on type mismatch"         `Quick test_exact_wrong_type;
-      test_case "closes goal via hypothesis"     `Quick test_exact_hyp;
-      test_case "fails when no goals remain"     `Quick test_exact_no_goals;
-      test_case "catches elaboration errors"     `Quick test_exact_elab_error;
+      test_case "fails on type mismatch" `Quick test_exact_wrong_type;
+      test_case "closes goal via hypothesis" `Quick test_exact_hyp;
+      test_case "fails when no goals remain" `Quick test_exact_no_goals;
+      test_case "catches elaboration errors" `Quick test_exact_elab_error;
     ] )
