@@ -7,12 +7,11 @@ let t k = { inner = k; loc = dummy_range }
 let name s = t (Name s)
 let app f x = t (App (f, x))
 let eq_term a lhs rhs = app (app (app (name "Eq") a) lhs) rhs
-let mock_axiom ctx n ty = Hashtbl.add ctx.env n { name = n; ty; data = Axiom }
 
 let setup_env () =
   let ctx = Elab.Interface.create () in
-  mock_axiom ctx "A" (t (Sort 0));
-  mock_axiom ctx "x" (name "A");
+  Hashtbl.add ctx.env "A" { name = "A"; ty = t (Sort 0); data = Axiom} ;
+  Hashtbl.add ctx.env "x" { name = "x"; ty = t (Sort 0); data = Axiom} ;
   ctx
 
 let start ctx ty = init_state ~elab_ctx:ctx ty
