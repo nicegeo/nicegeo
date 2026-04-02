@@ -29,21 +29,6 @@ let kterm_to_repr (term : Kernel.Term.term) =
   in
   kterm_to_repr_helper term 0
 
-(** Delta-reduces kernel terms (since definitions don't exist in the kernel). Used to
-    compare the unreduced representation with the reduced terms in the kernel environment.
-*)
-let rec kdelta_reduce (e : Elab.Types.ctx) (tm : Kernel.Term.term) : Kernel.Term.term =
-  match tm with
-  | Const name -> (
-      match Hashtbl.find_opt e.env name with
-      | Some { data = Def (_, body, _); _ } ->
-          kdelta_reduce e (Elab.Convert.conv_to_kterm body)
-      | _ -> tm)
-  | Lam (ty, body) -> Lam (kdelta_reduce e ty, kdelta_reduce e body)
-  | Forall (ty, ret) -> Forall (kdelta_reduce e ty, kdelta_reduce e ret)
-  | App (f, arg) -> App (kdelta_reduce e f, kdelta_reduce e arg)
-  | Bvar _ | Fvar _ | Sort _ -> tm
-
 (** These are the regression tests for the axioms in env.ncg. If [dune runtest] yields
     errors here, inspect the diff to ensure that all changes in the kernel terms make
     sense. Assume changes in the term representation of the axioms are regressions unless
@@ -74,56 +59,26 @@ let create_env_with_env () =
 
 let%expect_test "Elaborate env.ncg" =
   let env = create_env_with_env () in
-  let env_decls = Hashtbl.create 100 in
-  Elab.Interface.parse_statements path_to_env
-  |> List.iter (function
-    | Elab.Statement.Declaration decl -> Hashtbl.add env_decls decl.name decl
-    | Elab.Statement.Directive _ -> ());
-
-  (* keeps track of unprocessed declarations so we don't miss any axioms/definitions *)
   let unprocessed_decls = Hashtbl.copy env.kenv.types in
-  (* Remove theorems from unprocessed_decls; they are typechecked from axioms. *)
-  Hashtbl.iter
-    (fun name _ ->
-      match Hashtbl.find_opt env_decls name with
-      | Some { kind = Theorem _; _ } -> Hashtbl.remove unprocessed_decls name
-      | _ -> ())
+
+  (* Remove theorems from unprocessed_decls *)
+  Hashtbl.filter_map_inplace
+    (fun name ty ->
+      match (Hashtbl.find env.env name).data with Theorem _ -> None | _ -> Some ty)
     unprocessed_decls;
 
   let show_kterm name =
-    let decl = Hashtbl.find env_decls name in
-    (match decl.kind with
-    | Theorem _ -> () (* Theorem statements don't need to be checked *)
-    | Def body ->
-        (* Print definition type and body *)
-        let delta_unreduced_ty = decl.ty |> Elab.Convert.conv_to_kterm in
-        print_endline (kterm_to_repr delta_unreduced_ty);
+    let term = Hashtbl.find unprocessed_decls name in
+    let repr = kterm_to_repr term in
+    print_endline repr;
+    (* Print definition bodies (as they also need to be trusted) *)
+    (match Hashtbl.find_opt env.kenv.defs name with
+    | Some body ->
         print_endline ":=";
-        print_endline (kterm_to_repr (Elab.Convert.conv_to_kterm body))
-    | Axiom ->
-        (* Print delta-unreduced kernel term *)
-        let delta_unreduced = decl.ty |> Elab.Convert.conv_to_kterm in
-        let repr = kterm_to_repr delta_unreduced in
-        print_endline repr;
-        (* then ensure it [kdelta_reduce |> reduce]s into the actual kernel term *)
-        let expanded_kterm = kdelta_reduce env delta_unreduced in
-        let expanded_kterm_red =
-          Kernel.Infer.reduce env.kenv (Hashtbl.create 0) expanded_kterm
-        in
-        let kenv_kterm = Hashtbl.find env.kenv.types name in
-        if expanded_kterm_red <> kenv_kterm then (
-          print_endline "Delta reduction does not match kenv term!";
-          print_endline "Term:";
-          print_endline repr;
-          print_endline "Delta reduced term:";
-          print_endline (kterm_to_repr expanded_kterm_red);
-          print_endline "kenv term:";
-          print_endline (kterm_to_repr kenv_kterm);
-          failwith "Term repr does not delta reduce to kenv term!"));
-
-    (* Delete entry so we can check this is empty at the end *)
-    Hashtbl.remove unprocessed_decls name;
-    ()
+        print_endline (kterm_to_repr body)
+    | _ -> ());
+    (* Delete entry from kenv so we can check this is empty at the end *)
+    Hashtbl.remove unprocessed_decls name
   in
 
   (* Empty : Type *)

@@ -375,7 +375,7 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
         | _ -> raise_at tm Error.CannotInferHole)
     | Name name -> (
         match Hashtbl.find_opt e.env name with
-        | Some entry -> uniquify_bids (Reduce.delta_reduce e entry.ty false)
+        | Some entry -> uniquify_bids (Reduce.delta_reduce e entry.ty)
         | None -> raise_at tm (Error.UnknownName { name }))
     | Fun (arg, bid, ty_arg, body) ->
         check_is_type ~depth:(depth + 1) e ty_arg;
@@ -498,16 +498,17 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | _ -> []
 
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
+  let ty_delta = Option.map (Reduce.delta_reduce e) ty in
   create_metas e tm [];
-  let tm_delta = Reduce.delta_reduce e tm false in
-  (match ty with
+  let tm_delta = Reduce.delta_reduce e tm in
+  (match ty_delta with
   | Some ty -> checktype e tm_delta ty
   | None -> ignore (infertype e tm_delta));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
   (* Re-typecheck term to validate meta solutions *)
-  let tm_filled_delta = Reduce.delta_reduce e tm_filled false in
-  (match ty with
+  let tm_filled_delta = Reduce.delta_reduce e tm_filled in
+  (match ty_delta with
   | Some ty -> checktype e tm_filled_delta ty
   | None -> ignore (infertype e tm_filled_delta));
   let tm_reduced = Reduce.reduce e tm_filled in
@@ -524,57 +525,52 @@ let process_decl (e : ctx) (d : declaration) : unit =
          })
   else
     try
+      let ty_filled = elaborate e d.ty None in
+      check_is_type e ty_filled;
       match d.kind with
-      | Theorem body | Def body -> (
-          let ty_filled = elaborate e d.ty None in
-          check_is_type e ty_filled;
-          let proof_filled =
-            elaborate e body (Some (Reduce.delta_reduce e ty_filled false))
-          in
-          let ty_k =
-            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
-          in
-          let proof_k =
-            Reduce.delta_reduce e proof_filled true |> Reduce.reduce e |> conv_to_kterm
-          in
+      | Theorem body ->
+          let proof_filled = elaborate e body (Some ty_filled) in
 
-          try
-            Kernel.Interface.add_theorem e.kenv d.name ty_k proof_k;
-            Hashtbl.add
-              e.env
-              d.name
-              {
-                name = d.name;
-                ty = ty_filled;
-                data =
-                  (match d.kind with
-                  | Theorem _ -> Theorem (list_axioms_used e proof_filled)
-                  | Def _ -> Def (list_axioms_used e proof_filled, proof_filled, false)
-                  | Axiom -> assert false);
-              }
-          with KExceptions.TypeError msg ->
-            raise
-              (Error.ElabError
-                 {
-                   context = { loc = Some d.name_loc; decl_name = Some d.name };
-                   error_type = Error.KernelError { kernel_exn = msg };
-                 }))
-      | Axiom -> (
-          let ty_filled = elaborate e d.ty None in
-          check_is_type e ty_filled;
-          let ty_k =
-            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
-          in
-          try
-            Kernel.Interface.add_axiom e.kenv d.name ty_k;
-            Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom }
-          with KExceptions.TypeError msg ->
-            raise
-              (Error.ElabError
-                 {
-                   context = { loc = Some d.name_loc; decl_name = Some d.name };
-                   error_type = Error.KernelError { kernel_exn = msg };
-                 }))
-    with Error.ElabError x ->
-      raise
-        (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })
+          Kernel.Interface.add_theorem
+            e.kenv
+            d.name
+            (conv_to_kterm ty_filled)
+            (conv_to_kterm proof_filled);
+          Hashtbl.add
+            e.env
+            d.name
+            {
+              name = d.name;
+              ty = ty_filled;
+              data = Theorem (list_axioms_used e proof_filled);
+            }
+      | Def body ->
+          let body_filled = elaborate e body (Some ty_filled) in
+
+          Kernel.Interface.add_definition
+            e.kenv
+            d.name
+            (conv_to_kterm ty_filled)
+            (conv_to_kterm body_filled);
+          Hashtbl.add
+            e.env
+            d.name
+            {
+              name = d.name;
+              ty = ty_filled;
+              data = Def (list_axioms_used e body_filled, body_filled, false);
+            }
+      | Axiom ->
+          Kernel.Interface.add_axiom e.kenv d.name (conv_to_kterm ty_filled);
+          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom }
+    with
+    | Error.ElabError x ->
+        raise
+          (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })
+    | KExceptions.TypeError msg ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = Some d.name_loc; decl_name = Some d.name };
+               error_type = Error.KernelError { kernel_exn = msg };
+             })
