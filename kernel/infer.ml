@@ -53,44 +53,59 @@ let gen_new_fvar_name () : string =
   incr fvar_counter;
   name
 
-(* Reduce a term to normal form *)
-let rec reduce (env : environment) (localCtx : localcontext) (t : term) : term =
+let rec delta_reduce (env : environment) (t : term) : term =
   match t with
-  | App (func, arg) -> (
-      (* we need to reduce the func before matching if it's a Lam in the case of nested applications *)
-      let reduced_func = reduce env localCtx func in
-      let reduced_arg = reduce env localCtx arg in
-      match reduced_func with
-      | Lam (_, body) ->
-          (* beta reduction---substitute bound variable *)
-          let substed_body = subst_bvar body 0 reduced_arg in
-          reduce env localCtx substed_body
-      | _ -> App (reduced_func, reduced_arg))
-  | Lam (domainType, body) ->
-      (* substitute free variable in lambda *)
-      let new_fvar_name = gen_new_fvar_name () in
-      let domainTypeReduced = reduce env localCtx domainType in
-      let newLocalCtx =
-        let t = Hashtbl.copy localCtx in
-        Hashtbl.replace t new_fvar_name domainTypeReduced;
-        t
-      in
-      let substed_body = subst_bvar body 0 (Fvar new_fvar_name) in
-      let bodyReduced = reduce env newLocalCtx substed_body in
-      Lam (domainTypeReduced, rebind_bvar bodyReduced 0 new_fvar_name)
+  | Const name -> (
+      match Hashtbl.find_opt env.defs name with
+      | Some body -> delta_reduce env body
+      | None -> t)
+  | App (func, arg) -> App (delta_reduce env func, delta_reduce env arg)
+  | Lam (domainType, body) -> Lam (delta_reduce env domainType, delta_reduce env body)
   | Forall (domainType, returnType) ->
-      (* substitute free variable in forall *)
-      let new_fvar_name = gen_new_fvar_name () in
-      let domainTypeReduced = reduce env localCtx domainType in
-      let newLocalCtx =
-        let t = Hashtbl.copy localCtx in
-        Hashtbl.replace t new_fvar_name domainTypeReduced;
-        t
-      in
-      let substed_return_type = subst_bvar returnType 0 (Fvar new_fvar_name) in
-      let returnTypeReduced = reduce env newLocalCtx substed_return_type in
-      Forall (domainTypeReduced, rebind_bvar returnTypeReduced 0 new_fvar_name)
+      Forall (delta_reduce env domainType, delta_reduce env returnType)
   | _ -> t
+
+let rec beta_reduce (localCtx : localcontext) (t : term) =
+    match t with
+    | App (func, arg) -> (
+        (* we need to reduce the func before matching if it's a Lam in the case of nested applications *)
+        let reduced_func = beta_reduce localCtx func in
+        let reduced_arg = beta_reduce localCtx arg in
+        match reduced_func with
+        | Lam (_, body) ->
+            (* beta reduction---substitute bound variable *)
+            let substed_body = subst_bvar body 0 reduced_arg in
+            beta_reduce localCtx substed_body
+        | _ -> App (reduced_func, reduced_arg))
+    | Lam (domainType, body) ->
+        (* substitute free variable in lambda *)
+        let new_fvar_name = gen_new_fvar_name () in
+        let domainTypeReduced = beta_reduce localCtx domainType in
+        let newLocalCtx =
+          let t = Hashtbl.copy localCtx in
+          Hashtbl.replace t new_fvar_name domainTypeReduced;
+          t
+        in
+        let substed_body = subst_bvar body 0 (Fvar new_fvar_name) in
+        let bodyReduced = beta_reduce newLocalCtx substed_body in
+        Lam (domainTypeReduced, rebind_bvar bodyReduced 0 new_fvar_name)
+    | Forall (domainType, returnType) ->
+        (* substitute free variable in forall *)
+        let new_fvar_name = gen_new_fvar_name () in
+        let domainTypeReduced = beta_reduce localCtx domainType in
+        let newLocalCtx =
+          let t = Hashtbl.copy localCtx in
+          Hashtbl.replace t new_fvar_name domainTypeReduced;
+          t
+        in
+        let substed_return_type = subst_bvar returnType 0 (Fvar new_fvar_name) in
+        let returnTypeReduced = beta_reduce newLocalCtx substed_return_type in
+        Forall (domainTypeReduced, rebind_bvar returnTypeReduced 0 new_fvar_name)
+    | _ -> t
+  
+(* Reduce a term to normal form *)
+let reduce (env : environment) (localCtx : localcontext) (t : term) : term =
+  beta_reduce localCtx (delta_reduce env t)
 
 (* Determine if a term is a Sort *)
 let isSort (env : environment) (t : term) : bool =
@@ -109,7 +124,7 @@ let isDefEq (env : environment) (localCtx : localcontext) (t1 : term) (t2 : term
 let rec inferType (env : environment) (localCtx : localcontext) (t : term) : term =
   match t with
   | Const name -> (
-      try Hashtbl.find env name
+      try Hashtbl.find env.types name
       with Not_found ->
         (* Error: Unknown constant *)
         let err_kind = UnknownConstError name in

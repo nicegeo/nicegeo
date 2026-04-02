@@ -8,11 +8,11 @@ open Exceptions
 let try_infer env localCtx t = inferType env localCtx t
 
 let mk_env () =
-  let env = Hashtbl.create 16 in
-  Hashtbl.add env "Point" (Sort 1);
-  Hashtbl.add env "Line" (Sort 1);
-  Hashtbl.add env "p" (Const "Point");
-  Hashtbl.add env "l" (Const "Line");
+  let env = Interface.create () in
+  Hashtbl.add env.types "Point" (Sort 1);
+  Hashtbl.add env.types "Line" (Sort 1);
+  Hashtbl.add env.types "p" (Const "Point");
+  Hashtbl.add env.types "l" (Const "Line");
   env
 
 let test_const_lookup () =
@@ -144,7 +144,7 @@ let test_infer_forall () =
 
   (* predicate *)
   let predicate = Forall (Const "Point", Sort 0) in
-  Hashtbl.add env "IsRed" predicate;
+  Hashtbl.add env.types "IsRed" predicate;
   (* for all points p, p isRed -> p isRed *)
   let pred_forall =
     Forall
@@ -530,7 +530,7 @@ let test_kernel_reduce () =
   (* f: Point -> (fun a => Type) p *)
   (* (reduces to f: Point -> Type) *)
   Hashtbl.add
-    env
+    env.types
     "f"
     (Forall (Const "Point", App (Lam (Const "Point", Sort 1), Const "p")));
 
@@ -559,7 +559,7 @@ let test_kernel_reduce () =
   (* g: (fun p => (Point -> Point)) p *)
   (* (reduces to g: Point -> Point) *)
   Hashtbl.add
-    env
+    env.types
     "g"
     (App (Lam (Const "Point", Forall (Const "Point", Const "Point")), Const "p"));
 

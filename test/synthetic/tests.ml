@@ -81,7 +81,7 @@ let%expect_test "Elaborate env.ncg" =
     | Elab.Statement.Directive _ -> ());
 
   (* keeps track of unprocessed declarations so we don't miss any axioms/definitions *)
-  let unprocessed_decls = Hashtbl.copy env.kenv in
+  let unprocessed_decls = Hashtbl.copy env.kenv.types in
   (* Remove theorems from unprocessed_decls; they are typechecked from axioms. *)
   Hashtbl.iter
     (fun name _ ->
@@ -110,7 +110,7 @@ let%expect_test "Elaborate env.ncg" =
         let expanded_kterm_red =
           Kernel.Infer.reduce env.kenv (Hashtbl.create 0) expanded_kterm
         in
-        let kenv_kterm = Hashtbl.find env.kenv name in
+        let kenv_kterm = Hashtbl.find env.kenv.types name in
         if expanded_kterm_red <> kenv_kterm then (
           print_endline "Delta reduction does not match kenv term!";
           print_endline "Term:";
