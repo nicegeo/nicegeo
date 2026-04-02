@@ -65,12 +65,17 @@ let rec kdelta_reduce (e : Elab.Types.ctx) (tm : Kernel.Term.term) : Kernel.Term
 
     Running [dune runtest] again will fill in the expect with the kernel term
     representation. Ensure this representation is correct before promoting and pushing. *)
+let path_to_env = "../../../../../../synthetic/env.ncg"
+
+let create_env_with_env () =
+  let env = Elab.Interface.create () in
+  Elab.Interface.process_file env path_to_env;
+  env
 
 let%expect_test "Elaborate env.ncg" =
-  let env_path = "../../../../../../synthetic/env.ncg" in
-  let env = Elab.Interface.create_with_env_path env_path in
+  let env = create_env_with_env () in
   let env_decls = Hashtbl.create 100 in
-  Elab.Interface.parse_statements env_path
+  Elab.Interface.parse_statements path_to_env
   |> List.iter (function
     | Elab.Statement.Declaration decl -> Hashtbl.add env_decls decl.name decl
     | Elab.Statement.Directive _ -> ());

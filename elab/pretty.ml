@@ -1,5 +1,4 @@
 open Term
-open Statement
 
 (* Sort 0 = Prop, Sort 1 = Type; for n >= 2 display as "Sort n". *)
 let sort_to_string = function 0 -> "Prop" | 1 -> "Type" | n -> "Sort " ^ string_of_int n
@@ -106,12 +105,3 @@ let term_to_string (e : Types.ctx) (t : term) : string =
           ^ term_to_string_helper e arg prec_atomic
   in
   term_to_string_helper e t prec_term
-
-let decl_to_string (e : Types.ctx) (d : declaration) =
-  match d.kind with
-  | Axiom -> "Axiom " ^ d.name ^ " : " ^ term_to_string e d.ty
-  | Theorem proof ->
-      "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := "
-      ^ term_to_string e proof
-  | Def body ->
-      "Def " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e body

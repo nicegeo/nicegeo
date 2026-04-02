@@ -1,5 +1,9 @@
 module KTerm = Kernel.Term
 
+let parse_term (s : string) : Term.term =
+  let lexbuf = Lexing.from_string s in
+  Parser.single_term Lexer.token lexbuf
+
 let create () : Types.ctx =
   {
     env = Hashtbl.create 16;
@@ -12,22 +16,6 @@ let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
   match stmt with
   | Statement.Declaration decl -> Typecheck.process_decl env decl
   | Statement.Directive dir -> Directives.process_directive env dir
-
-(* Creates an elaborator environment by parsing the environment file at `path_to_env`. *)
-let create_with_env_path (path_to_env : string) : Types.ctx =
-  let e = create () in
-  let ic = open_in path_to_env in
-  let lexbuf = Lexing.from_channel ic in
-  let stmts = Parser.main Lexer.token lexbuf in
-  let _ = List.map (process_statement e) stmts in
-  e
-
-(* Creates an elaborator environment with the default environment path. *)
-let create_with_env () : Types.ctx = create_with_env_path "synthetic/env.ncg"
-
-let parse_term (s : string) : Term.term =
-  let lexbuf = Lexing.from_string s in
-  Parser.single_term Lexer.token lexbuf
 
 let parse_statements (filename : string) : Statement.statement list =
   let ic = open_in filename in
@@ -52,3 +40,6 @@ let parse_statements (filename : string) : Statement.statement list =
 let process_file (env : Types.ctx) (filename : string) : unit =
   let stmts = parse_statements filename in
   List.iter (process_statement env) stmts
+
+(* Creates an elaborator environment with the default environment path. *)
+let process_env (env : Types.ctx) : unit = process_file env "synthetic/env.ncg"

@@ -64,9 +64,14 @@ let test_const_unknown_fails () =
 
 let path_to_env = "../../../../synthetic/env.ncg"
 
+let create_env_with_env () =
+  let env = Elab.Interface.create () in
+  Elab.Interface.process_file env path_to_env;
+  env
+
 let test_empty_constants () =
   (* Empty and Empty.elim live in the axioms env *)
-  let env = Elab.Interface.create_with_env_path path_to_env in
+  let env = create_env_with_env () in
   let lctx = Hashtbl.create 16 in
 
   (* Empty : Type (i.e. Sort 1) *)
@@ -383,7 +388,7 @@ let test_rebind_bvar () =
     ~expected:(Lam (Bvar 0, Bvar 1))
 
 let test_len_sanity () =
-  let env = Elab.Interface.create_with_env_path path_to_env in
+  let env = create_env_with_env () in
   let lctx = Hashtbl.create 16 in
 
   (* Base types are Sort 1 *)
@@ -420,7 +425,7 @@ let test_len_sanity () =
     ~expected:(Forall (Const "Measure", Forall (Const "Measure", Const "Measure")))
 
 let test_len_app () =
-  let env = Elab.Interface.create_with_env_path path_to_env in
+  let env = create_env_with_env () in
   let lctx = Hashtbl.create 16 in
 
   (* Lt Zero Zero : Prop *)
