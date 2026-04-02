@@ -314,7 +314,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
                (Hashtbl.create 0)
                ty_arg_ex
                (Hashtbl.create 0)
-           with Failure _ ->
+           with Error.ElabError { error_type = UnificationFailure _; _ } ->
              raise_at
                ty_arg
                (Error.TypeMismatch
@@ -333,7 +333,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
           (* if the expected type is a hole, go normally *)
           let infer_ty = infertype ~depth:(depth + 1) e tm in
           try unify ~depth:(depth + 1) e infer_ty (Hashtbl.create 0) ty (Hashtbl.create 0)
-          with Failure _ ->
+          with Error.ElabError { error_type = UnificationFailure _; _ } ->
             raise_at
               tm
               (Error.TypeMismatch
@@ -351,7 +351,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
   | App _ | Name _ | Arrow _ | Sort _ | Bvar _ -> (
       let infer_ty = infertype ~depth:(depth + 1) e tm in
       try unify ~depth:(depth + 1) e infer_ty (Hashtbl.create 0) ty (Hashtbl.create 0)
-      with Failure _ ->
+      with Error.ElabError { error_type = UnificationFailure _; _ } ->
         raise_at
           tm
           (Error.TypeMismatch { term = tm; inferred_type = infer_ty; expected_type = ty })
