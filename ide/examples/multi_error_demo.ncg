@@ -1,0 +1,2 @@
+Theorem bad1 : Prop := HELLO
+Theorem bad2 : Prop := WORLD

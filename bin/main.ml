@@ -17,12 +17,36 @@ let () =
      exit 255);
 
   let tone = Nice_messages.tone_from_env () in
-  try
-    Elab.Interface.process_file env filename;
-    print_endline "Valid proofs!"
-  with Error.ElabError info ->
-    print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
-    (match Nice_messages.pick_message tone Nice_messages.After_error with
-    | Some extra -> Printf.printf "\n%s\n\n" extra
-    | None -> ());
-    exit 1
+  let stmts =
+    try Elab.Interface.parse_statements filename
+    with Error.ElabError info ->
+      print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
+      (match Nice_messages.pick_message tone Nice_messages.After_error with
+      | Some extra -> Printf.printf "\n%s\n\n" extra
+      | None -> ());
+      exit 1
+  in
+
+  let errors =
+    List.filter_map
+      (fun stmt ->
+        try
+          Elab.Interface.process_statement env stmt;
+          None
+        with Error.ElabError info -> Some info)
+      stmts
+  in
+
+  match errors with
+  | [] -> print_endline "Valid proofs!"
+  | errors ->
+      List.iter
+        (fun info ->
+          print_endline
+            ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
+          print_endline "")
+        errors;
+      (match Nice_messages.pick_message tone Nice_messages.After_error with
+      | Some extra -> Printf.printf "\n%s\n\n" extra
+      | None -> ());
+      exit 1
