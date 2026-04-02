@@ -113,19 +113,19 @@ Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) ->
     (fst _ _ (snd _ _ h))
     ))))
 
-Theorem length_pts_eq : (a: Point) -> (b: Point) -> (c: Point) -> Eq _ (Length a b) (Length a c) ->
-    Eq _ a b -> Eq _ a c :=
-    fun a b c (h: Eq _ (Length a b) (Length a c)) (ab: Eq _ a b) =>
-    have _ _ (Eq.elim Measure (Length a b) (fun x => Eq _ (Length a c) x)
+Theorem length_pts_eq : (a: Point) -> (b: Point) -> (c: Point) -> (d: Point) -> Eq _ (Length a b) (Length c d) ->
+    Eq _ a b -> Eq _ c d :=
+    fun a b c d (h: Eq _ (Length a b) (Length c d)) (ab: Eq _ a b) =>
+    have _ _ (Eq.elim Measure (Length a b) (fun x => Eq _ (Length c d) x)
     (Eq.symm _ _ _ h) Zero
     (len_zero_if_eq a b ab))
-    (fun (lac : Eq _ (Length a c) Zero) =>
-    eq_if_len_zero a c lac)
+    (fun (lac : Eq _ (Length c d) Zero) =>
+    eq_if_len_zero _ _ lac)
 
-Theorem length_pts_ne : (a: Point) -> (b: Point) -> (c: Point) -> Eq _ (Length a b) (Length a c) ->
-    (Eq _ a b -> False) -> (Eq _ a c -> False) :=
-    fun a b c (h: Eq _ (Length a b) (Length a c)) (ab: Eq _ a b -> False) (ac: Eq _ a c) =>
-    ab (length_pts_eq a c b (Eq.symm _ _ _ h) ac)
+Theorem length_pts_ne : (a: Point) -> (b: Point) -> (c: Point) -> (d : Point) -> Eq _ (Length a b) (Length c d) ->
+    (Eq _ a b -> False) -> (Eq _ c d -> False) :=
+    fun a b c d (h: Eq _ (Length a b) (Length c d)) (ab: Eq _ a b -> False) (cd: Eq _ c d) =>
+    ab (length_pts_eq _ _ _ _ (Eq.symm _ _ _ h) cd)
 
 Theorem ZeroAdd : (a: Measure) -> Eq _ (Add Zero a) a :=
     fun (a: Measure) => Eq.elim _ _ (fun x => Eq _ x a) (AddZero a) _ (AddComm a Zero)
@@ -156,7 +156,7 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     And.elim1 _ _ _ baacaa
     (fun (baa : CenterCircle b aa) (caa : OnCircle c aa) =>
 
-    have _ _ (Ne.symm _ _ _ (length_pts_ne b a d (Eq.symm _ _ _ (snd _ _ eqtri)) (Ne.symm _ _ _ ab)))
+    have _ _ (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ (snd _ _ eqtri)) (Ne.symm _ _ _ ab)))
     (fun (db : (Eq _ d b -> False)) =>
 
     Exists.elim _ _ _ (pt_oncircle_of_inside_ne _ _ _ db (center_lies_inside_circle b aa baa))
@@ -174,7 +174,7 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     And.elim1 _ _ _ debb
     (fun (dbb : CenterCircle d bb) (ebb: OnCircle e bb) =>
 
-    have _ _ (Ne.symm _ _ _ (length_pts_ne a b d (fst _ _ eqtri) ab))
+    have _ _ (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (fst _ _ eqtri) ab))
     (fun (da : (Eq _ d a -> False)) =>
 
     have _ _ (EqTrans _ _ _ _ (length_symm d b) (EqTrans _ _ _ _ (snd _ _ eqtri) (EqTrans _ _ _ _ (length_symm b a) (EqTrans _ _ _ _ (fst _ _ eqtri) (length_symm a d)))))
@@ -263,4 +263,49 @@ Theorem prop2 : (a : Point) -> (b: Point) -> (c: Point)
     )
     )
     (fun (ab : Eq _ a b -> False) => prop2_ne a b c bc ab)
+    )
+
+Axiom sorry : (P: Prop) -> P
+
+Theorem pt_oncircle_in_out : (a : Point) -> (b : Point) -> (aa : Circle) ->
+    InCircle a aa -> (InCircle b aa -> False) -> (OnCircle b aa -> False) ->
+    Exists Point (fun c => And (OnCircle c aa) (Between a c b)) := 
+
+    fun a b aa aaa b_not_in b_not_on =>
+    Exists.elim _ _ _ (line_of_pts a b (fun ab => b_not_in (Eq.elim _ _ (fun x => InCircle x aa) aaa b ab)))
+    (fun (L : Line) (h : And (OnLine a L) (OnLine b L)) =>
+
+    Exists.elim _ _ _ (pt_oncircle_between_inside_outside L aa a b (fst _ _ h) (snd _ _ h) aaa b_not_on b_not_in)
+    (fun c h =>
+    Exists.intro _ _ c (
+        snd _ _ h
+    )
+    )
+    )
+
+Theorem segment_of_eq_len : (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) ->
+    (Eq _ a b -> False) -> (Lt (Length a b) (Length c d)) ->
+    Exists Point (fun e => And (Eq _ (Length a b) (Length c e)) (Between c e d)) :=
+    fun a b c d ab ab_lt_cd =>
+
+    Exists.elim _ _ _ (prop2 c a b)
+    (fun (f : Point) (he : Eq _ (Length c f) (Length a b)) =>
+
+    have _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ he) ab)
+    (fun (cf : Eq _ c f -> False) =>
+
+    Exists.elim _ _ _ (circle_of_ne _ _ cf)
+    (fun (aa : Circle) (h : And (CenterCircle c aa) (OnCircle f aa)) =>
+
+    have _ _ (center_lies_inside_circle _ _ (fst _ _ h)) 
+    (fun (c_in_aa : InCircle c aa) =>
+
+    Exists.elim _ _ _ (pt_oncircle_in_out _ _ _ c_in_aa (sorry (InCircle d aa -> False)) (sorry (OnCircle d aa -> False)))
+    (fun (e : Point) (he : And (OnCircle e aa) (Between c e d)) =>
+
+    sorry _
+    )
+    )
+    )
+    )
     )
