@@ -46,7 +46,7 @@ let test_rewrite_simple () =
   let st = init_state ~elab_ctx:env goal_ty in
   let st = run_tactic (rewrite (elab env "a_eq_b")) st in
   Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
-  let got = pp_term env (beta_nf env (List.hd st.open_goals).goal_type) in
+  let got = pp_term env (Elab.Reduce.reduce env (List.hd st.open_goals).goal_type) in
   let exp = pp_term env (elab env "Eq A (f b) (f b)") in
   Alcotest.(check string) "new goal is Eq A (f b) (f b)" exp got
 
