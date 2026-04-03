@@ -2163,6 +2163,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* lines_inter_if_diff_sides: (a : Point) -> (b : Point) -> (L : Line) -> (M : Line) ->
+    (Not (OnLine a L)) -> (Not (OnLine b L)) ->
     (Not (SameSide a b L)) ->
     (OnLine a M) ->
     (OnLine b M) ->
@@ -2194,6 +2195,7 @@ let%expect_test "Elaborate env.ncg" =
   (* line_circle_inter_if_diff_sides: (a : Point) -> (b : Point) -> (L : Line) -> (aa : Circle) ->
     (Or (InCircle a aa) (OnCircle a aa)) ->
     (Or (InCircle b aa) (OnCircle b aa)) ->
+    (Not (OnLine a L)) -> (Not (OnLine b L)) ->
     (Not (SameSide a b L)) ->
     (LineCircleInter L aa) *)
   show_kterm "line_circle_inter_if_diff_sides";
