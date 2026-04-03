@@ -21,10 +21,18 @@ let kterm_to_repr (term : Kernel.Term.term) =
           (kterm_to_repr_helper body (indent + 1))
           indent_str
     | App (f, arg) ->
-        Printf.sprintf
-          "App (%s, %s)"
-          (kterm_to_repr_helper f indent)
-          (kterm_to_repr_helper arg indent)
+        let base = match f with Const name | App (Const name, _) -> name | _ -> "" in
+        if base = "And" || base = "Or" || base = "Iff" then
+          Printf.sprintf
+            "App (%s,\n%s%s)"
+            (kterm_to_repr_helper f indent)
+            indent_str
+            (kterm_to_repr_helper arg indent)
+        else
+          Printf.sprintf
+            "App (%s, %s)"
+            (kterm_to_repr_helper f indent)
+            (kterm_to_repr_helper arg indent)
     | Sort n -> Printf.sprintf "Sort %d" n
   in
   kterm_to_repr_helper term 0
@@ -288,9 +296,11 @@ let%expect_test "Elaborate env.ncg" =
     :=
     Lam (Sort 0,
       Lam (Sort 0,
-        App (App (Const "And", Forall (Bvar 1,
+        App (App (Const "And",
+        Forall (Bvar 1,
           Bvar 1
-        )), Forall (Bvar 0,
+        )),
+        Forall (Bvar 0,
           Bvar 2
         ))
       )
@@ -365,7 +375,11 @@ let%expect_test "Elaborate env.ncg" =
       ),
         Forall (Bvar 1,
           Forall (App (Const "List", Bvar 2),
-            App (App (Const "Iff", App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0))), App (App (Const "And", App (Bvar 2, Bvar 1)), App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)))
+            App (App (Const "Iff",
+            App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0))),
+            App (App (Const "And",
+            App (Bvar 2, Bvar 1)),
+            App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)))
           )
         )
       )
@@ -454,7 +468,11 @@ let%expect_test "Elaborate env.ncg" =
     {|
     Forall (Const "Measure",
       Forall (Const "Measure",
-        App (App (Const "Or", App (App (Const "Lt", Bvar 1), Bvar 0)), App (App (Const "Or", App (App (Const "Lt", Bvar 0), Bvar 1)), App (App (App (Const "Eq", Const "Measure"), Bvar 1), Bvar 0)))
+        App (App (Const "Or",
+        App (App (Const "Lt", Bvar 1), Bvar 0)),
+        App (App (Const "Or",
+        App (App (Const "Lt", Bvar 0), Bvar 1)),
+        App (App (App (Const "Eq", Const "Measure"), Bvar 1), Bvar 0)))
       )
     )
     |}];
@@ -481,7 +499,9 @@ let%expect_test "Elaborate env.ncg" =
   [%expect
     {|
     Forall (Const "Measure",
-      App (App (Const "Or", App (App (Const "Lt", Const "Zero"), Bvar 0)), App (App (App (Const "Eq", Const "Measure"), Const "Zero"), Bvar 0))
+      App (App (Const "Or",
+      App (App (Const "Lt", Const "Zero"), Bvar 0)),
+      App (App (App (Const "Eq", Const "Measure"), Const "Zero"), Bvar 0))
     )
     |}];
 
@@ -720,7 +740,11 @@ let%expect_test "Elaborate env.ncg" =
     Lam (Const "Point",
       Lam (Const "Point",
         Lam (Const "Line",
-          App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (Const "OnLine", Bvar 2), Bvar 0))), App (Const "Not", App (App (Const "OnLine", Bvar 1), Bvar 0)))), App (Const "Not", App (App (App (Const "SameSide", Bvar 2), Bvar 1), Bvar 0)))
+          App (App (Const "And",
+          App (App (Const "And",
+          App (Const "Not", App (App (Const "OnLine", Bvar 2), Bvar 0))),
+          App (Const "Not", App (App (Const "OnLine", Bvar 1), Bvar 0)))),
+          App (Const "Not", App (App (App (Const "SameSide", Bvar 2), Bvar 1), Bvar 0)))
         )
       )
     )
@@ -747,9 +771,13 @@ let%expect_test "Elaborate env.ncg" =
       Lam (App (Const "List", Const "Point"),
         Lam (App (Const "List", Const "Line"),
           Lam (App (Const "List", Const "Circle"),
-            App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 3), Bvar 2))), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+            App (App (Const "And",
+            App (App (Const "And",
+            App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 3), Bvar 2))),
+            App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
               App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 0))
-            )), Bvar 1))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+            )), Bvar 1))),
+            App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
               App (Const "Not", App (App (Const "OnCircle", Bvar 4), Bvar 0))
             )), Bvar 0))
           )
@@ -788,7 +816,9 @@ let%expect_test "Elaborate env.ncg" =
           Forall (App (Const "List", Const "Circle"),
             Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 3), Bvar 1)),
               App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                App (App (Const "And",
+                App (App (Const "OnLine", Bvar 0), Bvar 5)),
+                App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
               ))
             )
           )
@@ -816,7 +846,11 @@ let%expect_test "Elaborate env.ncg" =
                     Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
                       Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
                         App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 0), Bvar 8))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                          App (App (Const "And",
+                          App (App (Const "And",
+                          App (App (Const "OnLine", Bvar 0), Bvar 10)),
+                          App (App (App (Const "Between", Bvar 9), Bvar 0), Bvar 8))),
+                          App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
                         ))
                       )
                     )
@@ -849,7 +883,11 @@ let%expect_test "Elaborate env.ncg" =
                     Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
                       Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
                         App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 0))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                          App (App (Const "And",
+                          App (App (Const "And",
+                          App (App (Const "OnLine", Bvar 0), Bvar 10)),
+                          App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 0))),
+                          App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
                         ))
                       )
                     )
@@ -877,7 +915,9 @@ let%expect_test "Elaborate env.ncg" =
             Forall (App (Const "List", Const "Circle"),
               Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 4)),
                 App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                  App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                  App (App (Const "And",
+                  App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)),
+                  App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
                 ))
               )
             )
@@ -903,7 +943,11 @@ let%expect_test "Elaborate env.ncg" =
             Forall (App (Const "List", Const "Circle"),
               Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 4)),
                 App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                  App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 6))), App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                  App (App (Const "And",
+                  App (App (Const "And",
+                  App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 6))),
+                  App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)))),
+                  App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
                 ))
               )
             )
@@ -925,7 +969,9 @@ let%expect_test "Elaborate env.ncg" =
           Forall (App (Const "List", Const "Circle"),
             Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Circle"), Bvar 3), Bvar 0)),
               App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                App (App (Const "And",
+                App (App (Const "OnCircle", Bvar 0), Bvar 5)),
+                App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
               ))
             )
           )
@@ -945,7 +991,9 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (Const "List", Const "Line"),
           Forall (App (Const "List", Const "Circle"),
             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", App (App (Const "InCircle", Bvar 0), Bvar 4)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+              App (App (Const "And",
+              App (App (Const "InCircle", Bvar 0), Bvar 4)),
+              App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
             ))
           )
         )
@@ -966,7 +1014,11 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (Const "List", Const "Line"),
           Forall (App (Const "List", Const "Circle"),
             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (Const "OnCircle", Bvar 0), Bvar 4))), App (Const "Not", App (App (Const "InCircle", Bvar 0), Bvar 4)))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+              App (App (Const "And",
+              App (App (Const "And",
+              App (Const "Not", App (App (Const "OnCircle", Bvar 0), Bvar 4))),
+              App (Const "Not", App (App (Const "InCircle", Bvar 0), Bvar 4)))),
+              App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
             ))
           )
         )
@@ -985,7 +1037,9 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Line"), Lam (Const "Line",
-            App (App (Const "And", App (App (Const "OnLine", Bvar 3), Bvar 0)), App (App (Const "OnLine", Bvar 2), Bvar 0))
+            App (App (Const "And",
+            App (App (Const "OnLine", Bvar 3), Bvar 0)),
+            App (App (Const "OnLine", Bvar 2), Bvar 0))
           ))
         )
       )
@@ -1003,7 +1057,9 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Circle"), Lam (Const "Circle",
-            App (App (Const "And", App (App (Const "CenterCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 2), Bvar 0))
+            App (App (Const "And",
+            App (App (Const "CenterCircle", Bvar 3), Bvar 0)),
+            App (App (Const "OnCircle", Bvar 2), Bvar 0))
           ))
         )
       )
@@ -1021,7 +1077,9 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Line",
         Forall (App (App (Const "LinesInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 3)), App (App (Const "OnLine", Bvar 0), Bvar 2))
+            App (App (Const "And",
+            App (App (Const "OnLine", Bvar 0), Bvar 3)),
+            App (App (Const "OnLine", Bvar 0), Bvar 2))
           ))
         )
       )
@@ -1039,7 +1097,9 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Circle",
         Forall (App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 2))
+            App (App (Const "And",
+            App (App (Const "OnLine", Bvar 0), Bvar 3)),
+            App (App (Const "OnCircle", Bvar 0), Bvar 2))
           ))
         )
       )
@@ -1062,7 +1122,15 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)), App (App (Const "And", App (App (Const "OnLine", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+              App (App (Const "And",
+              App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)),
+              App (App (Const "And",
+              App (App (Const "OnLine", Bvar 1), Bvar 4)),
+              App (App (Const "And",
+              App (App (Const "OnLine", Bvar 0), Bvar 4)),
+              App (App (Const "And",
+              App (App (Const "OnCircle", Bvar 1), Bvar 3)),
+              App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
             ))
           ))
         )
@@ -1091,7 +1159,11 @@ let%expect_test "Elaborate env.ncg" =
                   Forall (App (Const "Not", App (App (Const "OnCircle", Bvar 3), Bvar 5)),
                     Forall (App (Const "Not", App (App (Const "InCircle", Bvar 4), Bvar 6)),
                       App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                        App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 9)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (App (Const "Between", Bvar 7), Bvar 0), Bvar 6)))
+                        App (App (Const "And",
+                        App (App (Const "OnLine", Bvar 0), Bvar 9)),
+                        App (App (Const "And",
+                        App (App (Const "OnCircle", Bvar 0), Bvar 8)),
+                        App (App (App (Const "Between", Bvar 7), Bvar 0), Bvar 6)))
                       ))
                     )
                   )
@@ -1124,7 +1196,11 @@ let%expect_test "Elaborate env.ncg" =
                 Forall (App (App (Const "InCircle", Bvar 3), Bvar 4),
                   Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 4),
                     App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                      App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 8)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 7)), App (App (App (Const "Between", Bvar 0), Bvar 6), Bvar 5)))
+                      App (App (Const "And",
+                      App (App (Const "OnLine", Bvar 0), Bvar 8)),
+                      App (App (Const "And",
+                      App (App (Const "OnCircle", Bvar 0), Bvar 7)),
+                      App (App (App (Const "Between", Bvar 0), Bvar 6), Bvar 5)))
                     ))
                   )
                 )
@@ -1147,7 +1223,9 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Circle",
         Forall (App (App (Const "CirclesInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 2))
+            App (App (Const "And",
+            App (App (Const "OnCircle", Bvar 0), Bvar 3)),
+            App (App (Const "OnCircle", Bvar 0), Bvar 2))
           ))
         )
       )
@@ -1170,7 +1248,15 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (App (Const "CirclesInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 4)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+              App (App (Const "And",
+              App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)),
+              App (App (Const "And",
+              App (App (Const "OnCircle", Bvar 1), Bvar 4)),
+              App (App (Const "And",
+              App (App (Const "OnCircle", Bvar 1), Bvar 3)),
+              App (App (Const "And",
+              App (App (Const "OnCircle", Bvar 0), Bvar 4)),
+              App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
             ))
           ))
         )
@@ -1201,7 +1287,11 @@ let%expect_test "Elaborate env.ncg" =
                         Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
                           Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
                             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                              App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7)))
+                              App (App (Const "And",
+                              App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9)),
+                              App (App (Const "And",
+                              App (App (Const "OnCircle", Bvar 0), Bvar 8)),
+                              App (App (Const "OnCircle", Bvar 0), Bvar 7)))
                             ))
                           )
                         )
@@ -1241,7 +1331,13 @@ let%expect_test "Elaborate env.ncg" =
                         Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
                           Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
                             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                              App (App (Const "And", App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 9))), App (App (Const "And", App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9))), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7))))
+                              App (App (Const "And",
+                              App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 9))),
+                              App (App (Const "And",
+                              App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9))),
+                              App (App (Const "And",
+                              App (App (Const "OnCircle", Bvar 0), Bvar 8)),
+                              App (App (Const "OnCircle", Bvar 0), Bvar 7))))
                             ))
                           )
                         )
@@ -1350,7 +1446,13 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Point",
           Forall (App (App (App (Const "Between", Bvar 2), Bvar 1), Bvar 0),
-            App (App (Const "And", App (App (App (Const "Between", Bvar 1), Bvar 2), Bvar 3)), App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2)), App (App (Const "And", App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 1)), App (Const "Not", App (App (App (Const "Between", Bvar 2), Bvar 3), Bvar 1)))))
+            App (App (Const "And",
+            App (App (App (Const "Between", Bvar 1), Bvar 2), Bvar 3)),
+            App (App (Const "And",
+            App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2)),
+            App (App (Const "And",
+            App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 1)),
+            App (Const "Not", App (App (App (Const "Between", Bvar 2), Bvar 3), Bvar 1)))))
           )
         )
       )
@@ -1462,7 +1564,11 @@ let%expect_test "Elaborate env.ncg" =
                   Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
                     Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
                       Forall (App (App (App (Const "Ne", Const "Point"), Bvar 8), Bvar 6),
-                        App (App (Const "Or", App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 7)), App (App (Const "Or", App (App (App (Const "Between", Bvar 8), Bvar 9), Bvar 7)), App (App (App (Const "Between", Bvar 9), Bvar 7), Bvar 8)))
+                        App (App (Const "Or",
+                        App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 7)),
+                        App (App (Const "Or",
+                        App (App (App (Const "Between", Bvar 8), Bvar 9), Bvar 7)),
+                        App (App (App (Const "Between", Bvar 9), Bvar 7), Bvar 8)))
                       )
                     )
                   )
@@ -1584,7 +1690,9 @@ let%expect_test "Elaborate env.ncg" =
               Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1)),
                 Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 2)),
                   Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 3)),
-                    App (App (Const "Or", App (App (App (Const "SameSide", Bvar 7), Bvar 5), Bvar 4)), App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 4))
+                    App (App (Const "Or",
+                    App (App (App (Const "SameSide", Bvar 7), Bvar 5), Bvar 4)),
+                    App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 4))
                   )
                 )
               )
@@ -1894,8 +2002,12 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Point",
           Forall (Const "Circle",
-            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
-              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
+            Forall (App (App (Const "Or",
+            App (App (Const "InCircle", Bvar 3), Bvar 0)),
+            App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+              Forall (App (App (Const "Or",
+              App (App (Const "InCircle", Bvar 3), Bvar 1)),
+              App (App (Const "OnCircle", Bvar 3), Bvar 1)),
                 Forall (App (App (App (Const "Between", Bvar 5), Bvar 3), Bvar 4),
                   App (App (Const "InCircle", Bvar 4), Bvar 3)
                 )
@@ -1919,10 +2031,14 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Point",
           Forall (Const "Circle",
-            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+            Forall (App (App (Const "Or",
+            App (App (Const "InCircle", Bvar 3), Bvar 0)),
+            App (App (Const "OnCircle", Bvar 3), Bvar 0)),
               Forall (App (Const "Not", App (App (Const "InCircle", Bvar 2), Bvar 1)),
                 Forall (App (App (App (Const "Between", Bvar 5), Bvar 3), Bvar 4),
-                  App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3)))
+                  App (App (Const "And",
+                  App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))),
+                  App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3)))
                 )
               )
             )
@@ -2020,8 +2136,12 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Line",
           Forall (Const "Circle",
-            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
-              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
+            Forall (App (App (Const "Or",
+            App (App (Const "InCircle", Bvar 3), Bvar 0)),
+            App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+              Forall (App (App (Const "Or",
+              App (App (Const "InCircle", Bvar 3), Bvar 1)),
+              App (App (Const "OnCircle", Bvar 3), Bvar 1)),
                 Forall (App (App (App (Const "DiffSide", Bvar 5), Bvar 4), Bvar 3),
                   App (App (Const "LineCircleInter", Bvar 4), Bvar 3)
                 )
@@ -2067,9 +2187,13 @@ let%expect_test "Elaborate env.ncg" =
         Forall (Const "Circle",
           Forall (Const "Circle",
             Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
-              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 2)), App (App (Const "OnCircle", Bvar 3), Bvar 2)),
+              Forall (App (App (Const "Or",
+              App (App (Const "InCircle", Bvar 3), Bvar 2)),
+              App (App (Const "OnCircle", Bvar 3), Bvar 2)),
                 Forall (App (App (Const "InCircle", Bvar 5), Bvar 2),
-                  Forall (App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3))),
+                  Forall (App (App (Const "And",
+                  App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))),
+                  App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3))),
                     App (App (Const "CirclesInter", Bvar 5), Bvar 4)
                   )
                 )
@@ -2189,7 +2313,9 @@ let%expect_test "Elaborate env.ncg" =
     Forall (Const "Point",
       Forall (Const "Point",
         Forall (Const "Point",
-          App (App (Const "And", App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))), App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0))))
+          App (App (Const "And",
+          App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))),
+          App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0))))
         )
       )
     )
@@ -2229,7 +2355,9 @@ let%expect_test "Elaborate env.ncg" =
     Forall (Const "Point",
       Forall (Const "Point",
         Forall (Const "Point",
-          App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 0), Bvar 2), Bvar 1))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 2), Bvar 0), Bvar 1)))
+          App (App (Const "And",
+          App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 0), Bvar 2), Bvar 1))),
+          App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 2), Bvar 0), Bvar 1)))
         )
       )
     )
@@ -2473,7 +2601,9 @@ let%expect_test "Elaborate env.ncg" =
                 Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 3),
                     Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 6), Bvar 7), Bvar 5)), Const "Zero"),
-                      App (App (Const "And", App (App (Const "OnLine", Bvar 6), Bvar 5)), App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)))
+                      App (App (Const "And",
+                      App (App (Const "OnLine", Bvar 6), Bvar 5)),
+                      App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)))
                     )
                   )
                 )
@@ -2562,7 +2692,9 @@ let%expect_test "Elaborate env.ncg" =
                               Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9), Bvar 7)),
                                 Forall (App (App (App (Const "Ne", Const "Line"), Bvar 9), Bvar 8),
                                   Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 12)), App (App (Const "Add", App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 11)), App (App (App (Const "Angle", Bvar 11), Bvar 14), Bvar 12))),
-                                    App (App (Const "And", App (App (App (Const "SameSide", Bvar 14), Bvar 12), Bvar 10)), App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11))
+                                    App (App (Const "And",
+                                    App (App (App (Const "SameSide", Bvar 14), Bvar 12), Bvar 10)),
+                                    App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11))
                                   )
                                 )
                               )
@@ -2956,7 +3088,13 @@ let%expect_test "Elaborate env.ncg" =
                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 13)), App (App (Const "Length", Bvar 8), Bvar 10)),
-                                  App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Angle", Bvar 11), Bvar 10), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))),
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Angle", Bvar 11), Bvar 10), Bvar 9))),
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))),
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
                                 )
                               )
                             )
@@ -3002,7 +3140,13 @@ let%expect_test "Elaborate env.ncg" =
                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 11)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 8)),
-                                  App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 14), Bvar 12)), App (App (Const "Length", Bvar 11), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))),
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 14), Bvar 12)), App (App (Const "Length", Bvar 11), Bvar 9))),
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))),
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
                                 )
                               )
                             )
