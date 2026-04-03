@@ -297,7 +297,10 @@ let abstract_pat (ctx : ctx) (t : term) (pat : term) : int * term =
   let bid = gen_binder_id () in
   let rec go (t : term) = 
     try
-      (* If they unify, then replace the term with a bvar *)
+      (* If they unify, then replace the term with a bvar
+
+        Notice that since we do not modify the local context,
+        `pat` should not unify with `t` if `t` contains a free variable. *)
       unify ctx t (Hashtbl.create 0) pat (Hashtbl.create 0);
       {loc = t.loc; inner = Bvar bid}
     with _ ->
