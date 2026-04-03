@@ -239,7 +239,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
   | _, MetaSpine ({ inner = Hole m; _ }, args) -> pattern_match_meta e g2 m args t1
   | VarSpine (h1, args1), VarSpine (h2, args2) when h1.inner = h2.inner ->
       if List.length args1 <> List.length args2 then
-        failwith "tried to unify different length var spines"
+        raise_at t1 (Error.UnificationFailure { left = t1; right = t2 })
       else
         List.iter2
           (fun arg1 arg2 -> unify ~depth:(depth + 1) e arg1 g1 arg2 g2)
