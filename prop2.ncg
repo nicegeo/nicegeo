@@ -226,7 +226,7 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
 
 
 (* maybe we want general excluded middle as an axiom? *)
-Theorem point_eq_em : (a: Point) -> (b: Point) -> a = b \/ (a = b -> False) :=
+Theorem point_eq_em : (a: Point) -> (b: Point) -> a = b \/ a ≠ b :=
     fun (a: Point) (b: Point) =>
     Or.elim _ _ _ (ZeroLeast (Length a b))
     (fun (h: 0 < Length a b) =>
