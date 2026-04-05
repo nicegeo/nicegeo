@@ -79,6 +79,9 @@ type error_type =
   | TypeExpected of type_expected_info
       (** [TypeExpected(info)] indicates that a non-type term was used in a position that
           requires a type. [info] carries details about the term and its type. *)
+  | ImportNotAtTop
+      (** [ImportNotAtTop] indicates that an import statement was encountered after a
+          declaration or directive in the file. *)
   | UnificationFailure of unification_failure_info
 
 (** The complete error record raised by the elaborator. *)
