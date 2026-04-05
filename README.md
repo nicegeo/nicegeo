@@ -43,7 +43,7 @@ dune runtest
 - `elab/` is a layer on top of the kernel with many usability features separate from the kernel. It handles
   parsing, automatically filling holes inserted by the user, and has its own typechecking logic. It ultimately
   produces a kernel-level term (that should represent what the user intended to some degree) for the kernel to check. 
-	- `elab/interface.ml` contains the main interface of the layer: creating a context, adding the axioms in `env.ncg`,
+	- `elab/interface.ml` contains the main interface of the layer: creating a context, adding the axioms in `synthetic/env.ncg`,
 	  and checking parsed proofs. 
 	- `elab/typecheck.ml` contains the type checking and unification logic for automatically filling holes, and
 	  calls the kernel to check the final produced term.

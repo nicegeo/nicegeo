@@ -44,7 +44,13 @@ type type_expected_info = {
   not_type_infer : term;  (** The inferred type of [not_type]. *)
 }
 
-(** The type of error raised in an ElabError. *)
+(** Payload for a unification failure. *)
+type unification_failure_info = {
+  left : term;  (** Left-hand side of the failed unification. *)
+  right : term;  (** Right-hand side of the failed unification. *)
+}
+
+(** The type of error raised in an [ElabError]. *)
 type error_type =
   | ParseError of parse_error_info
       (** [ParseError(info)] indicated a parsing failure. [info] carries the offending
@@ -76,6 +82,7 @@ type error_type =
   | ImportNotAtTop
       (** [ImportNotAtTop] indicates that an import statement was encountered after a
           declaration or directive in the file. *)
+  | UnificationFailure of unification_failure_info
 
 (** The complete error record raised by the elaborator. *)
 type elab_error_info = {

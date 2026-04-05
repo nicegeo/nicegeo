@@ -74,12 +74,3 @@ let create_with_env_path (path_to_env : string) : Types.ctx =
 
 (* Creates an elaborator environment with the default environment path. *)
 let create_with_env () : Types.ctx = create_with_env_path "synthetic/env.ncg"
-
-(* Returns the list of axioms used by the theorem `name`. *)
-let list_axioms (env : Types.ctx) (name : string) =
-  match Hashtbl.find_opt env.env name with
-  | Some entry -> (
-      match entry.data with
-      | Types.Axiom -> failwith (name ^ " is an axiom")
-      | Types.Theorem axioms -> axioms)
-  | None -> failwith ("unknown declaration: " ^ name)

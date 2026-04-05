@@ -20,31 +20,30 @@ let utf8_codepoint =
   (['\xf0' - '\xff'] utf8_continuation_byte utf8_continuation_byte utf8_continuation_byte)
 
 rule token = parse
-  | white       { token lexbuf }
-  | newline     { Lexing.new_line lexbuf; token lexbuf }
-  | "(*"        { comment lexbuf; token lexbuf }
-  | "fun"       { FUN }
-  | "Axiom"     { AXIOM }
-  | "Theorem"   { THEOREM }
-  | "Import"    { IMPORT }
-  | ":="        { DEFEQ }
-  | "->"        { FORALL }
-  | "=>"        { ARROW }
-  | ":"         { COLON }
-  | "("         { LPAREN }
-  | ")"         { RPAREN }
-  | "Type"      { TYPE }
-  | "Prop"      { PROP }
-  | "_" 	      { UNDERSCORE }
-  | "#print"    { PRINT_DIRECTIVE }
-  | "#infer"    { INFER_DIRECTIVE }
-  | "#check"    { CHECK_DIRECTIVE }
-  | "#reduce"   { REDUCE_DIRECTIVE }
+  | white        { token lexbuf }
+  | newline      { Lexing.new_line lexbuf; token lexbuf }
+  | "(*"         { comment lexbuf; token lexbuf }
+  | "fun"        { FUN }
+  | "Axiom"      { AXIOM }
+  | "Theorem"    { THEOREM }
+  | "Definition" { DEFINITION }
+  | ":="         { DEFEQ }
+  | "->"         { FORALL }
+  | "=>"         { ARROW }
+  | ":"          { COLON }
+  | "("          { LPAREN }
+  | ")"          { RPAREN }
+  | "Type"       { TYPE }
+  | "Prop"       { PROP }
+  | "_" 	       { UNDERSCORE }
+  | "#print"     { PRINT_DIRECTIVE }
+  | "#infer"     { INFER_DIRECTIVE }
+  | "#check"     { CHECK_DIRECTIVE }
+  | "#reduce"    { REDUCE_DIRECTIVE }
+  | "#opaque"    { OPAQUE_DIRECTIVE }
   | '"' (filename as fn) '"' { FILENAME fn } (* TODO: Are the quotes necessary? Should we use the raw filepath or something like Lean's modules? *)
-  | ident as id {
-      IDENT id
-    }
-  | eof         { EOF }
+  | ident as id  { IDENT id }
+  | eof          { EOF }
   (* TODO: maybe display bytes in hexadecimal instead of decimal (since using '\123' in a decent number of languages (e.g. C, Python)
     usually means to interpret that number in octal, not decimal, so that notation might confuse people) *)
   | utf8_codepoint as s { failwith (Printf.sprintf "expected input to be ASCII but found non-ASCII bytes %S" s) }

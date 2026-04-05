@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "NiceGeo IDE (Extension Host)",
+      "type": "extensionHost",
+      "request": "launch",
+      "preLaunchTask": "build-nicegeo-ide",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--disable-extensions",
+        "--disable-workspace-trust",
+        "--disable-restore-windows",
+        "${workspaceFolder}/examples",
+        "${workspaceFolder}/examples/proof.ncg"
+      ]
+    }
+  ]
+}
