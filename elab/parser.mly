@@ -1,4 +1,4 @@
-%token <string> IDENT FILENAME
+%token <string> IDENT STRING_LITERAL
 %token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE
 %token THEOREM AXIOM DEFINITION DEFEQ IMPORT
 %token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE OPAQUE_DIRECTIVE
@@ -18,7 +18,7 @@ statement:
   | i = import { Statement.Import i }
 
 import:
-  | IMPORT fn = FILENAME { Statement.{filename=fn} }
+  | IMPORT fn = STRING_LITERAL { Statement.{filename=fn} }
 
 declaration:
   | AXIOM name = IDENT COLON ty = term { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Axiom} }
