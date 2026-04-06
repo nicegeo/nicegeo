@@ -49,6 +49,7 @@ type error_type =
   | FunctionExpected of function_expected_info
   | TypeExpected of type_expected_info
   | ImportNotAtTop
+  | ImportUnexpected
   | UnificationFailure of unification_failure_info
 
 type elab_error_info = {
@@ -295,6 +296,8 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
   | ImportNotAtTop ->
       Printf.sprintf
         "Import statement not at top of file" (* TODO: add context information *)
+  | ImportUnexpected ->
+      Printf.sprintf "Import statement unexpected" (* TODO: add context information *)
   | UnificationFailure { left; right } ->
       Printf.sprintf
         "Local context:\n%s\nFailed to unify%s:%s\n%s\nwith\n%s\n"

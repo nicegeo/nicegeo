@@ -82,6 +82,9 @@ type error_type =
   | ImportNotAtTop
       (** [ImportNotAtTop] indicates that an import statement was encountered after a
           declaration or directive in the file. *)
+  | ImportUnexpected
+      (** [ImportUnexpected] indicates that an import statement was encountered after it
+          should have already been processed. *)
   | UnificationFailure of unification_failure_info
 
 (** The complete error record raised by the elaborator. *)
