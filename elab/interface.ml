@@ -37,6 +37,9 @@ let parse_term (s : string) : Term.term =
   let lexbuf = Lexing.from_string s in
   Parser.single_term Lexer.token lexbuf
 
+(** [parse_statements filename] parses all statements from the file [filename]. The output
+    may contain import statements. Raises [Error.ElabError] with a [ParseError] payload on
+    failure. *)
 let parse_statements (filename : string) : Statement.statement list =
   let ic = open_in filename in
   let lexbuf = Lexing.from_channel ic in
@@ -57,23 +60,40 @@ let parse_statements (filename : string) : Statement.statement list =
   in
   decls
 
-let process_file (env : Types.ctx) (filename : string) : unit =
-  let stmts = parse_statements filename in
-  List.iter (process_statement env) stmts
+(** Like List.filter_map, but stops at the first None and also returns the remaining
+    unprocessed list. *)
+let rec take_while_map (f : 'a -> 'b option) (l : 'a list) : 'b list * 'a list =
+  match l with
+  | [] -> ([], [])
+  | x :: xs -> (
+      match f x with
+      | None -> ([], l)
+      | Some b ->
+          let ys, rest = take_while_map f xs in
+          (b :: ys, rest))
 
 let rec get_all_statements (filename : string) : Statement.statement list =
-  List.fold_left_map
-    (fun can_import -> function
-      | Statement.Import { filename = fname } ->
-          if can_import then (true, get_all_statements fname)
-          else
-            raise
-              (Error.ElabError
-                 {
-                   context = { loc = None; decl_name = None };
-                   error_type = Error.ImportNotAtTop;
-                 })
-      | s -> (false, [ s ]))
-    true
-    (parse_statements filename)
-  |> snd |> List.flatten
+  let stmts, rem =
+    take_while_map
+      (function
+        | Statement.Import { filename = fname } -> Some (get_all_statements fname)
+        | _ -> None)
+      (parse_statements filename)
+  in
+  (* Error if rem contains any import statements *)
+  List.iter
+    (function
+      | Statement.Import _ ->
+          raise
+            (Error.ElabError
+               {
+                 context = { loc = None; decl_name = None };
+                 error_type = Error.ImportNotAtTop;
+               })
+      | _ -> ())
+    rem;
+  List.flatten stmts @ rem
+
+let process_file (env : Types.ctx) (filename : string) : unit =
+  let stmts = get_all_statements filename in
+  List.iter (process_statement env) stmts
