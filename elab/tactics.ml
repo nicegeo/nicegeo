@@ -365,9 +365,27 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
-(* TODO comment *)
+(* TODO comment, test *)
 let infer_exists_type (a : term) (st : proof_state) : term =
   Typecheck.infertype st.elab_ctx a (* TODO error handling *)
+
+(* TODO comment, test *)
+let infer_motive (exists_type : term) (g : goal) (st : proof_state) : term =
+  let goal_type = g.goal_type in
+  let hole_id = gen_hole_id () in
+  let ctx = st.elab_ctx in
+  (* TODO replace ctx's local context with proof goal's local context *)
+  (* TODO update ctx to actually have that hole ID before continuing *)
+  let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
+  (* TODO I need the right ctx here to begin with *)
+  unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0); (* updates context *)
+  match Hashtbl.find_opt ctx.metas hole_id with
+  | Some mvar ->
+    (match mvar.sol with
+    | Some p -> p
+    | None -> failwith "goal type is not what we want here") (* TODO make this failure/error message actually good *)
+  | None ->
+    failwith "something went wrong with our own programming here" (* TODO make this failure/error message actually good *)
 
 (*
  * TODO comment
@@ -379,6 +397,11 @@ let infer_exists_type (a : term) (st : proof_state) : term =
  * 5. In doing so it will construct a term Exists.intro A p a h
  *)
 let exists (a : term) (st : proof_state) : tactic_result =
-  let exists_type = infer_exists_type a st in (* this is A *)
-  ignore exists_type;
-  failwith "not yet implemented"
+  match current_goal st with
+  | Some g ->
+    let exists_type = infer_exists_type a st in (* this is A *)
+    let p = infer_motive exists_type g st in
+    ignore p;
+    failwith "not yet implemented"
+  | None ->
+    fail "No goals remaining"
