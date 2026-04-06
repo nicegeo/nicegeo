@@ -7,7 +7,6 @@ let t k = { inner = k; loc = dummy_range }
 let name s = t (Name s)
 let app f x = t (App (f, x))
 let eq_term a lhs rhs = app (app (app (name "Eq") a) lhs) rhs
-
 let start ty = init_state ~elab_ctx:e ty
 
 (* [Eq A a a] : both sides are syntactically identical Names. No beta-reduction needed. *)

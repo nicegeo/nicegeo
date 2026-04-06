@@ -13,5 +13,5 @@ let () =
       Test_tactic_apply.suite;
       Test_tacticals.suite;
       Test_tactic_context.suite;
-      Test_tactic_rw.suite
+      Test_tactic_rw.suite;
     ]

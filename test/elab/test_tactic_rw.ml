@@ -12,8 +12,12 @@ let make_env () =
   let process s =
     let lexbuf = Lexing.from_string s in
     let stmts = Elab.Parser.main Elab.Lexer.token lexbuf in
-    List.iter (Elab.Interface.process_statement env) stmts in
-  process "Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) := fun (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab";
+    List.iter (Elab.Interface.process_statement env) stmts
+  in
+  process
+    "Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) := fun \
+     (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) \
+     (Eq.intro A a) b eq_ab";
   process "Axiom A : Type";
   process "Axiom a : A";
   process "Axiom b : A";
@@ -30,7 +34,8 @@ let run_tactic tac st =
 
 (** Convert an elab term to a kernel term *)
 let to_kterm env tm =
-  Elab.Reduce.delta_reduce env tm true |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
+  Elab.Reduce.delta_reduce env tm true
+  |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
@@ -41,7 +46,7 @@ let kernel_check env proof goal_ty =
 
 (* Check that single usage of `rewrite` wcreates the correct new goal type. *)
 let test_rewrite_simple () =
-  let (env, _) = make_env () in
+  let env, _ = make_env () in
   let goal_ty = elab env "Eq A (f a) (f b)" in
   let st = init_state ~elab_ctx:env goal_ty in
   let st = run_tactic (rewrite (elab env "a_eq_b")) st in
@@ -52,7 +57,7 @@ let test_rewrite_simple () =
 
 (* Check that `rewrite` fails when the `lhs` does not appear. *)
 let test_rewrite_no_match () =
-  let (env, process) = make_env () in
+  let env, process = make_env () in
   process "Axiom x : A";
   process "Axiom y : A";
   process "Axiom c : A";
@@ -68,14 +73,14 @@ let test_rewrite_no_match () =
   a proof term that the kernel accepts.
 *)
 let test_rewrite_kernel_check () =
-  let (env, _) = make_env () in
+  let env, _ = make_env () in
   let goal_ty = elab env "Eq A (f a) (f b)" in
   let st = init_state ~elab_ctx:env goal_ty in
-  let st = st
-    |> run_tactic (rewrite (elab env "a_eq_b"))
-    |> run_tactic reflexivity in
+  let st = st |> run_tactic (rewrite (elab env "a_eq_b")) |> run_tactic reflexivity in
   Alcotest.(check bool) "no remaining goals" true (is_complete st);
-  Alcotest.(check bool) "kernel accepts proof" true
+  Alcotest.(check bool)
+    "kernel accepts proof"
+    true
     (kernel_check env st.statement goal_ty)
 
 let suite =

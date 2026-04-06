@@ -21,5 +21,11 @@ val elaborate : Types.ctx -> term -> term option -> term
     be elaborated first. *)
 val infertype : ?depth:int -> Types.ctx -> term -> term
 
-val unify : ?depth:int -> Types.ctx -> term -> (int, int) Hashtbl.t ->
-    term -> (int, int) Hashtbl.t -> unit
+val unify :
+  ?depth:int ->
+  Types.ctx ->
+  term ->
+  (int, int) Hashtbl.t ->
+  term ->
+  (int, int) Hashtbl.t ->
+  unit
