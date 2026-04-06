@@ -404,12 +404,12 @@ let infer_motive (exists_type : term) (g : goal) ctx : term =
     failwith "something went wrong with our own programming here" (* TODO make this failure/error message actually good *)
 
 (*
- * TODO comment
+ * TODO comment, test
  *
  * 1. Infer A
  * 2. Infer p; check goal type to make sure it unifies with Exists A p (unification will happen)
  * 3. Argument to the tactic should be a : A, like exists a where a is a hypothesis in the context
- * 4. This should change the proof state so that the new goal is h : p a
+ * 4. TODO left off here: this should change the proof state so that the new goal is h : p a
  * 5. In doing so it will construct a term Exists.intro A p a h
  *)
 let exists (a : term) (st : proof_state) : tactic_result =
@@ -418,7 +418,11 @@ let exists (a : term) (st : proof_state) : tactic_result =
     let ctx = add_local_hyps g st.elab_ctx in
     let exists_type = infer_exists_type a ctx in (* this is A *)
     let p = infer_motive exists_type g ctx in (* this is the motive p *)
-    ignore p;
-    failwith "not yet implemented"
+    let new_goal_ty = mk_app p a in (* goal is updated to p a *)
+    let new_hole, st = fresh_goal st g.ctx new_goal_ty in (* TODO refactor some of this stuff out/reuse it *)
+    let proof = mk_app (mk_app (mk_app (mk_app (mk_name "Exists.intro") exists_type) p) a) new_hole in
+    let st = assign_meta g.goal_id proof st in
+    let st = close_goal g.goal_id st in
+    succeed st
   | None ->
     fail "No goals remaining"
