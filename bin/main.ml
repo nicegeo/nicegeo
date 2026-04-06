@@ -28,7 +28,7 @@ let () =
   in
   let tone = Nice_messages.tone_from_env () in
   try
-    let stmts = Elab.Interface.parse_statements filename in
+    let stmts = Elab.Interface.get_all_statements filename in
     let had_errors =
       List.fold_left
         (fun acc stmt ->
