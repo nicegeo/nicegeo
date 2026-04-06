@@ -369,18 +369,13 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
   effects confuse me so I'm making a copy here; with_hyps I guess does effects instead *)
 let add_local_hyps g ctx =
   let locals = Hashtbl.copy ctx.lctx in
-  List.iter
-    (fun h -> Hashtbl.add locals h.hyp_bid (Some h.hyp_name, h.hyp_type))
-    g.ctx;
+  List.iter (fun h -> Hashtbl.add locals h.hyp_bid (Some h.hyp_name, h.hyp_type)) g.ctx;
   { ctx with lctx = locals }
 
 (* TODO comment, test *)
 let add_hole g hole_id ty ctx =
   let ctx_bids = List.map (fun h -> h.hyp_bid) g.ctx in
-  Hashtbl.replace
-    ctx.metas
-    hole_id
-    { ty = Some ty ; context = ctx_bids ; sol = None }
+  Hashtbl.replace ctx.metas hole_id { ty = Some ty; context = ctx_bids; sol = None }
 
 (* TODO comment, test *)
 let infer_motive (exists_type : term) (g : goal) ctx : term =
@@ -388,16 +383,20 @@ let infer_motive (exists_type : term) (g : goal) ctx : term =
   let hole_id = gen_hole_id () in
   let bid = Term.gen_binder_id () in
   let hole_type = mk_arrow (Some "A") bid exists_type (mk_sort 0) in
-  add_hole g hole_id hole_type ctx; (* TODO make sure this actually updates ctx, and also if so make sure we don't need back the old ctx after that *)
+  add_hole g hole_id hole_type ctx;
+  (* TODO make sure this actually updates ctx, and also if so make sure we don't need back the old ctx after that *)
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
-  unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0); (* TODO updates context---check to make sure actually works though *)
+  unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0);
+  (* TODO updates context---check to make sure actually works though *)
   match Hashtbl.find_opt ctx.metas hole_id with
-  | Some mvar ->
-    (match mvar.sol with
-    | Some p -> p
-    | None -> failwith "goal type is not what we want here") (* TODO make this failure/error message actually good *)
-  | None ->
-    failwith "something went wrong with our own programming here" (* TODO make this failure/error message actually good *)
+  | Some mvar -> (
+      match mvar.sol with
+      | Some p -> p
+      | None ->
+          failwith "goal type is not what we want here"
+          (* TODO make this failure/error message actually good *))
+  | None -> failwith "something went wrong with our own programming here"
+(* TODO make this failure/error message actually good *)
 
 (*
  * TODO comment, test
@@ -411,14 +410,21 @@ let infer_motive (exists_type : term) (g : goal) ctx : term =
 let exists (a : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | Some g ->
-    let ctx = add_local_hyps g st.elab_ctx in
-    let exists_type = Typecheck.infertype ctx a in (* this is A *)
-    let p = infer_motive exists_type g ctx in (* this is the motive p *)
-    let new_goal_ty = mk_app p a in (* goal is updated to p a *)
-    let new_hole, st = fresh_goal st g.ctx new_goal_ty in (* TODO refactor some of this stuff out/reuse it *)
-    let proof = mk_app (mk_app (mk_app (mk_app (mk_name "Exists.intro") exists_type) p) a) new_hole in
-    let st = assign_meta g.goal_id proof st in
-    let st = close_goal g.goal_id st in
-    succeed st
-  | None ->
-    fail "No goals remaining"
+      let ctx = add_local_hyps g st.elab_ctx in
+      let exists_type = Typecheck.infertype ctx a in
+      (* this is A *)
+      let p = infer_motive exists_type g ctx in
+      (* this is the motive p *)
+      let new_goal_ty = mk_app p a in
+      (* goal is updated to p a *)
+      let new_hole, st = fresh_goal st g.ctx new_goal_ty in
+      (* TODO refactor some of this stuff out/reuse it *)
+      let proof =
+        mk_app
+          (mk_app (mk_app (mk_app (mk_name "Exists.intro") exists_type) p) a)
+          new_hole
+      in
+      let st = assign_meta g.goal_id proof st in
+      let st = close_goal g.goal_id st in
+      succeed st
+  | None -> fail "No goals remaining"
