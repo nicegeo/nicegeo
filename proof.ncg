@@ -83,7 +83,6 @@ Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x 
     (fun (eqxy : Eq _ x y) => eqxy)
     )
 
-
 Theorem CancelAdd : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add z x) (Add z y) -> Eq _ x y :=
     fun x y z h =>
     AddCancel x y z (
