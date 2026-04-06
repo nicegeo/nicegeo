@@ -19,6 +19,9 @@ type directive =
   | Reduce of term * range
   | Opaque of string * range
 
+type import = { filename : string }
+
 type statement =
   | Declaration of declaration
   | Directive of directive
+  | Import of import
