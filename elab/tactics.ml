@@ -379,12 +379,22 @@ let add_local_hyps g ctx =
   { ctx with lctx = locals }
 
 (* TODO comment, test *)
+let add_hole g hole_id ty ctx =
+  let ctx_bids = List.map (fun h -> h.hyp_bid) g.ctx in
+  Hashtbl.replace
+    ctx.metas
+    hole_id
+    { ty = Some ty ; context = ctx_bids ; sol = None }
+
+(* TODO comment, test *)
 let infer_motive (exists_type : term) (g : goal) ctx : term =
   let goal_type = g.goal_type in
   let hole_id = gen_hole_id () in
-  (* TODO update ctx to actually have that hole ID before continuing *)
+  let bid = Term.gen_binder_id () in
+  let hole_type = mk_arrow (Some "A") bid exists_type (mk_sort 0) in
+  add_hole g hole_id hole_type ctx; (* TODO make sure this actually updates ctx, and also if so make sure we don't need back the old ctx after that *)
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
-  unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0); (* updates context *)
+  unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0); (* TODO updates context---check to make sure actually works though *)
   match Hashtbl.find_opt ctx.metas hole_id with
   | Some mvar ->
     (match mvar.sol with
