@@ -1,6 +1,7 @@
 Definition Ne : (A: Type) -> A -> A -> Prop := fun A a b => a = b -> False
 Definition Iff : (P : Prop) -> (Q : Prop) -> Prop := fun P Q => (P -> Q) ∧ (Q -> P)
 Definition 0 : Measure := Zero
+Definition 90 : Measure := RightAngle
 
 Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
   fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
@@ -111,19 +112,19 @@ Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) ->
     (fst _ _ (snd _ _ h))
     ))))
 
-Theorem length_pts_eq : (a: Point) -> (b: Point) -> (c: Point) -> Length a b = Length a c ->
-    a = b -> a = c :=
-    fun a b c (h: Eq _ (Length a b) (Length a c)) (ab: Eq _ a b) =>
-    have _ _ (Eq.elim Measure (Length a b) (fun x => Eq _ (Length a c) x)
+Theorem length_pts_eq : (a: Point) -> (b: Point) -> (c: Point) -> (d: Point) -> Length a b = Length c d ->
+    a = b -> c = d :=
+    fun a b c d (h: Eq _ (Length a b) (Length c d)) (ab: Eq _ a b) =>
+    have _ _ (Eq.elim Measure (Length a b) (fun x => Eq _ (Length c d) x)
     (Eq.symm _ _ _ h) Zero
     (len_zero_if_eq a b ab))
-    (fun (lac : Eq _ (Length a c) Zero) =>
-    eq_if_len_zero a c lac)
+    (fun (lac : Eq _ (Length c d) Zero) =>
+    eq_if_len_zero _ _ lac)
 
-Theorem length_pts_ne : (a: Point) -> (b: Point) -> (c: Point) -> Length a b = Length a c ->
-    a ≠ b -> a ≠ c :=
-    fun a b c h ab ac =>
-    ab (length_pts_eq a c b (Eq.symm _ _ _ h) ac)
+Theorem length_pts_ne : (a: Point) -> (b: Point) -> (c: Point) -> (d : Point) -> Length a b = Length c d ->
+    a ≠ b -> c ≠ d :=
+    fun a b c d (h: Eq _ (Length a b) (Length c d)) (ab: Eq _ a b -> False) (cd: Eq _ c d) =>
+    ab (length_pts_eq _ _ _ _ (Eq.symm _ _ _ h) cd)
 
 Theorem ZeroAdd : (a: Measure) -> 0 + a = a :=
     fun (a: Measure) => Eq.elim _ _ (fun x => x = a) (AddZero a) _ (AddComm a 0)
@@ -154,7 +155,7 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     And.elim1 _ _ _ baacaa
     (fun (baa : CenterCircle b aa) (caa : OnCircle c aa) =>
 
-    have _ _ (Ne.symm _ _ _ (length_pts_ne b a d (Eq.symm _ _ _ (snd _ _ eqtri)) (Ne.symm _ _ _ ab)))
+    have _ _ (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ (snd _ _ eqtri)) (Ne.symm _ _ _ ab)))
     (fun (db : d ≠ b) =>
 
     Exists.elim _ _ _ (pt_oncircle_of_inside_ne _ _ _ db (center_lies_inside_circle b aa baa))
@@ -172,7 +173,7 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     And.elim1 _ _ _ debb
     (fun (dbb : CenterCircle d bb) (ebb: OnCircle e bb) =>
 
-    have _ _ (Ne.symm _ _ _ (length_pts_ne a b d (fst _ _ eqtri) ab))
+    have _ _ (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (fst _ _ eqtri) ab))
     (fun (da : d ≠ a) =>
 
     have _ _ (EqTrans _ _ _ _ (length_symm d b) (EqTrans _ _ _ _ (snd _ _ eqtri) (EqTrans _ _ _ _ (length_symm b a) (EqTrans _ _ _ _ (fst _ _ eqtri) (length_symm a d)))))
@@ -333,19 +334,23 @@ angles equal the remaining angles respectively, namely those opposite the equal 
     followed by the two base points.
 *)
 Definition IsIsoceles : Point -> Point -> Point -> Prop := fun a b c =>
-    Length a b = Length a c
+    a ≠ b /\ b ≠ c /\ a ≠ c /\ Length a b = Length a c
 
 (* Proposition 5 (part 1): Equal angles in the base of isoceles triangles *)
 Theorem isoceles_eq_angles : (a : Point) -> (b : Point) -> (c : Point) ->
     IsIsoceles a b c -> Angle a b c = Angle a c b := sorry _
 
+(* Proposition 5 (part 2): Equal angles below isoceles *)
 Theorem isoceles_extended_eq_angles : (a : Point) -> (b : Point) -> (c : Point) ->
-    IsIsoceles a b c -> (L : Line) -> (d : Point) -> (e : Point) -> OnLine 
+    IsIsoceles a b c ->
+    (f : Point) -> Between a b f ->
+    (g : Point) -> Between a c g ->
+    Angle b f c = Angle b c g := sorry _
 
 (* Proposition 6: If in a triangle two angles equal one another, 
 then the sides opposite the equal angles also equal one another. *)
-Theorem eq_angles_implies_isoceles: (a : Point) -> (b : Point) -> (c : Point) ->
- (Angle a b c = Angle a c b) -> (Length a b = Length a c)
+Theorem eq_angles_implies_isoceles : (a : Point) -> (b : Point) -> (c : Point) ->
+ (Angle a b c = Angle a c b) -> (Length a b = Length a c) := sorry _
 
 (* Proposition 7:  Given two straight lines constructed from the ends of 
 a straight line and meeting in a point, 
@@ -354,28 +359,39 @@ and on the same side of it, two other straight lines meeting in another point
 and equal to the former two respectively, namely each equal to that from the same end. *)
 
 Theorem no_distinct_equal_triangles_same_base_side: (a : Point) -> (b : Point) -> (L : Line) -> (c : Point) ->
-(OnLine a L) -> (OnLine b L) ->
-(* (a ≠ b) -> (b ≠ c) -> (c ≠ a) -> *)
+(OnLine a L) -> (OnLine b L) -> (a ≠ b) -> 
+(* (b ≠ c) -> (c ≠ a) -> *)
 (d : Point) -> (c ≠ d) -> (SameSide c d L) -> (Length a c = Length a d) ->
-(Length b c ≠ Length b d)
+(Length b c ≠ Length b d) := sorry _
 
 
-(* Proposition 11: To draw a straight line at right angles to a given straight line from a given point on it. *)
-(* Theorem perp_at_pt_online : (a : Point) -> (b : Point) -> a ≠ b -> Exists Point (fun c => Angle a b c = 90) *)
+(* Proposition 8: If two triangles have the two sides equal to two sides respectively, 
+and also have the base equal to the base, then they also have the angles equal which are contained 
+by the equal straight lines. *)
+
+(* SSS axiom*)
 
 
+(* Proposition 11: To draw a straight line at right angles to a given straight line from a given point on it. 
+Statement taken from synthetic_euclid_4 formalization *)
+Theorem perp_at_pt_online : (a : Point) -> (b : Point) -> (c : Point) -> (f : Point) -> (L : Line) -> 
+    Between a b c -> OnLine a L -> OnLine b L -> Not (OnLine f L) ->
+    Exists Point (fun e => SameSide e f L ∧ Angle e b a = 90 ∧ Angle e b c = 90) := 
+    sorry _
+
+
+(* Jiayou is formalizing related to parallel *)
 (* Proposition 27 *)
 
 (* Proposition 29 *)
 
-Definition: isParallelogram: Point -> Point -> Point -> Point -> Prop := fun a b c d =>
-    Angle a 
+Definition isParallelogram: Point -> Point -> Point -> Point -> Prop := fun a b c d =>
+    Angle a b c = Angle d c b /\  Angle a c b = Angle d b c
 (* Proposition 34: In In parallelogrammic areas the opposite sides and angles equal one another, and the diameter bisects the areas. 
             /
             
 *)
 
-Definition 90 : Measure := RightAngle
 
 (* Of quadrilateral figures, a square is that which is both equilateral and right-angled *)
 Definition IsSquare : Point -> Point -> Point -> Point -> Prop := fun a b c d => 
