@@ -364,3 +364,12 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                "rewrite: failed to find instance of '%s' in goal '%s'"
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
+
+
+(*
+ * TODO comment
+ *)
+let exists (a : term) (st : proof_state) : tactic_result =
+  ignore a;
+  ignore st;
+  failwith "not yet implemented"
