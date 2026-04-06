@@ -370,10 +370,9 @@ let infer_exists_type (a : term) (st : proof_state) : term =
   Typecheck.infertype st.elab_ctx a (* TODO error handling *)
 
 (* TODO comment, test;
-  I think with_hyps claims to do something like this but misunderstands OCaml effects/references
-  We shouldn't actually need to clean anything up at the end *)
+  effects confuse me so I'm making a copy here; with_hyps I guess does effects instead *)
 let add_local_hyps g ctx =
-  let locals = ctx.lctx in
+  let locals = Hashtbl.copy ctx.lctx in
   List.iter
     (fun h -> Hashtbl.add locals h.hyp_bid (Some h.hyp_name, h.hyp_type))
     g.ctx;
@@ -386,7 +385,6 @@ let infer_motive (exists_type : term) (g : goal) (st : proof_state) : term =
   let ctx = add_local_hyps g st.elab_ctx in
   (* TODO update ctx to actually have that hole ID before continuing *)
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
-  (* TODO I need the right ctx here to begin with *)
   unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0); (* updates context *)
   match Hashtbl.find_opt ctx.metas hole_id with
   | Some mvar ->
