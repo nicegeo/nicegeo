@@ -20,3 +20,12 @@ val elaborate : Types.ctx -> term -> term option -> term
 (** [infertype ctx tm] returns the inferred type of term [tm] in context [ctx]. [tm] must
     be elaborated first. *)
 val infertype : ?depth:int -> Types.ctx -> term -> term
+
+val unify :
+  ?depth:int ->
+  Types.ctx ->
+  term ->
+  (int, int) Hashtbl.t ->
+  term ->
+  (int, int) Hashtbl.t ->
+  unit
