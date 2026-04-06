@@ -365,17 +365,18 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
-(* TODO comment, test;
-  effects confuse me so I'm making a copy here; with_hyps I guess does effects instead *)
+(* This is like with_hyps, but uses a copy of the hashmap to avoid the mess *)
 let add_local_hyps g ctx =
   let locals = Hashtbl.copy ctx.lctx in
   List.iter (fun h -> Hashtbl.add locals h.hyp_bid (Some h.hyp_name, h.hyp_type)) g.ctx;
   { ctx with lctx = locals }
 
-(* TODO comment, test *)
+(* This adds a hole of the desired type, again using a copy of the hashmap *)
 let add_hole g hole_id ty ctx =
+  let metas = Hashtbl.copy ctx.metas in
   let ctx_bids = List.map (fun h -> h.hyp_bid) g.ctx in
-  Hashtbl.replace ctx.metas hole_id { ty = Some ty; context = ctx_bids; sol = None }
+  Hashtbl.replace metas hole_id { ty = Some ty; context = ctx_bids; sol = None };
+  { ctx with metas }
 
 (* TODO comment, test *)
 let infer_motive (exists_type : term) (g : goal) ctx : term =
@@ -383,8 +384,7 @@ let infer_motive (exists_type : term) (g : goal) ctx : term =
   let hole_id = gen_hole_id () in
   let bid = Term.gen_binder_id () in
   let hole_type = mk_arrow (Some "A") bid exists_type (mk_sort 0) in
-  add_hole g hole_id hole_type ctx;
-  (* TODO make sure this actually updates ctx, and also if so make sure we don't need back the old ctx after that *)
+  let ctx = add_hole g hole_id hole_type ctx in
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
   unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0);
   (* TODO updates context---check to make sure actually works though *)
