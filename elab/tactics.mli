@@ -41,5 +41,7 @@ val intros : string list -> tactic
     occurrences of [lhs] are replaced with [rhs] *)
 val rewrite : term -> proof_state -> tactic_result
 
-(** TODO comment *)
+(** [exists a] takes in a term [a] of type [A], and constructs a new goal [p a],
+    where the old goal had form [Exists A p]. The motive [p] is inferred from
+    the goal and the type of the argument [a]. *)
 val exists : term -> proof_state -> tactic_result

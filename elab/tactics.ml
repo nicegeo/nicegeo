@@ -378,7 +378,12 @@ let add_hole g hole_id ty ctx =
   Hashtbl.replace metas hole_id { ty = Some ty; context = ctx_bids; sol = None };
   { ctx with metas }
 
-(* TODO comment, test *)
+(* 
+  This infers the motive p of the existential type when constructing an Exists.intro.
+  It uses the type A to construct the expected type, leaving in a hole for the motive.
+  It then calls unification with a fresh hole for p, to unify the goal with the type
+  Exists A ?p, where ?p : A -> Prop. If successful, it returns p.
+*)
 let infer_motive (exists_type : term) (g : goal) ctx : term =
   let goal_type = g.goal_type in
   let hole_id = gen_hole_id () in
@@ -387,7 +392,6 @@ let infer_motive (exists_type : term) (g : goal) ctx : term =
   let ctx = add_hole g hole_id hole_type ctx in
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
   unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0);
-  (* TODO updates context---check to make sure actually works though *)
   match Hashtbl.find_opt ctx.metas hole_id with
   | Some mvar -> (
       match mvar.sol with
@@ -399,31 +403,29 @@ let infer_motive (exists_type : term) (g : goal) ctx : term =
 (* TODO make this failure/error message actually good *)
 
 (*
- * TODO comment, test
- *
- * 1. Infer A
- * 2. Infer p; check goal type to make sure it unifies with Exists A p (unification will happen)
- * 3. Argument to the tactic should be a : A, like exists a where a is a hypothesis in the context
- * 4. TODO left off here: this should change the proof state so that the new goal is h : p a
- * 5. In doing so it will construct a term Exists.intro A p a h
+ * This implements the exists tactic, which takes term a as an argument, and constructs
+ * an existential from there that unifies appropriately with the goal type. It infers
+ * the motive automatically from the goal type, which should have form Exists A ?p
+ * where a : A and ?p : A -> Prop.
  *)
 let exists (a : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | Some g ->
       let ctx = add_local_hyps g st.elab_ctx in
+      (* infer A *)
       let exists_type = Typecheck.infertype ctx a in
-      (* this is A *)
+      (* infer the motive p *)
       let p = infer_motive exists_type g ctx in
-      (* this is the motive p *)
+      (* update the goal to (p a) *)
       let new_goal_ty = mk_app p a in
-      (* goal is updated to p a *)
       let new_hole, st = fresh_goal st g.ctx new_goal_ty in
-      (* TODO refactor some of this stuff out/reuse it *)
+      (* construct the proof term *)
       let proof =
         mk_app
           (mk_app (mk_app (mk_app (mk_name "Exists.intro") exists_type) p) a)
           new_hole
       in
+      (* update the proof state accordingly *)
       let st = assign_meta g.goal_id proof st in
       let st = close_goal g.goal_id st in
       succeed st
