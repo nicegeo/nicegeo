@@ -1,7 +1,17 @@
 open Term
 
+type tactic_term = {
+  name : string;
+  params : term list;
+  loc : range;
+}
+
+type theorem_body =
+  | Proof of tactic_term list
+  | Equal of term
+
 type decl_type =
-  | Theorem of term
+  | Theorem of theorem_body
   | Axiom
   | Def of term
 
