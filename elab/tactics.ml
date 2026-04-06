@@ -365,11 +365,20 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
+(* TODO comment *)
+let infer_exists_type (a : term) (st : proof_state) : term =
+  Typecheck.infertype st.elab_ctx a (* TODO error handling *)
 
 (*
  * TODO comment
+ *
+ * 1. Infer A
+ * 2. Infer p; check goal type to make sure it unifies with Exists A p (unification will happen)
+ * 3. Argument to the tactic should be a : A, like exists a where a is a hypothesis in the context
+ * 4. This should change the proof state so that the new goal is h : p a
+ * 5. In doing so it will construct a term Exists.intro A p a h
  *)
 let exists (a : term) (st : proof_state) : tactic_result =
-  ignore a;
-  ignore st;
+  let exists_type = infer_exists_type a st in (* this is A *)
+  ignore exists_type;
   failwith "not yet implemented"
