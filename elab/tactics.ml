@@ -369,12 +369,21 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
 let infer_exists_type (a : term) (st : proof_state) : term =
   Typecheck.infertype st.elab_ctx a (* TODO error handling *)
 
+(* TODO comment, test;
+  I think with_hyps claims to do something like this but misunderstands OCaml effects/references
+  We shouldn't actually need to clean anything up at the end *)
+let add_local_hyps g ctx =
+  let locals = ctx.lctx in
+  List.iter
+    (fun h -> Hashtbl.add locals h.hyp_bid (Some h.hyp_name, h.hyp_type))
+    g.ctx;
+  { ctx with lctx = locals }
+
 (* TODO comment, test *)
 let infer_motive (exists_type : term) (g : goal) (st : proof_state) : term =
   let goal_type = g.goal_type in
   let hole_id = gen_hole_id () in
-  let ctx = st.elab_ctx in
-  (* TODO replace ctx's local context with proof goal's local context *)
+  let ctx = add_local_hyps g st.elab_ctx in
   (* TODO update ctx to actually have that hole ID before continuing *)
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
   (* TODO I need the right ctx here to begin with *)
@@ -399,9 +408,11 @@ let infer_motive (exists_type : term) (g : goal) (st : proof_state) : term =
 let exists (a : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | Some g ->
-    let exists_type = infer_exists_type a st in (* this is A *)
-    let p = infer_motive exists_type g st in
-    ignore p;
-    failwith "not yet implemented"
+    with_hyps st g
+      (fun () ->
+        let exists_type = infer_exists_type a st in (* this is A *)
+        let p = infer_motive exists_type g st in
+        ignore p;
+        failwith "not yet implemented")
   | None ->
     fail "No goals remaining"
