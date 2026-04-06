@@ -36,3 +36,7 @@ val ( >> ) : tactic -> tactic -> tactic
 val have : string -> term -> tactic
 val intro : string -> tactic
 val intros : string list -> tactic
+
+(** [rewrite h] takes in a term [h] of type [lhs = rhs] and creates a new goal
+    where all occurrences of [lhs] are replaced with [rhs] *)
+val rewrite : term -> proof_state -> tactic_result
