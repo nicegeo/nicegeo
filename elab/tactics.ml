@@ -366,8 +366,8 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx g.goal_type)))
 
 (* TODO comment, test *)
-let infer_exists_type (a : term) (st : proof_state) : term =
-  Typecheck.infertype st.elab_ctx a (* TODO error handling *)
+let infer_exists_type (a : term) ctx : term =
+  Typecheck.infertype ctx a (* TODO error handling *)
 
 (* TODO comment, test;
   effects confuse me so I'm making a copy here; with_hyps I guess does effects instead *)
@@ -379,10 +379,9 @@ let add_local_hyps g ctx =
   { ctx with lctx = locals }
 
 (* TODO comment, test *)
-let infer_motive (exists_type : term) (g : goal) (st : proof_state) : term =
+let infer_motive (exists_type : term) (g : goal) ctx : term =
   let goal_type = g.goal_type in
   let hole_id = gen_hole_id () in
-  let ctx = add_local_hyps g st.elab_ctx in
   (* TODO update ctx to actually have that hole ID before continuing *)
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
   unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0); (* updates context *)
@@ -406,11 +405,10 @@ let infer_motive (exists_type : term) (g : goal) (st : proof_state) : term =
 let exists (a : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | Some g ->
-    with_hyps st g
-      (fun () ->
-        let exists_type = infer_exists_type a st in (* this is A *)
-        let p = infer_motive exists_type g st in
-        ignore p;
-        failwith "not yet implemented")
+    let ctx = add_local_hyps g st.elab_ctx in
+    let exists_type = infer_exists_type a ctx in (* this is A *)
+    let p = infer_motive exists_type g ctx in (* this is the motive p *)
+    ignore p;
+    failwith "not yet implemented"
   | None ->
     fail "No goals remaining"
