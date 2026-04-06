@@ -1,5 +1,5 @@
 Definition Ne : (A: Type) -> A -> A -> Prop := fun A a b => a = b -> False
-Definition Iff : (P : Prop) -> (Q : Prop) -> Prop := fun P Q => (P -> Q) /\ (Q -> P)
+Definition Iff : (P : Prop) -> (Q : Prop) -> Prop := fun P Q => (P -> Q) ∧ (Q -> P)
 Definition 0 : Measure := Zero
 
 Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
@@ -15,7 +15,7 @@ Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> a ≠ b -> b ≠ a :=
 	fun (A: Type) (a b: A) (ne_ab: a ≠ b) => fun (eq_ba: b = a) =>
 		ne_ab (Eq.symm A b a eq_ba)
 
-Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> A /\ B -> (f: A -> B -> C) -> C :=
+Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> A ∧ B -> (f: A -> B -> C) -> C :=
     fun A B C h f => And.elim A B C f h
 
 Theorem fst : (A: Prop) -> (B: Prop) -> A /\ B -> A :=
@@ -103,7 +103,7 @@ Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) ->
     (fun (aL: OnLine a L) (bL: OnLine b L) =>
 
     Exists.elim _ _ _ (pt_oncircle_extension_from_inside L aa b a bL aL baa ab)
-    (fun (c: Point) (h: OnLine c L /\ (OnCircle c aa /\ Between c b a)) =>
+    (fun (c: Point) (h: OnLine c L /\ (OnCircle c aa ∧ Between c b a)) =>
 
     Exists.intro _ _ c
     (And.intro _ _
@@ -226,7 +226,7 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
 
 
 (* maybe we want general excluded middle as an axiom? *)
-Theorem point_eq_em : (a: Point) -> (b: Point) -> a = b \/ a ≠ b :=
+Theorem point_eq_em : (a: Point) -> (b: Point) -> a = b ∨ a ≠ b :=
     fun (a: Point) (b: Point) =>
     Or.elim _ _ _ (ZeroLeast (Length a b))
     (fun (h: 0 < Length a b) =>

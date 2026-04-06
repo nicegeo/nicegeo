@@ -42,7 +42,9 @@ rule token = parse
   | "<"          { LESS_THAN }
   | "+"          { PLUS }
   | "\\/"        { OR }
+  | "∨"          { OR }
   | "/\\"        { AND }
+  | "∧"          { AND }
   | "#print"     { PRINT_DIRECTIVE }
   | "#infer"     { INFER_DIRECTIVE }
   | "#check"     { CHECK_DIRECTIVE }
