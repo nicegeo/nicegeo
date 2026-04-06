@@ -18,7 +18,7 @@ let () =
 
   let tone = Nice_messages.tone_from_env () in
   let stmts =
-    try Elab.Interface.parse_statements filename
+    try Elab.Interface.get_all_statements filename
     with Error.ElabError info ->
       print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
       (match Nice_messages.pick_message tone Nice_messages.After_error with
