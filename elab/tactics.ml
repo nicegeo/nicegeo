@@ -365,10 +365,6 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
-(* TODO comment, test *)
-let infer_exists_type (a : term) ctx : term =
-  Typecheck.infertype ctx a (* TODO error handling *)
-
 (* TODO comment, test;
   effects confuse me so I'm making a copy here; with_hyps I guess does effects instead *)
 let add_local_hyps g ctx =
@@ -416,7 +412,7 @@ let exists (a : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | Some g ->
     let ctx = add_local_hyps g st.elab_ctx in
-    let exists_type = infer_exists_type a ctx in (* this is A *)
+    let exists_type = Typecheck.infertype ctx a in (* this is A *)
     let p = infer_motive exists_type g ctx in (* this is the motive p *)
     let new_goal_ty = mk_app p a in (* goal is updated to p a *)
     let new_hole, st = fresh_goal st g.ctx new_goal_ty in (* TODO refactor some of this stuff out/reuse it *)
