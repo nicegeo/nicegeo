@@ -2169,6 +2169,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* lines_inter_if_diff_sides: (a : Point) -> (b : Point) -> (L : Line) -> (M : Line) ->
+    (Not (OnLine a L)) -> (Not (OnLine b L)) ->
     (Not (SameSide a b L)) ->
     (OnLine a M) ->
     (OnLine b M) ->
@@ -2180,10 +2181,14 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Line",
           Forall (Const "Line",
-            Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 3), Bvar 2), Bvar 1)),
-              Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                  App (App (Const "LinesInter", Bvar 4), Bvar 3)
+            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1)),
+              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 2)),
+                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)),
+                  Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
+                    Forall (App (App (Const "OnLine", Bvar 6), Bvar 4),
+                      App (App (Const "LinesInter", Bvar 6), Bvar 5)
+                    )
+                  )
                 )
               )
             )
@@ -2196,6 +2201,7 @@ let%expect_test "Elaborate env.ncg" =
   (* line_circle_inter_if_diff_sides: (a : Point) -> (b : Point) -> (L : Line) -> (aa : Circle) ->
     (Or (InCircle a aa) (OnCircle a aa)) ->
     (Or (InCircle b aa) (OnCircle b aa)) ->
+    (Not (OnLine a L)) -> (Not (OnLine b L)) ->
     (Not (SameSide a b L)) ->
     (LineCircleInter L aa) *)
   show_kterm "line_circle_inter_if_diff_sides";
@@ -2207,8 +2213,12 @@ let%expect_test "Elaborate env.ncg" =
           Forall (Const "Circle",
             Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
               Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
-                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)),
-                  App (App (Const "LineCircleInter", Bvar 4), Bvar 3)
+                Forall (App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 3)),
+                  Forall (App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 4)),
+                    Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 7), Bvar 6), Bvar 5)),
+                      App (App (Const "LineCircleInter", Bvar 6), Bvar 5)
+                    )
+                  )
                 )
               )
             )
