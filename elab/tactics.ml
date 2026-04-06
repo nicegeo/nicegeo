@@ -404,12 +404,12 @@ let infer_motive (exists_type : term) (g : goal) ctx : term option =
  *)
 let exists (a : term) (st : proof_state) : tactic_result =
   match current_goal st with
-  | Some g ->
+  | Some g -> (
       let ctx = add_local_hyps g st.elab_ctx in
       (* infer A *)
       let exists_type = Typecheck.infertype ctx a in
       (* infer the motive p *)
-      (match infer_motive exists_type g ctx with
+      match infer_motive exists_type g ctx with
       | Some p ->
           (* update the goal to (p a) *)
           let new_goal_ty = mk_app p a in
