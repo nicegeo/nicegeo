@@ -382,9 +382,9 @@ let add_hole g hole_id ty ctx =
   This infers the motive p of the existential type when constructing an Exists.intro.
   It uses the type A to construct the expected type, leaving in a hole for the motive.
   It then calls unification with a fresh hole for p, to unify the goal with the type
-  Exists A ?p, where ?p : A -> Prop. If successful, it returns p.
+  Exists A ?p, where ?p : A -> Prop. If successful, it returns Some p, otherwise None.
 *)
-let infer_motive (exists_type : term) (g : goal) ctx : term =
+let infer_motive (exists_type : term) (g : goal) ctx : term option =
   let goal_type = g.goal_type in
   let hole_id = gen_hole_id () in
   let bid = Term.gen_binder_id () in
@@ -393,14 +393,8 @@ let infer_motive (exists_type : term) (g : goal) ctx : term =
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
   unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0);
   match Hashtbl.find_opt ctx.metas hole_id with
-  | Some mvar -> (
-      match mvar.sol with
-      | Some p -> p
-      | None ->
-          failwith "goal type is not what we want here"
-          (* TODO make this failure/error message actually good *))
-  | None -> failwith "something went wrong with our own programming here"
-(* TODO make this failure/error message actually good *)
+  | Some mvar -> mvar.sol
+  | None -> failwith "internal nicegeo programming error: created hole does not exist!"
 
 (*
  * This implements the exists tactic, which takes term a as an argument, and constructs
@@ -415,18 +409,20 @@ let exists (a : term) (st : proof_state) : tactic_result =
       (* infer A *)
       let exists_type = Typecheck.infertype ctx a in
       (* infer the motive p *)
-      let p = infer_motive exists_type g ctx in
-      (* update the goal to (p a) *)
-      let new_goal_ty = mk_app p a in
-      let new_hole, st = fresh_goal st g.ctx new_goal_ty in
-      (* construct the proof term *)
-      let proof =
-        mk_app
-          (mk_app (mk_app (mk_app (mk_name "Exists.intro") exists_type) p) a)
-          new_hole
-      in
-      (* update the proof state accordingly *)
-      let st = assign_meta g.goal_id proof st in
-      let st = close_goal g.goal_id st in
-      succeed st
+      (match infer_motive exists_type g ctx with
+      | Some p ->
+          (* update the goal to (p a) *)
+          let new_goal_ty = mk_app p a in
+          let new_hole, st = fresh_goal st g.ctx new_goal_ty in
+          (* construct the proof term *)
+          let proof =
+            mk_app
+              (mk_app (mk_app (mk_app (mk_name "Exists.intro") exists_type) p) a)
+              new_hole
+          in
+          (* update the proof state accordingly *)
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+          succeed st
+      | None -> fail "Goal must have the form [Exists A p]")
   | None -> fail "No goals remaining"
