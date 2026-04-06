@@ -6,8 +6,10 @@ val parse_term : string -> Term.term
 (** [create ()] creates an empty elaboration context. *)
 val create : unit -> Types.ctx
 
-(** [parse_statements filename] parses all statements from the file [filename]. *)
-val parse_statements : string -> Statement.statement list
+(** [get_all_statements filename] returns all statements from the file [filename],
+    including those imported. The output will not contain any import statements. May raise
+    [Error.ImportNotAtTop]. *)
+val get_all_statements : string -> Statement.statement list
 
 (** [process_statement env stmt] processes the statement [stmt] in the context [env]. *)
 val process_statement : Types.ctx -> Statement.statement -> unit

@@ -26,6 +26,8 @@ type directive =
   | Reduce of term * range  (** [Reduce(t, loc)] corresponds to #reduce t. *)
   | Opaque of string * range  (** [Opaque(name, loc)] corresponds to #opaque name. *)
 
+type import = { filename : string }
+
 (** A parsed statement (either a declaration or a directive). *)
 type statement =
   | Declaration of declaration
@@ -33,3 +35,6 @@ type statement =
           environment. *)
   | Directive of directive
       (** [Directive(dir)] is a parsed directive, printing information to stdout. *)
+  | Import of import
+      (** [Import(import)] is a parsed import statement, intended to be processed by
+          reading the specified file and elaborating its contents. *)
