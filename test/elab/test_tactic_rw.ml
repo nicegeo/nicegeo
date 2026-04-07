@@ -8,7 +8,7 @@ let path_to_env = "../../../../synthetic/env.ncg"
   It adds axioms for the types we care about in the tests.
 *)
 let make_env () =
-  let env = Elab.Interface.create() in
+  let env = Elab.Interface.create () in
   Elab.Interface.process_file env path_to_env;
   let process s =
     let lexbuf = Lexing.from_string s in
