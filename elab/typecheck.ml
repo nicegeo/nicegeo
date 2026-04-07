@@ -304,7 +304,9 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
       let ty_norm = to_norm e ty_whnf in
       match ty_norm with
       | Arrow (_, bid_ex, ty_arg_ex, ty_ret_ex) ->
-          (* unify argument types first *)
+          (* typecheck lambda ty_arg *)
+          check_is_type ~depth:(depth + 1) e ty_arg;
+          (* unify argument types *)
           (try
              unify
                ~depth:(depth + 1)
@@ -322,7 +324,6 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
                     inferred_type = ty_arg;
                     expected_type = ty_arg_ex;
                   }));
-          check_is_type ~depth:(depth + 1) e ty_arg;
           (* check body type by substituting the appropriate bound variable *)
           let ty_ret_ex_subst = Reduce.subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in
           Hashtbl.add e.lctx bid (arg, ty_arg);
