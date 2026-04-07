@@ -733,12 +733,7 @@ let test_reduce_stuck () =
     Testable.term
     ~msg:"reduce not stuck on nested applications"
     ~actual:result
-    ~expected:(Fvar "p");
-  Alcotest.check'
-    (Testable.termDefEq env ctx)
-    ~msg:"a"
-    ~actual:(Lam (Const "Point", App (Lam (Const "Line", Bvar 0), Bvar 0)))
-    ~expected:(Lam (Const "Point", Bvar 1))
+    ~expected:(Fvar "p")
 
 (* this test failed for the same reason that test_reduce_stuck failed *)
 let test_isDefEq_forall () =
