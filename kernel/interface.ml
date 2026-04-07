@@ -1,6 +1,5 @@
 open Term
 open Exceptions
-open Infer
 open Infer.Internals
 
 (** Type-checks and adds a theorem to the provided environment, throwing TypeError on
