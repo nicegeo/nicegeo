@@ -347,3 +347,7 @@ Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x 
 #infer prop1
 #check (fun (x : Point) => x) : (Point -> Point)
 #reduce (fun (x : Measure) => x) Zero
+
+#infer distinct_from
+
+Theorem test : (P: Prop) -> P -> Not (Not P) := fun P p (np : Not P) => np p

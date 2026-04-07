@@ -209,6 +209,9 @@ let rec inferType (env : environment) (localCtx : localcontext) (t : term) : ter
     purposes. These functions are not meant to be interacted with by non-kernel code
     otherwise, but OCaml does not have a good way to enforce this. *)
 module Internals = struct
+  let reduce = reduce
+  let isDefEq = isDefEq
+  let inferType = inferType
   let subst_bvar = subst_bvar
   let rebind_bvar = rebind_bvar
   let isSort = isSort

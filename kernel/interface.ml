@@ -1,6 +1,5 @@
 open Term
 open Exceptions
-open Infer
 open Infer.Internals
 
 let create () : environment = { types = Hashtbl.create 16; defs = Hashtbl.create 16 }

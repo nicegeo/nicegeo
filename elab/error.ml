@@ -143,14 +143,14 @@ let ktype_err_to_string (info : KExceptions.type_error_info) : string =
         ^ Kernel_pretty.term_to_string_pretty domainTypeType
     | ForallSortError (domainTypeType, returnTypeType) ->
         Printf.sprintf
-          "Domain and return types of a Forall must be sorts.\n\
+          "Domain and return types of a Forall must be types.\n\
            Domain Type Sort: %s\n\
            Return Type Sort: %s\n\n"
           (Kernel_pretty.term_to_string_pretty domainTypeType)
           (Kernel_pretty.term_to_string_pretty returnTypeType)
     | AlreadyDefined name -> "Name already defined in environment: " ^ name
     | DeclarationTypeError declType ->
-        "Type of declaration is not a sort: "
+        "Expected a type for declaration, got "
         ^ Kernel_pretty.term_to_string_pretty declType
     | ProofTypeMismatch (expected, actual) ->
         Printf.sprintf

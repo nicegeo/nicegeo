@@ -5,7 +5,7 @@ open Infer
 open Exceptions
 
 (* For backwards compatibility during exception refactoring *)
-let try_infer env localCtx t = inferType env localCtx t
+let try_infer env localCtx t = Internals.inferType env localCtx t
 
 let mk_env () =
   let env = Interface.create () in
@@ -471,6 +471,7 @@ let test_len_app () =
     (fun () -> ignore (try_infer env.kenv lctx (App (Const "Lt", Fvar "p"))))
 
 let test_kernel_reduce () =
+  let open Internals in
   (* (fun (p1: Point) => (fun (p2: Point) => p2)) p) l *)
   (* should be reduced to (fun (p2: Point) => p2) l then to l *)
   let env = mk_env () in
