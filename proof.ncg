@@ -395,7 +395,7 @@ Definition isParallelogram: Point -> Point -> Point -> Point -> Prop := fun a b 
 
 (* Of quadrilateral figures, a square is that which is both equilateral and right-angled *)
 Definition IsSquare : Point -> Point -> Point -> Point -> Prop := fun a b c d => 
-    Length a b = Length c d /\ Length a d = Length b c /\
+    Length a b = Length b c /\ Length a b = Length c d /\ Length a b = Length d a /\
     Angle a b c = 90 /\ Angle b c d = 90 /\ Angle c d a = 90 /\ Angle d a b = 90
 
 (* Proposition 46 : Constructing a square *)
