@@ -34,8 +34,7 @@ let run_tactic tac st =
   | Success st' -> st'
 
 (** Convert an elab term to a kernel term *)
-let to_kterm tm =
-  Elab.Convert.conv_to_kterm tm
+let to_kterm tm = Elab.Convert.conv_to_kterm tm
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
