@@ -1,0 +1,9 @@
+Import "euclib/euclib.ncg" (* TODO: move to alcotest *)
+
+Theorem prop1_test :
+(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
+Exists Point (fun (c : Point) =>
+    And (Eq Measure (Length a b) (Length a c))
+        (Eq Measure (Length b c) (Length b a)))
+:=
+prop1

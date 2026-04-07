@@ -1,0 +1,3 @@
+Theorem thm : True := True.intro
+
+Import "euclib/euclib.ncg"

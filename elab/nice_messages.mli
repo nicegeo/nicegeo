@@ -20,6 +20,3 @@ val tone_from_env : unit -> tone
 (** [pick_message tone context] picks a random message for the given tone and context, or
     [None] if no messages exist. *)
 val pick_message : tone -> context -> string option
-
-(** [format_for_output msg] adds newlines to a message for output. *)
-val format_for_output : string -> string
