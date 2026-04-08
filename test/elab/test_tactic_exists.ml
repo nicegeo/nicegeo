@@ -41,7 +41,6 @@ let to_kterm env tm =
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
-  let proof = replace_metas env proof in
   let proof_k = to_kterm env (replace_metas env proof) in
   let ty_k = to_kterm env (replace_metas env goal_ty) in
   let inferred = Kernel.Infer.Internals.inferType env.kenv (Hashtbl.create 0) proof_k in
