@@ -166,4 +166,35 @@ module Register = struct
         args
     in
     f idents
+
+  let tactical (f : tactic -> tactic) : term list -> tactic = function
+    | { inner = Name id; loc } :: rest ->
+        let inner_tac =
+          match Hashtbl.find_opt tactics id with
+          | Some func -> func rest
+          | None ->
+              raise
+                (Error.ElabError
+                   {
+                     context = { loc = Some loc; decl_name = None };
+                     error_type = Error.UnknownName { name = id };
+                   })
+        in
+        f inner_tac
+    | t :: _ ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = Some t.loc; decl_name = None };
+               error_type =
+                 Error.InvalidTacticParameter "Expected a tactic name, but got a term.";
+             })
+    | [] ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None };
+               error_type =
+                 Error.InvalidTacticParameter "Expected a tactic, but got nothing";
+             })
 end
