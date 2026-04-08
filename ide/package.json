@@ -43,8 +43,22 @@
       {
         "command": "nicegeo.diagnostics.run",
         "title": "NiceGeo: Run Diagnostics"
+      },
+      {
+        "command": "nicegeo.proofState.showPanel",
+        "category": "NiceGeo",
+        "title": "Show Proof State"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "nicegeo.proofState.showPanel",
+          "when": "editorLangId == nicegeo",
+          "group": "navigation@50"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "nicegeo",
