@@ -96,6 +96,15 @@ module Register = struct
 
   let unary_term (f : term -> tactic) : term list -> tactic = function
     | [ arg ] -> f arg
+    | [] ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None };
+               error_type =
+                 Error.InvalidTacticParameter
+                   "Expected exactly one term parameter, but got nothing";
+             })
     | terms ->
         raise
           (Error.ElabError
@@ -125,6 +134,15 @@ module Register = struct
                context = { loc = Some term.loc; decl_name = None };
                error_type =
                  Error.InvalidTacticParameter "Expected an identifier, but got a term";
+             })
+    | [] ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None };
+               error_type =
+                 Error.InvalidTacticParameter
+                   "Expected exactly one identifier parameter, but got nothing";
              })
     | terms ->
         raise
