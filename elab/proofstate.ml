@@ -56,7 +56,7 @@ let current_goal (st : proof_state) : goal option =
 
 let is_complete (st : proof_state) : bool = st.open_goals = []
 
-let init_state ?(elab_ctx = Interface.create ()) (ty : term) : proof_state =
+let init_state ~elab_ctx (ty : term) : proof_state =
   let id = fresh_id () in
   Hashtbl.replace elab_ctx.metas id { ty = Some ty; context = []; sol = None };
   let g = { ctx = []; goal_type = ty; goal_id = id } in
