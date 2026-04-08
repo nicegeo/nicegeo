@@ -3,40 +3,50 @@ Definition Iff : (P : Prop) -> (Q : Prop) -> Prop := fun P Q => (P -> Q) ∧ (Q 
 Definition 0 : Measure := Zero
 Definition 90 : Measure := RightAngle
 
+(* A strict inequality implies the two values are not equal. *)
 Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
   fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
     LtAntisymm b b
       (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
       (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
 
+(* Equality is symmetric: a = b implies b = a. *)
 Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> a = b -> b = a :=
 	fun (A: Type) (a b : A) (eq_ab : a = b) => Eq.elim A a (fun (x : A) => x = a) (Eq.intro A a) b eq_ab
 
+(* Non-equality is symmetric: a ≠ b implies b ≠ a. *)
 Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> a ≠ b -> b ≠ a :=
 	fun (A: Type) (a b: A) (ne_ab: a ≠ b) => fun (eq_ba: b = a) =>
 		ne_ab (Eq.symm A b a eq_ba)
 
+(* Eliminates a conjunction by passing both components to a continuation. *)
 Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> A ∧ B -> (f: A -> B -> C) -> C :=
     fun A B C h f => And.elim A B C f h
 
+(* Extracts the left component of a conjunction. *)
 Theorem fst : (A: Prop) -> (B: Prop) -> A /\ B -> A :=
     fun A B h => And.elim1 A B A h (fun a b => a)
 
+(* Extracts the right component of a conjunction. *)
 Theorem snd : (A: Prop) -> (B: Prop) -> A /\ B -> B :=
     fun A B h => And.elim1 A B B h (fun a b => b)
 
+(* Names an intermediate result for reuse: prove P, then use it to prove M. *)
 Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
     fun M P p f => f p
 
+(* A point c lies on a circle iff its distance to the center equals the radius:
+   Length a c = Length a b ↔ OnCircle c d, given a is the center and b is on d. *)
 Theorem on_circle_iff_length_eq : (a : Point) -> (b : Point) -> (c : Point) -> (d : Circle) ->
-    CenterCircle a d -> OnCircle b d -> 
+    CenterCircle a d -> OnCircle b d ->
     Iff (Length a b = Length a c) (OnCircle c d) :=
     fun (a b c : Point) (d : Circle) (ad : CenterCircle a d) (bd : OnCircle b d) =>
     And.intro _ _
     (fun h => on_circle_if_eq_radius a b c d ad bd (Eq.symm _ _ _ h)) 
     (fun h => Eq.symm _ _ _ (eq_radius_if_on_circle a b c d ad bd h))
 
-Theorem prop1 : (a : Point) -> (b : Point) -> (ab : a ≠ b) -> 
+(* Proposition 1: On a given finite straight line to construct an equilateral triangle. *)
+Theorem equilateral_triangle : (a : Point) -> (b : Point) -> (ab : a ≠ b) ->
     Exists Point (fun c => Length a b = Length a c /\ Length b c = Length b a) :=
     fun (a b : Point) (ab : a ≠ b) =>
 
@@ -65,6 +75,10 @@ Theorem prop1 : (a : Point) -> (b : Point) -> (ab : a ≠ b) ->
     (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
 	))))))
 
+(* #print axioms equilateral_triangle *)
+
+(* Right cancellation of addition: x + z = y + z implies x = y,
+   proved by ruling out x < y and y < x via the order on Measure. *)
 Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> x + z = y + z -> x = y :=
     fun x y z h =>
     (* by cases LtTricot x y *)
@@ -83,6 +97,8 @@ Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> x + z = y + 
     )
 
 
+(* Left cancellation of addition: z + x = z + y implies x = y,
+   by rewriting to right-cancellation form using commutativity. *)
 Theorem CancelAdd : (x: Measure) -> (y: Measure) -> (z: Measure) -> z + x = z + y -> x = y :=
     fun x y z h =>
     AddCancel x y z (
@@ -92,6 +108,8 @@ Theorem CancelAdd : (x: Measure) -> (y: Measure) -> (z: Measure) -> z + x = z + 
     )
 
 
+(* Extending any ray from inside a circle: given b inside aa and a ≠ b,
+   there exists c on aa with b between a and c. *)
 Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) ->
     a ≠ b -> InCircle b aa -> Exists _ (fun (c: Point) => Between a b c /\ OnCircle c aa) :=
 
@@ -112,6 +130,7 @@ Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) ->
     (fst _ _ (snd _ _ h))
     ))))
 
+(* If two segments have equal length and one is degenerate (a = b), the other is too (c = d). *)
 Theorem length_pts_eq : (a: Point) -> (b: Point) -> (c: Point) -> (d: Point) -> Length a b = Length c d ->
     a = b -> c = d :=
     fun a b c d (h: Eq _ (Length a b) (Length c d)) (ab: Eq _ a b) =>
@@ -121,32 +140,40 @@ Theorem length_pts_eq : (a: Point) -> (b: Point) -> (c: Point) -> (d: Point) -> 
     (fun (lac : Eq _ (Length c d) Zero) =>
     eq_if_len_zero _ _ lac)
 
+(* If two segments have equal length and one is non-degenerate (a ≠ b), the other is too (c ≠ d). *)
 Theorem length_pts_ne : (a: Point) -> (b: Point) -> (c: Point) -> (d : Point) -> Length a b = Length c d ->
     a ≠ b -> c ≠ d :=
     fun a b c d (h: Eq _ (Length a b) (Length c d)) (ab: Eq _ a b -> False) (cd: Eq _ c d) =>
     ab (length_pts_eq _ _ _ _ (Eq.symm _ _ _ h) cd)
 
+(* Zero is a left identity for addition: 0 + a = a. *)
 Theorem ZeroAdd : (a: Measure) -> 0 + a = a :=
     fun (a: Measure) => Eq.elim _ _ (fun x => x = a) (AddZero a) _ (AddComm a 0)
 
+(* Equality is transitive: a = b and b = c give a = c. *)
 Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> a = b -> b = c -> a = c :=
     fun T a b c h1 h2 =>
     Eq.elim T b (fun x => a = x) h1 c h2
 
+(* The two outer endpoints of a betweenness relation are distinct: B(a,b,c) implies a ≠ c. *)
 Theorem ne_13_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> a ≠ c :=
     fun a b c Babc => 
     Not.elim _ (fst _ _ (snd _ _ (snd _ _ (between_distinct a b c Babc))))
 
+(* The middle and right endpoints of a betweenness relation are distinct: B(a,b,c) implies b ≠ c. *)
 Theorem ne_23_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> b ≠ c :=
     fun a b c Babc => 
     Ne.symm _ _ _ (Not.elim _ (fst _ _ (snd _ _ (between_distinct c b a (fst _ _ (between_distinct a b c Babc))))))
 
-Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
+(* Proposition 2 helper: the non-degenerate case (a ≠ b) of the compass-and-straightedge
+   construction — builds the equilateral triangle on ab, then walks the target length
+   bc out along its longer diagonal to land at f with Length a f = Length b c. *)
+Theorem place_segment_ne : (a : Point) -> (b: Point) -> (c: Point)
     -> (bc : b ≠ c) -> (ab : a ≠ b)
     -> Exists Point (fun f => Length a f = Length b c) :=
     fun (a: Point) (b: Point) (c: Point) (bc: b ≠ c) (ab: a ≠ b) =>
 
-    Exists.elim _ _ _ (prop1 a b ab)
+    Exists.elim _ _ _ (equilateral_triangle a b ab)
     (fun (d: Point) (eqtri: Length a b = Length a d /\ Length b d = Length b a) =>
 
     Exists.elim _ _ _ (circle_of_ne b c bc)
@@ -226,7 +253,8 @@ Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     ))))))))))))))))
 
 
-(* maybe we want general excluded middle as an axiom? *)
+(* Excluded middle for point equality: every two points are either equal or distinct.
+   Derived from the trichotomy of lengths rather than assumed as a classical axiom. *)
 Theorem point_eq_em : (a: Point) -> (b: Point) -> a = b ∨ a ≠ b :=
     fun (a: Point) (b: Point) =>
     Or.elim _ _ _ (ZeroLeast (Length a b))
@@ -237,7 +265,8 @@ Theorem point_eq_em : (a: Point) -> (b: Point) -> a = b ∨ a ≠ b :=
     )
     (fun (h: Eq _ Zero (Length a b)) => Or.inl _ _ (eq_if_len_zero a b (Eq.symm _ _ _ h)))
 
-Theorem prop2 : (a : Point) -> (b: Point) -> (c: Point)
+(* Proposition 2: To place a straight line equal to a given straight line with one end at a given point. *)
+Theorem place_segment : (a : Point) -> (b: Point) -> (c: Point)
     -> Exists Point (fun f => Length a f = Length b c) :=
     fun (a: Point) (b: Point) (c: Point) =>
 
@@ -261,14 +290,18 @@ Theorem prop2 : (a : Point) -> (b: Point) -> (c: Point)
         b ab
     )
     )
-    (fun (ab : a ≠ b) => prop2_ne a b c bc ab)
+    (fun (ab : a ≠ b) => place_segment_ne a b c bc ab)
     )
+
+(* #print axioms place_segment *)
 
 Axiom sorry : (P: Prop) -> P
 
+(* A line from a point inside a circle to a point outside must cross the circle.
+   The crossing point c satisfies OnCircle c aa and lies between a and b. *)
 Theorem pt_oncircle_in_out : (a : Point) -> (b : Point) -> (aa : Circle) ->
     InCircle a aa -> (InCircle b aa -> False) -> (OnCircle b aa -> False) ->
-    Exists Point (fun c => And (OnCircle c aa) (Between a c b)) := 
+    Exists Point (fun c => And (OnCircle c aa) (Between a c b)) :=
 
     fun a b aa aaa b_not_in b_not_on =>
     Exists.elim _ _ _ (line_of_pts a b (fun ab => b_not_in (Eq.elim _ _ (fun x => InCircle x aa) aaa b ab)))
@@ -282,35 +315,68 @@ Theorem pt_oncircle_in_out : (a : Point) -> (b : Point) -> (aa : Circle) ->
     )
     )
 
+(* If the radius op is strictly less than oq, then q is not inside the circle centered at o through p *)
+Theorem not_in_circle_if_gt_radius : (o : Point) -> (p : Point) -> (q : Point) -> (aa : Circle) ->
+    CenterCircle o aa -> OnCircle p aa ->
+    Lt (Length o p) (Length o q) ->
+    InCircle q aa -> False :=
+    fun o p q aa o_center p_on pq_lt q_in =>
+    LtAntisymm (Length o p) (Length o q) pq_lt
+        (lt_radius_if_in_circle o p q aa o_center p_on q_in)
+
+(* If the radius op is strictly less than oq, then q is not on the circle centered at o through p *)
+Theorem not_on_circle_if_gt_radius : (o : Point) -> (p : Point) -> (q : Point) -> (aa : Circle) ->
+    CenterCircle o aa -> OnCircle p aa ->
+    Lt (Length o p) (Length o q) ->
+    OnCircle q aa -> False :=
+    fun o p q aa o_center p_on pq_lt q_on =>
+    LtNe (Length o p) (Length o q) pq_lt
+        (Eq.symm _ _ _ (eq_radius_if_on_circle o p q aa o_center p_on q_on))
+
 (* Proposition 3: To cut off from the greater of two given unequal straight lines a straight line equal to the less. *)
 Theorem segment_of_eq_len : (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) ->
     (Eq _ a b -> False) -> (Lt (Length a b) (Length c d)) ->
     Exists Point (fun e => And (Eq _ (Length a b) (Length c e)) (Between c e d)) :=
     fun a b c d ab ab_lt_cd =>
 
-    Exists.elim _ _ _ (prop2 c a b)
-    (fun (f : Point) (he : Eq _ (Length c f) (Length a b)) =>
+    Exists.elim _ _ _ (place_segment c a b)
+    (fun (f : Point) (hcf : Eq _ (Length c f) (Length a b)) =>
 
-    have _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ he) ab)
+    have _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ hcf) ab)
     (fun (cf : Eq _ c f -> False) =>
 
     Exists.elim _ _ _ (circle_of_ne _ _ cf)
     (fun (aa : Circle) (h : And (CenterCircle c aa) (OnCircle f aa)) =>
 
-    have _ _ (center_lies_inside_circle _ _ (fst _ _ h)) 
+    have _ _ (center_lies_inside_circle _ _ (fst _ _ h))
     (fun (c_in_aa : InCircle c aa) =>
 
-    Exists.elim _ _ _ (pt_oncircle_in_out _ _ _ c_in_aa (sorry (InCircle d aa -> False)) (sorry (OnCircle d aa -> False)))
-    (fun (e : Point) (he : And (OnCircle e aa) (Between c e d)) =>
+    (* The radius of aa is Length c f = Length a b < Length c d,
+       so Length c f < Length c d — used by both exclusion lemmas below. *)
+    have _ _ (Eq.elim Measure (Length a b) (fun x => Lt x (Length c d))
+        ab_lt_cd (Length c f) (Eq.symm _ _ _ hcf))
+    (fun (cf_lt_cd : Lt (Length c f) (Length c d)) =>
 
-    sorry _
+    Exists.elim _ _ _ (pt_oncircle_in_out _ _ _ c_in_aa
+        (not_in_circle_if_gt_radius c f d aa (fst _ _ h) (snd _ _ h) cf_lt_cd)
+        (not_on_circle_if_gt_radius c f d aa (fst _ _ h) (snd _ _ h) cf_lt_cd))
+    (fun (e : Point) (he_e : And (OnCircle e aa) (Between c e d)) =>
+
+    Exists.intro _ _ e
+    (And.intro _ _
+        (Eq.symm _ _ _
+            (EqTrans _ (Length c e) (Length c f) (Length a b)
+                (eq_radius_if_on_circle c f e aa (fst _ _ h) (snd _ _ h) (fst _ _ he_e))
+                hcf))
+        (snd _ _ he_e))
+    )
     )
     )
     )
     )
     )
 
-
+(* #print axioms segment_of_eq_len *)
 
 
 
@@ -380,7 +446,6 @@ Theorem perp_at_pt_online : (a : Point) -> (b : Point) -> (c : Point) -> (f : Po
     sorry _
 
 
-(* Jiayou is formalizing related to parallel *)
 (* Proposition 27 *)
 
 (* Proposition 29 *)
