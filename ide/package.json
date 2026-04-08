@@ -59,6 +59,15 @@
         }
       ]
     },
+    "views": {
+      "explorer": [
+        {
+          "id": "nicegeoProofStateWebview",
+          "name": "NiceGeo Proof State",
+          "type": "webview"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "nicegeo",

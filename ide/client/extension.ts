@@ -9,7 +9,8 @@ import {
 
 import { NiceGeoOutput } from "./core/output";
 import { NiceGeoStatusBar } from "./core/status";
-import { showProofStatePanel, type ProofStateAtPayload } from "./core/proofStatePanel";
+import type { ProofStateAtPayload } from "./core/proofStatePanel";
+import { ProofStateSidebarWebviewProvider } from "./core/proofStateSidebarWebview";
 
 type ServerStatusPayload =
   | { kind: "idle" }
@@ -41,6 +42,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   const client = new LanguageClient("nicegeo", "NiceGeo Language Server", serverOptions, clientOptions);
   context.subscriptions.push(output, status, client);
+  const proofSidebarWebview = new ProofStateSidebarWebviewProvider();
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      "nicegeoProofStateWebview",
+      proofSidebarWebview,
+    ),
+  );
 
   output.appendLine("[nicegeo] extension activated");
   output.appendLine(`[nicegeo] starting language server: ${serverModule}`);
@@ -86,7 +94,8 @@ export function activate(context: vscode.ExtensionContext) {
           line: pos.line,
           col: pos.character,
         });
-        showProofStatePanel(result);
+        proofSidebarWebview.setData(result);
+        void vscode.commands.executeCommand("nicegeoProofStateWebview.focus");
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         void vscode.window.showErrorMessage(`NiceGeo proof state: ${msg}`);

@@ -1,5 +1,3 @@
-import * as vscode from "vscode";
-
 export interface ProofStateAtPayload {
   ok: boolean;
   query?: { file: string; line: number; col: number };
@@ -44,7 +42,7 @@ function listItems(rows: { label: string; value: string }[]): string {
   return `<ul>${rows.map((r) => `<li><span class="name">${escapeHtml(r.label)}</span> : ${escapeHtml(r.value)}</li>`).join("")}</ul>`;
 }
 
-function buildHtml(data: ProofStateAtPayload): string {
+export function buildProofStateHtml(data: ProofStateAtPayload): string {
   if (!data.ok) {
     const err = data.error ?? "Unknown error";
     const q = data.query;
@@ -151,30 +149,4 @@ function buildHtml(data: ProofStateAtPayload): string {
     ${metaBlock}
     ${hyps}
   </body></html>`;
-}
-
-let panel: vscode.WebviewPanel | undefined;
-
-export function showProofStatePanel(data: ProofStateAtPayload): void {
-  const column = vscode.ViewColumn.Beside;
-  const title =
-    data.ok && data.declaration?.name
-      ? `Proof: ${data.declaration.name}`
-      : "NiceGeo proof state";
-  if (panel) {
-    panel.title = title;
-    panel.webview.html = buildHtml(data);
-    panel.reveal(column, true);
-  } else {
-    panel = vscode.window.createWebviewPanel(
-      "nicegeoProofState",
-      title,
-      column,
-      { enableScripts: false, retainContextWhenHidden: true },
-    );
-    panel.webview.html = buildHtml(data);
-    panel.onDidDispose(() => {
-      panel = undefined;
-    });
-  }
 }
