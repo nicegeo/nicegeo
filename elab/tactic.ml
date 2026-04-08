@@ -11,11 +11,13 @@ let tactics : (string, term list -> tactic) Hashtbl.t = Hashtbl.create 8
 
 let bind_tactic_args (st : Proofstate.proof_state) (args : term list) : term list =
   let goal = List.hd st.open_goals in
-  List.map (fun arg ->
-    List.fold_right (fun hyp res ->
-      Term.subst res (Name hyp.hyp_name) (Bvar hyp.hyp_bid)
-    ) goal.ctx arg
-  ) args
+  List.map
+    (fun arg ->
+      List.fold_right
+        (fun hyp res -> Term.subst res (Name hyp.hyp_name) (Bvar hyp.hyp_bid))
+        goal.ctx
+        arg)
+    args
 
 let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
   let init_state = Proofstate.init_state ~elab_ctx:e goal in

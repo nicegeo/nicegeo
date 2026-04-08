@@ -557,7 +557,8 @@ let process_decl (e : ctx) (d : declaration) : unit =
   else
     try
       match d.kind with
-      | Theorem (Proof proof) -> process_body e d (replace_metas e (Tactic.run e proof d.ty))
+      | Theorem (Proof proof) ->
+          process_body e d (replace_metas e (Tactic.run e proof d.ty))
       | Theorem (DefEq body) | Def body -> process_body e d body
       | Axiom -> (
           let ty_filled = elaborate e d.ty None in
