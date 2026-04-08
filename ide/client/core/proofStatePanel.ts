@@ -18,7 +18,6 @@ export interface ProofStateAtPayload {
     /** β-reduced goal type (may equal goalType). */
     goalTypeReduced?: string;
     headContext: { name: string; type: string }[];
-    headContextReduced?: { name: string; type: string }[];
     termContext: { name: string; type: string }[];
     hyps: { name: string; bid: number; type: string }[];
     /** Global names in scope before this declaration (axiom / theorem / definition). */
@@ -87,16 +86,9 @@ function buildHtml(data: ProofStateAtPayload): string {
 
   const goal = section("Goal", `<p class="goal">⊢ ${escapeHtml(ps.goalType)}</p>`);
   const head = section(
-    "Head context (intro binders)",
+    "Head context",
     listItems(ps.headContext.map((c) => ({ label: c.name, value: c.type }))),
   );
-  const headRed =
-    ps.headContextReduced && ps.headContextReduced.length > 0
-      ? section(
-          "Head context (from reduced goal)",
-          listItems(ps.headContextReduced.map((c) => ({ label: c.name, value: c.type }))),
-        )
-      : "";
 
   const term = section(
     "Term context (at cursor)",
@@ -154,7 +146,6 @@ function buildHtml(data: ProofStateAtPayload): string {
     ${goal}
     ${reduced}
     ${head}
-    ${headRed}
     ${term}
     ${envBlock}
     ${metaBlock}

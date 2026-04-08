@@ -119,7 +119,6 @@ type proofstate_snapshot = {
   goal_type : string;
   goal_type_reduced : string;
   head_context : context_item list;
-  head_context_reduced : context_item list;
   term_context : context_item list;
   hyps : (string * int * string) list;
   environment : env_item list;
@@ -200,11 +199,6 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           let goal_type_reduced = Proofstate.pp_term st.elab_ctx gty_red in
           let head_context =
             restore_lctx st.elab_ctx lctx0;
-            extract_head_binders st.elab_ctx gty
-            |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
-          in
-          let head_context_reduced =
-            restore_lctx st.elab_ctx lctx0;
             extract_head_binders st.elab_ctx gty_red
             |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
           in
@@ -264,7 +258,6 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
               goal_type;
               goal_type_reduced;
               head_context;
-              head_context_reduced;
               term_context;
               hyps;
               environment;
@@ -291,8 +284,7 @@ let print_snapshot_text (snap : proofstate_snapshot) : unit =
     | _ -> List.iter (fun { name; ty } -> Printf.printf "  %s : %s\n" name ty) ctx);
     Printf.printf "\n"
   in
-  pp_ctx "Head context (intro binders)" snap.head_context;
-  pp_ctx "Head context (from reduced goal)" snap.head_context_reduced;
+  pp_ctx "Head context" snap.head_context;
   pp_ctx "Term context (variables in scope at cursor)" snap.term_context;
   Printf.printf "Global environment (%d names):\n" (List.length snap.environment);
   (match snap.environment with
@@ -382,7 +374,7 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     |> fun s -> "[" ^ s ^ "]"
   in
   Printf.printf
-    "{\"ok\":true,\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d},\"declaration\":{\"name\":\"%s\",\"kind\":\"%s\",\"file\":\"%s\",\"startLine\":%d,\"startCol\":%d,\"endLine\":%d,\"endCol\":%d},\"proofState\":{\"goalType\":\"%s\",\"goalTypeReduced\":\"%s\",\"headContext\":%s,\"headContextReduced\":%s,\"termContext\":%s,\"hyps\":%s,\"environment\":%s,\"metas\":%s}}\n"
+    "{\"ok\":true,\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d},\"declaration\":{\"name\":\"%s\",\"kind\":\"%s\",\"file\":\"%s\",\"startLine\":%d,\"startCol\":%d,\"endLine\":%d,\"endCol\":%d},\"proofState\":{\"goalType\":\"%s\",\"goalTypeReduced\":\"%s\",\"headContext\":%s,\"termContext\":%s,\"hyps\":%s,\"environment\":%s,\"metas\":%s}}\n"
     (json_escape filename)
     line
     col
@@ -396,7 +388,6 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     (json_escape snap.goal_type)
     (json_escape snap.goal_type_reduced)
     (ctx_items snap.head_context)
-    (ctx_items snap.head_context_reduced)
     (ctx_items snap.term_context)
     hyps_items
     env_items

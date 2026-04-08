@@ -21,7 +21,6 @@ export interface ProofStateAtResponse {
     goalType: string;
     goalTypeReduced?: string;
     headContext: { name: string; type: string }[];
-    headContextReduced?: { name: string; type: string }[];
     termContext: { name: string; type: string }[];
     hyps: { name: string; bid: number; type: string }[];
     environment?: { name: string; kind: string; type: string }[];
