@@ -523,12 +523,12 @@ Theorem angle_copy : (a : Point) -> (b : Point) -> (j : Point) -> (c : Point) ->
 Not (a = b) -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e -> (Exists Point (fun h => Angle h a b = Angle e c d /\ SameSide h j L )) := sorry _ 
 
 
-(* Proposition 23': Copying an angle towards the opposite side )
-Theorem angle_copy : (a : Point) -> (b : Point) -> (j : Point) *-> (c : Point) -> (d : Point) -> (e : Point) -> (L : Line) -> 
-(* Not (a = b) -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e -> (Exists Point (fun h => Angle h a b = Angle e c d /\ diffside h j L )) := sorry _ 
+(* Proposition 23': Copying an angle towards the opposite side *)
+Theorem angle_copy' : (a : Point) -> (b : Point) -> (j : Point) -> (c : Point) -> (d : Point) -> (e : Point) -> (L : Line) -> 
+Not (a = b) -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e -> (Exists Point (fun h => Angle h a b = Angle e c d /\ diffside h j L )) := sorry _ 
 
 
- *)(* Proposition 27 *)
+(* Proposition 27 *)
 
 (* Proposition 29 *)
 
@@ -542,21 +542,21 @@ Theorem para_of_offline: (a : Point) -> (M : Line) -> (Not (OnLine a M)) -> (Exi
 
     
 (* Proposition 34: basic length, angle, and area properties of paralellograms *)
-Theorem len_ang_arelen_ang_area_eq_of_parallelogram : (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Point) -> (N : Point) -> (O : Point) -> (P : Point) ->
+Theorem len_ang_arelen_ang_area_eq_of_parallelogram : (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Line) -> (N : Line) -> (O : Line) -> (P : Line) ->
 (paragram a b c d M N O P) -> length a b = length c d /\ angle b a d = angle b c d /\ area a b d = area b c d 
 := sorry _
 
 (* Proposition 34.1: basic length properties of parallelograms *)
-Theorem len_eq_of_parallelogram :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Point) -> (N : Point) -> (O : Point) -> (P : Point) ->
+Theorem len_eq_of_parallelogram :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Line) -> (N : Line) -> (O : Line) -> (P : Line) ->
 (paragram a b c d M N O P) -> length a b = length c d := sorry _
 
 
 (* Proposition 34.2:basic length properties of paralellograms *)
-Theorem len_eq_of_parallelogram' :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Point) -> (N : Point) -> (O : Point) -> (P : Point) ->
+Theorem len_eq_of_parallelogram' :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Line) -> (N : Line) -> (O : Line) -> (P : Line) ->
 (paragram a b c d M N O P) -> length a d = length c b := sorry _
 
 (* Proposition 34.3: basic area properties of paralellograms *)
-Theorem len_eq_of_parallelogram' :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Point) -> (N : Point) -> (O : Point) -> (P : Point) ->
+Theorem len_eq_of_parallelogram'' :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Line) -> (N : Line) -> (O : Line) -> (P : Line) ->
 (paragram a b c d M N O P) -> area a b d  = area b c d := sorry _
 
 
