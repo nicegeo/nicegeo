@@ -9,7 +9,10 @@ let with_temp_file contents f =
       try if Sys.file_exists path then Sys.remove path with Sys_error _ -> ())
     (fun () -> f path)
 
-let make_env () = Elab.Interface.create_with_env_path "../../../../synthetic/env.ncg"
+let make_env () =
+  let env = Elab.Interface.create () in
+  Elab.Interface.process_file env "../../../../synthetic/env.ncg";
+  env
 
 let process_file ~contents =
   with_temp_file contents @@ fun path ->

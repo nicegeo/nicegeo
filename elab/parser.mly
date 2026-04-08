@@ -1,6 +1,6 @@
 %token <string> IDENT STRING_LITERAL
 %token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE PROOF QED PERIOD
-%token THEOREM AXIOM DEFINITION DEFEQ IMPORT
+%token THEOREM AXIOM DEFINITION DEFEQ IMPORT EQUALS NOT_EQUALS LESS_THAN PLUS OR AND
 %token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE OPAQUE_DIRECTIVE
 %start <Statement.statement list> main
 %start <Term.term> single_term
@@ -48,7 +48,7 @@ directive:
     { Statement.Opaque (name, { Term.start = $startpos(name); Term.end_ = $endpos(name) }) }
 
 term:
-  | t = app_term { t }
+  | t = disjunction_term { t }
   | FUN params = list(param_group) ARROW body = term
     {
       let loc = { Term.start = $startpos; Term.end_ = $endpos } in
@@ -65,11 +65,53 @@ term:
       let bid = Term.gen_binder_id () in
       {Term.inner=Term.Arrow (Some x, bid, ty, Term.subst rettype (Term.Name x) (Term.Bvar bid)); loc}
     }
-  | ty = app_term FORALL rettype = term
+  | ty = disjunction_term FORALL rettype = term
     {
       let loc = { Term.start = $startpos; Term.end_ = $endpos } in
       let bid = Term.gen_binder_id () in
       {Term.inner=Term.Arrow (None, bid, ty, rettype); loc}
+    }
+
+disjunction_term:
+  | t = conjunction_term { t }
+  | t1 = disjunction_term OR t2 = conjunction_term
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      Term.{inner=App ({inner=App ({inner=Name "Or"; loc}, t1); loc}, t2); loc}
+    }
+
+conjunction_term:
+  | t = proposition_term { t }
+  | t1 = conjunction_term AND t2 = proposition_term
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      Term.{inner=App ({inner=App ({inner=Name "And"; loc}, t1); loc}, t2); loc}
+    }
+
+proposition_term:
+  | t = sum_term { t }
+  | t1 = sum_term LESS_THAN t2 = sum_term
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      Term.{inner=App ({inner=App ({inner=Name "Lt"; loc}, t1); loc}, t2); loc}
+    }
+  | t1 = sum_term EQUALS t2 = sum_term
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      Term.{inner=App ({inner=App ({inner=App ({inner=Name "Eq"; loc}, {inner=Hole (gen_hole_id ()); loc}); loc}, t1); loc}, t2); loc}
+    }
+  | t1 = sum_term NOT_EQUALS t2 = sum_term
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      Term.{inner=App ({inner=App ({inner=App ({inner=Name "Ne"; loc}, {inner=Hole (gen_hole_id ()); loc}); loc}, t1); loc}, t2); loc}
+    }
+
+sum_term:
+  | t = app_term { t }
+  | t1 = sum_term PLUS t2 = app_term
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      Term.{inner=App ({inner=App ({inner=Name "Add"; loc}, t1); loc}, t2); loc}
     }
 
 app_term:
