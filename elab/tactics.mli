@@ -1,11 +1,6 @@
 open Term
 open Proofstate
-
-type tactic_result =
-  | Success of proof_state
-  | Failure of string
-
-type tactic = proof_state -> tactic_result
+open Tactic
 
 val reflexivity : proof_state -> tactic_result
 
@@ -40,3 +35,5 @@ val intros : string list -> tactic
 (** [rewrite h] takes in a term [h] of type [lhs = rhs] and creates a new goal where all
     occurrences of [lhs] are replaced with [rhs] *)
 val rewrite : term -> proof_state -> tactic_result
+
+val register : unit -> unit

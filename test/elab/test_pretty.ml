@@ -26,7 +26,7 @@ let () =
         name = "id";
         name_loc = l;
         ty = Util.(narrow "A" 1 (sort 1) (narrow "x" 2 (bvar 1) (bvar 1)));
-        kind = Theorem Util.(ufun 3 (sort 1) (ufun 4 (bvar 3) (bvar 4)));
+        kind = Theorem (DefEq Util.(ufun 3 (sort 1) (ufun 4 (bvar 3) (bvar 4))));
       }
   in
   Printf.printf

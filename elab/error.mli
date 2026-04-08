@@ -86,6 +86,12 @@ type error_type =
       (** [ImportUnexpected] indicates that an import statement was encountered after it
           should have already been processed. *)
   | UnificationFailure of unification_failure_info
+  | InvalidTacticParameter of string
+      (** [TacticParameterError(msg)] indicates that a tactic was given invalid
+          parameters. [msg] describes the issue. *)
+  | TacticFailure of string
+      (** [TacticFailure(msg)] indicates that a tactic failed to apply. [msg] describes
+          the reason for failure. *)
 
 (** The complete error record raised by the elaborator. *)
 type elab_error_info = {

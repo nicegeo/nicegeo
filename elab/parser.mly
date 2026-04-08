@@ -1,5 +1,5 @@
 %token <string> IDENT STRING_LITERAL
-%token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE
+%token FUN FORALL ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE PROOF QED PERIOD
 %token THEOREM AXIOM DEFINITION DEFEQ IMPORT
 %token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE OPAQUE_DIRECTIVE
 %start <Statement.statement list> main
@@ -22,10 +22,15 @@ import:
 
 declaration:
   | AXIOM name = IDENT COLON ty = term { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Axiom} }
+  | THEOREM name = IDENT COLON ty = term PROOF proof = list(tactic) QED
+    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem (Proof proof)} }
   | THEOREM name = IDENT COLON ty = term DEFEQ proof = term
-    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem proof} }
+    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem (DefEq proof)} }
   | DEFINITION name = IDENT COLON ty = term DEFEQ body = term
     { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Def body} }
+
+tactic:
+  | name = IDENT args = list(atomic_term) PERIOD { Statement.{name; args; loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }} }
 
 directive:
   (* print all axioms used in proposition: #print axioms prop1 *)

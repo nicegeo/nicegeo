@@ -509,6 +509,48 @@ let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   let tm_reduced = Reduce.reduce e tm_filled in
   tm_reduced
 
+let process_body (e : ctx) (d : declaration) (body : term) =
+  let ty_filled = elaborate e d.ty None in
+  check_is_type e ty_filled;
+  let proof_filled = elaborate e body (Some (Reduce.delta_reduce e ty_filled false)) in
+  let ty_k = Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm in
+  let proof_k =
+    Reduce.delta_reduce e proof_filled true |> Reduce.reduce e |> conv_to_kterm
+  in
+
+  try
+    let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
+    let isValidProof = KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k in
+
+    if isValidProof then (
+      Hashtbl.add
+        e.env
+        d.name
+        {
+          name = d.name;
+          ty = ty_filled;
+          data =
+            (match d.kind with
+            | Theorem _ -> Theorem (list_axioms_used e proof_filled)
+            | Def _ -> Def (list_axioms_used e proof_filled, proof_filled, false)
+            | Axiom -> assert false);
+        };
+      Hashtbl.add e.kenv d.name ty_k)
+    else
+      raise
+        (Error.ElabError
+           {
+             context = { loc = Some d.name_loc; decl_name = Some d.name };
+             error_type = Error.InternalError "kernel did not accept proof\n";
+           })
+  with KExceptions.TypeError msg ->
+    raise
+      (Error.ElabError
+         {
+           context = { loc = Some d.name_loc; decl_name = Some d.name };
+           error_type = Error.KernelError { kernel_exn = msg };
+         })
+
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
   try
@@ -521,53 +563,8 @@ let process_decl (e : ctx) (d : declaration) : unit =
            })
     else
       match d.kind with
-      | Theorem body | Def body -> (
-          let ty_filled = elaborate e d.ty None in
-          check_is_type e ty_filled;
-          let proof_filled =
-            elaborate e body (Some (Reduce.delta_reduce e ty_filled false))
-          in
-          let ty_k =
-            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
-          in
-          let proof_k =
-            Reduce.delta_reduce e proof_filled true |> Reduce.reduce e |> conv_to_kterm
-          in
-
-          try
-            let inferredType = KInfer.inferType e.kenv (Hashtbl.create 0) proof_k in
-            let isValidProof =
-              KInfer.isDefEq e.kenv (Hashtbl.create 0) inferredType ty_k
-            in
-
-            if isValidProof then (
-              Hashtbl.add
-                e.env
-                d.name
-                {
-                  name = d.name;
-                  ty = ty_filled;
-                  data =
-                    (match d.kind with
-                    | Theorem _ -> Theorem (list_axioms_used e proof_filled)
-                    | Def _ -> Def (list_axioms_used e proof_filled, proof_filled, false)
-                    | Axiom -> assert false);
-                };
-              Hashtbl.add e.kenv d.name ty_k)
-            else
-              raise
-                (Error.ElabError
-                   {
-                     context = { loc = Some d.name_loc; decl_name = Some d.name };
-                     error_type = Error.InternalError "kernel did not accept proof\n";
-                   })
-          with KExceptions.TypeError msg ->
-            raise
-              (Error.ElabError
-                 {
-                   context = { loc = Some d.name_loc; decl_name = Some d.name };
-                   error_type = Error.KernelError { kernel_exn = msg };
-                 }))
+      | Theorem (Proof proof) -> process_body e d (Tactic.run e proof d.ty)
+      | Theorem (DefEq body) | Def body -> process_body e d body
       | Axiom ->
           let ty_filled = elaborate e d.ty None in
           check_is_type e ty_filled;

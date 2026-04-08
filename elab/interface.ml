@@ -1,5 +1,7 @@
 module KTerm = Kernel.Term
 
+let () = Tactics.register ()
+
 let create () : Types.ctx =
   {
     env = Hashtbl.create 16;

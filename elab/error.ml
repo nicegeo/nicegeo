@@ -51,6 +51,8 @@ type error_type =
   | ImportNotAtTop
   | ImportUnexpected
   | UnificationFailure of unification_failure_info
+  | InvalidTacticParameter of string
+  | TacticFailure of string
 
 type elab_error_info = {
   context : error_context;
@@ -306,3 +308,7 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         snippet
         (Pretty.term_to_string e left)
         (Pretty.term_to_string e right)
+  | InvalidTacticParameter msg ->
+      Printf.sprintf "Invalid tactic parameters%s:%s\n%s" ctx_str snippet msg
+  | TacticFailure msg ->
+      Printf.sprintf "Tactic failed%s:%s\nReason: %s" ctx_str snippet msg

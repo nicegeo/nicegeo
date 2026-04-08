@@ -1,14 +1,14 @@
 open Term
 
-type tactic_term = {
+type tactic = {
   name : string;
-  params : term list;
+  args : term list;
   loc : range;
 }
 
 type theorem_body =
-  | Proof of tactic_term list
-  | Equal of term
+  | Proof of tactic list
+  | DefEq of term
 
 type decl_type =
   | Theorem of theorem_body
