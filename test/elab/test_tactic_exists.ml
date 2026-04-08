@@ -1,5 +1,6 @@
 open Elab.Tactics
 open Elab.Proofstate
+open Elab.Typecheck
 
 (*
  * This is based heavily on the rewrite tactic tests, including by copying
@@ -39,8 +40,11 @@ let to_kterm env tm =
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
-  let proof_k = to_kterm env (apply_meta env proof) in
-  let ty_k = to_kterm env goal_ty in
+  let open Elab.Pretty in
+  Printf.printf "%s\n\n" (term_to_string env proof); 
+  let proof = replace_metas env proof in
+  let proof_k = to_kterm env (replace_metas env proof) in
+  let ty_k = to_kterm env (replace_metas env goal_ty) in
   let inferred = Kernel.Infer.inferType env.kenv (Hashtbl.create 0) proof_k in
   Kernel.Infer.isDefEq env.kenv (Hashtbl.create 0) inferred ty_k
 
@@ -64,9 +68,7 @@ let test_exists_kernel_check () =
   let goal_ty = elab env "Exists A (fun (a : A) => True)" in
   let st = init_state ~elab_ctx:env goal_ty in
   let st = run_tactic (exists (elab env "a")) st in
-  let open Elab.Pretty in
-  Printf.printf "%s\n\n" (term_to_string env st.statement); 
-  let st = run_tactic (exact (elab env "True.intro")) st in
+  let st = run_tactic (apply "True.intro") st in
   Alcotest.(check bool) "no remaining goals" true (is_complete st);
   Alcotest.(check bool)
     "kernel accepts proof"
@@ -78,5 +80,5 @@ let suite =
   ( "Tactic.exists",
     [
       test_case "exists simple" `Quick test_exists_simple;
-        test_case "exists kernel check" `Quick test_exists_kernel_check;
+      test_case "exists kernel check" `Quick test_exists_kernel_check;
     ] )
