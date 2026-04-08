@@ -9,6 +9,14 @@ type tactic = proof_state -> tactic_result
 
 let tactics : (string, term list -> tactic) Hashtbl.t = Hashtbl.create 8
 
+let bind_tactic_args (st : Proofstate.proof_state) (args : term list) : term list =
+  let goal = List.hd st.open_goals in
+  List.map (fun arg ->
+    List.fold_right (fun hyp res ->
+      Term.subst res (Name hyp.hyp_name) (Bvar hyp.hyp_bid)
+    ) goal.ctx arg
+  ) args
+
 let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
   let init_state = Proofstate.init_state ~elab_ctx:e goal in
   let state =
@@ -17,7 +25,11 @@ let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
         let func_opt = Hashtbl.find_opt tactics tac.name in
         match func_opt with
         | Some func -> (
-            let result = func tac.args st in
+            (* bind names to Bvars based on the first goal's lctx. probably we actually
+            want every tactic to do it themselves rather than hardcoding it here, but this
+            is fine for now *)
+            let bound_args = bind_tactic_args st tac.args in
+            let result = func bound_args st in
             match result with
             | Success new_st -> new_st
             | Failure msg ->
