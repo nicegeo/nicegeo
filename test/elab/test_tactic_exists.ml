@@ -16,7 +16,8 @@ let path_to_env = "../../../../synthetic/env.ncg"
   It adds axioms for the types we care about in the tests.
 *)
 let make_env () =
-  let env = Elab.Interface.create_with_env_path path_to_env in
+  let env = Elab.Interface.create () in
+  Elab.Interface.process_file env path_to_env;
   let process s =
     let lexbuf = Lexing.from_string s in
     let stmts = Elab.Parser.main Elab.Lexer.token lexbuf in
@@ -41,12 +42,12 @@ let to_kterm env tm =
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
   let open Elab.Pretty in
-  Printf.printf "%s\n\n" (term_to_string env proof); 
+  Printf.printf "%s\n\n" (term_to_string env proof);
   let proof = replace_metas env proof in
   let proof_k = to_kterm env (replace_metas env proof) in
   let ty_k = to_kterm env (replace_metas env goal_ty) in
-  let inferred = Kernel.Infer.inferType env.kenv (Hashtbl.create 0) proof_k in
-  Kernel.Infer.isDefEq env.kenv (Hashtbl.create 0) inferred ty_k
+  let inferred = Kernel.Infer.Internals.inferType env.kenv (Hashtbl.create 0) proof_k in
+  Kernel.Infer.Internals.isDefEq env.kenv (Hashtbl.create 0) inferred ty_k
 
 (* Check that single usage of `exists` creates the correct new goal type. *)
 let test_exists_simple () =
