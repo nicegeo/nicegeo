@@ -1,5 +1,6 @@
 open Elab.Tactics
 open Elab.Proofstate
+open Elab.Tactic
 
 let path_to_env = "../../../../synthetic/env.ncg"
 

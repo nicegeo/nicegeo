@@ -1,11 +1,6 @@
 open Term
 open Proofstate
-
-type tactic_result =
-  | Success of proof_state
-  | Failure of string
-
-type tactic = proof_state -> tactic_result
+open Tactic
 
 val reflexivity : proof_state -> tactic_result
 
@@ -45,3 +40,5 @@ val rewrite : term -> proof_state -> tactic_result
     old goal had form [Exists A p]. The motive [p] is inferred from the goal and the type
     of the argument [a]. *)
 val exists : term -> proof_state -> tactic_result
+
+val register : unit -> unit

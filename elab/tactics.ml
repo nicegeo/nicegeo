@@ -2,10 +2,7 @@ open Term
 open Types
 open Proofstate
 open Typecheck
-
-type tactic_result =
-  | Success of proof_state
-  | Failure of string
+open Tactic
 
 let succeed st = Success st
 let fail msg = Failure msg
@@ -15,8 +12,6 @@ let _catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
   try f () with Error.ElabError info -> fail (Error.pp_exn ectx info)
 
 let beta_nf (e : ctx) (tm : term) : term = Reduce.reduce e tm
-
-type tactic = proof_state -> tactic_result
 
 (** [seq t1 t2] applies t1 to the state. If it succeeds, it applies t2 to the new state.
 *)
@@ -223,6 +218,7 @@ let intro (name : string) (st : proof_state) : tactic_result =
             { hyp_name = name; hyp_bid = bid; hyp_def = None; hyp_type = premise_ty }
           in
           let new_ctx_bids = bid :: List.map (fun h -> h.hyp_bid) g.ctx in
+          Hashtbl.replace st.elab_ctx.lctx bid (Some name, premise_ty);
           Hashtbl.replace
             st.elab_ctx.metas
             hole_id
@@ -426,3 +422,42 @@ let exists (a : term) (st : proof_state) : tactic_result =
           succeed st
       | None -> fail "Goal must have the form [Exists A p]")
   | None -> fail "No goals remaining"
+
+let register () =
+  register_tactic "reflexivity" Register.(nullary reflexivity);
+  register_tactic "exact" Register.(unary_term exact);
+  register_tactic "apply" Register.(unary_ident apply);
+  register_tactic "sorry" Register.(nullary sorry);
+  register_tactic "intro" Register.(unary_ident intro);
+  register_tactic "intros" Register.(variadic_ident intros);
+  (* There's a clever design somewhere that lets me write this with some combinators, but for time's sake this one gets hard-coded for now. *)
+  register_tactic "have" (function
+    | [ { inner = Name name; _ }; ty ] -> have name ty
+    | ty :: _ ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = Some ty.loc; decl_name = None };
+               error_type =
+                 Error.InvalidTacticParameter "Expected an identifier, but got a term";
+             })
+    | args ->
+        raise
+          (Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                 };
+               error_type =
+                 Error.InvalidTacticParameter
+                   ("Expected exactly two parameters (name and type), but got "
+                   ^ string_of_int (List.length args));
+             }));
+  register_tactic "rewrite" Register.(unary_term rewrite)
