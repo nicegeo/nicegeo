@@ -424,6 +424,8 @@ let exists (a : term) (st : proof_state) : tactic_result =
   | None -> fail "No goals remaining"
 
 let register () =
+  register_tactic "try" Register.(tactical try_tac);
+  register_tactic "repeat" Register.(tactical repeat);
   register_tactic "reflexivity" Register.(nullary reflexivity);
   register_tactic "exact" Register.(unary_term exact);
   register_tactic "apply" Register.(unary_ident apply);
