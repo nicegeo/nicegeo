@@ -21,6 +21,10 @@ val elaborate : Types.ctx -> term -> term option -> term
     be elaborated first. *)
 val infertype : ?depth:int -> Types.ctx -> term -> term
 
+val create_metas : Types.ctx -> term -> int list -> unit
+
+val replace_metas : Types.ctx -> term -> term
+
 val unify :
   ?depth:int ->
   Types.ctx ->

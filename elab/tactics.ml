@@ -136,45 +136,19 @@ let apply (tm : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
   | Some g -> (
-      let f_ty = infertype st.elab_ctx tm in
-      let f_ty = beta_nf st.elab_ctx f_ty in
-      match f_ty.inner with
-      | Arrow (_, bid, premise_ty, conclusion_ty) ->
-          (* Check the instantiated conclusion before opening the subgoal,
-                so a failed [apply] does not leak a fresh meta. *)
-          let hole_id = gen_hole_id () in
-          let hole = mk_hole hole_id in
-          let conclusion = Reduce.subst st.elab_ctx conclusion_ty (Bvar bid) hole.inner in
-          if def_eq st.elab_ctx conclusion g.goal_type then (
-            let context = List.map (fun h -> h.hyp_bid) g.ctx in
-            Hashtbl.replace
-              st.elab_ctx.metas
-              hole_id
-              { ty = Some premise_ty; context; sol = None };
-            let subgoal = { ctx = g.ctx; goal_type = premise_ty; goal_id = hole_id } in
-            let st = { st with open_goals = st.open_goals @ [ subgoal ] } in
-            let st = assign_meta g.goal_id (mk_app tm hole) st in
-            let st = close_goal g.goal_id st in
-            succeed st)
-          else
-            fail
-              (Printf.sprintf
-                 "apply: conclusion '%s' does not match goal '%s'."
-                 (pp_term st.elab_ctx conclusion)
-                 (pp_term st.elab_ctx g.goal_type))
-      | _ ->
-          (* No arrow — fall back to exact-style check. *)
-          if def_eq st.elab_ctx f_ty g.goal_type then
-            let st = assign_meta g.goal_id tm st in
-            let st = close_goal g.goal_id st in
-            succeed st
-          else
-            fail
-              (Printf.sprintf
-                 "apply: '%s' has type '%s' but goal is '%s'."
-                 (pp_term st.elab_ctx tm)
-                 (pp_term st.elab_ctx f_ty)
-                 (pp_term st.elab_ctx g.goal_type)))
+      let subgoal_id = gen_hole_id () in
+      let sol = mk_app tm (mk_hole subgoal_id) in
+      create_metas st.elab_ctx sol (List.map (fun h -> h.hyp_bid) g.ctx);
+      let sol_ty = infertype st.elab_ctx sol in
+      unify st.elab_ctx sol_ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
+      (* basically check that all the holes in tm are filled *)
+      ignore (replace_metas st.elab_ctx tm);
+      let subgoal_ty = Option.get (Hashtbl.find st.elab_ctx.metas subgoal_id).ty in
+      let subgoal = { ctx = g.ctx; goal_type = subgoal_ty; goal_id = subgoal_id } in
+      let st = { st with open_goals = st.open_goals @ [ subgoal ] } in
+      let st = assign_meta g.goal_id sol st in
+      let st = close_goal g.goal_id st in
+      succeed st)
 
 let ensure_sorry_ax (st : proof_state) : unit =
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then (
