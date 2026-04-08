@@ -425,6 +425,4 @@ let run (prog : string) (args : string list) : unit =
 
 let () =
   record_backtrace true;
-  match Array.to_list Sys.argv with
-  | prog :: args -> run prog args
-  | [] -> exit 2
+  match Array.to_list Sys.argv with prog :: args -> run prog args | [] -> exit 2
