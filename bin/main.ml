@@ -250,7 +250,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           let hyps =
             g.ctx
             |> List.map (fun (h : Proofstate.hyp) ->
-                   (h.hyp_name, h.hyp_bid, Proofstate.pp_term st.elab_ctx h.hyp_type))
+                (h.hyp_name, h.hyp_bid, Proofstate.pp_term st.elab_ctx h.hyp_type))
           in
           Some
             {
@@ -333,21 +333,21 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
   let ctx_items (xs : context_item list) : string =
     xs
     |> List.map (fun { name; ty } ->
-           Printf.sprintf
-             "{\"name\":\"%s\",\"type\":\"%s\"}"
-             (json_escape name)
-             (json_escape ty))
+        Printf.sprintf
+          "{\"name\":\"%s\",\"type\":\"%s\"}"
+          (json_escape name)
+          (json_escape ty))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
   let hyps_items =
     snap.hyps
     |> List.map (fun (name, bid, ty) ->
-           Printf.sprintf
-             "{\"name\":\"%s\",\"bid\":%d,\"type\":\"%s\"}"
-             (json_escape name)
-             bid
-             (json_escape ty))
+        Printf.sprintf
+          "{\"name\":\"%s\",\"bid\":%d,\"type\":\"%s\"}"
+          (json_escape name)
+          bid
+          (json_escape ty))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
@@ -361,23 +361,23 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
   let env_items =
     snap.environment
     |> List.map (fun e ->
-           Printf.sprintf
-             "{\"name\":\"%s\",\"kind\":\"%s\",\"type\":\"%s\"}"
-             (json_escape e.env_name)
-             (json_escape e.env_kind)
-             (json_escape e.env_ty))
+        Printf.sprintf
+          "{\"name\":\"%s\",\"kind\":\"%s\",\"type\":\"%s\"}"
+          (json_escape e.env_name)
+          (json_escape e.env_kind)
+          (json_escape e.env_ty))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
   let meta_items =
     snap.metas
     |> List.map (fun m ->
-           Printf.sprintf
-             "{\"id\":%d,\"type\":%s,\"solution\":%s,\"context\":%s}"
-             m.meta_id
-             (json_opt_string m.meta_ty)
-             (json_opt_string m.meta_sol)
-             (json_int_list m.meta_context))
+        Printf.sprintf
+          "{\"id\":%d,\"type\":%s,\"solution\":%s,\"context\":%s}"
+          m.meta_id
+          (json_opt_string m.meta_ty)
+          (json_opt_string m.meta_sol)
+          (json_int_list m.meta_context))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
