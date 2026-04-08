@@ -63,9 +63,7 @@ let decl_end_loc (d : Statement.declaration) : Lexing.position =
       match body with
       | Statement.DefEq tm -> tm.loc.end_
       | Statement.Proof tactics -> (
-          match List.rev tactics with
-          | t :: _ -> t.loc.end_
-          | [] -> d.ty.loc.end_))
+          match List.rev tactics with t :: _ -> t.loc.end_ | [] -> d.ty.loc.end_))
   | Statement.Def body -> body.loc.end_
   | Statement.Axiom -> d.ty.loc.end_
 
