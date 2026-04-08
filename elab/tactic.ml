@@ -51,7 +51,7 @@ let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
       init_state
       tacs
   in
-  if state.open_goals <> [] then
+  if not (is_complete state) then
     raise
       (Error.ElabError
          {
