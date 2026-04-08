@@ -11,13 +11,12 @@ open Elab
 
 let usage () =
   Printf.eprintf
-    "Usage:\n\
-    \  %s <filename>\n\
-    \  %s --proofstate-at [--json] <filename> <line> <col>\n"
+    "Usage:\n  %s <filename>\n  %s --proofstate-at [--json] <filename> <line> <col>\n"
     Sys.argv.(0)
     Sys.argv.(0)
 
-(** Args after [--proofstate-at]. Optional [--json] may appear before or after the three positional args. *)
+(** Args after [--proofstate-at]. Optional [--json] may appear before or after the three
+    positional args. *)
 let parse_proofstate_argv (args : string list) : (bool * string * int * int) option =
   let use_json, rest = List.partition (fun s -> s = "--json") args in
   let json = use_json <> [] in
@@ -28,8 +27,7 @@ let parse_proofstate_argv (args : string list) : (bool * string * int * int) opt
   | _ -> None
 
 let json_escape (s : string) : string = String.escaped s
-
-let pos_col (p : Lexing.position) : int = (p.pos_cnum - p.pos_bol) + 1
+let pos_col (p : Lexing.position) : int = p.pos_cnum - p.pos_bol + 1
 
 let decl_kind_to_string (k : Statement.decl_type) : string =
   match k with
@@ -66,7 +64,8 @@ let find_repo_root (start_path : string) : string option =
   in
   go (Filename.dirname start_path)
 
-(** Load [synthetic/env.ncg] relative to repo root when possible (works when CWD is not the repo). *)
+(** Load [synthetic/env.ncg] relative to repo root when possible (works when CWD is not
+    the repo). *)
 let load_default_env_for_paths (reference_file : string) : Types.ctx =
   let env = Elab.Interface.create () in
   (try
@@ -79,8 +78,7 @@ let load_default_env_for_paths (reference_file : string) : Types.ctx =
      exit 255);
   env
 
-let extract_head_binders (ectx : Types.ctx) (ty : Term.term) :
-    (string * string) list =
+let extract_head_binders (ectx : Types.ctx) (ty : Term.term) : (string * string) list =
   let rec go acc (t : Term.term) =
     match t.inner with
     | Term.Arrow (arg_name_opt, bid, ty_arg, ty_ret) ->
@@ -92,9 +90,16 @@ let extract_head_binders (ectx : Types.ctx) (ty : Term.term) :
   in
   go [] ty
 
-type context_item = { name : string; ty : string }
+type context_item = {
+  name : string;
+  ty : string;
+}
 
-type env_item = { env_name : string; env_kind : string; env_ty : string }
+type env_item = {
+  env_name : string;
+  env_kind : string;
+  env_ty : string;
+}
 
 type meta_item = {
   meta_id : int;
@@ -132,7 +137,8 @@ let snapshot_environment (e : Types.ctx) : env_item list =
       in
       let ty_str = Proofstate.pp_term e entry.ty in
       { env_name = name; env_kind = kind; env_ty = ty_str } :: acc)
-    e.env []
+    e.env
+    []
   |> List.sort (fun a b -> String.compare a.env_name b.env_name)
 
 let snapshot_metas (e : Types.ctx) : meta_item list =
@@ -145,7 +151,8 @@ let snapshot_metas (e : Types.ctx) : meta_item list =
         match m.sol with Some t -> Some (Proofstate.pp_term e t) | None -> None
       in
       { meta_id = mid; meta_ty = ty_s; meta_sol = sol_s; meta_context = m.context } :: acc)
-    e.metas []
+    e.metas
+    []
   |> List.sort (fun a b -> compare a.meta_id b.meta_id)
 
 let restore_lctx (dst : Types.ctx) (saved : (int, string option * Term.term) Hashtbl.t) :
@@ -165,8 +172,10 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
         match stmt with
         | Statement.Declaration d ->
             let decl_range = { Term.start = d.name_loc.start; end_ = decl_end_loc d } in
-            if same_file d.name_loc.start.pos_fname filename && range_contains decl_range line col then
-              Some (d, acc_env)
+            if
+              same_file d.name_loc.start.pos_fname filename
+              && range_contains decl_range line col
+            then Some (d, acc_env)
             else (
               Elab.Interface.process_statement acc_env stmt;
               find_and_prepare acc_env rest)
@@ -176,7 +185,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
   in
   match find_and_prepare env stmts with
   | None -> None
-  | Some (d, env_before_decl) ->
+  | Some (d, env_before_decl) -> (
       let goal_ty_tm = Typecheck.elaborate env_before_decl d.ty None in
       let st = Proofstate.init_state ~elab_ctx:env_before_decl goal_ty_tm in
       let environment = snapshot_environment env_before_decl in
@@ -241,9 +250,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           let hyps =
             g.ctx
             |> List.map (fun (h : Proofstate.hyp) ->
-                   ( h.hyp_name,
-                     h.hyp_bid,
-                     Proofstate.pp_term st.elab_ctx h.hyp_type ))
+                   (h.hyp_name, h.hyp_bid, Proofstate.pp_term st.elab_ctx h.hyp_type))
           in
           Some
             {
@@ -262,7 +269,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
               hyps;
               environment;
               metas;
-            }
+            })
 
 let print_snapshot_text (snap : proofstate_snapshot) : unit =
   Printf.printf "Declaration: %s (%s)\n" snap.decl_name snap.decl_kind;
@@ -281,10 +288,7 @@ let print_snapshot_text (snap : proofstate_snapshot) : unit =
     Printf.printf "%s:\n" title;
     (match ctx with
     | [] -> Printf.printf "  (none)\n"
-    | _ ->
-        List.iter
-          (fun { name; ty } -> Printf.printf "  %s : %s\n" name ty)
-          ctx);
+    | _ -> List.iter (fun { name; ty } -> Printf.printf "  %s : %s\n" name ty) ctx);
     Printf.printf "\n"
   in
   pp_ctx "Head context (intro binders)" snap.head_context;
@@ -304,25 +308,16 @@ let print_snapshot_text (snap : proofstate_snapshot) : unit =
   | _ ->
       List.iter
         (fun m ->
-          let ty_part =
-            match m.meta_ty with Some s -> " : " ^ s | None -> ""
-          in
+          let ty_part = match m.meta_ty with Some s -> " : " ^ s | None -> "" in
           let sol_part =
-            match m.meta_sol with
-            | Some s -> Printf.sprintf "  := %s" s
-            | None -> ""
+            match m.meta_sol with Some s -> Printf.sprintf "  := %s" s | None -> ""
           in
           let ctx_part =
             if m.meta_context = [] then ""
             else
               "  ctx=[" ^ String.concat "," (List.map string_of_int m.meta_context) ^ "]"
           in
-          Printf.printf
-            "  ?%d%s%s%s\n"
-            m.meta_id
-            ty_part
-            sol_part
-            ctx_part)
+          Printf.printf "  ?%d%s%s%s\n" m.meta_id ty_part sol_part ctx_part)
         snap.metas);
   Printf.printf "\nGoal hypotheses (proof state hyps):\n";
   (match snap.hyps with
@@ -387,29 +382,7 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     |> fun s -> "[" ^ s ^ "]"
   in
   Printf.printf
-    "{\
-     \"ok\":true,\
-     \"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d},\
-     \"declaration\":{\
-       \"name\":\"%s\",\
-       \"kind\":\"%s\",\
-       \"file\":\"%s\",\
-       \"startLine\":%d,\
-       \"startCol\":%d,\
-       \"endLine\":%d,\
-       \"endCol\":%d\
-     },\
-     \"proofState\":{\
-       \"goalType\":\"%s\",\
-       \"goalTypeReduced\":\"%s\",\
-       \"headContext\":%s,\
-       \"headContextReduced\":%s,\
-       \"termContext\":%s,\
-       \"hyps\":%s,\
-       \"environment\":%s,\
-       \"metas\":%s\
-     }\
-     }\n"
+    "{\"ok\":true,\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d},\"declaration\":{\"name\":\"%s\",\"kind\":\"%s\",\"file\":\"%s\",\"startLine\":%d,\"startCol\":%d,\"endLine\":%d,\"endCol\":%d},\"proofState\":{\"goalType\":\"%s\",\"goalTypeReduced\":\"%s\",\"headContext\":%s,\"headContextReduced\":%s,\"termContext\":%s,\"hyps\":%s,\"environment\":%s,\"metas\":%s}}\n"
     (json_escape filename)
     line
     col
@@ -429,7 +402,8 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     env_items
     meta_items
 
-(** Main check mode: same behavior as upstream [main] — collect all statement errors, then report. *)
+(** Main check mode: same behavior as upstream [main] — collect all statement errors, then
+    report. *)
 let run_check_mode (filename : string) : unit =
   let env = load_default_env_for_paths filename in
   let tone = Nice_messages.tone_from_env () in
@@ -474,10 +448,10 @@ let () =
       | None ->
           Printf.eprintf
             "Invalid arguments after --proofstate-at.\n\
-             Expected: [--json] <filename> <line> <col>   (line and column are 1-based integers)\n\
+             Expected: [--json] <filename> <line> <col>   (line and column are 1-based \
+             integers)\n\
              When using dune, separate flags with -- so dune does not consume them:\n\
-               dune exec nicegeo -- --proofstate-at [--json] <filename> <line> <col>\n\
-             \n";
+             dune exec nicegeo -- --proofstate-at [--json] <filename> <line> <col>\n\n";
           usage ();
           exit 2
       | Some (use_json, filename, line, col) -> (
@@ -486,11 +460,8 @@ let () =
             | None ->
                 if use_json then
                   Printf.printf
-                    "{\
-                     \"ok\":false,\
-                     \"error\":\"No declaration found at this position.\",\
-                     \"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d}\
-                     }\n"
+                    "{\"ok\":false,\"error\":\"No declaration found at this \
+                     position.\",\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d}}\n"
                     (json_escape filename)
                     line
                     col
@@ -508,11 +479,7 @@ let () =
               let empty = Elab.Interface.create () in
               if use_json then
                 Printf.printf
-                  "{\
-                   \"ok\":false,\
-                   \"error\":\"%s\",\
-                   \"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d}\
-                   }\n"
+                  "{\"ok\":false,\"error\":\"%s\",\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d}}\n"
                   (json_escape (Error.pp_exn empty e))
                   (json_escape filename)
                   line
