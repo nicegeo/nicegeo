@@ -3,6 +3,35 @@ Definition Iff : (P : Prop) -> (Q : Prop) -> Prop := fun P Q => (P -> Q) ∧ (Q 
 Definition 0 : Measure := Zero
 Definition 90 : Measure := RightAngle
 
+Definition length : Point -> Point -> Measure := fun a b => Length a b
+Definition angle : Point -> Point -> Point -> Measure := fun a b c => Angle a b c
+Definition area : Point -> Point -> Point -> Measure := fun a b c => Area a b c
+
+(* From synthetic euclid 4*)
+Definition diffside : Point -> Point -> Line -> Prop := fun a b L => Not (OnLine a L) /\ Not (OnLine b L) /\ Not (SameSide a b L)
+
+Definition out_circle : Point -> Circle -> Prop := fun a aa => (Not (OnCircle a aa)) /\ (Not (InCircle a aa))  
+
+Definition colinear : Point -> Point -> Point -> Prop := fun a b c => Exists Line (fun L => OnLine a L /\ OnLine b L /\ OnLine c L)
+
+Definition triangle : Point -> Point -> Point -> Prop := fun a b c => (colinear a b c -> False)
+
+Definition eq_tri : Point -> Point -> Point -> Prop := fun a b c =>  (triangle a b c) /\ (Length a b = Length a c) /\ (Length b a = Length b c) /\
+(Length c a =  Length c b)    
+
+Definition iso_tri : Point -> Point -> Point -> Prop := fun a b c =>
+    triangle a b c /\ Length a b = Length a c
+
+Definition para : Line -> Line -> Prop := fun M N => ((e : Point) -> Not (OnLine e M) ∨ Not (OnLine e N))
+
+Definition paragram : Point -> Point -> Point -> Point -> Line -> Line -> Line -> Line -> Prop := fun a b c d L M N O => 
+OnLine a L /\ OnLine b L /\ OnLine b M /\ OnLine c M /\ OnLine c N /\ OnLine d N /\ OnLine d O /\ OnLine a O /\ para L N /\ para M O
+
+(* Of quadrilateral figures, a square is that which is both equilateral and right-angled *)
+Definition square : Point -> Point -> Point -> Point -> Prop := fun a b c d => 
+    Length a b = Length b c /\ Length a b = Length c d /\ Length a b = Length d a /\
+    Angle a b c = 90 /\ Angle b c d = 90 /\ Angle c d a = 90 /\ Angle d a b = 90
+
 (* A strict inequality implies the two values are not equal. *)
 Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
   fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
@@ -394,41 +423,15 @@ angles equal the remaining angles respectively, namely those opposite the equal 
 (* Axiom sas_congruence *)
 
 
-(*
-    Says that two of the sides of the triangle are equal.
-    It assume that the top point of the isoceles triangle is passed in first,
-    followed by the two base points.
-*)
-Definition IsIsoceles : Point -> Point -> Point -> Prop := fun a b c =>
-    a ≠ b /\ b ≠ c /\ a ≠ c /\ Length a b = Length a c
 
 (* Proposition 5 (part 1): Equal angles in the base of isoceles triangles *)
-Theorem isoceles_eq_angles : (a : Point) -> (b : Point) -> (c : Point) ->
-    IsIsoceles a b c -> Angle a b c = Angle a c b := sorry _
-
-(* Proposition 5 (part 2): Equal angles below isoceles *)
-Theorem isoceles_extended_eq_angles : (a : Point) -> (b : Point) -> (c : Point) ->
-    IsIsoceles a b c ->
-    (f : Point) -> Between a b f ->
-    (g : Point) -> Between a c g ->
-    Angle b f c = Angle b c g := sorry _
+Theorem angle_eq_of_iso : (a : Point) -> (b : Point) -> (c : Point) ->
+    iso_tri a b c -> Angle a b c = Angle a c b := sorry _
 
 (* Proposition 6: If in a triangle two angles equal one another, 
 then the sides opposite the equal angles also equal one another. *)
 Theorem eq_angles_implies_isoceles : (a : Point) -> (b : Point) -> (c : Point) ->
- (Angle a b c = Angle a c b) -> (Length a b = Length a c) := sorry _
-
-(* Proposition 7:  Given two straight lines constructed from the ends of 
-a straight line and meeting in a point, 
-there cannot be constructed from the ends of the same straight line, 
-and on the same side of it, two other straight lines meeting in another point 
-and equal to the former two respectively, namely each equal to that from the same end. *)
-
-Theorem no_distinct_equal_triangles_same_base_side: (a : Point) -> (b : Point) -> (L : Line) -> (c : Point) ->
-(OnLine a L) -> (OnLine b L) -> (a ≠ b) -> 
-(* (b ≠ c) -> (c ≠ a) -> *)
-(d : Point) -> (c ≠ d) -> (SameSide c d L) -> (Length a c = Length a d) ->
-(Length b c ≠ Length b d) := sorry _
+    triangle a b c -> (Angle a b c = Angle a c b) -> (Length a b = Length a c) := sorry _
 
 
 (* Proposition 8: If two triangles have the two sides equal to two sides respectively, 
@@ -438,35 +441,128 @@ by the equal straight lines. *)
 (* SSS axiom*)
 
 
+(* Proposition 10: bisecting a segment *)
+Theorem bisect_segment : (a : Point) -> (b : Point) -> 
+    Exists Point (fun e => Between a e b /\ Length a e = Length b e) := sorry _
+
 (* Proposition 11: To draw a straight line at right angles to a given straight line from a given point on it. 
 Statement taken from synthetic_euclid_4 formalization *)
-Theorem perp_at_pt_online : (a : Point) -> (b : Point) -> (c : Point) -> (f : Point) -> (L : Line) -> 
+Theorem perpendicular_of_online : (a : Point) -> (b : Point) -> (c : Point) -> (f : Point) -> (L : Line) -> 
     Between a b c -> OnLine a L -> OnLine b L -> Not (OnLine f L) ->
     Exists Point (fun e => SameSide e f L ∧ Angle e b a = 90 ∧ Angle e b c = 90) := 
     sorry _
 
+Theorem perpendicular_of_online' : (a : Point) -> (b : Point) -> (c : Point) -> (f : Point) -> (L : Line) -> 
+    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine f L) -> 
+    Exists Point (fun c => SameSide c f L ∧ Angle a b c = 90) := sorry _
 
-(* Proposition 27 *)
+Theorem perpendicular_of_online'' : (a : Point) -> (b : Point) -> (c : Point) -> (f : Point) -> (L : Line) -> 
+    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine f L) -> 
+    Exists Point (fun c => diffside c f L ∧ Angle a b c = 90) := sorry _
+
+(* Proposition 13: If a straight line stands on a straight line, then it makes either two right angles or angles 
+whose sum equals two right angles. *)
+Theorem two_right_of_flat_angle : 
+    (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) ->
+    Between a b c -> OnLine a L -> OnLine b L ->
+    Not (OnLine d L) -> Angle d b a + Angle d b c = 90 + 90 := sorry _
+
+(* /--Euclid I.13, a corollary if we know one of the angles to be right-/ *)
+Theorem right_of_online_right : (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) ->
+    b ≠ d -> triangle a b c -> OnLine b L ->
+    OnLine c L -> OnLine d L -> angle a b d = 90 -> angle a b c = 90 := sorry _
+
+(* /-- Euclid I.15, vertical angles are equal-/ *)
+Theorem vertical_angle : (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (e : Point) -> (L : Line) ->
+    Angle a b d = Angle c b e := sorry _
+
+Theorem vertical_angle' : 
+(a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (e : Point) ->
+Between a b c -> Between d b e -> Not (colinear a b d) -> 
+Angle a b d = Angle c b e := sorry _
+
+(* /-- Euclid I.16, external angles are greater than interior angles-/ *)
+Theorem internal_lt_external : (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> 
+Between a b c -> triangle a b d -> Angle b d a < Angle d b c := sorry _
+
+(* /-- Euclid I.16, external angles are greater than interior angles-/ *)
+Theorem internal_lt_external' : (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> 
+Between a b c -> triangle a b d -> Angle b a d < Angle d b c := sorry _
+
+(* /-- Euclid I.18, Opposite larger sides you have larger angles in a triangle-/ *)
+Theorem ang_lt_of_len_lt : (a : Point) -> (b : Point) -> (c : Point) ->
+triangle a b c -> length c a < length c b -> angle c b a < angle c a b := sorry _
+
+(* /--Euclid I.19, larger angles correspond to larger opposide sides in a triangle-/ *)
+Theorem len_lt_of_ang_lt : (a : Point) -> (b : Point) -> (c : Point) ->
+    triangle a b c -> angle c b a < angle c a b -> Length c a < Length c b := sorry _
+
+(* Proposition 20, part 1: Triangle inequality *)
+Theorem len_lt_of_tri' : (a : Point) -> (b : Point) -> (c : Point) ->
+    triangle a b c -> Length a b < Length a c + Length b c := sorry _
+
+(* Prroposition 20, part 2: More triangle inequalities *)
+Theorem len_lt_of_tri : (a : Point) -> (b : Point) -> (c : Point) ->
+    triangle a b c -> Length a b < Length a c + Length b c ∧
+    Length b c < Length b a + Length c a ∧ Length c a < Length c b + Length a b :=
+    sorry _
+
+(* Proposition 22: Create triangle of specific Lengths *)
+Theorem triangle_of_ineq : (a : Point) -> (b : Point) -> (f : Point) ->
+    (a1 : Point) -> (a2 : Point) -> (b1 : Point) -> (b2 : Point) -> (e : Point) ->
+    (L : Line) -> (aL : OnLine a L) -> (bL : OnLine b L) -> (fL : Not (OnLine f L)) ->
+    (ab_lt_a1a2_b1b2 : Length a b < Length a1 a2 + Length b1 b2) ->
+    (a1a2_lt_ab_b1b2 : Length a1 a2 < Length a b + Length b1 b2) ->
+    (b1b2_lt_a1a2_ab : Length b1 b2 < Length a1 a2 + Length a b) ->
+    Exists Point (fun e => Length a e = Length a1 a2 ∧ Length b e = Length b1 b2 ∧ SameSide e f L) := sorry _
+
+
+
+(* Proposition 23: Copying an angle *)
+Theorem angle_copy : (a : Point) -> (b : Point) -> (j : Point) -> (c : Point) -> (d : Point) -> (e : Point) -> (L : Line) -> 
+Not (a = b) -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e -> (Exists Point (fun h => Angle h a b = Angle e c d /\ SameSide h j L )) := sorry _ 
+
+
+(* Proposition 23': Copying an angle towards the opposite side )
+Theorem angle_copy : (a : Point) -> (b : Point) -> (j : Point) *-> (c : Point) -> (d : Point) -> (e : Point) -> (L : Line) -> 
+(* Not (a = b) -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e -> (Exists Point (fun h => Angle h a b = Angle e c d /\ diffside h j L )) := sorry _ 
+
+
+ *)(* Proposition 27 *)
 
 (* Proposition 29 *)
 
-Definition isParallelogram: Point -> Point -> Point -> Point -> Prop := fun a b c d =>
-    Angle a b c = Angle d c b /\  Angle a c b = Angle d b c
-(* Proposition 34: In In parallelogrammic areas the opposite sides and angles equal one another, and the diameter bisects the areas. 
-            /
-            
-*)
 
 
-(* Of quadrilateral figures, a square is that which is both equilateral and right-angled *)
-Definition IsSquare : Point -> Point -> Point -> Point -> Prop := fun a b c d => 
-    Length a b = Length b c /\ Length a b = Length c d /\ Length a b = Length d a /\
-    Angle a b c = 90 /\ Angle b c d = 90 /\ Angle c d a = 90 /\ Angle d a b = 90
 
-(* Proposition 46 : Constructing a square *)
-Theorem square_of_segment : (a : Point) -> (b : Point) -> a ≠ b -> 
-    Exists Point (fun c => Exists Point (fun d => IsSquare a b c d)) :=
+
+(* Proposition 31: through a point off a line there exists a parallel line *)
+Theorem para_of_offline: (a : Point) -> (M : Line) -> (Not (OnLine a M)) -> (Exists Line (fun N => (OnLine a N /\ para M N) )) := sorry _
+
+
     
+(* Proposition 34: basic length, angle, and area properties of paralellograms *)
+Theorem len_ang_arelen_ang_area_eq_of_parallelogram : (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Point) -> (N : Point) -> (O : Point) -> (P : Point) ->
+(paragram a b c d M N O P) -> length a b = length c d /\ angle b a d = angle b c d /\ area a b d = area b c d 
+:= sorry _
+
+(* Proposition 34.1: basic length properties of parallelograms *)
+Theorem len_eq_of_parallelogram :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Point) -> (N : Point) -> (O : Point) -> (P : Point) ->
+(paragram a b c d M N O P) -> length a b = length c d := sorry _
+
+
+(* Proposition 34.2:basic length properties of paralellograms *)
+Theorem len_eq_of_parallelogram' :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Point) -> (N : Point) -> (O : Point) -> (P : Point) ->
+(paragram a b c d M N O P) -> length a d = length c b := sorry _
+
+(* Proposition 34.3: basic area properties of paralellograms *)
+Theorem len_eq_of_parallelogram' :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Point) -> (N : Point) -> (O : Point) -> (P : Point) ->
+(paragram a b c d M N O P) -> area a b d  = area b c d := sorry _
+
+
+(* Proposition 46 : Constructing a square out of a segment *)
+Theorem square_of_len : (a : Point) -> (b : Point) -> a ≠ b -> 
+    Exists Point (fun c => Exists Point (fun d => square a b c d)) :=
     sorry _
 
 
