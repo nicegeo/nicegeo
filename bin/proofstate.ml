@@ -59,7 +59,14 @@ let decl_kind_to_string (k : Statement.decl_type) : string =
 
 let decl_end_loc (d : Statement.declaration) : Lexing.position =
   match d.kind with
-  | Statement.Theorem body | Statement.Def body -> body.loc.end_
+  | Statement.Theorem body -> (
+      match body with
+      | Statement.DefEq tm -> tm.loc.end_
+      | Statement.Proof tactics -> (
+          match List.rev tactics with
+          | t :: _ -> t.loc.end_
+          | [] -> d.ty.loc.end_))
+  | Statement.Def body -> body.loc.end_
   | Statement.Axiom -> d.ty.loc.end_
 
 let same_file (a : string) (b : string) : bool =
@@ -190,7 +197,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           restore_lctx st.elab_ctx lctx0;
           let term_context =
             match d.kind with
-            | Statement.Theorem proof_tm ->
+            | Statement.Theorem (Statement.DefEq proof_tm) ->
                 let cursor_in_proof = range_contains proof_tm.loc line col in
                 if not cursor_in_proof then []
                 else
@@ -224,6 +231,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
                     go [] proof_tm
                   in
                   term_context |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
+            | Statement.Theorem (Statement.Proof _) -> []
             | _ -> []
           in
           let hyps =
