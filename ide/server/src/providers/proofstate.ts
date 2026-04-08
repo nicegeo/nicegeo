@@ -3,7 +3,7 @@ import * as path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 
-/** Response shape from `nicegeo --proofstate-at --json` (stdout JSON line). */
+/** Response shape from `nicegeo-proofstate --json` (stdout JSON line). */
 export interface ProofStateAtResponse {
   ok: boolean;
   query?: { file: string; line: number; col: number };
@@ -55,7 +55,7 @@ function parseJsonLineFromStdout(output: string): ProofStateAtResponse | null {
 }
 
 /**
- * Runs `nicegeo --proofstate-at --json` at a 1-based line/col (matching the CLI).
+ * Runs `nicegeo-proofstate --json` at a 1-based line/col (matching the CLI).
  * [line0], [col0] are VS Code 0-based position values.
  */
 export function runProofStateAt(
@@ -75,9 +75,8 @@ export function runProofStateAt(
       "dune",
       [
         "exec",
-        "nicegeo",
+        "nicegeo-proofstate",
         "--",
-        "--proofstate-at",
         "--json",
         filePath,
         String(line1),
