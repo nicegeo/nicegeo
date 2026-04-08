@@ -56,20 +56,6 @@ let test_exists_simple () =
   Alcotest.(check string) "new goal is True" exp got
 
 (*
-(* Check that `rewrite` fails when the `lhs` does not appear. *)
-let test_rewrite_no_match () =
-  let env, process = make_env () in
-  process "Axiom x : A";
-  process "Axiom y : A";
-  process "Axiom c : A";
-  process "Axiom d : A";
-  process "Axiom c_eq_d : Eq A c d";
-  let st = init_state ~elab_ctx:env (elab env "Eq A x y") in
-  match rewrite (elab env "c_eq_d") st with
-  | Success _ -> Alcotest.fail "expected missing lhs to fail"
-  | Failure _ -> ()*)
-
-(*
   Checks that using `exists` and then closing a trivial goal produces
   a proof term that the kernel accepts.
 *)
@@ -78,6 +64,8 @@ let test_exists_kernel_check () =
   let goal_ty = elab env "Exists A (fun (a : A) => True)" in
   let st = init_state ~elab_ctx:env goal_ty in
   let st = run_tactic (exists (elab env "a")) st in
+  let open Elab.Pretty in
+  Printf.printf "%s\n\n" (term_to_string env st.statement); 
   let st = run_tactic (exact (elab env "True.intro")) st in
   Alcotest.(check bool) "no remaining goals" true (is_complete st);
   Alcotest.(check bool)
@@ -90,7 +78,5 @@ let suite =
   ( "Tactic.exists",
     [
       test_case "exists simple" `Quick test_exists_simple;
-     (* test_case "exists unify" `Quick test_exists_unify;
-      test_case "exists invalid goal" `Quick test_exists_invalid_goal;*)
         test_case "exists kernel check" `Quick test_exists_kernel_check;
     ] )
