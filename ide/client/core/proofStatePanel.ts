@@ -143,9 +143,9 @@ function buildHtml(data: ProofStateAtPayload): string {
     li.mono { font-family: var(--vscode-editor-font-family); font-size: 12px; margin: 4px 0; }
   </style></head><body>
     ${declBlock ?? ""}
+    ${head}
     ${goal}
     ${reduced}
-    ${head}
     ${term}
     ${envBlock}
     ${metaBlock}

@@ -273,10 +273,6 @@ let print_snapshot_text (snap : proofstate_snapshot) : unit =
     snap.decl_start_col
     snap.decl_end_line
     snap.decl_end_col;
-  Printf.printf "Goal:\n  ⊢ %s\n" snap.goal_type;
-  if snap.goal_type <> snap.goal_type_reduced then
-    Printf.printf "Goal (β-reduced):\n  ⊢ %s\n" snap.goal_type_reduced;
-  Printf.printf "\n";
   let pp_ctx title (ctx : context_item list) =
     Printf.printf "%s:\n" title;
     (match ctx with
@@ -285,6 +281,10 @@ let print_snapshot_text (snap : proofstate_snapshot) : unit =
     Printf.printf "\n"
   in
   pp_ctx "Head context" snap.head_context;
+  Printf.printf "Goal:\n  ⊢ %s\n" snap.goal_type;
+  if snap.goal_type <> snap.goal_type_reduced then
+    Printf.printf "Goal (β-reduced):\n  ⊢ %s\n" snap.goal_type_reduced;
+  Printf.printf "\n";
   pp_ctx "Term context (variables in scope at cursor)" snap.term_context;
   Printf.printf "Global environment (%d names):\n" (List.length snap.environment);
   (match snap.environment with
