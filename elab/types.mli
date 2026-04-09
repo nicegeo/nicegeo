@@ -27,17 +27,6 @@ type enventry = {
   data : enventry_data;
 }
 
-(** Local context entry. *)
-type lctx_entry = {
-  bid : int;
-  name : string option;
-  ty : term;
-}
-
-(** Local context used when typechecking. Logically a mapping from bids to their optional
-    names and types. *)
-type local_ctx = lctx_entry list
-
 (** Elaboration context. *)
 type ctx = {
   env : (string, enventry) Hashtbl.t;
@@ -47,3 +36,15 @@ type ctx = {
   metas : (int, metavar) Hashtbl.t;
       (** Mapping from hole ids to their metavariable records. *)
 }
+
+(** Local context entry. *)
+type lctx_entry = {
+  bid : int;
+  name : string option;
+  ty : term;
+}
+
+(** Local context used when typechecking. Logically a mapping from bids to their optional
+    names and types. The convention is for the head of the list to have the innermost
+    scope, so that typical term traversal involves just appending an entry. *)
+type local_ctx = lctx_entry list

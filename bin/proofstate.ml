@@ -171,7 +171,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
   match find_and_prepare env stmts with
   | None -> None
   | Some (d, env_before_decl) -> (
-      let goal_ty_tm = Typecheck.elaborate env_before_decl [] d.ty None in
+      let goal_ty_tm = Typecheck.elaborate env_before_decl d.ty None in
       let st = Proofstate.init_state ~elab_ctx:env_before_decl goal_ty_tm in
       let environment = snapshot_environment env_before_decl in
       match st.open_goals with

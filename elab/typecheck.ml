@@ -515,26 +515,26 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
   | _ -> []
 
-let elaborate (e : ctx) (lctx : local_ctx) (tm : term) (ty : term option) : term =
+let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   create_metas e tm [];
   let tm_delta = Reduce.delta_reduce e tm false in
   (match ty with
-  | Some ty -> checktype e lctx tm_delta ty
-  | None -> ignore (infertype e lctx tm_delta));
+  | Some ty -> checktype e [] tm_delta ty
+  | None -> ignore (infertype e [] tm_delta));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
   (* Re-typecheck term to validate meta solutions *)
   let tm_filled_delta = Reduce.delta_reduce e tm_filled false in
   (match ty with
-  | Some ty -> checktype e lctx tm_filled_delta ty
-  | None -> ignore (infertype e lctx tm_filled_delta));
+  | Some ty -> checktype e [] tm_filled_delta ty
+  | None -> ignore (infertype e [] tm_filled_delta));
   let tm_reduced = Reduce.reduce e tm_filled in
   tm_reduced
 
 let process_body (e : ctx) (d : declaration) (body : term) =
-  let ty_filled = elaborate e [] d.ty None in
+  let ty_filled = elaborate e d.ty None in
   check_is_type e [] ty_filled;
-  let proof_filled = elaborate e [] body (Some (Reduce.delta_reduce e ty_filled false)) in
+  let proof_filled = elaborate e body (Some (Reduce.delta_reduce e ty_filled false)) in
   let ty_k = Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm in
   let proof_k =
     Reduce.delta_reduce e proof_filled true |> Reduce.reduce e |> conv_to_kterm
@@ -578,7 +578,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
           process_body e d (replace_metas e (Tactic.run e proof d.ty))
       | Theorem (DefEq body) | Def body -> process_body e d body
       | Axiom -> (
-          let ty_filled = elaborate e [] d.ty None in
+          let ty_filled = elaborate e d.ty None in
           check_is_type e [] ty_filled;
           let ty_k =
             Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
