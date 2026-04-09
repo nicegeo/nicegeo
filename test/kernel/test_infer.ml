@@ -587,13 +587,15 @@ let test_delta_reduce () =
 
   (* Ne A a b and Eq A a b -> False should be definitionally equal *)
   let t1 = App (App (App (Const "Ne", Const "A"), Const "a"), Const "b") in
-  let t2 = Forall (App (App (App (Const "Eq", Const "A"), Const "a"), Const "b"), Const "False") in
+  let t2 =
+    Forall (App (App (App (Const "Eq", Const "A"), Const "a"), Const "b"), Const "False")
+  in
   Alcotest.check'
     (Testable.termDefEq env.kenv lctx)
     ~msg:"a ≠ b defeq Not (a = b)"
     ~actual:t1
     ~expected:t2;
-  
+
   (* Define identity function *)
   let id_term = Lam (Sort 1, Lam (Bvar 0, Bvar 0)) in
   let id_type = Forall (Sort 1, Forall (Bvar 0, Bvar 1)) in
