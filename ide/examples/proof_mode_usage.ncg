@@ -1,0 +1,31 @@
+(* 
+  Proof mode usage example (current state).
+
+  Right now, proofs in .ncg are written as terms (lambda-style), not tactic blocks.
+  This file shows the style that is supported today.
+*)
+
+Theorem id_type : (A: Type) -> A -> A :=
+  fun (A: Type) (a: A) => a
+
+Theorem id_prop : (P: Prop) -> P -> P :=
+  fun (P: Prop) (p: P) => p
+
+Theorem compose :
+  (A: Type) -> (B: Type) -> (C: Type) ->
+  (B -> C) -> (A -> B) -> (A -> C) :=
+  fun (A: Type) (B: Type) (C: Type) (f: B -> C) (g: A -> B) (a: A) =>
+    f (g a)
+
+Theorem and_left :
+  (A: Prop) -> (B: Prop) -> And A B -> A :=
+  fun (A: Prop) (B: Prop) (h: And A B) =>
+    And.elim A B A (fun (a: A) (_b: B) => a) h
+
+Theorem and_right :
+  (A: Prop) -> (B: Prop) -> And A B -> B :=
+  fun (A: Prop) (B: Prop) (h: And A B) =>
+    And.elim A B B (fun (_a: A) (b: B) => b) h
+
+#check (fun (A: Type) (a: A) => a) : (A: Type) -> A -> A
+#infer compose

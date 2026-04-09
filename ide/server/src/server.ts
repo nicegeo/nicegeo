@@ -9,9 +9,12 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { fileURLToPath } from "url";
 import { DiagnosticsService, NiceGeoSettings, DiagnosticsTriggerMode } from "./providers/diagnostics";
+import { runProofStateAt } from "./providers/proofstate";
 
 const STATUS_NOTIFICATION = "nicegeo/status";
 const RUN_DIAGNOSTICS_NOTIFICATION = "nicegeo/runDiagnostics";
+/** Custom LSP request: params `{ uri, line, col }` with VS Code 0-based line/character. */
+const PROOF_STATE_AT_REQUEST = "nicegeo/proofStateAt";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
@@ -86,6 +89,13 @@ connection.onNotification(RUN_DIAGNOSTICS_NOTIFICATION, (params: { uri?: string 
   if (!doc) return;
   void diagnostics.runNow(doc, workspaceRoot);
 });
+
+connection.onRequest(
+  PROOF_STATE_AT_REQUEST,
+  async (params: { uri: string; line: number; col: number }) => {
+    return runProofStateAt(params.uri, params.line, params.col, workspaceRoot);
+  },
+);
 
 connection.onShutdown(() => diagnostics.dispose());
 

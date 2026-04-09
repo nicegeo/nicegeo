@@ -1,5 +1,11 @@
 module KTerm = Kernel.Term
 
+let () = Tactics.register ()
+
+let parse_term (s : string) : Term.term =
+  let lexbuf = Lexing.from_string s in
+  Parser.single_term Lexer.token lexbuf
+
 let create () : Types.ctx =
   {
     env = Hashtbl.create 16;
@@ -20,22 +26,6 @@ let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
              error_type = Error.ImportUnexpected;
            })
 (* TODO: Deal with clashing names in imports *)
-
-(* Creates an elaborator environment by parsing the environment file at `path_to_env`. *)
-let create_with_env_path (path_to_env : string) : Types.ctx =
-  let e = create () in
-  let ic = open_in path_to_env in
-  let lexbuf = Lexing.from_channel ic in
-  let stmts = Parser.main Lexer.token lexbuf in
-  let _ = List.map (process_statement e) stmts in
-  e
-
-(* Creates an elaborator environment with the default environment path. *)
-let create_with_env () : Types.ctx = create_with_env_path "synthetic/env.ncg"
-
-let parse_term (s : string) : Term.term =
-  let lexbuf = Lexing.from_string s in
-  Parser.single_term Lexer.token lexbuf
 
 (** [parse_statements filename] parses all statements from the file [filename]. The output
     may contain import statements. Raises [Error.ElabError] with a [ParseError] payload on
@@ -97,3 +87,6 @@ let rec get_all_statements (filename : string) : Statement.statement list =
 let process_file (env : Types.ctx) (filename : string) : unit =
   let stmts = get_all_statements filename in
   List.iter (process_statement env) stmts
+
+(* Creates an elaborator environment with the default environment path. *)
+let process_env (env : Types.ctx) : unit = process_file env "synthetic/env.ncg"

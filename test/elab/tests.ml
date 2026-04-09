@@ -14,4 +14,5 @@ let () =
       Test_tacticals.suite;
       Test_tactic_context.suite;
       Test_tactic_rw.suite;
+      Test_tactic_exists.suite;
     ]

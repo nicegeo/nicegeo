@@ -51,6 +51,8 @@ type error_type =
   | ImportNotAtTop
   | ImportUnexpected
   | UnificationFailure of unification_failure_info
+  | InvalidTacticParameter of string
+  | TacticFailure of string
 
 type elab_error_info = {
   context : error_context;
@@ -143,11 +145,20 @@ let ktype_err_to_string (info : KExceptions.type_error_info) : string =
         ^ Kernel_pretty.term_to_string_pretty domainTypeType
     | ForallSortError (domainTypeType, returnTypeType) ->
         Printf.sprintf
-          "Domain and return types of a Forall must be sorts.\n\
+          "Domain and return types of a Forall must be types.\n\
            Domain Type Sort: %s\n\
            Return Type Sort: %s\n\n"
           (Kernel_pretty.term_to_string_pretty domainTypeType)
           (Kernel_pretty.term_to_string_pretty returnTypeType)
+    | AlreadyDefined name -> "Name already defined in environment: " ^ name
+    | DeclarationTypeError declType ->
+        "Expected a type for declaration, got "
+        ^ Kernel_pretty.term_to_string_pretty declType
+    | ProofTypeMismatch (expected, actual) ->
+        Printf.sprintf
+          "Proof term has incorrect type.\nExpected: %s\nActual: %s\n"
+          (Kernel_pretty.term_to_string_pretty expected)
+          (Kernel_pretty.term_to_string_pretty actual)
   in
   "Kernel Type Error:\nLocal Context:\n" ^ context_to_string info.ctx ^ "\nTerm: "
   ^ Kernel_pretty.term_to_string_pretty info.trm
@@ -306,3 +317,7 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         snippet
         (Pretty.term_to_string e left)
         (Pretty.term_to_string e right)
+  | InvalidTacticParameter msg ->
+      Printf.sprintf "Invalid tactic parameters%s:%s\n%s" ctx_str snippet msg
+  | TacticFailure msg ->
+      Printf.sprintf "Tactic failed%s:%s\nReason: %s" ctx_str snippet msg
