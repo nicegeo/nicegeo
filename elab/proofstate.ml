@@ -24,12 +24,16 @@ let mk_arrow x bid ty ret = mk_term (Arrow (x, bid, ty, ret))
 let mk_fun x bid ty body = mk_term (Fun (x, bid, ty, body))
 let fresh_id () : int = gen_hole_id ()
 
-(** [fresh_goal st lctx ty] updates the proof state with a new open goal with goal state [ty] and goal context [lctx]. Also returns the hole representing the goal. *)
+(** [fresh_goal st lctx ty] updates the proof state with a new open goal with goal state
+    [ty] and goal context [lctx]. Also returns the hole representing the goal. *)
 let fresh_goal (st : proof_state) (lctx : local_ctx) (ty : term) : term * proof_state =
   let id = fresh_id () in
   let hole = mk_hole id in
   let hole_context = List.map (fun h -> h.bid) lctx in
-  Hashtbl.replace st.elab_ctx.metas id { ty = Some ty; context = hole_context; sol = None };
+  Hashtbl.replace
+    st.elab_ctx.metas
+    id
+    { ty = Some ty; context = hole_context; sol = None };
   let g = { lctx; goal_type = ty; goal_id = id } in
   (hole, { st with open_goals = st.open_goals @ [ g ] })
 

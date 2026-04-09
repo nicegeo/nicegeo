@@ -108,7 +108,7 @@ let extract_head_binders (ectx : Types.ctx) (ty : Term.term) : (string * string)
     match t.inner with
     | Term.Arrow (arg_name_opt, bid, ty_arg, ty_ret) ->
         (* Hashtbl.replace ectx.lctx bid (arg_name_opt, ty_arg); *)
-        let lctx = Types.{bid; ty=ty_arg; name=arg_name_opt} :: lctx in
+        let lctx = Types.{ bid; ty = ty_arg; name = arg_name_opt } :: lctx in
         let name = match arg_name_opt with Some s -> s | None -> "_" in
         let ty_str = Pretty.term_to_string ectx lctx ty_arg in
         go (acc @ [ (name, ty_str) ]) lctx ty_ret
@@ -199,20 +199,29 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
                         match t.inner with
                         | Term.Fun (arg_name_opt, bid, ty_arg, body) ->
                             if range_contains ty_arg.loc line col then go acc lctx ty_arg
-                            else (
-                              let ty_str = Pretty.term_to_string st.elab_ctx lctx ty_arg in
+                            else
+                              let ty_str =
+                                Pretty.term_to_string st.elab_ctx lctx ty_arg
+                              in
                               let name = Option.value ~default:"_" arg_name_opt in
-                              let new_lctx = Types.{name = Some name; ty = ty_arg; bid} :: lctx in
-                              go (acc @ [ (name, ty_str) ]) new_lctx body)
+                              let new_lctx =
+                                Types.{ name = Some name; ty = ty_arg; bid } :: lctx
+                              in
+                              go (acc @ [ (name, ty_str) ]) new_lctx body
                         | Term.Arrow (arg_name_opt, bid, ty_arg, ret) ->
                             if range_contains ty_arg.loc line col then go acc lctx ty_arg
-                            else (
-                              let ty_str = Pretty.term_to_string st.elab_ctx lctx ty_arg in
+                            else
+                              let ty_str =
+                                Pretty.term_to_string st.elab_ctx lctx ty_arg
+                              in
                               let name = Option.value ~default:"_" arg_name_opt in
-                              let new_lctx = Types.{name = Some name; ty = ty_arg; bid} :: lctx in
-                              go (acc @ [ (name, ty_str) ]) new_lctx ret)
+                              let new_lctx =
+                                Types.{ name = Some name; ty = ty_arg; bid } :: lctx
+                              in
+                              go (acc @ [ (name, ty_str) ]) new_lctx ret
                         | Term.App (f, arg) ->
-                            if range_contains f.loc line col then go acc lctx f else go acc lctx arg
+                            if range_contains f.loc line col then go acc lctx f
+                            else go acc lctx arg
                         | _ -> acc
                     in
                     go [] [] proof_tm
@@ -224,7 +233,9 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           let hyps =
             g.lctx
             |> List.map (fun (h : Types.lctx_entry) ->
-                (Option.value ~default:"_" h.name, h.bid, Proofstate.pp_term st.elab_ctx h.ty))
+                ( Option.value ~default:"_" h.name,
+                  h.bid,
+                  Proofstate.pp_term st.elab_ctx h.ty ))
           in
           Some
             {

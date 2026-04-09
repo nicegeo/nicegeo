@@ -5,11 +5,7 @@ let parse_term (s : string) : Term.term =
   Parser.single_term Lexer.token lexbuf
 
 let create () : Types.ctx =
-  {
-    env = Hashtbl.create 16;
-    kenv = Hashtbl.create 16;
-    metas = Hashtbl.create 16;
-  }
+  { env = Hashtbl.create 16; kenv = Hashtbl.create 16; metas = Hashtbl.create 16 }
 
 let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
   match stmt with
@@ -19,7 +15,7 @@ let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
       raise
         (Error.ElabError
            {
-             context = { loc = None; decl_name = None ; lctx = None };
+             context = { loc = None; decl_name = None; lctx = None };
              error_type = Error.ImportUnexpected;
            })
 (* TODO: Deal with clashing names in imports *)
@@ -40,7 +36,8 @@ let parse_statements (filename : string) : Statement.statement list =
       raise
         (Error.ElabError
            {
-             context = { loc = Some { start = pos1; end_ = pos2 }; decl_name = None; lctx = None };
+             context =
+               { loc = Some { start = pos1; end_ = pos2 }; decl_name = None; lctx = None };
              error_type =
                Error.ParseError { input = Lexing.lexeme lexbuf; error_msg = msg };
            })

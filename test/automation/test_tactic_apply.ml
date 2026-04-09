@@ -16,7 +16,8 @@ let start_with_hyp hyp_name hyp_ty goal_ty =
 
 let bind_names (g : goal) (arg : term) : term =
   List.fold_right
-    (fun hyp res -> match hyp.name with Some name -> subst res (Name name) (Bvar hyp.bid) | _ -> res)
+    (fun hyp res ->
+      match hyp.name with Some name -> subst res (Name name) (Bvar hyp.bid) | _ -> res)
     g.lctx
     arg
 

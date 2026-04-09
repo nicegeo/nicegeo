@@ -95,9 +95,9 @@ let exact (tm : term) (st : proof_state) : tactic_result =
           else
             fail
               (Printf.sprintf
-                  "exact: term has type '%s' but goal is '%s'."
-                  (pp_term st.elab_ctx inferred_ty)
-                  (pp_term st.elab_ctx g.goal_type)))
+                 "exact: term has type '%s' but goal is '%s'."
+                 (pp_term st.elab_ctx inferred_ty)
+                 (pp_term st.elab_ctx g.goal_type)))
 
 (** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
     and opens a new subgoal for [A]. *)
@@ -115,7 +115,9 @@ let apply (tm : term) (st : proof_state) : tactic_result =
         ignore (replace_metas st.elab_ctx tm);
         match (Hashtbl.find st.elab_ctx.metas subgoal_id).ty with
         | Some subgoal_ty ->
-            let subgoal = { lctx = g.lctx; goal_type = subgoal_ty; goal_id = subgoal_id } in
+            let subgoal =
+              { lctx = g.lctx; goal_type = subgoal_ty; goal_id = subgoal_id }
+            in
             let st = { st with open_goals = st.open_goals @ [ subgoal ] } in
             let st = assign_meta g.goal_id sol st in
             let st = close_goal g.goal_id st in
@@ -154,9 +156,7 @@ let intro (name : string) (st : proof_state) : tactic_result =
           let hole_id = fresh_id () in
           let hole = mk_hole hole_id in
           let proof_term = mk_fun (Some name) bid premise_ty hole in
-          let new_hyp =
-            { name=Some name; bid; ty = premise_ty }
-          in
+          let new_hyp = { name = Some name; bid; ty = premise_ty } in
           let st_assigned = assign_meta g.goal_id proof_term st in
           let new_lctx = new_hyp :: g.lctx in
           let new_ctx_bids = List.map (fun h -> h.bid) new_lctx in

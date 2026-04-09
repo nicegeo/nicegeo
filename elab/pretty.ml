@@ -55,7 +55,8 @@ let rec get_prec (e : ctx) (t : term) : int =
       | _ -> prec_atomic)
 
 let term_to_string (e : ctx) (lctx : local_ctx) (t : term) : string =
-  let rec term_to_string_helper (e : ctx) (lctx : local_ctx) (t : term) (level : int) : string =
+  let rec term_to_string_helper (e : ctx) (lctx : local_ctx) (t : term) (level : int) :
+      string =
     if level < get_prec e t then "(" ^ term_to_string_helper e lctx t prec_term ^ ")"
     else
       match t.inner with
@@ -68,18 +69,24 @@ let term_to_string (e : ctx) (lctx : local_ctx) (t : term) : string =
       | Sort n -> sort_to_string n
       | Fun _ ->
           let args, body = flatten_fun t in
-          let (lctx, param_groups) = List.fold_left (fun (lctx, acc) (arg_name, arg_bid, arg_ty) ->
-            let param_s = "(" ^ arg_name ^ " : " ^ term_to_string_helper e lctx arg_ty prec_term ^ ")" in
-            ({name = Some arg_name; bid = arg_bid; ty = arg_ty} :: lctx, acc @ [param_s])
-          ) (lctx, []) args in
+          let lctx, param_groups =
+            List.fold_left
+              (fun (lctx, acc) (arg_name, arg_bid, arg_ty) ->
+                let param_s =
+                  "(" ^ arg_name ^ " : "
+                  ^ term_to_string_helper e lctx arg_ty prec_term
+                  ^ ")"
+                in
+                ( { name = Some arg_name; bid = arg_bid; ty = arg_ty } :: lctx,
+                  acc @ [ param_s ] ))
+              (lctx, [])
+              args
+          in
 
-            "fun "
-            ^ String.concat
-                " "
-                param_groups
-            ^ " => "
-            ^ term_to_string_helper e lctx body prec_term
-
+          "fun "
+          ^ String.concat " " param_groups
+          ^ " => "
+          ^ term_to_string_helper e lctx body prec_term
       | Arrow (x, bid, ty, ret) -> (
           match x with
           | None ->
@@ -88,7 +95,7 @@ let term_to_string (e : ctx) (lctx : local_ctx) (t : term) : string =
               ty_s ^ " -> " ^ ret_s
           | Some name ->
               let ty_s = term_to_string_helper e lctx ty prec_term in
-              let new_lctx = {bid; name = Some name; ty} :: lctx in
+              let new_lctx = { bid; name = Some name; ty } :: lctx in
               let ret_s = term_to_string_helper e new_lctx ret prec_term in
               "(" ^ name (* "[" ^ string_of_int bid ^ "]" ^ *) ^ " : "
               ^ ty_s ^ ") -> " ^ ret_s)
@@ -113,10 +120,12 @@ let decl_to_string (e : ctx) (d : Statement.declaration) =
   match d.kind with
   | Axiom -> "Axiom " ^ d.name ^ " : " ^ term_to_string e [] d.ty
   | Theorem (DefEq term) ->
-      "Theorem " ^ d.name ^ " : " ^ term_to_string e [] d.ty ^ " := " ^ term_to_string e [] term
+      "Theorem " ^ d.name ^ " : " ^ term_to_string e [] d.ty ^ " := "
+      ^ term_to_string e [] term
   | Theorem (Proof proof) ->
       "Theorem " ^ d.name ^ " : " ^ term_to_string e [] d.ty ^ "\nProof.\n"
       ^ String.concat "\n" (List.map (tactic_to_string e []) proof)
       ^ "\nQed."
   | Def body ->
-      "Def " ^ d.name ^ " : " ^ term_to_string e [] d.ty ^ " := " ^ term_to_string e [] body
+      "Def " ^ d.name ^ " : " ^ term_to_string e [] d.ty ^ " := "
+      ^ term_to_string e [] body

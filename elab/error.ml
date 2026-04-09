@@ -227,7 +227,8 @@ let pp_local_ctx (e : Types.ctx) (lctx : Types.local_ctx) : string =
       ^ " : "
       ^ Pretty.term_to_string e lctx entry.ty
       ^ "\n")
-    lctx ""
+    lctx
+    ""
 
 let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
   let lctx = Option.value ~default:[] info.context.lctx in

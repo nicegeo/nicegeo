@@ -47,7 +47,8 @@ module KExceptions = Kernel.Exceptions
 
 let raise_at (tm : term) (lctx : local_ctx option) (e : Error.error_type) : 'a =
   raise
-    (Error.ElabError { context = { loc = Some tm.loc; decl_name = None; lctx }; error_type = e })
+    (Error.ElabError
+       { context = { loc = Some tm.loc; decl_name = None; lctx }; error_type = e })
 
 type normterm =
   | Fun of string option * int * term * term
@@ -287,7 +288,8 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
 
 (** checks that tm has expected type ty, trying to fill in metavariables (holes). If it
     fails it throws an ElabError. *)
-let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : term) : unit =
+let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : term) : unit
+    =
   (* print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " has type " ^ Pretty.term_to_string e ty); *)
   match tm.inner with
   | Hole m -> (
@@ -298,7 +300,11 @@ let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : te
           | Some ty1 ->
               unify ~depth:(depth + 1) e ty (Hashtbl.create 0) ty1 (Hashtbl.create 0)
           | None -> Hashtbl.replace e.metas m { ty = Some ty; context; sol })
-      | None -> raise_at tm (Some lctx) (Error.InternalError ("unknown meta: " ^ string_of_int m)))
+      | None ->
+          raise_at
+            tm
+            (Some lctx)
+            (Error.InternalError ("unknown meta: " ^ string_of_int m)))
   | Fun (arg, bid, ty_arg, body) -> (
       (* special case: checking type of fun. the algorithm would still work if this was together with
         the remaining cases, but it would solve less cases, as this is a common case. *)
@@ -427,7 +433,11 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
     | Bvar bid -> (
         match List.find_opt (fun entry -> entry.bid = bid) lctx with
         | Some { ty; _ } -> ty
-        | None -> raise_at tm (Some lctx) (Error.InternalError "unknown bound variable in infertype"))
+        | None ->
+            raise_at
+              tm
+              (Some lctx)
+              (Error.InternalError "unknown bound variable in infertype"))
     | Sort n -> { inner = Sort (n + 1); loc = tm.loc }
   in
   (* print_endline ("inferred type " ^ Pretty.term_to_string e res ^ " for term " ^ Pretty.term_to_string e tm); *)
@@ -558,7 +568,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
     raise
       (Error.ElabError
          {
-           context = { loc = Some d.name_loc; decl_name = Some d.name ; lctx = None };
+           context = { loc = Some d.name_loc; decl_name = Some d.name; lctx = None };
            error_type = Error.AlreadyDefined d.name;
          })
   else
@@ -580,7 +590,8 @@ let process_decl (e : ctx) (d : declaration) : unit =
             raise
               (Error.ElabError
                  {
-                   context = { loc = Some d.name_loc; decl_name = Some d.name; lctx = None };
+                   context =
+                     { loc = Some d.name_loc; decl_name = Some d.name; lctx = None };
                    error_type = Error.KernelError { kernel_exn = msg };
                  }))
     with Error.ElabError x ->
