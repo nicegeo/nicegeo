@@ -462,5 +462,3 @@ let register () =
                    ^ string_of_int (List.length args));
              }));
   register_tactic "rewrite" Register.(unary_term rewrite)
-
-let () = register ()
