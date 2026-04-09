@@ -28,7 +28,7 @@ let make_env () =
   process "Axiom a : A";
   (env, process)
 
-let elab env s = Elab.Typecheck.elaborate env (Elab.Interface.parse_term s) None
+let elab env s = Elab.Typecheck.elaborate env [] (Elab.Interface.parse_term s) None
 
 let run_tactic tac st =
   match tac st with

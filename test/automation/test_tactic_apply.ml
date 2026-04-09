@@ -9,17 +9,15 @@ let t k = { inner = k; loc = dummy_range }
 (* Build a goal state with one hypothesis [name : hyp_ty] and goal type [goal_ty]. *)
 let start_with_hyp hyp_name hyp_ty goal_ty =
   let bid = gen_binder_id () in
-  let hyp = { hyp_name; hyp_bid = bid; hyp_def = None; hyp_type = hyp_ty } in
-  Hashtbl.replace e.lctx bid (Some hyp_name, hyp_ty);
-  let id = gen_hole_id () in
-  Hashtbl.replace e.metas id { ty = Some goal_ty; context = [ bid ]; sol = None };
-  let g = { ctx = [ hyp ]; goal_type = goal_ty; goal_id = id } in
-  { statement = t (Hole id); open_goals = [ g ]; elab_ctx = e }
+  let st = init_state ~elab_ctx:e (mk_arrow (Some hyp_name) bid hyp_ty goal_ty) in
+  match intro hyp_name st with
+  | Success st -> st
+  | _ -> failwith "intro failed in start_with_hyp"
 
 let bind_names (g : goal) (arg : term) : term =
   List.fold_right
-    (fun hyp res -> subst res (Name hyp.hyp_name) (Bvar hyp.hyp_bid))
-    g.ctx
+    (fun hyp res -> match hyp.name with Some name -> subst res (Name name) (Bvar hyp.bid) | _ -> res)
+    g.lctx
     arg
 
 (* [h : Sort 1 -> Sort 0], goal [Sort 0]: apply opens one subgoal [Sort 1]. *)

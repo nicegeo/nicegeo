@@ -15,11 +15,11 @@ val process_decl : Types.ctx -> Statement.declaration -> unit
 
 (** [elaborate ctx tm ty] elaborates term [tm] in context [ctx] with an optional expected
     type [ty]. Returns a filled term with type [ty], or raises [Error.ElabError]. *)
-val elaborate : Types.ctx -> term -> term option -> term
+val elaborate : Types.ctx -> Types.local_ctx -> term -> term option -> term
 
 (** [infertype ctx tm] returns the inferred type of term [tm] in context [ctx]. [tm] must
     be elaborated first. *)
-val infertype : ?depth:int -> Types.ctx -> term -> term
+val infertype : ?depth:int -> Types.ctx -> Types.local_ctx -> term -> term
 
 (** [create_metas ctx tm ids] initializes the [ctx.metas] table with the hole ids present
     in [tm]. [ids] is the initial list of bids in scope. *)

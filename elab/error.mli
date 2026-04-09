@@ -7,6 +7,7 @@ type error_context = {
   loc : range option;  (** Source location of the offending term, if available. *)
   decl_name : string option;
       (** Name of the declaration being processed when the error occurred, if known. *)
+  lctx : Types.local_ctx option; (* local context at the point of error *)
 }
 
 (** Payload for a parse failure. *)

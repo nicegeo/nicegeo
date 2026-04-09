@@ -17,24 +17,24 @@ let process_directive (e : ctx) (dir : directive) : unit =
   | Infer (t, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
       (* infer type *)
-      let t = Typecheck.elaborate e t None in
+      let t = Typecheck.elaborate e [] t None in
       let t_delta = Reduce.delta_reduce e t false in
-      let ty_term = Typecheck.infertype e t_delta in
-      print_endline (prefix ^ "#infer: " ^ Pretty.term_to_string e ty_term)
+      let ty_term = Typecheck.infertype e [] t_delta in
+      print_endline (prefix ^ "#infer: " ^ Pretty.term_to_string e [] ty_term)
   | Check (t, ty, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
       (* process provided type to make sure valid type *)
-      let ty_filled = Typecheck.elaborate e ty None in
-      ignore (Typecheck.elaborate e t (Some ty_filled));
+      let ty_filled = Typecheck.elaborate e [] ty None in
+      ignore (Typecheck.elaborate e [] t (Some ty_filled));
 
       print_endline
         (prefix ^ "#check successful: Term is well-typed as "
-        ^ Pretty.term_to_string e ty_filled)
+        ^ Pretty.term_to_string e [] ty_filled)
   | Reduce (t, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
-      let t = Typecheck.elaborate e t None in
+      let t = Typecheck.elaborate e [] t None in
       let reduced_term = Reduce.reduce e t in
-      print_endline (prefix ^ "#reduce: " ^ Pretty.term_to_string e reduced_term)
+      print_endline (prefix ^ "#reduce: " ^ Pretty.term_to_string e [] reduced_term)
   | Opaque (name, loc) -> (
       match Hashtbl.find_opt e.env name with
       | Some record -> (

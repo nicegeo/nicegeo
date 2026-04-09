@@ -30,10 +30,10 @@ let test_exact_wrong_type () =
 let test_exact_hyp () =
   let bid = gen_binder_id () in
   let hyp_ty = t (Sort 0) in
-  let hyp = { hyp_name = "h"; hyp_bid = bid; hyp_def = None; hyp_type = hyp_ty } in
+  let hyp = { name = Some "h"; bid; ty = hyp_ty } in
   let id = gen_hole_id () in
   Hashtbl.replace e.metas id { ty = Some hyp_ty; context = [ bid ]; sol = None };
-  let g = { ctx = [ hyp ]; goal_type = hyp_ty; goal_id = id } in
+  let g = { lctx = [ hyp ]; goal_type = hyp_ty; goal_id = id } in
   let st = { statement = t (Hole id); open_goals = [ g ]; elab_ctx = e } in
   match exact (t (Bvar bid)) st with
   | Failure msg -> Alcotest.failf "expected Success but got Failure: %s" msg

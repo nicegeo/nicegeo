@@ -27,6 +27,17 @@ type enventry = {
   data : enventry_data;
 }
 
+(** Local context entry. *)
+type lctx_entry = {
+  bid : int;
+  name : string option;
+  ty : term;
+}
+
+(** Local context used when typechecking. Logically a mapping from bids to their optional
+    names and types. *)
+type local_ctx = lctx_entry list
+
 (** Elaboration context. *)
 type ctx = {
   env : (string, enventry) Hashtbl.t;
@@ -35,6 +46,4 @@ type ctx = {
       (** Kernel-level environment, kept in sync with [env]. *)
   metas : (int, metavar) Hashtbl.t;
       (** Mapping from hole ids to their metavariable records. *)
-  lctx : (int, string option * term) Hashtbl.t;
-      (** Mapping from binder ids to their optional name and type. *)
 }

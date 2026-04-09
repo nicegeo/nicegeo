@@ -11,11 +11,12 @@ let tactics : (string, term list -> tactic) Hashtbl.t = Hashtbl.create 8
 
 let bind_tactic_args (st : Proofstate.proof_state) (args : term list) : term list =
   let goal = List.hd st.open_goals in
+  let open Types in
   List.map
     (fun arg ->
       List.fold_right
-        (fun hyp res -> Term.subst res (Name hyp.hyp_name) (Bvar hyp.hyp_bid))
-        goal.ctx
+        (fun hyp res -> match hyp.name with Some name -> Term.subst res (Name name) (Bvar hyp.bid) | None -> res)
+        goal.lctx
         arg)
     args
 
@@ -38,14 +39,14 @@ let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
                 raise
                   (Error.ElabError
                      {
-                       context = { loc = Some tac.loc; decl_name = None };
+                       context = { loc = Some tac.loc; decl_name = None; lctx = None };
                        error_type = Error.TacticFailure msg;
                      }))
         | None ->
             raise
               (Error.ElabError
                  {
-                   context = { loc = Some tac.loc; decl_name = None };
+                   context = { loc = Some tac.loc; decl_name = None; lctx = None };
                    error_type = Error.UnknownName { name = tac.name };
                  }))
       init_state
@@ -55,14 +56,14 @@ let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
     raise
       (Error.ElabError
          {
-           context = { loc = Some (List.hd (List.rev tacs)).loc; decl_name = None };
+           context = { loc = Some (List.hd (List.rev tacs)).loc; decl_name = None; lctx = None };
            error_type =
              Error.TacticFailure
                ("Proof terminated with unsolved goals. Remaining goals:\n"
                ^ String.concat
                    "\n"
                    (List.map
-                      (fun g -> "  " ^ Pretty.term_to_string e g.goal_type)
+                      (fun g -> "  " ^ Pretty.term_to_string e [] g.goal_type)
                       state.open_goals));
          })
   else state.statement
@@ -88,6 +89,7 @@ module Register = struct
                          end_ = (List.hd (List.rev terms)).loc.end_;
                        };
                    decl_name = None;
+                   lctx = None;
                  };
                error_type =
                  Error.InvalidTacticParameter
@@ -109,6 +111,7 @@ module Register = struct
                          end_ = (List.hd (List.rev terms)).loc.end_;
                        };
                    decl_name = None;
+                   lctx = None;
                  };
                error_type =
                  Error.InvalidTacticParameter
@@ -122,7 +125,7 @@ module Register = struct
         raise
           (Error.ElabError
              {
-               context = { loc = Some term.loc; decl_name = None };
+               context = { loc = Some term.loc; decl_name = None; lctx = None };
                error_type =
                  Error.InvalidTacticParameter "Expected an identifier, but got a term";
              })
@@ -139,6 +142,7 @@ module Register = struct
                          end_ = (List.hd (List.rev terms)).loc.end_;
                        };
                    decl_name = None;
+                   lctx = None;
                  };
                error_type =
                  Error.InvalidTacticParameter
@@ -158,7 +162,7 @@ module Register = struct
               raise
                 (Error.ElabError
                    {
-                     context = { loc = Some term.loc; decl_name = None };
+                     context = { loc = Some term.loc; decl_name = None; lctx = None };
                      error_type =
                        Error.InvalidTacticParameter
                          "Expected an identifier, but got a term";
