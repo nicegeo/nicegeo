@@ -30,6 +30,8 @@ rule token = parse
   | "Import"     { IMPORT }
   | ":="         { DEFEQ }
   | "->"         { FORALL }
+  | "→"          { FORALL }
+  | "↔"          { IFF }
   | "=>"         { ARROW }
   | ":"          { COLON }
   | "("          { LPAREN }
@@ -45,6 +47,8 @@ rule token = parse
   | "∨"          { OR }
   | "/\\"        { AND }
   | "∧"          { AND }
+  | "∃"          { EXISTS }
+  | ","          { COMMA }
   | "#print"     { PRINT_DIRECTIVE }
   | "#infer"     { INFER_DIRECTIVE }
   | "#check"     { CHECK_DIRECTIVE }
