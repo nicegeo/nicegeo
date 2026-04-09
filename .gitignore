@@ -36,5 +36,3 @@ flake*
 perf.data
 perf.data.old
 profile.json.gz
-
-bin/
