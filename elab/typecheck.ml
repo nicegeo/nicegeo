@@ -530,9 +530,10 @@ let process_decl (e : ctx) (d : declaration) : unit =
       check_is_type e ty_filled;
       match d.kind with
       | Theorem body ->
-          let proof = match body with
-          | Proof script -> replace_metas e (Tactic.run e script d.ty)
-          | DefEq proof -> proof
+          let proof =
+            match body with
+            | Proof script -> replace_metas e (Tactic.run e script d.ty)
+            | DefEq proof -> proof
           in
           let proof_filled = elaborate e proof (Some ty_filled) in
 
