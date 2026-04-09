@@ -4,19 +4,17 @@ open Types
 (* Sort 0 = Prop, Sort 1 = Type; for n >= 2 display as "Sort n". *)
 let sort_to_string = function 0 -> "Prop" | 1 -> "Type" | n -> "Sort " ^ string_of_int n
 
-(* Return a list of argument names, list of argument types, and the remaining body of 
-the lambda to format, after processing them all.
-*)
-let rec flatten_fun (lctx : local_ctx) (t : term) : string list * term list * term =
+(* Return a list of argument names, bids, and types, and the remaining body of 
+  the lambda to format, after processing them all. *)
+let rec flatten_fun (t : term) : (string * int * term) list * term =
   match t.inner with
   | Fun (x, bid, ty, body) ->
       let x_s : string =
         match x with Some name -> name | None -> "x" ^ string_of_int bid
       in
-      let new_lctx = {bid; name = Some x_s; ty} :: lctx in
-      let xs, args, body = flatten_fun new_lctx body in
-      (x_s :: xs, ty :: args, body)
-  | _ -> ([], [], t)
+      let args, body = flatten_fun body in
+      ((x_s, bid, ty) :: args, body)
+  | _ -> ([], t)
 
 let pp_loc (r : range) =
   if r.start.pos_lnum = r.end_.pos_lnum then
@@ -69,20 +67,19 @@ let term_to_string (e : ctx) (lctx : local_ctx) (t : term) : string =
           | _ -> "?m" ^ string_of_int idx)
       | Sort n -> sort_to_string n
       | Fun _ ->
-          let xs, args, body = flatten_fun lctx t in
-          let res =
+          let args, body = flatten_fun t in
+          let (lctx, param_groups) = List.fold_left (fun (lctx, acc) (arg_name, arg_bid, arg_ty) ->
+            let param_s = "(" ^ arg_name ^ " : " ^ term_to_string_helper e lctx arg_ty prec_term ^ ")" in
+            ({name = Some arg_name; bid = arg_bid; ty = arg_ty} :: lctx, acc @ [param_s])
+          ) (lctx, []) args in
+
             "fun "
             ^ String.concat
                 " "
-                (List.map2
-                   (fun x ty ->
-                     "(" ^ x ^ " : " ^ term_to_string_helper e lctx ty prec_term ^ ")")
-                   xs
-                   args)
+                param_groups
             ^ " => "
             ^ term_to_string_helper e lctx body prec_term
-          in
-          res
+
       | Arrow (x, bid, ty, ret) -> (
           match x with
           | None ->
