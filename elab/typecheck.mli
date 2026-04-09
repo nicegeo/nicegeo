@@ -21,6 +21,10 @@ val elaborate : Types.ctx -> term -> term option -> term
     be elaborated first. *)
 val infertype : ?depth:int -> Types.ctx -> term -> term
 
+(** [create_metas ctx tm ids] initializes the [ctx.metas] table with the hole ids present
+    in [tm]. [ids] is the initial list of bids in scope. *)
+val create_metas : Types.ctx -> term -> int list -> unit
+
 (** [replace_metas ctx tm] replaces the metavariables in [tm] with their solved instances.
 *)
 val replace_metas : Types.ctx -> term -> term
