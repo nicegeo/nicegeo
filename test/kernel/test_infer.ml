@@ -571,6 +571,44 @@ let test_kernel_reduce () =
     ~actual:(inferType env lctx (App (Const "g", Const "p")))
     ~expected:(Const "Point")
 
+let test_delta_reduce () =
+  let open Internals in
+  let env = create_env_with_env () in
+  let lctx = Hashtbl.create 16 in
+
+  (* Not (Not P) should reduce to P -> False -> False, where False := (P: Prop) -> P *)
+  let term = App (Const "Not", App (Const "Not", Const "P")) in
+  let false_def = Forall (Sort 0, Bvar 0) in
+  Alcotest.check'
+    Testable.term
+    ~msg:"Delta reduction expands definitions as expected"
+    ~actual:(reduce env.kenv lctx term)
+    ~expected:(Forall (Forall (Const "P", false_def), false_def));
+
+  (* Ne A a b and Eq A a b -> False should be definitionally equal *)
+  let t1 = App (App (App (Const "Ne", Const "A"), Const "a"), Const "b") in
+  let t2 = Forall (App (App (App (Const "Eq", Const "A"), Const "a"), Const "b"), Const "False") in
+  Alcotest.check'
+    (Testable.termDefEq env.kenv lctx)
+    ~msg:"a ≠ b defeq Not (a = b)"
+    ~actual:t1
+    ~expected:t2;
+  
+  (* Define identity function *)
+  let id_term = Lam (Sort 1, Lam (Bvar 0, Bvar 0)) in
+  let id_type = Forall (Sort 1, Forall (Bvar 0, Bvar 1)) in
+  Interface.add_definition env.kenv "id" id_type id_term;
+
+  (* id Point x delta-reduces to (fun A a => a) Point x and beta-reduces to x *)
+  let term = App (App (Const "id", Const "Point"), Const "x") in
+  Alcotest.check'
+    Testable.term
+    ~msg:"Reduce normalizes properly"
+    ~actual:(reduce env.kenv lctx term)
+    ~expected:(Const "x");
+
+  ()
+
 let suite =
   let open Alcotest in
   ( "kernel",
@@ -588,4 +626,5 @@ let suite =
       test_case "Measure sanity checks" `Quick test_len_sanity;
       test_case "Measure application" `Quick test_len_app;
       test_case "Kernel reduction" `Quick test_kernel_reduce;
+      test_case "Kernel delta reduction" `Quick test_delta_reduce;
     ] )
