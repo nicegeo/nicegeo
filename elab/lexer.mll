@@ -31,6 +31,7 @@ rule token = parse
   | ":="         { DEFEQ }
   | "->"         { FORALL }
   | "→"          { FORALL }
+  | "<->"        { IFF }
   | "↔"          { IFF }
   | "=>"         { ARROW }
   | ":"          { COLON }
