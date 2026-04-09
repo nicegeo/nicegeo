@@ -1,5 +1,6 @@
 open Printexc
 open Elab
+open Automation
 
 let () =
   record_backtrace true;
@@ -9,6 +10,8 @@ let () =
     exit 1);
 
   let filename = Sys.argv.(1) in
+
+  Tactics.register ();
 
   let env = Elab.Interface.create () in
   (try Elab.Interface.process_env env

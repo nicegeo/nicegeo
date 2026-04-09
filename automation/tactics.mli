@@ -1,6 +1,6 @@
-open Term
-open Proofstate
-open Tactic
+open Elab.Term
+open Elab.Proofstate
+open Elab.Tactic
 
 val reflexivity : proof_state -> tactic_result
 

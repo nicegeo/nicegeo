@@ -1,0 +1,4 @@
+(library
+ (name automation)
+ (public_name nicegeo.automation)
+ (libraries kernel elab))
