@@ -119,15 +119,6 @@ let exact (tm : term) (st : proof_state) : tactic_result =
                      (pp_term st.elab_ctx inferred_ty)
                      (pp_term st.elab_ctx g.goal_type))))
 
-(** Resolve [name] to a proof term and its type: hypotheses shadow global names. *)
-let _resolve (name : string) (g : goal) (st : proof_state) : (term * term) option =
-  match List.find_opt (fun h -> h.hyp_name = name) g.ctx with
-  | Some h -> Some (mk_bvar h.hyp_bid, h.hyp_type)
-  | None -> (
-      match Hashtbl.find_opt st.elab_ctx.env name with
-      | Some entry -> Some (mk_name name, entry.ty)
-      | None -> None)
-
 (** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
     and opens a new subgoal for [A]. *)
 let apply (tm : term) (st : proof_state) : tactic_result =
