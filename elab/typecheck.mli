@@ -23,6 +23,8 @@ val infertype : ?depth:int -> Types.ctx -> term -> term
 
 val create_metas : Types.ctx -> term -> int list -> unit
 
+(** [replace_metas ctx tm] replaces the metavariables in [tm] with their solved instances.
+*)
 val replace_metas : Types.ctx -> term -> term
 
 val unify :

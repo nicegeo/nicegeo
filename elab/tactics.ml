@@ -329,6 +329,68 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
+(* This is like with_hyps, but uses a copy of the hashmap to avoid the mess *)
+let add_local_hyps g ctx =
+  let locals = Hashtbl.copy ctx.lctx in
+  List.iter (fun h -> Hashtbl.add locals h.hyp_bid (Some h.hyp_name, h.hyp_type)) g.ctx;
+  { ctx with lctx = locals }
+
+(* This adds a hole of the desired type, again using a copy of the hashmap *)
+let add_hole g hole_id ty ctx =
+  let metas = Hashtbl.copy ctx.metas in
+  let ctx_bids = List.map (fun h -> h.hyp_bid) g.ctx in
+  Hashtbl.replace metas hole_id { ty = Some ty; context = ctx_bids; sol = None };
+  { ctx with metas }
+
+(* 
+  This infers the motive p of the existential type when constructing an Exists.intro.
+  It uses the type A to construct the expected type, leaving in a hole for the motive.
+  It then calls unification with a fresh hole for p, to unify the goal with the type
+  Exists A ?p, where ?p : A -> Prop. If successful, it returns Some p, otherwise None.
+*)
+let infer_motive (exists_type : term) (g : goal) ctx : term option =
+  let goal_type = g.goal_type in
+  let hole_id = gen_hole_id () in
+  let bid = Term.gen_binder_id () in
+  let hole_type = mk_arrow (Some "A") bid exists_type (mk_sort 0) in
+  let ctx = add_hole g hole_id hole_type ctx in
+  let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
+  unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0);
+  match Hashtbl.find_opt ctx.metas hole_id with
+  | Some mvar -> mvar.sol
+  | None -> failwith "internal nicegeo programming error: created hole does not exist!"
+
+(*
+ * This implements the exists tactic, which takes term a as an argument, and constructs
+ * an existential from there that unifies appropriately with the goal type. It infers
+ * the motive automatically from the goal type, which should have form Exists A ?p
+ * where a : A and ?p : A -> Prop.
+ *)
+let exists (a : term) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | Some g -> (
+      let ctx = add_local_hyps g st.elab_ctx in
+      (* infer A *)
+      let exists_type = Typecheck.infertype ctx a in
+      (* infer the motive p *)
+      match infer_motive exists_type g ctx with
+      | Some p ->
+          (* update the goal to (p a) *)
+          let new_goal_ty = mk_app p a in
+          let new_hole, st = fresh_goal st g.ctx new_goal_ty in
+          (* construct the proof term *)
+          let proof =
+            mk_app
+              (mk_app (mk_app (mk_app (mk_name "Exists.intro") exists_type) p) a)
+              new_hole
+          in
+          (* update the proof state accordingly *)
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+          succeed st
+      | None -> fail "Goal must have the form [Exists A p]")
+  | None -> fail "No goals remaining"
+
 let register () =
   register_tactic "reflexivity" Register.(nullary reflexivity);
   register_tactic "exact" Register.(unary_term exact);
