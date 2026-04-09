@@ -1,0 +1,9 @@
+(library
+ (name automation)
+ (public_name nicegeo.automation)
+ (libraries kernel elab))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))
