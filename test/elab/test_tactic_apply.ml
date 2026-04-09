@@ -49,9 +49,7 @@ let test_apply_conclusion_mismatch () =
   let h_ty = t (Arrow (None, arrow_bid, t (Sort 1), t (Sort 1))) in
   let st = start_with_hyp "h" h_ty (t (Sort 0)) in
   let tm = bind_names (List.hd st.open_goals) (mk_name "h") in
-  match apply tm st with
-  | Success _ -> Alcotest.fail "expected Failure"
-  | Failure _ -> ()
+  match apply tm st with Success _ -> Alcotest.fail "expected Failure" | Failure _ -> ()
 
 (* Unknown name should fail. *)
 let test_apply_unknown_name () =
