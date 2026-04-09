@@ -196,7 +196,9 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           let term_context =
             match d.kind with
             | Statement.Theorem (Statement.DefEq proof_tm) | Statement.Def proof_tm ->
-                let proof_tm = Typecheck.elaborate env_before_decl proof_tm (Some goal_ty_tm) in
+                let proof_tm =
+                  Typecheck.elaborate env_before_decl proof_tm (Some goal_ty_tm)
+                in
                 let cursor_in_proof = range_contains proof_tm.loc line col in
                 if not cursor_in_proof then []
                 else
