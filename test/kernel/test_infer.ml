@@ -711,6 +711,54 @@ let test_kernel_reduce () =
     ~actual:(inferType env lctx (App (Const "g", Const "p")))
     ~expected:(Const "Point")
 
+(* reduce originally had domainType = arg_type instead of isDefEq, which would cause this to fail *)
+let test_reduce_crashes () =
+  let open Internals in
+  let env = mk_env () in
+  let ctx = Hashtbl.create 0 in
+  Hashtbl.add ctx "p" (Const "Point");
+  let fancy_point = App (Lam (Sort 1, Bvar 0), Const "Point") in
+  let term = App (Lam (fancy_point, Bvar 0), Fvar "p") in
+  let result = reduce env ctx term in
+  Alcotest.check'
+    Testable.term
+    ~msg:"reduce doesn't crash on non-def-eq application"
+    ~actual:result
+    ~expected:(Fvar "p")
+
+(* two Apps makes things not reduce all the way although i'm not sure if this would come up in practice*)
+let test_reduce_stuck () =
+  let open Internals in
+  let env = mk_env () in
+  let ctx = Hashtbl.create 0 in
+  Hashtbl.add ctx "p" (Const "Point");
+  let term = App (App (Lam (Sort 1, Lam (Bvar 0, Bvar 0)), Const "Point"), Fvar "p") in
+  let result = reduce env ctx term in
+  (* let result2 =
+    reduce env ctx (Lam (Const "Point", App (Lam (Const "Line", Bvar 0), Bvar 0)))
+  in *)
+  Alcotest.check'
+    Testable.term
+    ~msg:"reduce not stuck on nested applications"
+    ~actual:result
+    ~expected:(Fvar "p")
+
+(* this test failed for the same reason that test_reduce_stuck failed *)
+let test_isDefEq_forall () =
+  let env = mk_env () in
+  let ctx = Hashtbl.create 0 in
+  let lhs =
+    App
+      ( App (Lam (Sort 1, Lam (Sort 1, Forall (Bvar 1, Bvar 1))), Const "Point"),
+        Const "Line" )
+  in
+  let rhs = Forall (Const "Point", Const "Line") in
+  Alcotest.check'
+    (Testable.termDefEq env ctx)
+    ~msg:"isDefEq works for forall with applications in the domain and codomain"
+    ~actual:lhs
+    ~expected:rhs
+
 let suite =
   let open Alcotest in
   ( "kernel",
@@ -730,4 +778,7 @@ let suite =
       test_case "Measure sanity checks" `Quick test_len_sanity;
       test_case "Measure application" `Quick test_len_app;
       test_case "Kernel reduction" `Quick test_kernel_reduce;
+      test_case "Reduce defEq" `Quick test_reduce_crashes;
+      test_case "Reduce nested application" `Quick test_reduce_stuck;
+      test_case "Reduce forall with nested applications" `Quick test_isDefEq_forall;
     ] )
