@@ -36,7 +36,7 @@ Theorem on_circle_iff_length_eq : (a : Point) -> (b : Point) -> (c : Point) -> (
     (fun h => Eq.symm _ _ _ (eq_radius_if_on_circle a b c d ad bd h))
 
 Theorem prop1 : (a : Point) -> (b : Point) -> (ab : a ≠ b) -> 
-    Exists Point (fun c => Length a b = Length a c /\ Length b c = Length b a) :=
+    ∃ c, Length a b = Length a c /\ Length b c = Length b a :=
     fun (a b : Point) (ab : a ≠ b) =>
 
    	Exists.elim _ _ _ (circle_of_ne a b ab)
@@ -92,7 +92,7 @@ Theorem CancelAdd : (x: Measure) -> (y: Measure) -> (z: Measure) -> z + x = z + 
 
 
 Theorem pt_oncircle_of_inside_ne : (a: Point) -> (b: Point) -> (aa: Circle) ->
-    a ≠ b -> InCircle b aa -> Exists _ (fun (c: Point) => Between a b c /\ OnCircle c aa) :=
+    a ≠ b -> InCircle b aa -> ∃ c, Between a b c /\ OnCircle c aa :=
 
     fun (a: Point) (b: Point) (aa: Circle) (ab: a ≠ b) (baa: InCircle b aa) =>
 
@@ -142,7 +142,7 @@ Theorem ne_23_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b
 
 Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     -> (bc : b ≠ c) -> (ab : a ≠ b)
-    -> Exists Point (fun f => Length a f = Length b c) :=
+    -> ∃ f, Length a f = Length b c :=
     fun (a: Point) (b: Point) (c: Point) (bc: b ≠ c) (ab: a ≠ b) =>
 
     Exists.elim _ _ _ (prop1 a b ab)
@@ -236,8 +236,8 @@ Theorem point_eq_em : (a: Point) -> (b: Point) -> a = b ∨ a ≠ b :=
     )
     (fun (h: Eq _ Zero (Length a b)) => Or.inl _ _ (eq_if_len_zero a b (Eq.symm _ _ _ h)))
 
-Theorem prop2 : (a : Point) -> (b: Point) -> (c: Point)
-    -> Exists Point (fun f => Length a f = Length b c) :=
+Theorem prop2 : (a : Point) → (b: Point) → (c: Point)
+    → ∃ f, Length a f = Length b c :=
     fun (a: Point) (b: Point) (c: Point) =>
 
     Or.elim _ _ _ (point_eq_em b c)
