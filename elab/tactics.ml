@@ -364,3 +364,29 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                "rewrite: failed to find instance of '%s' in goal '%s'"
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
+
+(*
+  needs better comment
+*)
+let split (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g -> (
+      let ty = beta_nf st.elab_ctx g.goal_type in
+      match ty.inner with
+      | App ({ inner = App ({ inner = Name "And"; _ }, a); _ }, b) ->
+          let hole_a, st = fresh_goal st g.ctx a in
+          let hole_b, st = fresh_goal st g.ctx b in
+          let proof =
+            mk_app
+              (mk_app (mk_app (mk_app (mk_name "And.intro") a) b) hole_a)
+              hole_b
+          in
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+          
+          succeed st 
+      | _ ->
+          fail
+            (Printf.sprintf "split: goal '%s' is not a conjunction."
+               (pp_term st.elab_ctx ty)))
