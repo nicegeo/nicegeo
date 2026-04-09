@@ -13,13 +13,13 @@ open Term
     context. *)
 val process_decl : Types.ctx -> Statement.declaration -> unit
 
-(** [elaborate ctx tm ty] elaborates term [tm] with an optional expected
-    type [ty]. Refers to [ctx] for environment entries.
-    Returns a filled term with type [ty], or raises [Error.ElabError]. *)
+(** [elaborate ctx tm ty] elaborates term [tm] with an optional expected type [ty]. Refers
+    to [ctx] for environment entries. Returns a filled term with type [ty], or raises
+    [Error.ElabError]. *)
 val elaborate : Types.ctx -> term -> term option -> term
 
-(** [infertype ctx tm] returns the inferred type of term [tm] in context [ctx]. [tm] must
-    be elaborated first. *)
+(** [infertype ctx lctx tm] returns the inferred type of term [tm] in context [ctx]. Refers to [ctx] for environment entries and [lctx] for bound variables. All holes in [tm] must
+    have a relevant entry in [env.metas]. *)
 val infertype : ?depth:int -> Types.ctx -> Types.local_ctx -> term -> term
 
 (** [create_metas ctx tm ids] initializes the [ctx.metas] table with the hole ids present
