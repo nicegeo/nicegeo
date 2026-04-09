@@ -439,7 +439,8 @@ let register () =
              {
                context = { loc = Some ty.loc; decl_name = None };
                error_type =
-                 Elab.Error.InvalidTacticParameter "Expected an identifier, but got a term";
+                 Elab.Error.InvalidTacticParameter
+                   "Expected an identifier, but got a term";
              })
     | args ->
         raise
