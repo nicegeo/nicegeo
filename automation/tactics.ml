@@ -150,7 +150,7 @@ let apply (tm : term) (st : proof_state) : tactic_result =
             let st = close_goal g.goal_id st in
             succeed st
         | None -> fail "subgoal type could not be inferred"
-      with Error.ElabError info -> fail (Error.pp_exn st.elab_ctx info))
+      with Elab.Error.ElabError info -> fail (Elab.Error.pp_exn st.elab_ctx info))
 
 let ensure_sorry_ax (st : proof_state) : unit =
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then (
