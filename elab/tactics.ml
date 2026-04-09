@@ -128,27 +128,29 @@ let _resolve (name : string) (g : goal) (st : proof_state) : (term * term) optio
       | Some entry -> Some (mk_name name, entry.ty)
       | None -> None)
 
-(** [apply term st]
-    - if [term]'s type is [A -> B] and [B] matches the goal, closes the goal and opens a
-      new subgoal for [A];
-    - if [term]'s type directly matches the goal (no arrow), closes it like [exact]. *)
+(** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
+    and opens a new subgoal for [A]. *)
 let apply (tm : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
-  | Some g ->
+  | Some g -> (
       let subgoal_id = gen_hole_id () in
       let sol = mk_app tm (mk_hole subgoal_id) in
-      create_metas st.elab_ctx sol (List.map (fun h -> h.hyp_bid) g.ctx);
-      let sol_ty = infertype st.elab_ctx sol in
-      unify st.elab_ctx sol_ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
-      (* basically check that all the holes in tm are filled *)
-      ignore (replace_metas st.elab_ctx tm);
-      let subgoal_ty = Option.get (Hashtbl.find st.elab_ctx.metas subgoal_id).ty in
-      let subgoal = { ctx = g.ctx; goal_type = subgoal_ty; goal_id = subgoal_id } in
-      let st = { st with open_goals = st.open_goals @ [ subgoal ] } in
-      let st = assign_meta g.goal_id sol st in
-      let st = close_goal g.goal_id st in
-      succeed st
+      try
+        create_metas st.elab_ctx sol (List.map (fun h -> h.hyp_bid) g.ctx);
+        let sol_ty = infertype st.elab_ctx sol in
+        unify st.elab_ctx sol_ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
+        (* basically check that all the holes in tm are filled *)
+        ignore (replace_metas st.elab_ctx tm);
+        match (Hashtbl.find st.elab_ctx.metas subgoal_id).ty with
+        | Some subgoal_ty ->
+            let subgoal = { ctx = g.ctx; goal_type = subgoal_ty; goal_id = subgoal_id } in
+            let st = { st with open_goals = st.open_goals @ [ subgoal ] } in
+            let st = assign_meta g.goal_id sol st in
+            let st = close_goal g.goal_id st in
+            succeed st
+        | None -> fail "subgoal type could not be inferred"
+      with Error.ElabError info -> fail (Error.pp_exn st.elab_ctx info))
 
 let ensure_sorry_ax (st : proof_state) : unit =
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then (
