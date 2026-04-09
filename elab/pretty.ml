@@ -106,11 +106,24 @@ let term_to_string (e : Types.ctx) (t : term) : string =
   in
   term_to_string_helper e t prec_term
 
+let tactic_to_string (e : Types.ctx) (t : Statement.tactic) : string =
+  t.name ^ " "
+  ^ String.concat
+      " "
+      (List.map
+         (fun arg ->
+           let arg_str = term_to_string e arg in
+           if get_prec e arg <> prec_atomic then "(" ^ arg_str ^ ")" else arg_str)
+         t.args)
+
 let decl_to_string (e : Types.ctx) (d : Statement.declaration) =
   match d.kind with
   | Axiom -> "Axiom " ^ d.name ^ " : " ^ term_to_string e d.ty
-  | Theorem proof ->
-      "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := "
-      ^ term_to_string e proof
+  | Theorem (DefEq term) ->
+      "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e term
+  | Theorem (Proof proof) ->
+      "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ "\nProof.\n"
+      ^ String.concat "\n" (List.map (tactic_to_string e) proof)
+      ^ "\nQed."
   | Def body ->
       "Def " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e body

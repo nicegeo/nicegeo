@@ -3,9 +3,21 @@
 
 open Term
 
-(** The body of a declaration: either a proof term or definition body or an axiom. *)
+type tactic = {
+  name : string;  (** The name of the tactic. *)
+  args : term list;  (** The arguments passed to the tactic. *)
+  loc : range;  (** The source location of the tactic (for error reporting). *)
+}
+
+type theorem_body =
+  | Proof of tactic list
+      (** [Proof(tactics)] represents a proof script, which is a sequence of tactics. *)
+  | DefEq of term  (** [DefEq(term)] represents defining a theorem by a term. *)
+
+(** The body of a declaration: either a proof or definition body or an axiom. *)
 type decl_type =
-  | Theorem of term  (** [Theorem(term)] is the type of theorems with proof [term]. *)
+  | Theorem of theorem_body
+      (** [Theorem(term)] is the type of theorems with proof [term]. *)
   | Axiom  (** [Axiom] is the type of axioms. *)
   | Def of term  (** [Def(term)] is the type of definitions with body [term]. *)
 

@@ -238,7 +238,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
   | _, MetaSpine ({ inner = Hole m; _ }, args) -> pattern_match_meta e g2 m args t1
   | VarSpine (h1, args1), VarSpine (h2, args2) when h1.inner = h2.inner ->
       if List.length args1 <> List.length args2 then
-        failwith "tried to unify different length var spines"
+        raise_at t1 (Error.UnificationFailure { left = t1; right = t2 })
       else
         List.iter2
           (fun arg1 arg2 -> unify ~depth:(depth + 1) e arg1 g1 arg2 g2)
@@ -304,7 +304,9 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
       let ty_norm = to_norm e ty_whnf in
       match ty_norm with
       | Arrow (_, bid_ex, ty_arg_ex, ty_ret_ex) ->
-          (* unify argument types first *)
+          (* typecheck lambda ty_arg *)
+          check_is_type ~depth:(depth + 1) e ty_arg;
+          (* unify argument types *)
           (try
              unify
                ~depth:(depth + 1)
@@ -322,7 +324,6 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
                     inferred_type = ty_arg;
                     expected_type = ty_arg_ex;
                   }));
-          check_is_type ~depth:(depth + 1) e ty_arg;
           (* check body type by substituting the appropriate bound variable *)
           let ty_ret_ex_subst = Reduce.subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in
           Hashtbl.add e.lctx bid (arg, ty_arg);
@@ -529,7 +530,11 @@ let process_decl (e : ctx) (d : declaration) : unit =
       check_is_type e ty_filled;
       match d.kind with
       | Theorem body ->
-          let proof_filled = elaborate e body (Some ty_filled) in
+          let proof = match body with
+          | Proof script -> replace_metas e (Tactic.run e script d.ty)
+          | DefEq proof -> proof
+          in
+          let proof_filled = elaborate e proof (Some ty_filled) in
 
           Kernel.Interface.add_theorem
             e.kenv

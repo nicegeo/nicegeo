@@ -1,14 +1,25 @@
-#infer LtAntisymm
-
 Theorem LtNe : (a: Measure) -> (b: Measure) -> Lt a b -> Eq _ a b -> False :=
   fun (a: Measure) (b: Measure) (lt_ab: Lt a b) (eq_ab: Eq _ a b) =>
     LtAntisymm b b
       (Eq.elim Measure a (fun (x: Measure) => Lt x b) lt_ab b eq_ab)
       (Eq.elim Measure a (fun (x: Measure) => Lt x b) lt_ab b eq_ab)
+ 
+Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a)
+Proof.
+  intros A a b eq_ab.
+  (* rewrite eq_ab.
+  exact (Eq.intro A b). *)
+  (* turns out we can't use rewrite in here because rewrite depends on Eq.symm, which is what we're trying to prove... *)
+  exact (Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab).
+Qed.
 
-
-Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
-	fun A a b eq_ab => Eq.elim A a (fun x => Eq A x a) (Eq.intro A a) b eq_ab
+(* i guess this works as a proof of concept *)
+Theorem Eq.symm1 : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a)
+Proof.
+  intros A a b eq_ab.
+  rewrite eq_ab.
+  exact (Eq.intro A b).
+Qed.
 
 Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Ne A a b) -> (Ne A b a) :=
 	fun A a b ne_ab eq_ba =>
@@ -349,5 +360,3 @@ Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x 
 #reduce (fun (x : Measure) => x) Zero
 
 #infer distinct_from
-
-Theorem test : (P: Prop) -> P -> Not (Not P) := fun P p (np : Not P) => np p
