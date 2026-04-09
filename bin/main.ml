@@ -27,26 +27,24 @@ let () =
       exit 1
   in
 
-  let errors =
-    List.filter_map
+  let errors_exist =
+    List.exists
       (fun stmt ->
         try
           Elab.Interface.process_statement env stmt;
-          None
-        with Error.ElabError info -> Some info)
+          false
+        with Error.ElabError info ->
+          print_endline
+            ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
+          print_endline "";
+          Hashtbl.clear env.lctx;
+          true)
       stmts
   in
 
-  match errors with
-  | [] -> print_endline "Valid proofs!"
-  | errors ->
-      List.iter
-        (fun info ->
-          print_endline
-            ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
-          print_endline "")
-        errors;
-      (match Nice_messages.pick_message tone Nice_messages.After_error with
-      | Some extra -> Printf.printf "\n%s\n\n" extra
-      | None -> ());
-      exit 1
+  if errors_exist then (
+    (match Nice_messages.pick_message tone Nice_messages.After_error with
+    | Some extra -> Printf.printf "\n%s\n\n" extra
+    | None -> ());
+    exit 1)
+  else print_endline "Valid proofs!"
