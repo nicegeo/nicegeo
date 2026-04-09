@@ -713,6 +713,7 @@ let test_kernel_reduce () =
 
 (* reduce originally had domainType = arg_type instead of isDefEq, which would cause this to fail *)
 let test_reduce_crashes () =
+  let open Internals in
   let env = mk_env () in
   let ctx = Hashtbl.create 0 in
   Hashtbl.add ctx "p" (Const "Point");
@@ -727,6 +728,7 @@ let test_reduce_crashes () =
 
 (* two Apps makes things not reduce all the way although i'm not sure if this would come up in practice*)
 let test_reduce_stuck () =
+  let open Internals in
   let env = mk_env () in
   let ctx = Hashtbl.create 0 in
   Hashtbl.add ctx "p" (Const "Point");
