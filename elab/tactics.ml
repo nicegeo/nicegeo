@@ -135,7 +135,7 @@ let _resolve (name : string) (g : goal) (st : proof_state) : (term * term) optio
 let apply (tm : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
-  | Some g -> (
+  | Some g ->
       let subgoal_id = gen_hole_id () in
       let sol = mk_app tm (mk_hole subgoal_id) in
       create_metas st.elab_ctx sol (List.map (fun h -> h.hyp_bid) g.ctx);
@@ -148,7 +148,7 @@ let apply (tm : term) (st : proof_state) : tactic_result =
       let st = { st with open_goals = st.open_goals @ [ subgoal ] } in
       let st = assign_meta g.goal_id sol st in
       let st = close_goal g.goal_id st in
-      succeed st)
+      succeed st
 
 let ensure_sorry_ax (st : proof_state) : unit =
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then (
