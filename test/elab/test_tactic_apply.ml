@@ -57,6 +57,13 @@ let test_apply_unknown_name () =
   let tm = bind_names (List.hd st.open_goals) (mk_name "no_such_lemma") in
   match apply tm st with Success _ -> Alcotest.fail "expected Failure" | Failure _ -> ()
 
+(* No goals remaining: use the no-arrow path to fully close the state, then apply again. *)
+let test_apply_no_goals () =
+  let st = { statement = t (Sort 0); open_goals = []; elab_ctx = e } in
+  match apply (mk_name "h") st with
+  | Failure _ -> ()
+  | Success _ -> Alcotest.fail "expected Failure on completed state"
+
 let suite =
   let open Alcotest in
   ( "Tactic.apply",
@@ -64,4 +71,5 @@ let suite =
       test_case "opens subgoal for premise" `Quick test_apply_opens_subgoal;
       test_case "fails on conclusion mismatch" `Quick test_apply_conclusion_mismatch;
       test_case "fails on unknown name" `Quick test_apply_unknown_name;
+      test_case "fails when no goals remaining" `Quick test_apply_no_goals;
     ] )
