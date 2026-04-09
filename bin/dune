@@ -1,5 +1,0 @@
-(executables
- (public_names nicegeo nicegeo-proofstate)
- (names main proofstate)
- (modes exe byte)
- (libraries kernel elab))

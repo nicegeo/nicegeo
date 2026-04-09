@@ -1,7 +1,5 @@
 module KTerm = Kernel.Term
 
-let () = Tactics.register ()
-
 let parse_term (s : string) : Term.term =
   let lexbuf = Lexing.from_string s in
   Parser.single_term Lexer.token lexbuf

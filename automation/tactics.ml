@@ -1,17 +1,17 @@
-open Term
-open Types
-open Proofstate
-open Typecheck
-open Tactic
+open Elab.Term
+open Elab.Types
+open Elab.Proofstate
+open Elab.Typecheck
+open Elab.Tactic
 
 let succeed st = Success st
 let fail msg = Failure msg
 
 (* Used by future tactics that need to catch elaboration errors and return a Failure. *)
 let _catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
-  try f () with Error.ElabError info -> fail (Error.pp_exn ectx info)
+  try f () with Elab.Error.ElabError info -> fail (Elab.Error.pp_exn ectx info)
 
-let beta_nf (e : ctx) (tm : term) : term = Reduce.reduce e tm
+let beta_nf (e : ctx) (tm : term) : term = Elab.Reduce.reduce e tm
 
 (** [seq t1 t2] applies t1 to the state. If it succeeds, it applies t2 to the new state.
 *)
@@ -43,9 +43,9 @@ let rec def_eq (e : ctx) (t1 : term) (t2 : term) : bool =
   | Hole i, Hole j -> i = j
   | App (f1, x1), App (f2, x2) -> def_eq e f1 f2 && def_eq e x1 x2
   | Fun (_, bid1, ty1, b1), Fun (_, bid2, ty2, b2) ->
-      def_eq e ty1 ty2 && def_eq e b1 (Reduce.subst e b2 (Bvar bid2) (Bvar bid1))
+      def_eq e ty1 ty2 && def_eq e b1 (Elab.Reduce.subst e b2 (Bvar bid2) (Bvar bid1))
   | Arrow (_, bid1, ty1, r1), Arrow (_, bid2, ty2, r2) ->
-      def_eq e ty1 ty2 && def_eq e r1 (Reduce.subst e r2 (Bvar bid2) (Bvar bid1))
+      def_eq e ty1 ty2 && def_eq e r1 (Elab.Reduce.subst e r2 (Bvar bid2) (Bvar bid1))
   | _ -> false
 
 (* Used by future tactics that need to pass the in-scope bids when creating subgoals. *)
@@ -105,7 +105,7 @@ let exact (tm : term) (st : proof_state) : tactic_result =
            rather than letting them escape as exceptions. *)
           _catch_elab st.elab_ctx (fun () ->
               (* Ask the elaborator what type [tm] actually has. *)
-              let inferred_ty = Typecheck.infertype st.elab_ctx tm in
+              let inferred_ty = Elab.Typecheck.infertype st.elab_ctx tm in
               (* Accept if the inferred type is definitionally equal to the goal type
              (beta-reduces both sides before comparing). *)
               if def_eq st.elab_ctx inferred_ty g.goal_type then
@@ -147,7 +147,7 @@ let apply (name : string) (st : proof_state) : tactic_result =
               let hole_id = gen_hole_id () in
               let hole = mk_hole hole_id in
               let conclusion =
-                Reduce.subst st.elab_ctx conclusion_ty (Bvar bid) hole.inner
+                Elab.Reduce.subst st.elab_ctx conclusion_ty (Bvar bid) hole.inner
               in
               if def_eq st.elab_ctx conclusion g.goal_type then (
                 let context = List.map (fun h -> h.hyp_bid) g.ctx in
@@ -184,9 +184,9 @@ let apply (name : string) (st : proof_state) : tactic_result =
 
 let ensure_sorry_ax (st : proof_state) : unit =
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then (
-    let bid = Term.gen_binder_id () in
+    let bid = Elab.Term.gen_binder_id () in
     let elab_ty = mk_arrow (Some "A") bid (mk_sort 0) (mk_bvar bid) in
-    let k_ty = Convert.conv_to_kterm elab_ty in
+    let k_ty = Elab.Convert.conv_to_kterm elab_ty in
     Hashtbl.add
       st.elab_ctx.env
       "sorry_ax"
@@ -237,7 +237,7 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> Failure "have: no goals remaining"
   | Some g ->
-      let bid = Term.gen_binder_id () in
+      let bid = Elab.Term.gen_binder_id () in
       let cont_ty = mk_arrow (Some name) bid ty g.goal_type in
       let proof_id = fresh_id () in
       let cont_id = fresh_id () in
@@ -383,7 +383,7 @@ let add_hole g hole_id ty ctx =
 let infer_motive (exists_type : term) (g : goal) ctx : term option =
   let goal_type = g.goal_type in
   let hole_id = gen_hole_id () in
-  let bid = Term.gen_binder_id () in
+  let bid = Elab.Term.gen_binder_id () in
   let hole_type = mk_arrow (Some "A") bid exists_type (mk_sort 0) in
   let ctx = add_hole g hole_id hole_type ctx in
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
@@ -403,7 +403,7 @@ let exists (a : term) (st : proof_state) : tactic_result =
   | Some g -> (
       let ctx = add_local_hyps g st.elab_ctx in
       (* infer A *)
-      let exists_type = Typecheck.infertype ctx a in
+      let exists_type = Elab.Typecheck.infertype ctx a in
       (* infer the motive p *)
       match infer_motive exists_type g ctx with
       | Some p ->
@@ -435,15 +435,15 @@ let register () =
     | [ { inner = Name name; _ }; ty ] -> have name ty
     | ty :: _ ->
         raise
-          (Error.ElabError
+          (Elab.Error.ElabError
              {
                context = { loc = Some ty.loc; decl_name = None };
                error_type =
-                 Error.InvalidTacticParameter "Expected an identifier, but got a term";
+                 Elab.Error.InvalidTacticParameter "Expected an identifier, but got a term";
              })
     | args ->
         raise
-          (Error.ElabError
+          (Elab.Error.ElabError
              {
                context =
                  {
@@ -456,8 +456,10 @@ let register () =
                    decl_name = None;
                  };
                error_type =
-                 Error.InvalidTacticParameter
+                 Elab.Error.InvalidTacticParameter
                    ("Expected exactly two parameters (name and type), but got "
                    ^ string_of_int (List.length args));
              }));
   register_tactic "rewrite" Register.(unary_term rewrite)
+
+let () = register ()
