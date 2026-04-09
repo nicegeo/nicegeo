@@ -53,6 +53,9 @@ let gen_new_fvar_name () : string =
   incr fvar_counter;
   name
 
+(** Fully delta-reduce a term by replacing all defined constants with their definition
+    body, so that there are no subterms of "Const x" where "x" is in env.defs in the
+    returned term. *)
 let rec delta_reduce (env : environment) (t : term) : term =
   match t with
   | Const name -> (
@@ -65,6 +68,8 @@ let rec delta_reduce (env : environment) (t : term) : term =
       Forall (delta_reduce env domainType, delta_reduce env returnType)
   | _ -> t
 
+(** Fully beta-reduce a term (performing computation) by recursively replacing all
+    instances of (fun x => body) arg with body[arg/x]. *)
 let rec beta_reduce (localCtx : localcontext) (t : term) =
   match t with
   | App (func, arg) -> (
