@@ -1,7 +1,7 @@
 open Elab.Term
 open Elab.Types
 open Elab.Proofstate
-open Elab.Tactics
+open Automation.Tactics
 
 let e = Elab.Interface.create ()
 let t k = { inner = k; loc = dummy_range }

@@ -1,7 +1,7 @@
 open Elab.Term
 open Elab.Types
 open Elab.Proofstate
-open Elab.Tactics
+open Automation.Tactics
 
 let t k = { inner = k; loc = dummy_range }
 let name s = t (Name s)

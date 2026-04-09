@@ -1,7 +1,7 @@
-open Elab.Tactics
 open Elab.Proofstate
 open Elab.Typecheck
 open Elab.Tactic
+open Automation.Tactics
 
 (*
  * This is based heavily on the rewrite tactic tests, including by copying
