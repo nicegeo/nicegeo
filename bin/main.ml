@@ -10,7 +10,7 @@ let () =
     exit 1);
 
   let filename = Sys.argv.(1) in
-  
+
   Tactics.register ();
 
   let env = Elab.Interface.create () in
