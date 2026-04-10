@@ -37,8 +37,7 @@ let run_tactic tac st =
 
 (** Convert an elab term to a kernel term *)
 let to_kterm env tm =
-  Elab.Reduce.delta_reduce env tm true
-  |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
+  Elab.Reduce.delta_reduce env tm |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
