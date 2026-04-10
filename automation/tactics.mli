@@ -13,11 +13,9 @@ val sorry : proof_state -> tactic_result
     or no goals remain. *)
 val exact : term -> proof_state -> tactic_result
 
-(** [apply name st] looks up [name] as a hypothesis or global lemma and attempts to close
-    the current goal. If the lemma type is [A -> B] and [B] matches the goal, the goal is
-    closed and a new subgoal for [A] is opened. If the type directly matches the goal (no
-    arrow), it behaves like [exact]. *)
-val apply : string -> proof_state -> tactic_result
+(** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
+    and opens a new subgoal for [A]. *)
+val apply : term -> proof_state -> tactic_result
 
 (* sequences tactics *)
 val seq : tactic -> tactic -> tactic

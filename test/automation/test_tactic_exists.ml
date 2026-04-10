@@ -66,7 +66,7 @@ let test_exists_kernel_check () =
   let goal_ty = elab env "Exists A (fun (a : A) => True)" in
   let st = init_state ~elab_ctx:env goal_ty in
   let st = run_tactic (exists (elab env "a")) st in
-  let st = run_tactic (apply "True.intro") st in
+  let st = run_tactic (exact (mk_name "True.intro")) st in
   Alcotest.(check bool) "no remaining goals" true (is_complete st);
   Alcotest.(check bool)
     "kernel accepts proof"
