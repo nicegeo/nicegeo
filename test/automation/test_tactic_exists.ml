@@ -44,8 +44,11 @@ let to_kterm env tm =
 let kernel_check env proof goal_ty =
   let proof_k = to_kterm env (replace_metas env proof) in
   let ty_k = to_kterm env (replace_metas env goal_ty) in
-  let inferred = Kernel.Infer.Internals.inferType env.kenv (Hashtbl.create 0) proof_k in
-  Kernel.Infer.Internals.isDefEq env.kenv (Hashtbl.create 0) inferred ty_k
+  try
+    Kernel.Interface.add_theorem env.kenv "test" ty_k proof_k;
+    Hashtbl.remove env.kenv "test";
+    true
+  with Kernel.Exceptions.TypeError _ -> false
 
 (* Check that single usage of `exists` creates the correct new goal type. *)
 let test_exists_simple () =
@@ -57,6 +60,37 @@ let test_exists_simple () =
   let got = pp_term env (Elab.Reduce.reduce env (List.hd st.open_goals).goal_type) in
   let exp = pp_term env (elab env "True") in
   Alcotest.(check string) "new goal is True" exp got
+
+(* Check that `exists` can infer the motive properly referencing something in the local
+   context *)
+let test_exists_lctx () =
+  let env, _ = make_env () in
+  let goal_ty = elab env "(b : A) -> Exists A (fun (c : A) => b = c)" in
+  let st = init_state ~elab_ctx:env goal_ty in
+  let st = run_tactic (intro "b") st in
+  let bid =
+    match (List.hd st.open_goals).lctx with
+    | [ { name = Some "b"; bid; _ } ] -> bid
+    | _ -> Alcotest.fail "expected one hypothesis named b in local context"
+  in
+  let st = run_tactic (exists (mk_bvar bid)) st in
+  Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
+  let got =
+    Elab.Pretty.term_to_string
+      env
+      (List.hd st.open_goals).lctx
+      (Elab.Reduce.reduce env (List.hd st.open_goals).goal_type)
+  in
+  let exp = "Eq A b b" in
+  Alcotest.(check string) "new goal is b = b" exp got;
+  (* close the goal and typecheck because we can *)
+  let st = run_tactic reflexivity st in
+  Alcotest.(check int) "no remaining goals" 0 (List.length st.open_goals);
+  Alcotest.(check bool)
+    "kernel accepts proof"
+    true
+    (kernel_check env st.statement goal_ty);
+  ()
 
 (*
   Checks that using `exists` and then closing a trivial goal produces
@@ -79,5 +113,6 @@ let suite =
   ( "Tactic.exists",
     [
       test_case "exists simple" `Quick test_exists_simple;
+      test_case "exists unifies with local context" `Quick test_exists_lctx;
       test_case "exists kernel check" `Quick test_exists_kernel_check;
     ] )
