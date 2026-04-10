@@ -5,7 +5,11 @@ let parse_term (s : string) : Term.term =
   Parser.single_term Lexer.token lexbuf
 
 let create () : Types.ctx =
-  { env = Hashtbl.create 16; kenv = Hashtbl.create 16; metas = Hashtbl.create 16 }
+  {
+    env = Hashtbl.create 16;
+    kenv = Kernel.Interface.create ();
+    metas = Hashtbl.create 16;
+  }
 
 let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
   match stmt with

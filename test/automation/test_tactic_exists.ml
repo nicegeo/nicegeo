@@ -37,8 +37,7 @@ let run_tactic tac st =
 
 (** Convert an elab term to a kernel term *)
 let to_kterm env tm =
-  Elab.Reduce.delta_reduce env tm true
-  |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
+  Elab.Reduce.delta_reduce env tm |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
@@ -46,7 +45,7 @@ let kernel_check env proof goal_ty =
   let ty_k = to_kterm env (replace_metas env goal_ty) in
   try
     Kernel.Interface.add_theorem env.kenv "test" ty_k proof_k;
-    Hashtbl.remove env.kenv "test";
+    Hashtbl.remove env.kenv.types "test";
     true
   with Kernel.Exceptions.TypeError _ -> false
 
