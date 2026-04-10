@@ -39,10 +39,13 @@ let to_kterm tm = Elab.Convert.conv_to_kterm tm
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
-  let proof_k = to_kterm (apply_meta env proof) in
-  let ty_k = to_kterm goal_ty in
-  let inferred = Kernel.Infer.Internals.inferType env.kenv (Hashtbl.create 0) proof_k in
-  Kernel.Infer.Internals.isDefEq env.kenv (Hashtbl.create 0) inferred ty_k
+  let open Elab.Typecheck in
+  let proof_k = to_kterm (replace_metas env proof) in
+  let ty_k = to_kterm (replace_metas env goal_ty) in
+  try
+    Kernel.Interface.check_theorem env.kenv ty_k proof_k;
+    true
+  with _ -> false
 
 (* Check that single usage of `rewrite` wcreates the correct new goal type. *)
 let test_rewrite_simple () =

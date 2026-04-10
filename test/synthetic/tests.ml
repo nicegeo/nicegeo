@@ -67,7 +67,8 @@ let create_env_with_env () =
 
 let%expect_test "Elaborate env.ncg" =
   let env = create_env_with_env () in
-  let unprocessed_decls = Hashtbl.copy env.kenv.types in
+  let kdefs = Kernel.Interface.get_definitions env.kenv in
+  let unprocessed_decls = Kernel.Interface.get_types env.kenv in
 
   (* Remove theorems from unprocessed_decls *)
   Hashtbl.filter_map_inplace
@@ -80,7 +81,7 @@ let%expect_test "Elaborate env.ncg" =
     let repr = kterm_to_repr term in
     print_endline repr;
     (* Print definition bodies (as they also need to be trusted) *)
-    (match Hashtbl.find_opt env.kenv.defs name with
+    (match Hashtbl.find_opt kdefs name with
     | Some body ->
         print_endline ":=";
         print_endline (kterm_to_repr body)

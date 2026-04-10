@@ -10,4 +10,4 @@ let term : Term.term testable =
 let termDefEq env localCtx : Term.term testable =
   Alcotest.testable
     (fun fmt t -> Format.fprintf fmt "%s" (Elab.Kernel_pretty.term_to_string_pretty t))
-    (fun t1 t2 -> Infer.Internals.isDefEq env localCtx t1 t2)
+    (fun t1 t2 -> Interface.Internals.isDefEq env localCtx t1 t2)

@@ -37,7 +37,6 @@ type type_error_kind =
 
 (** Type error information that the kernel passes on. *)
 type type_error_info = {
-  env : environment;
   ctx : localcontext;
   trm : term;
   err_kind : type_error_kind;

@@ -12,11 +12,5 @@ type term =
   | App of term * term  (** [App(func, arg)] represents applying [func] to [arg]. *)
   | Sort of int  (** [Sort(level)] represents a universe level. **)
 
-(** Maps constants to their types and definitions. *)
-type environment = {
-  types : (string, term) Hashtbl.t;
-  defs : (string, term) Hashtbl.t;
-}
-
 (** Maps free variable names to their types *)
 type localcontext = (string, term) Hashtbl.t

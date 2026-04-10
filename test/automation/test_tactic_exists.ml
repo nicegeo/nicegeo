@@ -43,8 +43,10 @@ let to_kterm env tm =
 let kernel_check env proof goal_ty =
   let proof_k = to_kterm env (replace_metas env proof) in
   let ty_k = to_kterm env (replace_metas env goal_ty) in
-  let inferred = Kernel.Infer.Internals.inferType env.kenv (Hashtbl.create 0) proof_k in
-  Kernel.Infer.Internals.isDefEq env.kenv (Hashtbl.create 0) inferred ty_k
+  try
+    Kernel.Interface.check_theorem env.kenv ty_k proof_k;
+    true
+  with _ -> false
 
 (* Check that single usage of `exists` creates the correct new goal type. *)
 let test_exists_simple () =

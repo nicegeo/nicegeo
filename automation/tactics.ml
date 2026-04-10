@@ -152,7 +152,7 @@ let ensure_sorry_ax (st : proof_state) : unit =
       st.elab_ctx.env
       "sorry_ax"
       { name = "sorry_ax"; ty = elab_ty; data = Axiom };
-    Hashtbl.add st.elab_ctx.kenv.types "sorry_ax" k_ty)
+    Kernel.Interface.add_axiom st.elab_ctx.kenv "sorry_ax" k_ty)
 
 let sorry (st : proof_state) : tactic_result =
   match current_goal st with

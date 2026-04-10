@@ -1,7 +1,7 @@
 (* Tests for inferType with stack-based local context *)
 open Kernel
+open Kernel.Interface
 open Term
-open Infer
 open Exceptions
 
 (* For backwards compatibility during exception refactoring *)
@@ -9,10 +9,10 @@ let try_infer env localCtx t = Internals.inferType env localCtx t
 
 let mk_env () =
   let env = Interface.create () in
-  Hashtbl.add env.types "Point" (Sort 1);
-  Hashtbl.add env.types "Line" (Sort 1);
-  Hashtbl.add env.types "p" (Const "Point");
-  Hashtbl.add env.types "l" (Const "Line");
+  add_axiom env "Point" (Sort 1);
+  add_axiom env "Line" (Sort 1);
+  add_axiom env "p" (Const "Point");
+  add_axiom env "l" (Const "Line");
   env
 
 let test_const_lookup () =
@@ -144,7 +144,7 @@ let test_infer_forall () =
 
   (* predicate *)
   let predicate = Forall (Const "Point", Sort 0) in
-  Hashtbl.add env.types "IsRed" predicate;
+  add_axiom env "IsRed" predicate;
   (* for all points p, p isRed -> p isRed *)
   let pred_forall =
     Forall
@@ -530,10 +530,7 @@ let test_kernel_reduce () =
 
   (* f: Point -> (fun a => Type) p *)
   (* (reduces to f: Point -> Type) *)
-  Hashtbl.add
-    env.types
-    "f"
-    (Forall (Const "Point", App (Lam (Const "Point", Sort 1), Const "p")));
+  add_axiom env "f" (Forall (Const "Point", App (Lam (Const "Point", Sort 1), Const "p")));
 
   (* f p -> Point should not fail *)
   let term = Forall (App (Const "f", Const "p"), Const "Point") in
@@ -559,8 +556,8 @@ let test_kernel_reduce () =
 
   (* g: (fun p => (Point -> Point)) p *)
   (* (reduces to g: Point -> Point) *)
-  Hashtbl.add
-    env.types
+  add_axiom
+    env
     "g"
     (App (Lam (Const "Point", Forall (Const "Point", Const "Point")), Const "p"));
 

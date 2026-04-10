@@ -31,7 +31,7 @@ type enventry = {
 type ctx = {
   env : (string, enventry) Hashtbl.t;
       (** Elaboration-level environment mapping defined names to their entries. *)
-  kenv : Kernel.Term.environment;
+  kenv : Kernel.Interface.environment;
       (** Kernel-level environment, kept in sync with [env]. *)
   metas : (int, metavar) Hashtbl.t;
       (** Mapping from hole ids to their metavariable records. *)
