@@ -35,6 +35,16 @@ type ctx = {
       (** Kernel-level environment, kept in sync with [env]. *)
   metas : (int, metavar) Hashtbl.t;
       (** Mapping from hole ids to their metavariable records. *)
-  lctx : (int, string option * term) Hashtbl.t;
-      (** Mapping from binder ids to their optional name and type. *)
 }
+
+(** Local context entry. *)
+type lctx_entry = {
+  bid : int;
+  name : string option;
+  ty : term;
+}
+
+(** Local context used when typechecking. Logically a mapping from bids to their optional
+    names and types. The convention is for the head of the list to have the innermost
+    scope, so that typical term traversal involves just appending an entry. *)
+type local_ctx = lctx_entry list
