@@ -11,7 +11,7 @@ let l = Elab.Term.dummy_range
 let () =
   let t = Util.(nfun "A" 1 (sort 1) (nfun "B" 2 (sort 0) (bvar 2))) in
   Printf.printf "Elab term (A : Type) -> (B : Prop) -> B:\n";
-  Printf.printf "  %s\n\n" (term_to_string e [] t)
+  Printf.printf "  %s\n\n" (term_to_string e t)
 
 let test_lam_flattening () =
   Alcotest.check'
@@ -19,7 +19,7 @@ let test_lam_flattening () =
     ~msg:"Lambda args pretty-prints flattened"
     ~expected:"fun (x : A) (y : B) => x"
     ~actual:
-      (term_to_string e [] Util.(nfun "x" 1 (name "A") (nfun "y" 2 (name "B") (bvar 1))));
+      (term_to_string e Util.(nfun "x" 1 (name "A") (nfun "y" 2 (name "B") (bvar 1))));
 
   Alcotest.check'
     Alcotest.string
@@ -28,7 +28,6 @@ let test_lam_flattening () =
     ~actual:
       (term_to_string
          e
-         []
          Util.(nfun "x" 1 (name "A") (nfun "y" 2 (app (name "B") (bvar 1)) (bvar 2))))
 
 let test_elab_hole () =
@@ -36,7 +35,7 @@ let test_elab_hole () =
     Alcotest.string
     ~msg:"Hole 0 pretty-prints as ?m0"
     ~expected:"?m0"
-    ~actual:(term_to_string e [] { inner = Hole 0; loc = l })
+    ~actual:(term_to_string e { inner = Hole 0; loc = l })
 
 let test_elab_arrow_no_name () =
   let t = Util.(uarrow 1 (sort 1) (sort 0)) in
@@ -44,7 +43,7 @@ let test_elab_arrow_no_name () =
     Alcotest.string
     ~msg:"arrow pretty-prints sorts"
     ~expected:"Type -> Prop"
-    ~actual:(term_to_string e [] t)
+    ~actual:(term_to_string e t)
 
 let test_arrow_assoc () =
   let t = Util.(uarrow 1 (sort 0) (uarrow 2 (sort 0) (sort 0))) in
@@ -52,14 +51,14 @@ let test_arrow_assoc () =
     Alcotest.string
     ~msg:"arrow pretty-prints right-associative"
     ~expected:"Prop -> Prop -> Prop"
-    ~actual:(term_to_string e [] t);
+    ~actual:(term_to_string e t);
 
   let t = Util.(uarrow 1 (uarrow 2 (sort 0) (sort 0)) (sort 0)) in
   Alcotest.check'
     Alcotest.string
     ~msg:"arrow pretty-prints right-associative even when left-arg is arrow"
     ~expected:"(Prop -> Prop) -> Prop"
-    ~actual:(term_to_string e [] t);
+    ~actual:(term_to_string e t);
 
   ()
 
@@ -69,14 +68,14 @@ let test_app_parens () =
     Alcotest.string
     ~msg:"application pretty-prints left-associative without parens"
     ~expected:"f x y"
-    ~actual:(term_to_string e [] t);
+    ~actual:(term_to_string e t);
 
   let t = Util.(app (name "f") (app (name "x") (name "y"))) in
   Alcotest.check'
     Alcotest.string
     ~msg:"application pretty-prints left-associative with parens"
     ~expected:"f (x y)"
-    ~actual:(term_to_string e [] t);
+    ~actual:(term_to_string e t);
   ()
 
 let test_lam_app () =
@@ -85,21 +84,21 @@ let test_lam_app () =
     Alcotest.string
     ~msg:"Lambda body pretty-prints with correct precedence"
     ~expected:"fun (x : A) => f x"
-    ~actual:(term_to_string e [] t);
+    ~actual:(term_to_string e t);
 
   let t = Util.(app (nfun "x" 1 (name "A") (bvar 1)) (name "y")) in
   Alcotest.check'
     Alcotest.string
     ~msg:"Lambda pretty-prints with parens when used as application fun"
     ~expected:"(fun (x : A) => x) y"
-    ~actual:(term_to_string e [] t);
+    ~actual:(term_to_string e t);
 
   let t = Util.(app (name "f") (nfun "x" 1 (name "A") (bvar 1))) in
   Alcotest.check'
     Alcotest.string
     ~msg:"Lambda arg pretty-prints with parens when used as application arg"
     ~expected:"f (fun (x : A) => x)"
-    ~actual:(term_to_string e [] t);
+    ~actual:(term_to_string e t);
   ()
 
 let suite =

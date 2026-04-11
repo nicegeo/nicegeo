@@ -54,7 +54,7 @@ let rec get_prec (e : ctx) (t : term) : int =
       | Some { sol = Some tm_sol; _ } -> get_prec e tm_sol
       | _ -> prec_atomic)
 
-let term_to_string (e : ctx) (lctx : local_ctx) (t : term) : string =
+let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
   let rec term_to_string_helper (e : ctx) (lctx : local_ctx) (t : term) (level : int) :
       string =
     if level < get_prec e t then "(" ^ term_to_string_helper e lctx t prec_term ^ ")"
@@ -112,20 +112,18 @@ let tactic_to_string (e : ctx) (lctx : local_ctx) (t : Statement.tactic) : strin
       " "
       (List.map
          (fun arg ->
-           let arg_str = term_to_string e lctx arg in
+           let arg_str = term_to_string e ~lctx arg in
            if get_prec e arg <> prec_atomic then "(" ^ arg_str ^ ")" else arg_str)
          t.args)
 
 let decl_to_string (e : ctx) (d : Statement.declaration) =
   match d.kind with
-  | Axiom -> "Axiom " ^ d.name ^ " : " ^ term_to_string e [] d.ty
+  | Axiom -> "Axiom " ^ d.name ^ " : " ^ term_to_string e d.ty
   | Theorem (DefEq term) ->
-      "Theorem " ^ d.name ^ " : " ^ term_to_string e [] d.ty ^ " := "
-      ^ term_to_string e [] term
+      "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e term
   | Theorem (Proof proof) ->
-      "Theorem " ^ d.name ^ " : " ^ term_to_string e [] d.ty ^ "\nProof.\n"
+      "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ "\nProof.\n"
       ^ String.concat "\n" (List.map (tactic_to_string e []) proof)
       ^ "\nQed."
   | Def body ->
-      "Def " ^ d.name ^ " : " ^ term_to_string e [] d.ty ^ " := "
-      ^ term_to_string e [] body
+      "Def " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e body

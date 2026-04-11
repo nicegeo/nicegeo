@@ -77,7 +77,7 @@ let test_exists_lctx () =
   let got =
     Elab.Pretty.term_to_string
       env
-      (List.hd st.open_goals).lctx
+      ~lctx:(List.hd st.open_goals).lctx
       (Elab.Reduce.reduce env (List.hd st.open_goals).goal_type)
   in
   let exp = "Eq A b b" in

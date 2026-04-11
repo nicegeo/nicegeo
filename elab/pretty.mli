@@ -3,7 +3,7 @@ open Term
 
 (** [term_to_string ctx lctx t] converts the elaboration term [t] to a human-readable
     string, consulting [ctx] and local binders [lctx] for names. *)
-val term_to_string : Types.ctx -> Types.local_ctx -> Term.term -> string
+val term_to_string : Types.ctx -> ?lctx:Types.local_ctx -> Term.term -> string
 
 (** [pp_loc loc] formats a file range as a string, e.g. proof.ncg:334:8-49 *)
 val pp_loc : range -> string

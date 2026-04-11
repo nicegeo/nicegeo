@@ -67,7 +67,7 @@ let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
                ^ String.concat
                    "\n"
                    (List.map
-                      (fun g -> "  " ^ Pretty.term_to_string e [] g.goal_type)
+                      (fun g -> "  " ^ Pretty.term_to_string e g.goal_type)
                       state.open_goals));
          })
   else state.statement

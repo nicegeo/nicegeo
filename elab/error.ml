@@ -223,9 +223,9 @@ let pp_local_ctx (e : Types.ctx) (lctx : Types.local_ctx) : string =
   List.fold_right
     (fun (entry : Types.lctx_entry) acc ->
       acc
-      ^ Pretty.term_to_string e lctx { inner = Bvar entry.bid; loc = dummy_range }
+      ^ Pretty.term_to_string e ~lctx { inner = Bvar entry.bid; loc = dummy_range }
       ^ " : "
-      ^ Pretty.term_to_string e lctx entry.ty
+      ^ Pretty.term_to_string e ~lctx entry.ty
       ^ "\n")
     lctx
     ""
@@ -255,9 +255,9 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         local_ctx_str
         ctx_str
         snippet
-        (Pretty.term_to_string e lctx term)
-        (Pretty.term_to_string e lctx inferred_type)
-        (Pretty.term_to_string e lctx expected_type)
+        (Pretty.term_to_string e ~lctx term)
+        (Pretty.term_to_string e ~lctx inferred_type)
+        (Pretty.term_to_string e ~lctx expected_type)
   | CannotInferHole ->
       Printf.sprintf
         "Local context:\n%s\nCannot infer hole%s%s"
@@ -295,17 +295,17 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         local_ctx_str
         ctx_str
         snippet
-        (Pretty.term_to_string e lctx not_func)
-        (Pretty.term_to_string e lctx not_func_type)
-        (Pretty.term_to_string e lctx arg)
+        (Pretty.term_to_string e ~lctx not_func)
+        (Pretty.term_to_string e ~lctx not_func_type)
+        (Pretty.term_to_string e ~lctx arg)
   | TypeExpected { not_type; not_type_infer } ->
       Printf.sprintf
         "Local context:\n%s\nExpected a type%s:%s\nbut got\n%s\nwhich has type\n%s\n"
         local_ctx_str
         ctx_str
         snippet
-        (Pretty.term_to_string e lctx not_type)
-        (Pretty.term_to_string e lctx not_type_infer)
+        (Pretty.term_to_string e ~lctx not_type)
+        (Pretty.term_to_string e ~lctx not_type_infer)
   | ImportNotAtTop ->
       Printf.sprintf
         "Import statement not at top of file" (* TODO: add context information *)
@@ -317,8 +317,8 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
         local_ctx_str
         ctx_str
         snippet
-        (Pretty.term_to_string e lctx left)
-        (Pretty.term_to_string e lctx right)
+        (Pretty.term_to_string e ~lctx left)
+        (Pretty.term_to_string e ~lctx right)
   | InvalidTacticParameter msg ->
       Printf.sprintf "Invalid tactic parameters%s:%s\n%s" ctx_str snippet msg
   | TacticFailure msg ->

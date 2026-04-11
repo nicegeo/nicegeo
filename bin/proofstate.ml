@@ -110,7 +110,7 @@ let extract_head_binders (ectx : Types.ctx) (ty : Term.term) : (string * string)
         (* Hashtbl.replace ectx.lctx bid (arg_name_opt, ty_arg); *)
         let lctx = Types.{ bid; ty = ty_arg; name = arg_name_opt } :: lctx in
         let name = match arg_name_opt with Some s -> s | None -> "_" in
-        let ty_str = Pretty.term_to_string ectx lctx ty_arg in
+        let ty_str = Pretty.term_to_string ectx ~lctx ty_arg in
         go (acc @ [ (name, ty_str) ]) lctx ty_ret
     | _ -> acc
   in
@@ -125,7 +125,7 @@ let snapshot_environment (e : Types.ctx) : env_item list =
         | Types.Theorem _ -> "theorem"
         | Types.Def _ -> "definition"
       in
-      let ty_str = Pretty.term_to_string e [] entry.ty in
+      let ty_str = Pretty.term_to_string e entry.ty in
       { env_name = name; env_kind = kind; env_ty = ty_str } :: acc)
     e.env
     []
@@ -135,10 +135,10 @@ let snapshot_metas (e : Types.ctx) : meta_item list =
   Hashtbl.fold
     (fun mid (m : Types.metavar) acc ->
       let ty_s =
-        match m.ty with Some t -> Some (Pretty.term_to_string e [] t) | None -> None
+        match m.ty with Some t -> Some (Pretty.term_to_string e t) | None -> None
       in
       let sol_s =
-        match m.sol with Some t -> Some (Pretty.term_to_string e [] t) | None -> None
+        match m.sol with Some t -> Some (Pretty.term_to_string e t) | None -> None
       in
       { meta_id = mid; meta_ty = ty_s; meta_sol = sol_s; meta_context = m.context } :: acc)
     e.metas
@@ -180,8 +180,8 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           let metas = snapshot_metas st.elab_ctx in
           let gty = g.goal_type in
           let gty_red = Reduce.reduce st.elab_ctx gty in
-          let goal_type = Pretty.term_to_string st.elab_ctx [] gty in
-          let goal_type_reduced = Pretty.term_to_string st.elab_ctx [] gty_red in
+          let goal_type = Pretty.term_to_string st.elab_ctx gty in
+          let goal_type_reduced = Pretty.term_to_string st.elab_ctx gty_red in
           let head_context =
             extract_head_binders st.elab_ctx gty_red
             |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
@@ -201,7 +201,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
                             if range_contains ty_arg.loc line col then go acc lctx ty_arg
                             else
                               let ty_str =
-                                Pretty.term_to_string st.elab_ctx lctx ty_arg
+                                Pretty.term_to_string st.elab_ctx ~lctx ty_arg
                               in
                               let name = Option.value ~default:"_" arg_name_opt in
                               let new_lctx =
@@ -212,7 +212,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
                             if range_contains ty_arg.loc line col then go acc lctx ty_arg
                             else
                               let ty_str =
-                                Pretty.term_to_string st.elab_ctx lctx ty_arg
+                                Pretty.term_to_string st.elab_ctx ~lctx ty_arg
                               in
                               let name = Option.value ~default:"_" arg_name_opt in
                               let new_lctx =

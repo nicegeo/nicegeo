@@ -73,4 +73,4 @@ let rec apply_meta (ectx : ctx) (tm : term) : term =
   | App (f, a) -> mk_term (App (apply_meta ectx f, apply_meta ectx a))
   | _ -> tm
 
-let pp_term (ectx : ctx) (tm : term) : string = Pretty.term_to_string ectx [] tm
+let pp_term (ectx : ctx) (tm : term) : string = Pretty.term_to_string ectx tm
