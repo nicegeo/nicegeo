@@ -48,6 +48,8 @@ rule token = parse
   | "∨"          { OR }
   | "/\\"        { AND }
   | "∧"          { AND }
+  | "~"          { NOT }
+  | "¬"          { NOT }
   | "∃"          { EXISTS }
   | ","          { COMMA }
   | "#print"     { PRINT_DIRECTIVE }

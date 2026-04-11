@@ -1,6 +1,6 @@
 %token <string> IDENT STRING_LITERAL
 %token FUN FORALL IFF ARROW COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE PROOF QED PERIOD
-%token THEOREM AXIOM DEFINITION DEFEQ IMPORT EQUALS NOT_EQUALS LESS_THAN PLUS OR AND EXISTS COMMA
+%token THEOREM AXIOM DEFINITION DEFEQ IMPORT EQUALS NOT_EQUALS LESS_THAN PLUS NOT OR AND EXISTS COMMA
 %token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE OPAQUE_DIRECTIVE
 %start <Statement.statement list> main
 %start <Term.term> single_term
@@ -107,6 +107,12 @@ conjunction_term:
 
 proposition_term:
   | t = sum_term { t }
+  | _n = NOT t1 = proposition_term
+    {
+      let not_loc = { Term.start = $startpos(_n); Term.end_ = $endpos(_n) } in
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      Term.{inner=App ({inner=Name "Not"; loc=not_loc}, t1); loc}
+    }
   | t1 = sum_term LESS_THAN t2 = sum_term
     {
       let loc = { Term.start = $startpos; Term.end_ = $endpos } in
