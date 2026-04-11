@@ -234,8 +234,7 @@ Theorem point_eq_em : (a: Point) -> (b: Point) -> a = b ∨ a ≠ b :=
     )
     (fun (h: Eq _ Zero (Length a b)) => Or.inl _ _ (eq_if_len_zero a b (Eq.symm _ _ _ h)))
 
-Theorem prop2 : (a : Point) → (b: Point) → (c: Point)
-    → ∃ f, Length a f = Length b c :=
+Theorem prop2 : ∀ (a b c : Point), ∃ f, Length a f = Length b c :=
     fun (a: Point) (b: Point) (c: Point) =>
 
     Or.elim _ _ _ (point_eq_em b c)

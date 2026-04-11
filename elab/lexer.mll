@@ -29,11 +29,11 @@ rule token = parse
   | "Definition" { DEFINITION }
   | "Import"     { IMPORT }
   | ":="         { DEFEQ }
-  | "->"         { FORALL }
-  | "→"          { FORALL }
+  | "->"         { ARROW }
+  | "→"          { ARROW }
   | "<->"        { IFF }
   | "↔"          { IFF }
-  | "=>"         { ARROW }
+  | "=>"         { MAPSTO }
   | ":"          { COLON }
   | "("          { LPAREN }
   | ")"          { RPAREN }
@@ -51,6 +51,7 @@ rule token = parse
   | "~"          { NOT }
   | "¬"          { NOT }
   | "∃"          { EXISTS }
+  | "∀"          { FORALL }
   | ","          { COMMA }
   | "#print"     { PRINT_DIRECTIVE }
   | "#infer"     { INFER_DIRECTIVE }
