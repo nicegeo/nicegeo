@@ -66,8 +66,8 @@ type normterm =
     Bvar bid1 in the term originally referred to Bvar bid2. *)
 type rw_graph = (int, int) Hashtbl.t
 
-(** [whnf e tm] computes the weak head normal form of `tm` with respect to the
-    context `e`, recursing into known metavariable solutions. *)
+(** [whnf e tm] computes the weak head normal form of `tm` with respect to the context
+    `e`, recursing into known metavariable solutions. *)
 let rec whnf (e : ctx) (tm : term) : term =
   match tm.inner with
   | Name name -> (
@@ -380,7 +380,7 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
         | _ -> raise_at tm Error.CannotInferHole)
     | Name name -> (
         match Hashtbl.find_opt e.env name with
-        | Some entry -> uniquify_bids (Reduce.delta_reduce e entry.ty)
+        | Some entry -> uniquify_bids entry.ty
         | None -> raise_at tm (Error.UnknownName { name }))
     | Fun (arg, bid, ty_arg, body) ->
         check_is_type ~depth:(depth + 1) e ty_arg;
@@ -504,9 +504,7 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
 
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   create_metas e tm [];
-  (match ty with
-  | Some ty -> checktype e tm ty
-  | None -> ignore (infertype e tm));
+  (match ty with Some ty -> checktype e tm ty | None -> ignore (infertype e tm));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
   (* Re-typecheck term to validate meta solutions *)
