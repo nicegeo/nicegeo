@@ -387,15 +387,7 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
         Hashtbl.remove e.lctx new_bid;
         { inner = Arrow (arg, new_bid, ty_arg, ty_body); loc = tm.loc }
     | Arrow (arg, bid, ty_arg, ty_ret) ->
-        let ty_arg_ty = whnf_beta e (infertype ~depth:(depth + 1) e ty_arg) in
-        let arg_sort =
-          match ty_arg_ty.inner with
-          | Sort n -> n
-          | _ ->
-              raise_at
-                ty_arg
-                (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty })
-        in
+        check_is_type ~depth:(depth + 1) e ty_arg;
         Hashtbl.add e.lctx bid (arg, ty_arg);
         let ty_ret_ty = whnf_beta e (infertype ~depth:(depth + 1) e ty_ret) in
         let ret_sort =
@@ -407,6 +399,15 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
                 (Error.TypeExpected { not_type = ty_ret; not_type_infer = ty_ret_ty })
         in
         Hashtbl.remove e.lctx bid;
+        let ty_arg_ty = whnf_beta e (infertype ~depth:(depth + 1) e ty_arg) in
+        let arg_sort =
+          match ty_arg_ty.inner with
+          | Sort n -> n
+          | _ ->
+              raise_at
+                ty_arg
+                (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty })
+        in
         { inner = Sort (if ret_sort = 0 then 0 else max arg_sort ret_sort); loc = tm.loc }
     | App (f, arg) -> (
         let f_type = whnf_beta e (infertype ~depth:(depth + 1) e f) in
