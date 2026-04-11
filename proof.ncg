@@ -18,10 +18,10 @@ Theorem Eq.symm1 : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a)
 Proof.
   intros A a b eq_ab.
   rewrite eq_ab.
-  exact (Eq.intro A b).
+  reflexivity.
 Qed.
 
-Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b -> False) -> (Eq A b a -> False) :=
+Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Ne A a b) -> (Ne A b a) :=
 	fun A a b ne_ab eq_ba =>
 		ne_ab (Eq.symm A b a eq_ba)
 
@@ -30,8 +30,7 @@ Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> And A B -> (f: A -> B
 
 Theorem on_circle_iff_length_eq : (a : Point) -> (b : Point) -> (c : Point) -> (d : Circle) ->
     CenterCircle a d -> OnCircle b d -> 
-    (And (Eq _ (Length a b) (Length a c) -> OnCircle c d)
-         (OnCircle c d -> Eq _ (Length a b) (Length a c))) :=
+    Iff (Eq _ (Length a b) (Length a c)) (OnCircle c d) :=
     fun (a b c : Point) (d : Circle) (ad : CenterCircle a d) (bd : OnCircle b d) =>
     And.intro (Eq _ (Length a b) (Length a c) -> OnCircle c d) (OnCircle c d -> Eq _ (Length a b) (Length a c)) 
     (fun h => on_circle_if_eq_radius a b c d ad bd (Eq.symm _ _ _ h)) 
@@ -307,11 +306,11 @@ Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
     fun (M: Prop) (P: Prop) (p: P) (f: P -> M) => f p
 
 Theorem prop1_mini :
-(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
+(a : Point) -> (b : Point) -> (ab : Ne Point a b) -> 
 Exists Point (fun (c : Point) =>
     And (Eq Measure (Length a b) (Length a c))
         (Eq Measure (Length b c) (Length b a)))
-:= fun (a b : Point) (ab : Eq Point a b -> False) =>
+:= fun (a b : Point) (ab : Ne Point a b) =>
    	Exists.elim _ _ _ (circle_of_ne a b ab)
     (fun (aa : Circle) (center_and_on : (And (CenterCircle a aa) (OnCircle b aa))) =>
 
@@ -338,6 +337,35 @@ Exists Point (fun (c : Point) =>
 	))))))
 
 
+Theorem prop1_again :
+(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
+Exists Point (fun (c : Point) =>
+    And (Eq Measure (Length a b) (Length a c))
+        (Eq Measure (Length b c) (Length b a)))
+Proof.
+intros a b ab.
+apply (Exists.elim _ _ _ (circle_of_ne a b ab)).
+intros aa center_and_on.
+apply (And.elim1 _ _ _ center_and_on).
+intros aaa baa.
+apply (Exists.elim _ _ _ (circle_of_ne b a (Ne.symm _ _ _ ab))).
+intros bb b_center_and_on.
+apply (And.elim1 _ _ _ b_center_and_on).
+intros bbb abb.
+apply (Exists.elim _ _ _ (pt_of_circlesinter aa bb (circles_inter_if_on_in b a aa bb baa
+        (center_lies_inside_circle a aa aaa) 
+		(center_lies_inside_circle b bb bbb) abb
+	))).
+intros c facts.
+apply (And.elim1 _ _ _ facts).
+intros caa cbb.
+(* hack because exact doesn't fill holes *)
+apply (fun (x : True) => Exists.intro _ _
+    c (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))).
+exact True.intro.
+Qed.
+
+
 Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x z) (Add y z) -> Eq _ x y :=
     fun x y z h =>
     (* by cases LtTricot x y *)
@@ -355,7 +383,7 @@ Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x 
     (fun (eqxy : Eq _ x y) => eqxy)
     )
 
-#print axioms prop1
+#print axioms prop1_mini
 #infer prop1
 #check (fun (x : Point) => x) : (Point -> Point)
 #reduce (fun (x : Measure) => x) Zero
