@@ -91,6 +91,27 @@ let test_exists_lctx () =
     (kernel_check env st.statement goal_ty);
   ()
 
+let test_exists_unify () =
+  let open Elab.Types in
+  let env, _ = make_env () in
+  let goal_ty =
+    elab
+      env
+      "(B : Type) -> (Q : B -> Prop) -> (b : B) -> (hb : Q b) -> (fun P => Exists B P) Q"
+  in
+  let st = init_state ~elab_ctx:env goal_ty in
+  let st = run_tactic (intros [ "B"; "Q"; "b"; "hb" ]) st in
+  let b_entry = List.find (fun h -> h.name = Some "b") (List.hd st.open_goals).lctx in
+  let st = run_tactic (exists (mk_bvar b_entry.bid)) st in
+  let hb_entry = List.find (fun h -> h.name = Some "hb") (List.hd st.open_goals).lctx in
+  let st = run_tactic (exact (mk_bvar hb_entry.bid)) st in
+  Alcotest.(check int) "no remaining goals" 0 (List.length st.open_goals);
+  Alcotest.(check bool)
+    "kernel accepts proof"
+    true
+    (kernel_check env st.statement goal_ty);
+  ()
+
 (*
   Checks that using `exists` and then closing a trivial goal produces
   a proof term that the kernel accepts.
@@ -113,5 +134,6 @@ let suite =
     [
       test_case "exists simple" `Quick test_exists_simple;
       test_case "exists unifies with local context" `Quick test_exists_lctx;
+      test_case "exists unification test 2" `Quick test_exists_unify;
       test_case "exists kernel check" `Quick test_exists_kernel_check;
     ] )
