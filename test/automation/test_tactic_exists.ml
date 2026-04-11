@@ -1,7 +1,7 @@
-open Elab.Tactics
 open Elab.Proofstate
 open Elab.Typecheck
 open Elab.Tactic
+open Automation.Tactics
 
 (*
  * This is based heavily on the rewrite tactic tests, including by copying
@@ -37,8 +37,7 @@ let run_tactic tac st =
 
 (** Convert an elab term to a kernel term *)
 let to_kterm env tm =
-  Elab.Reduce.delta_reduce env tm true
-  |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
+  Elab.Reduce.delta_reduce env tm |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
@@ -67,7 +66,7 @@ let test_exists_kernel_check () =
   let goal_ty = elab env "Exists A (fun (a : A) => True)" in
   let st = init_state ~elab_ctx:env goal_ty in
   let st = run_tactic (exists (elab env "a")) st in
-  let st = run_tactic (apply "True.intro") st in
+  let st = run_tactic (exact (mk_name "True.intro")) st in
   Alcotest.(check bool) "no remaining goals" true (is_complete st);
   Alcotest.(check bool)
     "kernel accepts proof"

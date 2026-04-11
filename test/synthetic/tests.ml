@@ -21,10 +21,18 @@ let kterm_to_repr (term : Kernel.Term.term) =
           (kterm_to_repr_helper body (indent + 1))
           indent_str
     | App (f, arg) ->
-        Printf.sprintf
-          "App (%s, %s)"
-          (kterm_to_repr_helper f indent)
-          (kterm_to_repr_helper arg indent)
+        let base = match f with Const name | App (Const name, _) -> name | _ -> "" in
+        if base = "And" || base = "Or" || base = "Iff" then
+          Printf.sprintf
+            "App (%s,\n%s%s)"
+            (kterm_to_repr_helper f indent)
+            indent_str
+            (kterm_to_repr_helper arg indent)
+        else
+          Printf.sprintf
+            "App (%s, %s)"
+            (kterm_to_repr_helper f indent)
+            (kterm_to_repr_helper arg indent)
     | Sort n -> Printf.sprintf "Sort %d" n
   in
   kterm_to_repr_helper term 0
@@ -59,14 +67,26 @@ let create_env_with_env () =
 
 let%expect_test "Elaborate env.ncg" =
   let env = create_env_with_env () in
-  let kenv = Hashtbl.copy env.kenv in
+  let unprocessed_decls = Hashtbl.copy env.kenv.types in
+
+  (* Remove theorems from unprocessed_decls *)
+  Hashtbl.filter_map_inplace
+    (fun name ty ->
+      match (Hashtbl.find env.env name).data with Theorem _ -> None | _ -> Some ty)
+    unprocessed_decls;
 
   let show_kterm name =
-    let term = Hashtbl.find kenv name in
+    let term = Hashtbl.find unprocessed_decls name in
     let repr = kterm_to_repr term in
     print_endline repr;
+    (* Print definition bodies (as they also need to be trusted) *)
+    (match Hashtbl.find_opt env.kenv.defs name with
+    | Some body ->
+        print_endline ":=";
+        print_endline (kterm_to_repr body)
+    | _ -> ());
     (* Delete entry from kenv so we can check this is empty at the end *)
-    Hashtbl.remove kenv name
+    Hashtbl.remove unprocessed_decls name
   in
 
   (* Empty : Type *)
@@ -84,30 +104,30 @@ let%expect_test "Elaborate env.ncg" =
     )
     |}];
 
-  (* False : Prop *)
+  (* False : Prop := (P: Prop) -> P *)
   show_kterm "False";
-  [%expect {| Sort 0 |}];
+  [%expect {|
+    Sort 0
+    :=
+    Forall (Sort 0,
+      Bvar 0
+    )
+    |}];
 
-  (* False.elim : (P: Prop) -> False -> P *)
-  show_kterm "False.elim";
+  (* True : Prop := (P: Prop) -> P -> P *)
+  show_kterm "True";
   [%expect
     {|
+    Sort 0
+    :=
     Forall (Sort 0,
-      Forall (Const "False",
+      Forall (Bvar 0,
         Bvar 1
       )
     )
     |}];
 
-  (* True : Prop *)
-  show_kterm "True";
-  [%expect {| Sort 0 |}];
-
-  (* True.intro : True *)
-  show_kterm "True.intro";
-  [%expect {| Const "True" |}];
-
-  (* Exists : (A: Type) -> (A -> Prop) -> Prop *)
+  (* Exists : (A: Type) -> (A -> Prop) -> Prop := fun (A: Type) (p: A -> Prop) => ((M: Prop) -> ((a: A) -> p a -> M) -> M) *)
   show_kterm "Exists";
   [%expect
     {|
@@ -118,99 +138,25 @@ let%expect_test "Elaborate env.ncg" =
         Sort 0
       )
     )
-    |}];
-
-  (* Exists.intro : (A: Type) -> (p: A -> Prop) -> (a: A) -> (h: p a) -> Exists A p *)
-  show_kterm "Exists.intro";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
-        Sort 0
-      ),
-        Forall (Bvar 1,
-          Forall (App (Bvar 1, Bvar 0),
-            App (App (Const "Exists", Bvar 3), Bvar 2)
-          )
-        )
-      )
-    )
-    |}];
-
-  (* Exists.elim : (A: Type) -> (p: A -> Prop) -> (b: Prop) -> 
-      (e: Exists A p) -> ((a: A) -> p a -> b) -> b *)
-  show_kterm "Exists.elim";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
+    :=
+    Lam (Sort 1,
+      Lam (Forall (Bvar 0,
         Sort 0
       ),
         Forall (Sort 0,
-          Forall (App (App (Const "Exists", Bvar 2), Bvar 1),
-            Forall (Forall (Bvar 3,
-              Forall (App (Bvar 3, Bvar 0),
-                Bvar 3
-              )
-            ),
+          Forall (Forall (Bvar 2,
+            Forall (App (Bvar 2, Bvar 0),
               Bvar 2
             )
+          ),
+            Bvar 1
           )
         )
       )
     )
     |}];
 
-  (* Forall : (A: Type) -> (A -> Prop) -> Prop *)
-  show_kterm "Forall";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
-        Sort 0
-      ),
-        Sort 0
-      )
-    )
-    |}];
-
-  (* Forall.intro : (A: Type) -> (p: A -> Prop) ->
-      ((a: A) -> p a) -> Forall A p *)
-  show_kterm "Forall.intro";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
-        Sort 0
-      ),
-        Forall (Forall (Bvar 1,
-          App (Bvar 1, Bvar 0)
-        ),
-          App (App (Const "Forall", Bvar 2), Bvar 1)
-        )
-      )
-    )
-    |}];
-
-  (* Forall.elim : (A: Type) -> (p: A -> Prop) ->
-      Forall A p -> (a: A) -> p a *)
-  show_kterm "Forall.elim";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Forall (Bvar 0,
-        Sort 0
-      ),
-        Forall (App (App (Const "Forall", Bvar 1), Bvar 0),
-          Forall (Bvar 2,
-            App (Bvar 2, Bvar 0)
-          )
-        )
-      )
-    )
-    |}];
-
-  (* And : Prop -> Prop -> Prop *)
+  (* And : Prop -> Prop -> Prop := fun (A : Prop) (B : Prop) => (M: Prop) -> (A -> B -> M) -> M *)
   show_kterm "And";
   [%expect
     {|
@@ -219,46 +165,23 @@ let%expect_test "Elaborate env.ncg" =
         Sort 0
       )
     )
-    |}];
-
-  (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
-  show_kterm "And.intro";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Bvar 1,
-          Forall (Bvar 1,
-            App (App (Const "And", Bvar 3), Bvar 2)
-          )
-        )
-      )
-    )
-    |}];
-
-  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Prop) ->
-      (f : A -> B -> C) -> And A B -> C *)
-  show_kterm "And.elim";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
+    :=
+    Lam (Sort 0,
+      Lam (Sort 0,
         Forall (Sort 0,
           Forall (Forall (Bvar 2,
             Forall (Bvar 2,
               Bvar 2
             )
           ),
-            Forall (App (App (Const "And", Bvar 3), Bvar 2),
-              Bvar 2
-            )
+            Bvar 1
           )
         )
       )
     )
     |}];
 
-  (* Or : Prop -> Prop -> Prop *)
+  (* Or : Prop -> Prop -> Prop := fun (A: Prop) (B: Prop) => (M: Prop) -> (A -> M) -> (B -> M) -> M *)
   show_kterm "Or";
   [%expect
     {|
@@ -267,51 +190,17 @@ let%expect_test "Elaborate env.ncg" =
         Sort 0
       )
     )
-    |}];
-
-  (* Or.inl : (A : Prop) -> (B : Prop) -> A -> Or A B *)
-  show_kterm "Or.inl";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Bvar 1,
-          App (App (Const "Or", Bvar 2), Bvar 1)
-        )
-      )
-    )
-    |}];
-
-  (* Or.inr : (A : Prop) -> (B : Prop) -> B -> Or A B *)
-  show_kterm "Or.inr";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
-        Forall (Bvar 0,
-          App (App (Const "Or", Bvar 2), Bvar 1)
-        )
-      )
-    )
-    |}];
-
-  (* Or.elim : (A : Prop) -> (B : Prop) -> (C : Prop) ->
-      Or A B -> (A -> C) -> (B -> C) -> C *)
-  show_kterm "Or.elim";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Sort 0,
+    :=
+    Lam (Sort 0,
+      Lam (Sort 0,
         Forall (Sort 0,
-          Forall (App (App (Const "Or", Bvar 2), Bvar 1),
-            Forall (Forall (Bvar 3,
+          Forall (Forall (Bvar 2,
+            Bvar 1
+          ),
+            Forall (Forall (Bvar 2,
               Bvar 2
             ),
-              Forall (Forall (Bvar 3,
-                Bvar 3
-              ),
-                Bvar 3
-              )
+              Bvar 2
             )
           )
         )
@@ -319,41 +208,35 @@ let%expect_test "Elaborate env.ncg" =
     )
     |}];
 
-  (* Not : Prop -> Prop *)
+  (* Not : Prop -> Prop := fun (P: Prop) => (P -> False) *)
   show_kterm "Not";
-  [%expect {|
+  [%expect
+    {|
     Forall (Sort 0,
       Sort 0
     )
+    :=
+    Lam (Sort 0,
+      Forall (Bvar 0,
+        Const "False"
+      )
+    )
     |}];
 
-  (* Not.intro : (P : Prop) -> (P -> False) -> Not P *)
-  show_kterm "Not.intro";
+  (* double_negation: (A: Prop) -> ((Not A) -> False) -> A *)
+  show_kterm "double_negation";
   [%expect
     {|
     Forall (Sort 0,
-      Forall (Forall (Bvar 0,
+      Forall (Forall (App (Const "Not", Bvar 0),
         Const "False"
       ),
-        App (Const "Not", Bvar 1)
+        Bvar 1
       )
     )
     |}];
 
-  (* Not.elim : (P : Prop) -> Not P -> P -> False *)
-  show_kterm "Not.elim";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (App (Const "Not", Bvar 0),
-        Forall (Bvar 1,
-          Const "False"
-        )
-      )
-    )
-    |}];
-
-  (* Eq : (T: Type) -> T -> T -> Prop *)
+  (* Eq : (T: Type) -> T -> T -> Prop := fun (T: Type) (a b: T) => (motive : T -> Prop) -> motive a -> motive b *)
   show_kterm "Eq";
   [%expect
     {|
@@ -364,36 +247,62 @@ let%expect_test "Elaborate env.ncg" =
         )
       )
     )
-    |}];
-
-  (* Eq.intro : (T: Type) -> (t: T) -> Eq T t t *)
-  show_kterm "Eq.intro";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        App (App (App (Const "Eq", Bvar 1), Bvar 0), Bvar 0)
+    :=
+    Lam (Sort 1,
+      Lam (Bvar 0,
+        Lam (Bvar 1,
+          Forall (Forall (Bvar 2,
+            Sort 0
+          ),
+            Forall (App (Bvar 0, Bvar 2),
+              App (Bvar 1, Bvar 2)
+            )
+          )
+        )
       )
     )
     |}];
 
-  (* Eq.elim : (T: Type) -> (t: T) -> (motive : T -> Prop) -> (rfl: motive t) -> (t1: T) -> Eq T t t1 -> motive t1 *)
-  show_kterm "Eq.elim";
+  (* Ne : (A: Type) -> A -> A -> Prop := fun (A : Type) (a : A) (b : A) => Not (Eq A a b) *)
+  show_kterm "Ne";
   [%expect
     {|
     Forall (Sort 1,
       Forall (Bvar 0,
-        Forall (Forall (Bvar 1,
+        Forall (Bvar 1,
           Sort 0
-        ),
-          Forall (App (Bvar 0, Bvar 1),
-            Forall (Bvar 3,
-              Forall (App (App (App (Const "Eq", Bvar 4), Bvar 3), Bvar 0),
-                App (Bvar 3, Bvar 1)
-              )
-            )
-          )
         )
+      )
+    )
+    :=
+    Lam (Sort 1,
+      Lam (Bvar 0,
+        Lam (Bvar 1,
+          App (Const "Not", App (App (App (Const "Eq", Bvar 2), Bvar 1), Bvar 0))
+        )
+      )
+    )
+    |}];
+
+  (* Iff : Prop -> Prop -> Prop := fun (A: Prop) (B: Prop) => And (A -> B) (B -> A) *)
+  show_kterm "Iff";
+  [%expect
+    {|
+    Forall (Sort 0,
+      Forall (Sort 0,
+        Sort 0
+      )
+    )
+    :=
+    Lam (Sort 0,
+      Lam (Sort 0,
+        App (App (Const "And",
+        Forall (Bvar 1,
+          Bvar 1
+        )),
+        Forall (Bvar 0,
+          Bvar 2
+        ))
       )
     )
     |}];
@@ -422,53 +331,6 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Bvar 0,
         Forall (App (Const "List", Bvar 1),
           App (Const "List", Bvar 2)
-        )
-      )
-    )
-    |}];
-
-  (* List.mem : (A : Type) -> A -> List A -> Prop *)
-  show_kterm "List.mem";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (App (Const "List", Bvar 1),
-          Sort 0
-        )
-      )
-    )
-    |}];
-
-  (* List.not_mem_nil : (A : Type) -> (a : A) -> List.mem A a (List.nil A) -> False *)
-  show_kterm "List.not_mem_nil";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (App (App (App (Const "List.mem", Bvar 1), Bvar 0), App (Const "List.nil", Bvar 1)),
-          Const "False"
-        )
-      )
-    )
-    |}];
-
-  (* List.mem_cons : (A : Type) -> (a : A) -> (b : A) -> (L : List A) ->
-    And (List.mem A a (List.cons A b L) -> Or (Eq A a b) (List.mem A a L))
-        (Or (Eq A a b) (List.mem A a L) -> List.mem A a (List.cons A b L)) *)
-  show_kterm "List.mem_cons";
-  [%expect
-    {|
-    Forall (Sort 1,
-      Forall (Bvar 0,
-        Forall (Bvar 1,
-          Forall (App (Const "List", Bvar 2),
-            App (App (Const "And", Forall (App (App (App (Const "List.mem", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0)),
-              App (App (Const "Or", App (App (App (Const "Eq", Bvar 4), Bvar 3), Bvar 2)), App (App (App (Const "List.mem", Bvar 4), Bvar 3), Bvar 1))
-            )), Forall (App (App (Const "Or", App (App (App (Const "Eq", Bvar 3), Bvar 2), Bvar 1)), App (App (App (Const "List.mem", Bvar 3), Bvar 2), Bvar 0)),
-              App (App (App (Const "List.mem", Bvar 4), Bvar 3), App (App (App (Const "List.cons", Bvar 4), Bvar 2), Bvar 1))
-            ))
-          )
         )
       )
     )
@@ -503,8 +365,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* List.forall_cons : (A : Type) -> (p : A -> Prop) -> (a : A) -> (L : List A) ->
-    And (List.forall A p (List.cons A a L) -> And (p a) (List.forall A p L))
-        (And (p a) (List.forall A p L) -> List.forall A p (List.cons A a L)) *)
+      Iff (List.forall A p (List.cons A a L)) (And (p a) (List.forall A p L)) *)
   show_kterm "List.forall_cons";
   [%expect
     {|
@@ -514,12 +375,35 @@ let%expect_test "Elaborate env.ncg" =
       ),
         Forall (Bvar 1,
           Forall (App (Const "List", Bvar 2),
-            App (App (Const "And", Forall (App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0)),
-              App (App (Const "And", App (Bvar 3, Bvar 2)), App (App (App (Const "List.forall", Bvar 4), Bvar 3), Bvar 1))
-            )), Forall (App (App (Const "And", App (Bvar 2, Bvar 1)), App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)),
-              App (App (App (Const "List.forall", Bvar 4), Bvar 3), App (App (App (Const "List.cons", Bvar 4), Bvar 2), Bvar 1))
-            ))
+            App (App (Const "Iff",
+            App (App (App (Const "List.forall", Bvar 3), Bvar 2), App (App (App (Const "List.cons", Bvar 3), Bvar 1), Bvar 0))),
+            App (App (Const "And",
+            App (Bvar 2, Bvar 1)),
+            App (App (App (Const "List.forall", Bvar 3), Bvar 2), Bvar 0)))
           )
+        )
+      )
+    )
+    |}];
+
+  (* List.mem : (A : Type) -> A -> List A -> Prop := fun (A: Type) (a: A) (L: List A) => Not (List.forall A (fun (x : A) => Ne A a x) L) *)
+  show_kterm "List.mem";
+  [%expect
+    {|
+    Forall (Sort 1,
+      Forall (Bvar 0,
+        Forall (App (Const "List", Bvar 1),
+          Sort 0
+        )
+      )
+    )
+    :=
+    Lam (Sort 1,
+      Lam (Bvar 0,
+        Lam (App (Const "List", Bvar 1),
+          App (Const "Not", App (App (App (Const "List.forall", Bvar 2), Lam (Bvar 2,
+            App (App (App (Const "Ne", Bvar 3), Bvar 2), Bvar 0)
+          )), Bvar 0))
         )
       )
     )
@@ -552,14 +436,12 @@ let%expect_test "Elaborate env.ncg" =
     )
     |}];
 
-  (* LtIrrefl : (a : Measure) -> (Lt a a -> False) *)
+  (* LtIrrefl : (a : Measure) -> Not (Lt a a) *)
   show_kterm "LtIrrefl";
   [%expect
     {|
     Forall (Const "Measure",
-      Forall (App (App (Const "Lt", Bvar 0), Bvar 0),
-        Const "False"
-      )
+      App (Const "Not", App (App (Const "Lt", Bvar 0), Bvar 0))
     )
     |}];
 
@@ -586,21 +468,23 @@ let%expect_test "Elaborate env.ncg" =
     {|
     Forall (Const "Measure",
       Forall (Const "Measure",
-        App (App (Const "Or", App (App (Const "Lt", Bvar 1), Bvar 0)), App (App (Const "Or", App (App (Const "Lt", Bvar 0), Bvar 1)), App (App (App (Const "Eq", Const "Measure"), Bvar 1), Bvar 0)))
+        App (App (Const "Or",
+        App (App (Const "Lt", Bvar 1), Bvar 0)),
+        App (App (Const "Or",
+        App (App (Const "Lt", Bvar 0), Bvar 1)),
+        App (App (App (Const "Eq", Const "Measure"), Bvar 1), Bvar 0)))
       )
     )
     |}];
 
-  (* LtAntisymm : (a: Measure) -> (b: Measure) -> Lt a b -> Lt b a -> False *)
+  (* LtAntisymm : (a: Measure) -> (b: Measure) -> Lt a b -> Not (Lt b a) *)
   show_kterm "LtAntisymm";
   [%expect
     {|
     Forall (Const "Measure",
       Forall (Const "Measure",
         Forall (App (App (Const "Lt", Bvar 1), Bvar 0),
-          Forall (App (App (Const "Lt", Bvar 1), Bvar 2),
-            Const "False"
-          )
+          App (Const "Not", App (App (Const "Lt", Bvar 1), Bvar 2))
         )
       )
     )
@@ -615,7 +499,9 @@ let%expect_test "Elaborate env.ncg" =
   [%expect
     {|
     Forall (Const "Measure",
-      App (App (Const "Or", App (App (Const "Lt", Const "Zero"), Bvar 0)), App (App (App (Const "Eq", Const "Measure"), Const "Zero"), Bvar 0))
+      App (App (Const "Or",
+      App (App (Const "Lt", Const "Zero"), Bvar 0)),
+      App (App (App (Const "Eq", Const "Measure"), Const "Zero"), Bvar 0))
     )
     |}];
 
@@ -822,7 +708,52 @@ let%expect_test "Elaborate env.ncg" =
   show_kterm "RightAngle";
   [%expect {| Const "Measure" |}];
 
-  (* distinct_from : Point -> List Point -> List Line -> List Circle -> Prop *)
+  (* Le : Measure -> Measure -> Prop := fun (a: Measure) (b: Measure) => Not (Lt b a) *)
+  show_kterm "Le";
+  [%expect
+    {|
+    Forall (Const "Measure",
+      Forall (Const "Measure",
+        Sort 0
+      )
+    )
+    :=
+    Lam (Const "Measure",
+      Lam (Const "Measure",
+        App (Const "Not", App (App (Const "Lt", Bvar 0), Bvar 1))
+      )
+    )
+    |}];
+
+  (* DiffSide : Point -> Point -> Line -> Prop := fun (a b: Point) (L: Line) => And (Not (OnLine a L)) (And (Not (OnLine b L)) (Not (SameSide a b L))) *)
+  show_kterm "DiffSide";
+  [%expect
+    {|
+    Forall (Const "Point",
+      Forall (Const "Point",
+        Forall (Const "Line",
+          Sort 0
+        )
+      )
+    )
+    :=
+    Lam (Const "Point",
+      Lam (Const "Point",
+        Lam (Const "Line",
+          App (App (Const "And",
+          App (App (Const "And",
+          App (Const "Not", App (App (Const "OnLine", Bvar 2), Bvar 0))),
+          App (Const "Not", App (App (Const "OnLine", Bvar 1), Bvar 0)))),
+          App (Const "Not", App (App (App (Const "SameSide", Bvar 2), Bvar 1), Bvar 0)))
+        )
+      )
+    )
+    |}];
+
+  (* distinct_from : Point -> List Point -> List Line -> List Circle -> Prop
+  := 
+  fun (a: Point) (p_list : List Point) (l_list : List Line) (c_list : List Circle) => 
+  And (And (Not (List.mem Point a p_list)) (List.forall Line (fun (L : Line) => Not (OnLine a L)) l_list)) (List.forall Circle (fun (aa : Circle) => Not (OnCircle a aa)) c_list) *)
   show_kterm "distinct_from";
   [%expect
     {|
@@ -835,54 +766,20 @@ let%expect_test "Elaborate env.ncg" =
         )
       )
     )
-    |}];
-
-  (* distinct_from.intro : (a : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    (Not (List.mem Point a p_list)) ->
-    (List.forall Line (fun (L : Line) => Not (OnLine a L)) l_list) ->
-    (List.forall Circle (fun (aa : Circle) => Not (OnCircle a aa)) c_list) ->
-    distinct_from a p_list l_list c_list *)
-  show_kterm "distinct_from.intro";
-  [%expect
-    {|
-    Forall (Const "Point",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 3), Bvar 2)),
-              Forall (App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
-                App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 0))
-              )), Bvar 2),
-                Forall (App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
-                  App (Const "Not", App (App (Const "OnCircle", Bvar 6), Bvar 0))
-                )), Bvar 2),
-                  App (App (App (App (Const "distinct_from", Bvar 6), Bvar 5), Bvar 4), Bvar 3)
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-    |}];
-
-  (* distinct_from.elim : (a : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    distinct_from a p_list l_list c_list ->
-    And (And (Not (List.mem Point a p_list)) (List.forall Line (fun (L : Line) => Not (OnLine a L)) l_list)) (List.forall Circle (fun (aa : Circle) => Not (OnCircle a aa)) c_list) *)
-  show_kterm "distinct_from.elim";
-  [%expect
-    {|
-    Forall (Const "Point",
-      Forall (App (Const "List", Const "Point"),
-        Forall (App (Const "List", Const "Line"),
-          Forall (App (Const "List", Const "Circle"),
-            Forall (App (App (App (App (Const "distinct_from", Bvar 3), Bvar 2), Bvar 1), Bvar 0),
-              App (App (Const "And", App (App (Const "And", App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 4), Bvar 3))), App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
-                App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 0))
-              )), Bvar 2))), App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
-                App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 0))
-              )), Bvar 1))
-            )
+    :=
+    Lam (Const "Point",
+      Lam (App (Const "List", Const "Point"),
+        Lam (App (Const "List", Const "Line"),
+          Lam (App (Const "List", Const "Circle"),
+            App (App (Const "And",
+            App (App (Const "And",
+            App (Const "Not", App (App (App (Const "List.mem", Const "Point"), Bvar 3), Bvar 2))),
+            App (App (App (Const "List.forall", Const "Line"), Lam (Const "Line",
+              App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 0))
+            )), Bvar 1))),
+            App (App (App (Const "List.forall", Const "Circle"), Lam (Const "Circle",
+              App (Const "Not", App (App (Const "OnCircle", Bvar 4), Bvar 0))
+            )), Bvar 0))
           )
         )
       )
@@ -919,7 +816,9 @@ let%expect_test "Elaborate env.ncg" =
           Forall (App (Const "List", Const "Circle"),
             Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 3), Bvar 1)),
               App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                App (App (Const "And",
+                App (App (Const "OnLine", Bvar 0), Bvar 5)),
+                App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
               ))
             )
           )
@@ -930,7 +829,7 @@ let%expect_test "Elaborate env.ncg" =
 
   (* pt_between_on_line :
     (L : Line) -> (b : Point) -> (c : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    OnLine b L -> OnLine c L -> (Eq Point b c -> False) -> (Not (List.mem Line L l_list)) ->
+    OnLine b L -> OnLine c L -> Ne Point b c -> (Not (List.mem Line L l_list)) ->
     Exists Point (fun (a : Point) =>
       And (And (OnLine a L) (Between b a c)) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_between_on_line";
@@ -944,12 +843,14 @@ let%expect_test "Elaborate env.ncg" =
               Forall (App (Const "List", Const "Circle"),
                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 5),
                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 6),
-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
-                      Const "False"
-                    ),
+                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
                       Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
                         App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 0), Bvar 8))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                          App (App (Const "And",
+                          App (App (Const "And",
+                          App (App (Const "OnLine", Bvar 0), Bvar 10)),
+                          App (App (App (Const "Between", Bvar 9), Bvar 0), Bvar 8))),
+                          App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
                         ))
                       )
                     )
@@ -965,7 +866,7 @@ let%expect_test "Elaborate env.ncg" =
 
   (* pt_extension_on_line :
     (L : Line) -> (b : Point) -> (c : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    OnLine b L -> OnLine c L -> (Eq Point b c -> False) -> (Not (List.mem Line L l_list)) ->
+    OnLine b L -> OnLine c L -> Ne Point b c -> (Not (List.mem Line L l_list)) ->
     Exists Point (fun (a : Point) =>
       And (And (OnLine a L) (Between b c a)) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_extension_on_line";
@@ -979,12 +880,14 @@ let%expect_test "Elaborate env.ncg" =
               Forall (App (Const "List", Const "Circle"),
                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 5),
                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 6),
-                    Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5),
-                      Const "False"
-                    ),
+                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
                       Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Line"), Bvar 8), Bvar 4)),
                         App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                          App (App (Const "And", App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 10)), App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 0))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
+                          App (App (Const "And",
+                          App (App (Const "And",
+                          App (App (Const "OnLine", Bvar 0), Bvar 10)),
+                          App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 0))),
+                          App (App (App (App (Const "distinct_from", Bvar 0), Bvar 7), Bvar 6), Bvar 5))
                         ))
                       )
                     )
@@ -1000,7 +903,7 @@ let%expect_test "Elaborate env.ncg" =
 
   (* pt_sameside_of_not_online :
     (L : Line) -> (b : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    (OnLine b L -> False) ->
+    Not (OnLine b L) ->
     Exists Point (fun (a : Point) => And (SameSide a b L) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_sameside_of_not_online";
   [%expect
@@ -1010,11 +913,11 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (Const "List", Const "Point"),
           Forall (App (Const "List", Const "Line"),
             Forall (App (Const "List", Const "Circle"),
-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 4),
-                Const "False"
-              ),
+              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 4)),
                 App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                  App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                  App (App (Const "And",
+                  App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)),
+                  App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
                 ))
               )
             )
@@ -1026,10 +929,10 @@ let%expect_test "Elaborate env.ncg" =
 
   (* pt_oppositeside_of_not_online :
     (L : Line) -> (b : Point) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
-    (OnLine b L -> False) ->
+    Not (OnLine b L) ->
     Exists Point (fun (a : Point) =>
-      And (And (OnLine a L -> False)
-          (SameSide a b L -> False)) (distinct_from a p_list l_list c_list)) *)
+      And (And (Not (OnLine a L))
+          (Not (SameSide a b L))) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_oppositeside_of_not_online";
   [%expect
     {|
@@ -1038,15 +941,13 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (Const "List", Const "Point"),
           Forall (App (Const "List", Const "Line"),
             Forall (App (Const "List", Const "Circle"),
-              Forall (Forall (App (App (Const "OnLine", Bvar 3), Bvar 4),
-                Const "False"
-              ),
+              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 4)),
                 App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                  App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0), Bvar 6),
-                    Const "False"
-                  )), Forall (App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6),
-                    Const "False"
-                  ))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                  App (App (Const "And",
+                  App (App (Const "And",
+                  App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 6))),
+                  App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 5), Bvar 6)))),
+                  App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
                 ))
               )
             )
@@ -1068,7 +969,9 @@ let%expect_test "Elaborate env.ncg" =
           Forall (App (Const "List", Const "Circle"),
             Forall (App (Const "Not", App (App (App (Const "List.mem", Const "Circle"), Bvar 3), Bvar 0)),
               App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 5)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
+                App (App (Const "And",
+                App (App (Const "OnCircle", Bvar 0), Bvar 5)),
+                App (App (App (App (Const "distinct_from", Bvar 0), Bvar 4), Bvar 3), Bvar 2))
               ))
             )
           )
@@ -1088,7 +991,9 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (Const "List", Const "Line"),
           Forall (App (Const "List", Const "Circle"),
             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", App (App (Const "InCircle", Bvar 0), Bvar 4)), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+              App (App (Const "And",
+              App (App (Const "InCircle", Bvar 0), Bvar 4)),
+              App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
             ))
           )
         )
@@ -1099,8 +1004,8 @@ let%expect_test "Elaborate env.ncg" =
   (* pt_outside_circle :
     (aa : Circle) -> (p_list : List Point) -> (l_list : List Line) -> (c_list : List Circle) ->
     Exists Point (fun (a : Point) =>
-      And (And (OnCircle a aa -> False)
-          (InCircle a aa -> False)) (distinct_from a p_list l_list c_list)) *)
+      And (And (Not (OnCircle a aa))
+          (Not (InCircle a aa))) (distinct_from a p_list l_list c_list)) *)
   show_kterm "pt_outside_circle";
   [%expect
     {|
@@ -1109,11 +1014,11 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (Const "List", Const "Line"),
           Forall (App (Const "List", Const "Circle"),
             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", App (App (Const "And", Forall (App (App (Const "OnCircle", Bvar 0), Bvar 4),
-                Const "False"
-              )), Forall (App (App (Const "InCircle", Bvar 0), Bvar 4),
-                Const "False"
-              ))), App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
+              App (App (Const "And",
+              App (App (Const "And",
+              App (Const "Not", App (App (Const "OnCircle", Bvar 0), Bvar 4))),
+              App (Const "Not", App (App (Const "InCircle", Bvar 0), Bvar 4)))),
+              App (App (App (App (Const "distinct_from", Bvar 0), Bvar 3), Bvar 2), Bvar 1))
             ))
           )
         )
@@ -1122,7 +1027,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* line_of_pts :
-    (a : Point) -> (b : Point) -> (Eq Point a b -> False) ->
+    (a : Point) -> (b : Point) -> Ne Point a b ->
     Exists Line (fun (L : Line) =>
       And (OnLine a L) (OnLine b L)) *)
   show_kterm "line_of_pts";
@@ -1130,11 +1035,11 @@ let%expect_test "Elaborate env.ncg" =
     {|
     Forall (Const "Point",
       Forall (Const "Point",
-        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
-          Const "False"
-        ),
+        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Line"), Lam (Const "Line",
-            App (App (Const "And", App (App (Const "OnLine", Bvar 3), Bvar 0)), App (App (Const "OnLine", Bvar 2), Bvar 0))
+            App (App (Const "And",
+            App (App (Const "OnLine", Bvar 3), Bvar 0)),
+            App (App (Const "OnLine", Bvar 2), Bvar 0))
           ))
         )
       )
@@ -1142,7 +1047,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* circle_of_ne :
-    (a : Point) -> (b : Point) -> (Eq Point a b -> False) ->
+    (a : Point) -> (b : Point) -> Ne Point a b ->
     Exists Circle (fun (aa : Circle) =>
       And (CenterCircle a aa) (OnCircle b aa)) *)
   show_kterm "circle_of_ne";
@@ -1150,11 +1055,11 @@ let%expect_test "Elaborate env.ncg" =
     {|
     Forall (Const "Point",
       Forall (Const "Point",
-        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
-          Const "False"
-        ),
+        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Circle"), Lam (Const "Circle",
-            App (App (Const "And", App (App (Const "CenterCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 2), Bvar 0))
+            App (App (Const "And",
+            App (App (Const "CenterCircle", Bvar 3), Bvar 0)),
+            App (App (Const "OnCircle", Bvar 2), Bvar 0))
           ))
         )
       )
@@ -1172,7 +1077,9 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Line",
         Forall (App (App (Const "LinesInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 3)), App (App (Const "OnLine", Bvar 0), Bvar 2))
+            App (App (Const "And",
+            App (App (Const "OnLine", Bvar 0), Bvar 3)),
+            App (App (Const "OnLine", Bvar 0), Bvar 2))
           ))
         )
       )
@@ -1190,7 +1097,9 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Circle",
         Forall (App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 2))
+            App (App (Const "And",
+            App (App (Const "OnLine", Bvar 0), Bvar 3)),
+            App (App (Const "OnCircle", Bvar 0), Bvar 2))
           ))
         )
       )
@@ -1201,7 +1110,7 @@ let%expect_test "Elaborate env.ncg" =
     (L : Line) -> (aa : Circle) -> LineCircleInter L aa ->
     Exists Point (fun (a : Point) =>
       Exists Point (fun (b : Point) =>
-        And (Eq Point a b -> False)
+        And (Ne Point a b)
         (And (OnLine a L)
         (And (OnLine b L)
         (And (OnCircle a aa) (OnCircle b aa)))))) *)
@@ -1213,9 +1122,15 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (App (Const "LineCircleInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
-                Const "False"
-              )), App (App (Const "And", App (App (Const "OnLine", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+              App (App (Const "And",
+              App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)),
+              App (App (Const "And",
+              App (App (Const "OnLine", Bvar 1), Bvar 4)),
+              App (App (Const "And",
+              App (App (Const "OnLine", Bvar 0), Bvar 4)),
+              App (App (Const "And",
+              App (App (Const "OnCircle", Bvar 1), Bvar 3)),
+              App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
             ))
           ))
         )
@@ -1227,7 +1142,7 @@ let%expect_test "Elaborate env.ncg" =
     (L : Line) -> (aa : Circle) -> (b : Point) -> (c : Point) ->
     OnLine b L -> OnLine c L ->
     InCircle b aa ->
-    (OnCircle c aa -> False) -> (InCircle c aa -> False) ->
+    Not (OnCircle c aa) -> Not (InCircle c aa) ->
     Exists Point (fun (a : Point) =>
       And (OnLine a L)
       (And (OnCircle a aa) (Between b a c))) *)
@@ -1241,14 +1156,14 @@ let%expect_test "Elaborate env.ncg" =
             Forall (App (App (Const "OnLine", Bvar 1), Bvar 3),
               Forall (App (App (Const "OnLine", Bvar 1), Bvar 4),
                 Forall (App (App (Const "InCircle", Bvar 3), Bvar 4),
-                  Forall (Forall (App (App (Const "OnCircle", Bvar 3), Bvar 5),
-                    Const "False"
-                  ),
-                    Forall (Forall (App (App (Const "InCircle", Bvar 4), Bvar 6),
-                      Const "False"
-                    ),
+                  Forall (App (Const "Not", App (App (Const "OnCircle", Bvar 3), Bvar 5)),
+                    Forall (App (Const "Not", App (App (Const "InCircle", Bvar 4), Bvar 6)),
                       App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                        App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 9)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (App (Const "Between", Bvar 7), Bvar 0), Bvar 6)))
+                        App (App (Const "And",
+                        App (App (Const "OnLine", Bvar 0), Bvar 9)),
+                        App (App (Const "And",
+                        App (App (Const "OnCircle", Bvar 0), Bvar 8)),
+                        App (App (App (Const "Between", Bvar 7), Bvar 0), Bvar 6)))
                       ))
                     )
                   )
@@ -1265,7 +1180,7 @@ let%expect_test "Elaborate env.ncg" =
     (L : Line) -> (aa : Circle) -> (b : Point) -> (c : Point) ->
     OnLine b L -> OnLine c L ->
     InCircle b aa ->
-    (Eq Point c b -> False) ->
+    Ne Point c b ->
     Exists Point (fun (a : Point) =>
       And (OnLine a L)
       (And (OnCircle a aa) (Between a b c))) *)
@@ -1279,11 +1194,13 @@ let%expect_test "Elaborate env.ncg" =
             Forall (App (App (Const "OnLine", Bvar 1), Bvar 3),
               Forall (App (App (Const "OnLine", Bvar 1), Bvar 4),
                 Forall (App (App (Const "InCircle", Bvar 3), Bvar 4),
-                  Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 4),
-                    Const "False"
-                  ),
+                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 4),
                     App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                      App (App (Const "And", App (App (Const "OnLine", Bvar 0), Bvar 8)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 7)), App (App (App (Const "Between", Bvar 0), Bvar 6), Bvar 5)))
+                      App (App (Const "And",
+                      App (App (Const "OnLine", Bvar 0), Bvar 8)),
+                      App (App (Const "And",
+                      App (App (Const "OnCircle", Bvar 0), Bvar 7)),
+                      App (App (App (Const "Between", Bvar 0), Bvar 6), Bvar 5)))
                     ))
                   )
                 )
@@ -1306,7 +1223,9 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Circle",
         Forall (App (App (Const "CirclesInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-            App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 3)), App (App (Const "OnCircle", Bvar 0), Bvar 2))
+            App (App (Const "And",
+            App (App (Const "OnCircle", Bvar 0), Bvar 3)),
+            App (App (Const "OnCircle", Bvar 0), Bvar 2))
           ))
         )
       )
@@ -1317,7 +1236,7 @@ let%expect_test "Elaborate env.ncg" =
     (aa : Circle) -> (bb : Circle) -> CirclesInter aa bb ->
     Exists Point (fun (a : Point) =>
       Exists Point (fun (b : Point) =>
-        And (Eq Point a b -> False)
+        And (Ne Point a b)
         (And (OnCircle a aa)
         (And (OnCircle a bb)
         (And (OnCircle b aa) (OnCircle b bb)))))) *)
@@ -1329,9 +1248,15 @@ let%expect_test "Elaborate env.ncg" =
         Forall (App (App (Const "CirclesInter", Bvar 1), Bvar 0),
           App (App (Const "Exists", Const "Point"), Lam (Const "Point",
             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-              App (App (Const "And", Forall (App (App (App (Const "Eq", Const "Point"), Bvar 1), Bvar 0),
-                Const "False"
-              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 4)), App (App (Const "And", App (App (Const "OnCircle", Bvar 1), Bvar 3)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 4)), App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
+              App (App (Const "And",
+              App (App (App (Const "Ne", Const "Point"), Bvar 1), Bvar 0)),
+              App (App (Const "And",
+              App (App (Const "OnCircle", Bvar 1), Bvar 4)),
+              App (App (Const "And",
+              App (App (Const "OnCircle", Bvar 1), Bvar 3)),
+              App (App (Const "And",
+              App (App (Const "OnCircle", Bvar 0), Bvar 4)),
+              App (App (Const "OnCircle", Bvar 0), Bvar 3)))))
             ))
           ))
         )
@@ -1341,7 +1266,7 @@ let%expect_test "Elaborate env.ncg" =
 
   (* pt_sameside_of_circlesinter :
     (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (aa : Circle) -> (bb : Circle) ->
-    OnLine c L -> OnLine d L -> (OnLine b L -> False) ->
+    OnLine c L -> OnLine d L -> Not (OnLine b L) ->
     CenterCircle c aa -> CenterCircle d bb -> CirclesInter aa bb ->
     Exists Point (fun (a : Point) =>
       And (SameSide a b L)
@@ -1357,14 +1282,16 @@ let%expect_test "Elaborate env.ncg" =
               Forall (Const "Circle",
                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
-                    Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
-                      Const "False"
-                    ),
+                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 4)),
                       Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
                         Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
                           Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
                             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                              App (App (Const "And", App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9)), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7)))
+                              App (App (Const "And",
+                              App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9)),
+                              App (App (Const "And",
+                              App (App (Const "OnCircle", Bvar 0), Bvar 8)),
+                              App (App (Const "OnCircle", Bvar 0), Bvar 7)))
                             ))
                           )
                         )
@@ -1382,11 +1309,11 @@ let%expect_test "Elaborate env.ncg" =
 
   (* pt_oppositeside_of_circlesinter :
     (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (aa : Circle) -> (bb : Circle) ->
-    OnLine c L -> OnLine d L -> (OnLine b L -> False) ->
+    OnLine c L -> OnLine d L -> Not (OnLine b L) ->
     CenterCircle c aa -> CenterCircle d bb -> CirclesInter aa bb ->
     Exists Point (fun (a : Point) =>
-      And (OnLine a L -> False)
-      (And (SameSide a b L -> False)
+      And (Not (OnLine a L))
+      (And (Not (SameSide a b L))
           (And (OnCircle a aa) (OnCircle a bb)))) *)
   show_kterm "pt_oppositeside_of_circlesinter";
   [%expect
@@ -1399,18 +1326,18 @@ let%expect_test "Elaborate env.ncg" =
               Forall (Const "Circle",
                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
-                    Forall (Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
-                      Const "False"
-                    ),
+                    Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 4)),
                       Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
                         Forall (App (App (Const "CenterCircle", Bvar 7), Bvar 4),
                           Forall (App (App (Const "CirclesInter", Bvar 6), Bvar 5),
                             App (App (Const "Exists", Const "Point"), Lam (Const "Point",
-                              App (App (Const "And", Forall (App (App (Const "OnLine", Bvar 0), Bvar 9),
-                                Const "False"
-                              )), App (App (Const "And", Forall (App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9),
-                                Const "False"
-                              )), App (App (Const "And", App (App (Const "OnCircle", Bvar 0), Bvar 8)), App (App (Const "OnCircle", Bvar 0), Bvar 7))))
+                              App (App (Const "And",
+                              App (Const "Not", App (App (Const "OnLine", Bvar 0), Bvar 9))),
+                              App (App (Const "And",
+                              App (Const "Not", App (App (App (Const "SameSide", Bvar 0), Bvar 12), Bvar 9))),
+                              App (App (Const "And",
+                              App (App (Const "OnCircle", Bvar 0), Bvar 8)),
+                              App (App (Const "OnCircle", Bvar 0), Bvar 7))))
                             ))
                           )
                         )
@@ -1428,7 +1355,7 @@ let%expect_test "Elaborate env.ncg" =
 
   (* two_distinct_points_determine_unique_line :
     (a: Point) -> (b : Point) -> (L : Line) -> (M : Line) -> 
-    (Eq Point a b -> False) ->
+    Ne Point a b ->
     OnLine a L -> OnLine b L -> OnLine a M -> OnLine b M ->
     Eq Line L M *)
   show_kterm "two_distinct_points_determine_unique_line";
@@ -1438,9 +1365,7 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Line",
           Forall (Const "Line",
-            Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2),
-              Const "False"
-            ),
+            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2),
               Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
                   Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
@@ -1494,16 +1419,14 @@ let%expect_test "Elaborate env.ncg" =
 
   (* inside_implies_not_on_circle :
     (a: Point) -> (aa: Circle) ->
-    InCircle a aa -> (OnCircle a aa -> False) *)
+    InCircle a aa -> Not (OnCircle a aa) *)
   show_kterm "inside_implies_not_on_circle";
   [%expect
     {|
     Forall (Const "Point",
       Forall (Const "Circle",
         Forall (App (App (Const "InCircle", Bvar 1), Bvar 0),
-          Forall (App (App (Const "OnCircle", Bvar 2), Bvar 1),
-            Const "False"
-          )
+          App (Const "Not", App (App (Const "OnCircle", Bvar 2), Bvar 1))
         )
       )
     )
@@ -1512,8 +1435,8 @@ let%expect_test "Elaborate env.ncg" =
   (* between_distinct: (a: Point) -> (b: Point) -> (c : Point) -> 
   (Between a b c) -> 
   (And (Between c b a)
-  (And (Not (Eq Point a b)) 
-  (And (Not (Eq Point a c))
+  (And (Ne Point a b)
+  (And (Ne Point a c)
       (Not (Between b a c))
   ))) *)
   show_kterm "between_distinct";
@@ -1523,7 +1446,13 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Point",
           Forall (App (App (App (Const "Between", Bvar 2), Bvar 1), Bvar 0),
-            App (App (Const "And", App (App (App (Const "Between", Bvar 1), Bvar 2), Bvar 3)), App (App (Const "And", App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2))), App (App (Const "And", App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 1))), App (Const "Not", App (App (App (Const "Between", Bvar 2), Bvar 3), Bvar 1)))))
+            App (App (Const "And",
+            App (App (App (Const "Between", Bvar 1), Bvar 2), Bvar 3)),
+            App (App (Const "And",
+            App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2)),
+            App (App (Const "And",
+            App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 1)),
+            App (Const "Not", App (App (App (Const "Between", Bvar 2), Bvar 3), Bvar 1)))))
           )
         )
       )
@@ -1620,7 +1549,7 @@ let%expect_test "Elaborate env.ncg" =
 
   (* between_linear: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
   (OnLine a L) -> (OnLine b L) -> (OnLine c L) ->
-  (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
+  (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
     (Or (Between a b c) (Or (Between b a c) (Between a c b))) *)
   show_kterm "between_linear";
   [%expect
@@ -1632,10 +1561,14 @@ let%expect_test "Elaborate env.ncg" =
             Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
                 Forall (App (App (Const "OnLine", Bvar 3), Bvar 2),
-                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5)),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 6), Bvar 5)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 8), Bvar 6)),
-                        App (App (Const "Or", App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 7)), App (App (Const "Or", App (App (App (Const "Between", Bvar 8), Bvar 9), Bvar 7)), App (App (App (Const "Between", Bvar 9), Bvar 7), Bvar 8)))
+                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
+                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 6), Bvar 5),
+                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 8), Bvar 6),
+                        App (App (Const "Or",
+                        App (App (App (Const "Between", Bvar 9), Bvar 8), Bvar 7)),
+                        App (App (Const "Or",
+                        App (App (App (Const "Between", Bvar 8), Bvar 9), Bvar 7)),
+                        App (App (App (Const "Between", Bvar 9), Bvar 7), Bvar 8)))
                       )
                     )
                   )
@@ -1757,7 +1690,9 @@ let%expect_test "Elaborate env.ncg" =
               Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1)),
                 Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 2)),
                   Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 3)),
-                    App (App (Const "Or", App (App (App (Const "SameSide", Bvar 7), Bvar 5), Bvar 4)), App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 4))
+                    App (App (Const "Or",
+                    App (App (App (Const "SameSide", Bvar 7), Bvar 5), Bvar 4)),
+                    App (App (App (Const "SameSide", Bvar 6), Bvar 5), Bvar 4))
                   )
                 )
               )
@@ -1792,7 +1727,7 @@ let%expect_test "Elaborate env.ncg" =
 
   (* pasch_online_sameside :
     (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    Between a b c -> OnLine a L -> (OnLine b L -> False) ->
+    Between a b c -> OnLine a L -> Not (OnLine b L) ->
     SameSide b c L *)
   show_kterm "pasch_online_sameside";
   [%expect
@@ -1803,9 +1738,7 @@ let%expect_test "Elaborate env.ncg" =
           Forall (Const "Line",
             Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
               Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
-                Forall (Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                  Const "False"
-                ),
+                Forall (App (Const "Not", App (App (Const "OnLine", Bvar 4), Bvar 2)),
                   App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)
                 )
               )
@@ -1819,7 +1752,7 @@ let%expect_test "Elaborate env.ncg" =
   (* pasch_online_not_sameside :
     (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
     Between a b c -> OnLine b L ->
-    (SameSide a c L -> False) *)
+    Not (SameSide a c L) *)
   show_kterm "pasch_online_not_sameside";
   [%expect
     {|
@@ -1829,9 +1762,7 @@ let%expect_test "Elaborate env.ncg" =
           Forall (Const "Line",
             Forall (App (App (App (Const "Between", Bvar 3), Bvar 2), Bvar 1),
               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
-                Forall (App (App (App (Const "SameSide", Bvar 5), Bvar 3), Bvar 2),
-                  Const "False"
-                )
+                App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 3), Bvar 2))
               )
             )
           )
@@ -1842,11 +1773,11 @@ let%expect_test "Elaborate env.ncg" =
 
   (* pasch_intersection_between :
     (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) -> (M : Line) ->
-    (Eq Line L M -> False) ->
+    Ne Line L M ->
     OnLine b L -> OnLine b M ->
     OnLine a M -> OnLine c M ->
-    (Eq Point a b -> False) -> (Eq Point c b -> False) ->
-    (SameSide a c L -> False) ->
+    Ne Point a b -> Ne Point c b ->
+    Not (SameSide a c L) ->
     Between a b c *)
   show_kterm "pasch_intersection_between";
   [%expect
@@ -1856,22 +1787,14 @@ let%expect_test "Elaborate env.ncg" =
         Forall (Const "Point",
           Forall (Const "Line",
             Forall (Const "Line",
-              Forall (Forall (App (App (App (Const "Eq", Const "Line"), Bvar 1), Bvar 0),
-                Const "False"
-              ),
+              Forall (App (App (App (Const "Ne", Const "Line"), Bvar 1), Bvar 0),
                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
                     Forall (App (App (Const "OnLine", Bvar 7), Bvar 3),
                       Forall (App (App (Const "OnLine", Bvar 6), Bvar 4),
-                        Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8),
-                          Const "False"
-                        ),
-                          Forall (Forall (App (App (App (Const "Eq", Const "Point"), Bvar 8), Bvar 9),
-                            Const "False"
-                          ),
-                            Forall (Forall (App (App (App (Const "SameSide", Bvar 11), Bvar 9), Bvar 8),
-                              Const "False"
-                            ),
+                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
+                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 8), Bvar 9),
+                            Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 11), Bvar 9), Bvar 8)),
                               App (App (App (Const "Between", Bvar 12), Bvar 11), Bvar 10)
                             )
                           )
@@ -1938,7 +1861,7 @@ let%expect_test "Elaborate env.ncg" =
     (SameSide c d L) ->
     (Not (SameSide b d M)) ->
     (Not (OnLine d M)) ->
-    (Not (Eq Point b a)) ->
+    (Ne Point b a) ->
     (SameSide b c N) *)
   show_kterm "triple_incidence_2";
   [%expect
@@ -1959,7 +1882,7 @@ let%expect_test "Elaborate env.ncg" =
                               Forall (App (App (App (Const "SameSide", Bvar 10), Bvar 9), Bvar 8),
                                 Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 12), Bvar 10), Bvar 8)),
                                   Forall (App (Const "Not", App (App (Const "OnLine", Bvar 11), Bvar 9)),
-                                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 14), Bvar 15)),
+                                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 14), Bvar 15),
                                       App (App (App (Const "SameSide", Bvar 15), Bvar 14), Bvar 10)
                                     )
                                   )
@@ -2035,7 +1958,7 @@ let%expect_test "Elaborate env.ncg" =
     (OnLine a L) -> (OnLine b L) -> (OnLine c L) ->
     (InCircle a aa) -> 
     (OnCircle b aa) -> (OnCircle c aa) ->
-    (Not (Eq Point b c)) ->
+    (Ne Point b c) ->
     (Between b a c) *)
   show_kterm "circle_chord_between";
   [%expect
@@ -2051,7 +1974,7 @@ let%expect_test "Elaborate env.ncg" =
                     Forall (App (App (Const "InCircle", Bvar 7), Bvar 3),
                       Forall (App (App (Const "OnCircle", Bvar 7), Bvar 4),
                         Forall (App (App (Const "OnCircle", Bvar 7), Bvar 5),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8)),
+                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
                             App (App (App (Const "Between", Bvar 10), Bvar 11), Bvar 9)
                           )
                         )
@@ -2079,8 +2002,12 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Point",
           Forall (Const "Circle",
-            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
-              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
+            Forall (App (App (Const "Or",
+            App (App (Const "InCircle", Bvar 3), Bvar 0)),
+            App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+              Forall (App (App (Const "Or",
+              App (App (Const "InCircle", Bvar 3), Bvar 1)),
+              App (App (Const "OnCircle", Bvar 3), Bvar 1)),
                 Forall (App (App (App (Const "Between", Bvar 5), Bvar 3), Bvar 4),
                   App (App (Const "InCircle", Bvar 4), Bvar 3)
                 )
@@ -2104,10 +2031,14 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Point",
           Forall (Const "Circle",
-            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+            Forall (App (App (Const "Or",
+            App (App (Const "InCircle", Bvar 3), Bvar 0)),
+            App (App (Const "OnCircle", Bvar 3), Bvar 0)),
               Forall (App (Const "Not", App (App (Const "InCircle", Bvar 2), Bvar 1)),
                 Forall (App (App (App (Const "Between", Bvar 5), Bvar 3), Bvar 4),
-                  App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3)))
+                  App (App (Const "And",
+                  App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))),
+                  App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3)))
                 )
               )
             )
@@ -2120,10 +2051,10 @@ let%expect_test "Elaborate env.ncg" =
   (* circle_intersect_opposite_sides: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> 
   (L : Line) ->
   (aa : Circle) -> (bb : Circle) ->
-    (Not (Eq Circle aa bb)) ->
+    (Ne Circle aa bb) ->
     (OnCircle c aa) -> (OnCircle c bb) ->
     (OnCircle d aa) -> (OnCircle d bb) ->
-    (Not (Eq Point c d)) ->
+    (Ne Point c d) ->
     (CenterCircle a aa) -> (CenterCircle b bb) ->
     (OnLine a L) ->
     (OnLine b L) ->
@@ -2138,12 +2069,12 @@ let%expect_test "Elaborate env.ncg" =
             Forall (Const "Line",
               Forall (Const "Circle",
                 Forall (Const "Circle",
-                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Circle"), Bvar 1), Bvar 0)),
+                  Forall (App (App (App (Const "Ne", Const "Circle"), Bvar 1), Bvar 0),
                     Forall (App (App (Const "OnCircle", Bvar 5), Bvar 2),
                       Forall (App (App (Const "OnCircle", Bvar 6), Bvar 2),
                         Forall (App (App (Const "OnCircle", Bvar 6), Bvar 4),
                           Forall (App (App (Const "OnCircle", Bvar 7), Bvar 4),
-                            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8)),
+                            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
                               Forall (App (App (Const "CenterCircle", Bvar 12), Bvar 7),
                                 Forall (App (App (Const "CenterCircle", Bvar 12), Bvar 7),
                                   Forall (App (App (Const "OnLine", Bvar 14), Bvar 10),
@@ -2169,8 +2100,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* lines_inter_if_diff_sides: (a : Point) -> (b : Point) -> (L : Line) -> (M : Line) ->
-    (Not (OnLine a L)) -> (Not (OnLine b L)) ->
-    (Not (SameSide a b L)) ->
+    (DiffSide a b L) ->
     (OnLine a M) ->
     (OnLine b M) ->
     (LinesInter L M) *)
@@ -2181,14 +2111,10 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Line",
           Forall (Const "Line",
-            Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 1)),
-              Forall (App (Const "Not", App (App (Const "OnLine", Bvar 3), Bvar 2)),
-                Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 5), Bvar 4), Bvar 3)),
-                  Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
-                    Forall (App (App (Const "OnLine", Bvar 6), Bvar 4),
-                      App (App (Const "LinesInter", Bvar 6), Bvar 5)
-                    )
-                  )
+            Forall (App (App (App (Const "DiffSide", Bvar 3), Bvar 2), Bvar 1),
+              Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
+                Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
+                  App (App (Const "LinesInter", Bvar 4), Bvar 3)
                 )
               )
             )
@@ -2201,8 +2127,7 @@ let%expect_test "Elaborate env.ncg" =
   (* line_circle_inter_if_diff_sides: (a : Point) -> (b : Point) -> (L : Line) -> (aa : Circle) ->
     (Or (InCircle a aa) (OnCircle a aa)) ->
     (Or (InCircle b aa) (OnCircle b aa)) ->
-    (Not (OnLine a L)) -> (Not (OnLine b L)) ->
-    (Not (SameSide a b L)) ->
+    (DiffSide a b L) ->
     (LineCircleInter L aa) *)
   show_kterm "line_circle_inter_if_diff_sides";
   [%expect
@@ -2211,14 +2136,14 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Line",
           Forall (Const "Circle",
-            Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 0)), App (App (Const "OnCircle", Bvar 3), Bvar 0)),
-              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 1)), App (App (Const "OnCircle", Bvar 3), Bvar 1)),
-                Forall (App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 3)),
-                  Forall (App (Const "Not", App (App (Const "OnLine", Bvar 5), Bvar 4)),
-                    Forall (App (Const "Not", App (App (App (Const "SameSide", Bvar 7), Bvar 6), Bvar 5)),
-                      App (App (Const "LineCircleInter", Bvar 6), Bvar 5)
-                    )
-                  )
+            Forall (App (App (Const "Or",
+            App (App (Const "InCircle", Bvar 3), Bvar 0)),
+            App (App (Const "OnCircle", Bvar 3), Bvar 0)),
+              Forall (App (App (Const "Or",
+              App (App (Const "InCircle", Bvar 3), Bvar 1)),
+              App (App (Const "OnCircle", Bvar 3), Bvar 1)),
+                Forall (App (App (App (Const "DiffSide", Bvar 5), Bvar 4), Bvar 3),
+                  App (App (Const "LineCircleInter", Bvar 4), Bvar 3)
                 )
               )
             )
@@ -2262,9 +2187,13 @@ let%expect_test "Elaborate env.ncg" =
         Forall (Const "Circle",
           Forall (Const "Circle",
             Forall (App (App (Const "OnCircle", Bvar 3), Bvar 1),
-              Forall (App (App (Const "Or", App (App (Const "InCircle", Bvar 3), Bvar 2)), App (App (Const "OnCircle", Bvar 3), Bvar 2)),
+              Forall (App (App (Const "Or",
+              App (App (Const "InCircle", Bvar 3), Bvar 2)),
+              App (App (Const "OnCircle", Bvar 3), Bvar 2)),
                 Forall (App (App (Const "InCircle", Bvar 5), Bvar 2),
-                  Forall (App (App (Const "And", App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))), App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3))),
+                  Forall (App (App (Const "And",
+                  App (Const "Not", App (App (Const "InCircle", Bvar 5), Bvar 3))),
+                  App (Const "Not", App (App (Const "OnCircle", Bvar 5), Bvar 3))),
                     App (App (Const "CirclesInter", Bvar 5), Bvar 4)
                   )
                 )
@@ -2357,7 +2286,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* angle_symm: (a : Point) -> (b : Point) -> (c : Point) ->
-    (Not (Eq Point a b)) -> (Not (Eq Point b c)) ->
+    (Ne Point a b) -> (Ne Point b c) ->
     (Eq Measure (Angle a b c) (Angle c b a)) *)
   show_kterm "angle_symm";
   [%expect
@@ -2365,8 +2294,8 @@ let%expect_test "Elaborate env.ncg" =
     Forall (Const "Point",
       Forall (Const "Point",
         Forall (Const "Point",
-          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 2), Bvar 1)),
-            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 2), Bvar 1)),
+          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 2), Bvar 1),
+            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 2), Bvar 1),
               App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 4), Bvar 3), Bvar 2)), App (App (App (Const "Angle", Bvar 2), Bvar 3), Bvar 4))
             )
           )
@@ -2384,7 +2313,9 @@ let%expect_test "Elaborate env.ncg" =
     Forall (Const "Point",
       Forall (Const "Point",
         Forall (Const "Point",
-          App (App (Const "And", App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))), App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0))))
+          App (App (Const "And",
+          App (Const "Not", App (App (Const "Lt", App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0)), Const "Zero"))),
+          App (Const "Not", App (App (Const "Lt", App (App (Const "Add", Const "RightAngle"), Const "RightAngle")), App (App (App (Const "Angle", Bvar 2), Bvar 1), Bvar 0))))
         )
       )
     )
@@ -2424,7 +2355,9 @@ let%expect_test "Elaborate env.ncg" =
     Forall (Const "Point",
       Forall (Const "Point",
         Forall (Const "Point",
-          App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 0), Bvar 2), Bvar 1))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 2), Bvar 0), Bvar 1)))
+          App (App (Const "And",
+          App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 0), Bvar 2), Bvar 1))),
+          App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 2), Bvar 1), Bvar 0)), App (App (App (Const "Area", Bvar 2), Bvar 0), Bvar 1)))
         )
       )
     )
@@ -2617,8 +2550,8 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* angle_zero_if_on_line: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    (Not (Eq Point a b)) ->
-    (Not (Eq Point a c)) ->
+    (Ne Point a b) ->
+    (Ne Point a c) ->
     (OnLine a L) ->
     (OnLine b L) ->
     (OnLine c L) -> (Not (Between b a c)) ->
@@ -2630,8 +2563,8 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Point",
           Forall (Const "Line",
-            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2)),
-              Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 4), Bvar 2)),
+            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2),
+              Forall (App (App (App (Const "Ne", Const "Point"), Bvar 4), Bvar 2),
                 Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 3),
                     Forall (App (App (Const "OnLine", Bvar 5), Bvar 4),
@@ -2650,8 +2583,8 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* on_line_if_angle_zero: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    (Not (Eq Point a b)) ->
-    (Not (Eq Point a c)) ->
+    (Ne Point a b) ->
+    (Ne Point a c) ->
     (OnLine a L) ->
     (OnLine b L) ->
     (Eq Measure (Angle b a c) Zero) ->
@@ -2663,12 +2596,14 @@ let%expect_test "Elaborate env.ncg" =
       Forall (Const "Point",
         Forall (Const "Point",
           Forall (Const "Line",
-            Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 3), Bvar 2)),
-              Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 4), Bvar 2)),
+            Forall (App (App (App (Const "Ne", Const "Point"), Bvar 3), Bvar 2),
+              Forall (App (App (App (Const "Ne", Const "Point"), Bvar 4), Bvar 2),
                 Forall (App (App (Const "OnLine", Bvar 5), Bvar 2),
                   Forall (App (App (Const "OnLine", Bvar 5), Bvar 3),
                     Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 6), Bvar 7), Bvar 5)), Const "Zero"),
-                      App (App (Const "And", App (App (Const "OnLine", Bvar 6), Bvar 5)), App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)))
+                      App (App (Const "And",
+                      App (App (Const "OnLine", Bvar 6), Bvar 5)),
+                      App (Const "Not", App (App (App (Const "Between", Bvar 7), Bvar 8), Bvar 6)))
                     )
                   )
                 )
@@ -2683,10 +2618,10 @@ let%expect_test "Elaborate env.ncg" =
   (* angle_add_if_same_side: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (M : Line) ->
     (OnLine a L) -> (OnLine a M) ->
     (OnLine b L) -> (OnLine c M) ->
-    (Not (Eq Point a b)) -> 
-    (Not (Eq Point a c)) ->
+    (Ne Point a b) ->
+    (Ne Point a c) ->
     (Not (OnLine d L)) -> (Not (OnLine d M)) ->
-    (Not (Eq Line L M)) ->
+    (Ne Line L M) ->
     (SameSide b d M) -> (SameSide c d L) ->
     (Eq Measure (Angle b a c) (Add (Angle b a d) (Angle d a c))) *)
   show_kterm "angle_add_if_same_side";
@@ -2702,11 +2637,11 @@ let%expect_test "Elaborate env.ncg" =
                   Forall (App (App (Const "OnLine", Bvar 6), Bvar 1),
                     Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
                       Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8)),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 10), Bvar 8)),
+                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
+                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 10), Bvar 8),
                             Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8), Bvar 7)),
                               Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9), Bvar 7)),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Line"), Bvar 9), Bvar 8)),
+                                Forall (App (App (App (Const "Ne", Const "Line"), Bvar 9), Bvar 8),
                                   Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 11), Bvar 9),
                                     Forall (App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11),
                                       App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 15), Bvar 16), Bvar 14)), App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 16), Bvar 13)), App (App (App (Const "Angle", Bvar 13), Bvar 16), Bvar 14)))
@@ -2732,10 +2667,10 @@ let%expect_test "Elaborate env.ncg" =
   (* same_side_if_angle_add: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) -> (M : Line) ->
     (OnLine a L) -> (OnLine a M) ->
     (OnLine b L) -> (OnLine c M) ->
-    (Not (Eq Point a b)) ->
-    (Not (Eq Point a c)) ->
+    (Ne Point a b) ->
+    (Ne Point a c) ->
     (Not (OnLine d L)) -> (Not (OnLine d M)) ->
-    (Not (Eq Line L M)) ->
+    (Ne Line L M) ->
     (Eq Measure (Angle b a c) (Add (Angle b a d) (Angle d a c))) ->
     (And (SameSide b d M) (SameSide c d L)) *)
   show_kterm "same_side_if_angle_add";
@@ -2751,13 +2686,15 @@ let%expect_test "Elaborate env.ncg" =
                   Forall (App (App (Const "OnLine", Bvar 6), Bvar 1),
                     Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
                       Forall (App (App (Const "OnLine", Bvar 6), Bvar 3),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 8)),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 10), Bvar 8)),
+                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 8),
+                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 10), Bvar 8),
                             Forall (App (Const "Not", App (App (Const "OnLine", Bvar 8), Bvar 7)),
                               Forall (App (Const "Not", App (App (Const "OnLine", Bvar 9), Bvar 7)),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Line"), Bvar 9), Bvar 8)),
+                                Forall (App (App (App (Const "Ne", Const "Line"), Bvar 9), Bvar 8),
                                   Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 12)), App (App (Const "Add", App (App (App (Const "Angle", Bvar 13), Bvar 14), Bvar 11)), App (App (App (Const "Angle", Bvar 11), Bvar 14), Bvar 12))),
-                                    App (App (Const "And", App (App (App (Const "SameSide", Bvar 14), Bvar 12), Bvar 10)), App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11))
+                                    App (App (Const "And",
+                                    App (App (App (Const "SameSide", Bvar 14), Bvar 12), Bvar 10)),
+                                    App (App (App (Const "SameSide", Bvar 13), Bvar 12), Bvar 11))
                                   )
                                 )
                               )
@@ -2844,8 +2781,8 @@ let%expect_test "Elaborate env.ncg" =
     (L : Line) -> (M : Line) ->
     (OnLine a L) -> (OnLine b L) -> (OnLine b' L) ->
     (OnLine a M) -> (OnLine c M) -> (OnLine c' M) ->
-    (Not (Eq Point b a)) -> (Not (Eq Point b' a)) ->
-    (Not (Eq Point c a)) -> (Not (Eq Point c' a)) ->
+    (Ne Point b a) -> (Ne Point b' a) ->
+    (Ne Point c a) -> (Ne Point c' a) ->
     (Not (Between b a b')) ->
     (Not (Between c a c')) ->
     (Eq Measure (Angle b a c) (Angle b' a c')) *)
@@ -2865,10 +2802,10 @@ let%expect_test "Elaborate env.ncg" =
                         Forall (App (App (Const "OnLine", Bvar 9), Bvar 3),
                           Forall (App (App (Const "OnLine", Bvar 7), Bvar 4),
                             Forall (App (App (Const "OnLine", Bvar 7), Bvar 5),
-                              Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 12)),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 13)),
-                                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 14)),
-                                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 11), Bvar 15)),
+                              Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 12),
+                                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 13),
+                                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 14),
+                                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 11), Bvar 15),
                                       Forall (App (Const "Not", App (App (App (Const "Between", Bvar 15), Bvar 16), Bvar 14)),
                                         Forall (App (Const "Not", App (App (App (Const "Between", Bvar 14), Bvar 17), Bvar 13)),
                                           App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 17), Bvar 18), Bvar 15)), App (App (App (Const "Angle", Bvar 16), Bvar 18), Bvar 14))
@@ -2898,7 +2835,7 @@ let%expect_test "Elaborate env.ncg" =
     (OnLine a L) -> (OnLine b L) ->
     (OnLine b M) ->(OnLine c M) ->
     (OnLine c N) -> (OnLine d N) ->
-    (Not (Eq Point b c)) ->
+    (Ne Point b c) ->
     (SameSide a d M) ->
     (Lt (Add (Angle a b c) (Angle b c d)) (Add RightAngle RightAngle)) ->
     (LinesInter L N) *)
@@ -2919,7 +2856,7 @@ let%expect_test "Elaborate env.ncg" =
                           Forall (App (App (Const "OnLine", Bvar 8), Bvar 4),
                             Forall (App (App (Const "OnLine", Bvar 9), Bvar 4),
                               Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 12), Bvar 11)),
+                                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 12), Bvar 11),
                                   Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 11), Bvar 8),
                                     Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
                                       App (App (Const "LinesInter", Bvar 11), Bvar 9)
@@ -2947,7 +2884,7 @@ let%expect_test "Elaborate env.ncg" =
     (OnLine a L) -> (OnLine b L) ->
     (OnLine b M) ->(OnLine c M) ->
     (OnLine c N) -> (OnLine d N) ->
-    (Not (Eq Point b c)) ->
+    (Ne Point b c) ->
     (SameSide a d M) ->
     (Lt (Add (Angle a b c) (Angle b c d)) (Add RightAngle RightAngle)) ->   
     (OnLine e L) -> (OnLine e N) ->
@@ -2969,7 +2906,7 @@ let%expect_test "Elaborate env.ncg" =
                           Forall (App (App (Const "OnLine", Bvar 8), Bvar 4),
                             Forall (App (App (Const "OnLine", Bvar 9), Bvar 4),
                               Forall (App (App (Const "OnLine", Bvar 9), Bvar 5),
-                                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 12), Bvar 11)),
+                                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 12), Bvar 11),
                                   Forall (App (App (App (Const "SameSide", Bvar 14), Bvar 11), Bvar 8),
                                     Forall (App (App (Const "Lt", App (App (Const "Add", App (App (App (Const "Angle", Bvar 15), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12))), App (App (Const "Add", Const "RightAngle"), Const "RightAngle")),
                                       Forall (App (App (Const "OnLine", Bvar 12), Bvar 11),
@@ -2997,7 +2934,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* on_line_if_area_zero: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    (OnLine a L) -> (OnLine b L) -> (Not (Eq Point a b)) ->
+    (OnLine a L) -> (OnLine b L) -> (Ne Point a b) ->
     (Eq Measure (Area a b c) Zero) ->
     (OnLine c L) *)
   show_kterm "on_line_if_area_zero";
@@ -3009,7 +2946,7 @@ let%expect_test "Elaborate env.ncg" =
           Forall (Const "Line",
             Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
-                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
                   Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 6), Bvar 5), Bvar 4)), Const "Zero"),
                     App (App (Const "OnLine", Bvar 5), Bvar 4)
                   )
@@ -3023,7 +2960,7 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* area_zero_if_on_line: (a : Point) -> (b : Point) -> (c : Point) -> (L : Line) ->
-    (OnLine a L) -> (OnLine b L) -> (Not (Eq Point a b)) ->
+    (OnLine a L) -> (OnLine b L) -> (Ne Point a b) ->
     (OnLine c L) -> 
     (Eq Measure (Area a b c) Zero) *)
   show_kterm "area_zero_if_on_line";
@@ -3035,7 +2972,7 @@ let%expect_test "Elaborate env.ncg" =
           Forall (Const "Line",
             Forall (App (App (Const "OnLine", Bvar 3), Bvar 0),
               Forall (App (App (Const "OnLine", Bvar 3), Bvar 1),
-                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
+                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 3),
                     App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 7), Bvar 6), Bvar 5)), Const "Zero")
                   )
@@ -3050,7 +2987,7 @@ let%expect_test "Elaborate env.ncg" =
 
   (* area_add_if_between: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) ->
     (OnLine a L) -> (OnLine b L) -> (OnLine c L) ->
-    (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
+    (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
     (Not (OnLine d L)) ->
     (Between a c b) ->
     (Eq Measure (Add (Area a c d) (Area d c b)) (Area a d b)) *)
@@ -3065,9 +3002,9 @@ let%expect_test "Elaborate env.ncg" =
               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6)),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 7)),
+                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
+                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
+                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 7),
                           Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 6)),
                             Forall (App (App (App (Const "Between", Bvar 11), Bvar 9), Bvar 10),
                               App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 12), Bvar 10), Bvar 9)), App (App (App (Const "Area", Bvar 9), Bvar 10), Bvar 11))), App (App (App (Const "Area", Bvar 12), Bvar 9), Bvar 11))
@@ -3088,7 +3025,7 @@ let%expect_test "Elaborate env.ncg" =
 
   (* between_if_area_add: (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (L : Line) ->
     (OnLine a L) -> (OnLine b L) -> (OnLine c L) ->
-    (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
+    (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
     (Not (OnLine d L)) ->
     (Eq Measure (Add (Area a c d) (Area d c b)) (Area a d b)) ->
     (Between a c b) *)
@@ -3103,9 +3040,9 @@ let%expect_test "Elaborate env.ncg" =
               Forall (App (App (Const "OnLine", Bvar 4), Bvar 0),
                 Forall (App (App (Const "OnLine", Bvar 4), Bvar 1),
                   Forall (App (App (Const "OnLine", Bvar 4), Bvar 2),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 6)),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 9), Bvar 7)),
+                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
+                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 6),
+                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 9), Bvar 7),
                           Forall (App (Const "Not", App (App (Const "OnLine", Bvar 7), Bvar 6)),
                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Add", App (App (App (Const "Area", Bvar 11), Bvar 9), Bvar 8)), App (App (App (Const "Area", Bvar 8), Bvar 9), Bvar 10))), App (App (App (Const "Area", Bvar 11), Bvar 8), Bvar 10)),
                               App (App (App (Const "Between", Bvar 12), Bvar 10), Bvar 11)
@@ -3125,8 +3062,8 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* sss_congruence: (a : Point) -> (b : Point) -> (c : Point) -> (a' : Point) -> (b' : Point) -> (c' : Point) ->
-  (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
-  (Not (Eq Point a' b')) -> (Not (Eq Point b' c')) -> (Not (Eq Point a' c')) ->
+  (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
+  (Ne Point a' b') -> (Ne Point b' c') -> (Ne Point a' c') ->
   (Eq Measure (Length a b) (Length a' b')) -> (Eq Measure (Length b c) (Length b' c')) -> 
   (Eq Measure (Length c a) (Length c' a')) ->
   (And 
@@ -3142,16 +3079,22 @@ let%expect_test "Elaborate env.ncg" =
           Forall (Const "Point",
             Forall (Const "Point",
               Forall (Const "Point",
-                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 5),
+                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 5),
                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 13)), App (App (Const "Length", Bvar 8), Bvar 10)),
-                                  App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Angle", Bvar 11), Bvar 10), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))),
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Angle", Bvar 11), Bvar 10), Bvar 9))),
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))),
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
                                 )
                               )
                             )
@@ -3170,8 +3113,8 @@ let%expect_test "Elaborate env.ncg" =
     |}];
 
   (* sas_congruence: (a : Point) -> (b : Point) -> (c : Point) -> (a' : Point) -> (b' : Point) -> (c' : Point) ->
-  (Not (Eq Point a b)) -> (Not (Eq Point b c)) -> (Not (Eq Point a c)) ->
-  (Not (Eq Point a' b')) -> (Not (Eq Point b' c')) -> (Not (Eq Point a' c')) ->
+  (Ne Point a b) -> (Ne Point b c) -> (Ne Point a c) ->
+  (Ne Point a' b') -> (Ne Point b' c') -> (Ne Point a' c') ->
   (Eq Measure (Length a b) (Length a' b')) ->
   (Eq Measure (Length b c) (Length b' c')) ->
   (Eq Measure (Angle a b c) (Angle a' b' c')) ->
@@ -3188,16 +3131,22 @@ let%expect_test "Elaborate env.ncg" =
           Forall (Const "Point",
             Forall (Const "Point",
               Forall (Const "Point",
-                Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                  Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                    Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
-                      Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                        Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 5), Bvar 4)),
-                          Forall (App (Const "Not", App (App (App (Const "Eq", Const "Point"), Bvar 7), Bvar 5)),
+                Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                  Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                    Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 5),
+                      Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                        Forall (App (App (App (Const "Ne", Const "Point"), Bvar 5), Bvar 4),
+                          Forall (App (App (App (Const "Ne", Const "Point"), Bvar 7), Bvar 5),
                             Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                               Forall (App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 11), Bvar 10)), App (App (Const "Length", Bvar 8), Bvar 7)),
                                 Forall (App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 11)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 8)),
-                                  App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 14), Bvar 12)), App (App (Const "Length", Bvar 11), Bvar 9))), App (App (Const "And", App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))), App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Area", Bvar 14), Bvar 13), Bvar 12)), App (App (App (Const "Area", Bvar 11), Bvar 10), Bvar 9))),
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (Const "Length", Bvar 14), Bvar 12)), App (App (Const "Length", Bvar 11), Bvar 9))),
+                                  App (App (Const "And",
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 13), Bvar 12), Bvar 14)), App (App (App (Const "Angle", Bvar 10), Bvar 9), Bvar 11))),
+                                  App (App (App (Const "Eq", Const "Measure"), App (App (App (Const "Angle", Bvar 12), Bvar 14), Bvar 13)), App (App (App (Const "Angle", Bvar 9), Bvar 11), Bvar 10)))))
                                 )
                               )
                             )
@@ -3215,20 +3164,7 @@ let%expect_test "Elaborate env.ncg" =
     )
     |}];
 
-  (* double_negation: (A: Prop) -> ((Not A) -> False) -> A *)
-  show_kterm "double_negation";
-  [%expect
-    {|
-    Forall (Sort 0,
-      Forall (Forall (App (Const "Not", Bvar 0),
-        Const "False"
-      ),
-        Bvar 1
-      )
-    )
-    |}];
-
-  (* Check kenv is empty at the end *)
-  if Hashtbl.length kenv <> 0 then (
-    Seq.iter print_endline (Hashtbl.to_seq_keys kenv);
+  (* Check unprocessed_decls is empty at the end *)
+  if Hashtbl.length unprocessed_decls <> 0 then (
+    Seq.iter print_endline (Hashtbl.to_seq_keys unprocessed_decls);
     [%expect.unreachable])

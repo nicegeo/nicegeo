@@ -1,5 +1,3 @@
-Definition Ne : (A: Type) -> A -> A -> Prop := fun A a b => a = b -> False
-Definition Iff : (P : Prop) -> (Q : Prop) -> Prop := fun P Q => (P -> Q) ∧ (Q -> P)
 Definition 0 : Measure := Zero
 Definition 90 : Measure := RightAngle
 
@@ -187,12 +185,12 @@ Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> a = b -> b = c -> a
 (* The two outer endpoints of a betweenness relation are distinct: B(a,b,c) implies a ≠ c. *)
 Theorem ne_13_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> a ≠ c :=
     fun a b c Babc => 
-    Not.elim _ (fst _ _ (snd _ _ (snd _ _ (between_distinct a b c Babc))))
+    fst _ _ (snd _ _ (snd _ _ (between_distinct a b c Babc)))
 
 (* The middle and right endpoints of a betweenness relation are distinct: B(a,b,c) implies b ≠ c. *)
 Theorem ne_23_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> b ≠ c :=
     fun a b c Babc => 
-    Ne.symm _ _ _ (Not.elim _ (fst _ _ (snd _ _ (between_distinct c b a (fst _ _ (between_distinct a b c Babc))))))
+    Ne.symm _ _ _ (fst _ _ (snd _ _ (between_distinct c b a (fst _ _ (between_distinct a b c Babc)))))
 
 (* Proposition 2 helper: the non-degenerate case (a ≠ b) of the compass-and-straightedge
    construction — builds the equilateral triangle on ab, then walks the target length

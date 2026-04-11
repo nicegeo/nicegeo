@@ -9,6 +9,8 @@ import {
 
 import { NiceGeoOutput } from "./core/output";
 import { NiceGeoStatusBar } from "./core/status";
+import type { ProofStateAtPayload } from "./core/proofStatePanel";
+import { ProofStateSidebarWebviewProvider } from "./core/proofStateSidebarWebview";
 
 type ServerStatusPayload =
   | { kind: "idle" }
@@ -18,6 +20,7 @@ type ServerStatusPayload =
 
 const STATUS_NOTIFICATION = "nicegeo/status";
 const RUN_DIAGNOSTICS_NOTIFICATION = "nicegeo/runDiagnostics";
+const PROOF_STATE_AT_REQUEST = "nicegeo/proofStateAt";
 
 export function activate(context: vscode.ExtensionContext) {
   const output = new NiceGeoOutput();
@@ -39,6 +42,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   const client = new LanguageClient("nicegeo", "NiceGeo Language Server", serverOptions, clientOptions);
   context.subscriptions.push(output, status, client);
+  const proofSidebarWebview = new ProofStateSidebarWebviewProvider();
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      "nicegeoProofStateWebview",
+      proofSidebarWebview,
+    ),
+  );
 
   output.appendLine("[nicegeo] extension activated");
   output.appendLine(`[nicegeo] starting language server: ${serverModule}`);
@@ -62,6 +72,34 @@ export function activate(context: vscode.ExtensionContext) {
       if (editor.document.languageId !== "nicegeo") return;
       await clientStart;
       client.sendNotification(RUN_DIAGNOSTICS_NOTIFICATION, { uri: editor.document.uri.toString() });
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.proofState.showPanel", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        void vscode.window.showWarningMessage("No active editor.");
+        return;
+      }
+      if (editor.document.languageId !== "nicegeo") {
+        void vscode.window.showWarningMessage("Open a NiceGeo (.ncg) file to show proof state.");
+        return;
+      }
+      await clientStart;
+      const pos = editor.selection.active;
+      try {
+        const result = await client.sendRequest<ProofStateAtPayload>(PROOF_STATE_AT_REQUEST, {
+          uri: editor.document.uri.toString(),
+          line: pos.line,
+          col: pos.character,
+        });
+        proofSidebarWebview.setData(result);
+        void vscode.commands.executeCommand("nicegeoProofStateWebview.focus");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        void vscode.window.showErrorMessage(`NiceGeo proof state: ${msg}`);
+      }
     }),
   );
 }
