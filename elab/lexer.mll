@@ -1,5 +1,18 @@
 {
 open Parser
+open Lexing
+(* Shift the file location information tracked by lexbuf back by n. This is necessary for correct file 
+locations in error messages because ocamllex is unicode-blind. For k-byte unicode characters that are 
+visually a single character, ocamllex shifts the position forward by k, so we shift it back by k-1. *)
+let shift_pos lexbuf n =
+  (* HACK: the generated lexer.ml calls Lexing.engine which hard-codes the update to pos_cnum, so 
+  without changing the generated lexer it is essentially tied to the byte position of the file. Instead,
+  we modify pos_bol, intended to be the byte offset of the current line, but as far as I can tell it is
+  not used anywhere by the lexer or parser (which just passes the position information). So we 
+  reinterpret the pos_bol field as "byte offset into file - visual offset into line" for error messages, 
+  which needs to be updated whenever the visual offset changes relative to the byte offset (i.e. whenever
+  there's a unicode character) by however many extra bytes the unicode character takes up. *)
+  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_bol = lexbuf.lex_curr_p.pos_bol + n }
 }
 
 let white = [' ' '\t' '\r']+
@@ -30,9 +43,9 @@ rule token = parse
   | "Import"     { IMPORT }
   | ":="         { DEFEQ }
   | "->"         { ARROW }
-  | "→"          { ARROW }
+  | "→"          { shift_pos lexbuf 2; ARROW }
   | "<->"        { IFF }
-  | "↔"          { IFF }
+  | "↔"          { shift_pos lexbuf 2; IFF }
   | "=>"         { MAPSTO }
   | ":"          { COLON }
   | "("          { LPAREN }
@@ -41,17 +54,17 @@ rule token = parse
   | "Prop"       { PROP }
   | "_" 	       { UNDERSCORE }
   | "="          { EQUALS }
-  | "≠"          { NOT_EQUALS }
+  | "≠"          { shift_pos lexbuf 2; NOT_EQUALS }
   | "<"          { LESS_THAN }
   | "+"          { PLUS }
   | "\\/"        { OR }
-  | "∨"          { OR }
+  | "∨"          { shift_pos lexbuf 2; OR }
   | "/\\"        { AND }
-  | "∧"          { AND }
+  | "∧"          { shift_pos lexbuf 2; AND }
   | "~"          { NOT }
-  | "¬"          { NOT }
-  | "∃"          { EXISTS }
-  | "∀"          { FORALL }
+  | "¬"          { shift_pos lexbuf 1; NOT }
+  | "∃"          { shift_pos lexbuf 2; EXISTS }
+  | "∀"          { shift_pos lexbuf 2; FORALL }
   | ","          { COMMA }
   | "#print"     { PRINT_DIRECTIVE }
   | "#infer"     { INFER_DIRECTIVE }
