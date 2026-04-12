@@ -99,7 +99,7 @@ let exact (tm : term) (st : proof_state) : tactic_result =
                  (pp_term st.elab_ctx inferred_ty)
                  (pp_term st.elab_ctx g.goal_type)))
 
-let set_hashtbl tbl1 tbl2 =
+let hashtbl_set tbl1 tbl2 =
   Hashtbl.clear tbl1;
   Hashtbl.iter (fun k v -> Hashtbl.replace tbl1 k v) tbl2
 
@@ -109,29 +109,19 @@ let apply (tm : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
   | Some g ->
-      (* let rec go (sol : term)  *)
       (* Create a copy of the metas state for restoration. This is required because the 
          tactic interface expects us to modify the passed in st.elab_ctx.metas as it does 
          not use the returned st.elab_ctx.metas. *)
       let metas = Hashtbl.copy st.elab_ctx.metas in
-      let sol = ref tm in
-      let goal_ids = ref [] in
-      let res = ref (Failure "unreachable") in
-      let running = ref true in
-      while !running do
-        (* restore metas state *)
-        set_hashtbl st.elab_ctx.metas metas;
-        create_metas st.elab_ctx !sol (List.map (fun h -> h.bid) g.lctx);
+      let lctx_bids = List.map (fun h -> h.bid) g.lctx in
+      let rec loop (sol : term) (goal_ids : int list) : tactic_result =
+        create_metas st.elab_ctx sol lctx_bids;
         try
-          let sol_ty = infertype st.elab_ctx g.lctx !sol in
+          let sol_ty = infertype st.elab_ctx g.lctx sol in
           try
             unify st.elab_ctx sol_ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
-            (* if unification succeeds, we're done *)
-            running := false;
-            print_endline
-              ("found solution "
-              ^ Elab.Pretty.term_to_string st.elab_ctx ~lctx:g.lctx !sol);
-            let st = assign_meta g.goal_id !sol st in
+            (* unification succeeded, set the solution and open goals *)
+            let st = assign_meta g.goal_id sol st in
             let st = close_goal g.goal_id st in
             let goals =
               List.map
@@ -141,22 +131,22 @@ let apply (tm : term) (st : proof_state) : tactic_result =
                     goal_type = (Hashtbl.find st.elab_ctx.metas id).ty |> Option.get;
                     goal_id = id;
                   })
-                (List.rev !goal_ids)
+                (List.rev goal_ids)
             in
-            let st = { st with open_goals = goals @ st.open_goals } in
-            res := Success st
+            Success { st with open_goals = goals @ st.open_goals }
           with Elab.Error.ElabError _ ->
-            (* this application didn't unify, try next *)
+            (* unification failed, try with another application term *)
+            (* restore metas state *)
+            hashtbl_set st.elab_ctx.metas metas;
             let subgoal_id = gen_hole_id () in
-            goal_ids := subgoal_id :: !goal_ids;
-            sol := mk_app !sol (mk_hole subgoal_id)
+            loop (mk_app sol (mk_hole subgoal_id)) (subgoal_id :: goal_ids)
         with Elab.Error.ElabError _ ->
-          (* error when inferring type of the application. probably means we're done *)
-          running := false;
-          res := Failure "application of term does not unify with the goal"
-      done;
-
-      !res
+          (* infertype failed so term is not well-typed, probably added too many terms so we are done *)
+          (* restore metas state *)
+          hashtbl_set st.elab_ctx.metas metas;
+          Failure "application of term does not unify with the goal"
+      in
+      loop tm []
 
 let ensure_sorry_ax (st : proof_state) : unit =
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then (
