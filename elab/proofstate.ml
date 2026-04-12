@@ -1,17 +1,8 @@
 open Term
 open Types
 
-type hyp = {
-  hyp_name : string;
-  hyp_bid : int;
-  hyp_def : term option; (*why is it an option? [needs to handle have x := expr ] *)
-  hyp_type : term;
-}
-
-type local_ctx = hyp list
-
 type goal = {
-  ctx : local_ctx;
+  lctx : local_ctx;
   goal_type : term;
   goal_id : int;
 }
@@ -33,12 +24,17 @@ let mk_arrow x bid ty ret = mk_term (Arrow (x, bid, ty, ret))
 let mk_fun x bid ty body = mk_term (Fun (x, bid, ty, body))
 let fresh_id () : int = gen_hole_id ()
 
-let fresh_goal (st : proof_state) (ctx : local_ctx) (ty : term) : term * proof_state =
+(** [fresh_goal st lctx ty] updates the proof state with a new open goal with goal state
+    [ty] and goal context [lctx]. Also returns the hole representing the goal. *)
+let fresh_goal (st : proof_state) (lctx : local_ctx) (ty : term) : term * proof_state =
   let id = fresh_id () in
   let hole = mk_hole id in
-  let context = List.map (fun h -> h.hyp_bid) ctx in
-  Hashtbl.replace st.elab_ctx.metas id { ty = Some ty; context; sol = None };
-  let g = { ctx; goal_type = ty; goal_id = id } in
+  let hole_context = List.map (fun h -> h.bid) lctx in
+  Hashtbl.replace
+    st.elab_ctx.metas
+    id
+    { ty = Some ty; context = hole_context; sol = None };
+  let g = { lctx; goal_type = ty; goal_id = id } in
   (hole, { st with open_goals = st.open_goals @ [ g ] })
 
 let close_goal (id : int) (st : proof_state) : proof_state =
@@ -59,7 +55,7 @@ let is_complete (st : proof_state) : bool = st.open_goals = []
 let init_state ~elab_ctx (ty : term) : proof_state =
   let id = fresh_id () in
   Hashtbl.replace elab_ctx.metas id { ty = Some ty; context = []; sol = None };
-  let g = { ctx = []; goal_type = ty; goal_id = id } in
+  let g = { lctx = []; goal_type = ty; goal_id = id } in
   { statement = mk_hole id; open_goals = [ g ]; elab_ctx }
 
 (** Apply current meta assignments throughout a term, chasing chains. Unsolved holes are
