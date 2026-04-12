@@ -18,7 +18,7 @@ let process_directive (e : ctx) (dir : directive) : unit =
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
       (* infer type *)
       let t = Typecheck.elaborate e t None in
-      let ty_term = Typecheck.infertype e t in
+      let ty_term = Typecheck.infertype e [] t in
       print_endline (prefix ^ "#infer: " ^ Pretty.term_to_string e ty_term)
   | Check (t, ty, loc) ->
       let prefix = "[" ^ Pretty.pp_loc loc ^ "] " in
