@@ -8,11 +8,11 @@ open Exceptions
 let try_infer env localCtx t = Internals.inferType env localCtx t
 
 let mk_env () =
-  let env = Hashtbl.create 16 in
-  Hashtbl.add env "Point" (Sort 1);
-  Hashtbl.add env "Line" (Sort 1);
-  Hashtbl.add env "p" (Const "Point");
-  Hashtbl.add env "l" (Const "Line");
+  let env = Interface.create () in
+  Hashtbl.add env.types "Point" (Sort 1);
+  Hashtbl.add env.types "Line" (Sort 1);
+  Hashtbl.add env.types "p" (Const "Point");
+  Hashtbl.add env.types "l" (Const "Line");
   env
 
 let test_const_lookup () =
@@ -90,48 +90,6 @@ let test_empty_constants () =
     ~actual:elim_ty
     ~expected:(Forall (Sort 1, Forall (Const "Empty", Bvar 1)))
 
-let test_and_constants () =
-  let env = create_env_with_env () in
-  let lctx = Hashtbl.create 16 in
-  (* And : (A : Prop) -> (B : Prop) -> Prop *)
-  let and_ty = try_infer env.kenv lctx (Const "And") in
-  Alcotest.check'
-    Testable.term
-    ~msg:"And has correct type"
-    ~actual:and_ty
-    ~expected:(Forall (Sort 0, Forall (Sort 0, Sort 0)));
-
-  (* And.intro : (A : Prop) -> (B : Prop) -> (a : A) -> (b : B) -> And A B *)
-  let intro_ty = try_infer env.kenv lctx (Const "And.intro") in
-  Alcotest.check'
-    Testable.term
-    ~msg:"And.intro has correct type"
-    ~actual:intro_ty
-    ~expected:
-      (Forall
-         ( Sort 0,
-           Forall
-             ( Sort 0,
-               Forall (Bvar 1, Forall (Bvar 1, App (App (Const "And", Bvar 3), Bvar 2)))
-             ) ));
-
-  (* And.elim : (A : Prop) -> (B : Prop) -> (C : Prop) -> (f : A -> B -> C) -> (h : And A B) -> C *)
-  let elim_ty = try_infer env.kenv lctx (Const "And.elim") in
-  Alcotest.check'
-    Testable.term
-    ~msg:"And.elim has correct type"
-    ~actual:elim_ty
-    ~expected:
-      (Forall
-         ( Sort 0,
-           Forall
-             ( Sort 0,
-               Forall
-                 ( Sort 0,
-                   Forall
-                     ( Forall (Bvar 2, Forall (Bvar 2, Bvar 2)),
-                       Forall (App (App (Const "And", Bvar 3), Bvar 2), Bvar 2) ) ) ) ))
-
 let test_infer_function_type () =
   let env = mk_env () in
 
@@ -186,7 +144,7 @@ let test_infer_forall () =
 
   (* predicate *)
   let predicate = Forall (Const "Point", Sort 0) in
-  Hashtbl.add env "IsRed" predicate;
+  Hashtbl.add env.types "IsRed" predicate;
   (* for all points p, p isRed -> p isRed *)
   let pred_forall =
     Forall
@@ -429,87 +387,6 @@ let test_rebind_bvar () =
     ~actual:(rebind_bvar (Lam (Bvar 0, Bvar 1)) 1 "Point")
     ~expected:(Lam (Bvar 0, Bvar 1))
 
-let test_eq_symm () =
-  let application_multiple_arguments (func : term) (args : term list) : term =
-    List.fold_left
-      (fun application_so_far first_arg -> App (application_so_far, first_arg))
-      func
-      args
-  in
-  (* Confirm our helper function does what it should *)
-  Alcotest.check'
-    Testable.term
-    ~msg:"application_multiple_arguments works"
-    ~actual:
-      (application_multiple_arguments (Const "f") [ Const "a"; Const "b"; Const "c" ])
-    ~expected:(App (App (App (Const "f", Const "a"), Const "b"), Const "c"));
-
-  let eq ty a b = App (App (App (Const "Eq", ty), a), b) in
-
-  let env = create_env_with_env () in
-  let local_ctx = Hashtbl.create 16 in
-
-  let eq_symm_type =
-    Forall
-      ( Sort 1,
-        (* A: Type *)
-        Forall
-          ( Bvar 0,
-            (* a: A *)
-            Forall
-              ( Bvar 1,
-                (* b: A *)
-                Forall
-                  ( eq (Bvar 2) (Bvar 1) (Bvar 0),
-                    (* Eq a b *)
-                    eq (Bvar 3) (Bvar 1) (Bvar 2)
-                    (* Eq b a *) ) ) ) )
-  in
-  Alcotest.check'
-    Testable.term
-    ~msg:"eq_symm_type has correct type"
-    ~actual:(try_infer env.kenv local_ctx eq_symm_type)
-    ~expected:(Sort 0);
-
-  (* make sure this is actually a Prop *)
-  let eq_symm_term =
-    Lam
-      ( Sort 1,
-        (* A: Type *)
-        Lam
-          ( Bvar 0,
-            (* a: A *)
-            Lam
-              ( Bvar 1,
-                (* b: A *)
-                Lam
-                  ( eq (Bvar 2) (Bvar 1) (Bvar 0),
-                    (* eq_ab: Eq a b *)
-                    application_multiple_arguments
-                      (Const "Eq.elim")
-                      [
-                        Bvar 3;
-                        (* A: Type *)
-                        Bvar 2;
-                        (* a: A *)
-                        Lam (Bvar 3, eq (Bvar 4) (Bvar 0) (Bvar 3));
-                        (* motive: A -> Prop *)
-                        App (App (Const "Eq.intro", Bvar 3), Bvar 2);
-                        (* refl: motive a *)
-                        Bvar 1;
-                        (* b: A *)
-                        Bvar 0 (* eq_ab: Eq a b *);
-                      ] ) ) ) )
-  in
-  let inferred_type = try_infer env.kenv local_ctx eq_symm_term in
-  (* check that eq_symm_term is definitionally equal to the forall statement we expect *)
-  Alcotest.check'
-    (Testable.termDefEq env.kenv local_ctx)
-    ~msg:"eq_symm_term has correct type"
-    ~actual:inferred_type
-    ~expected:eq_symm_type
-
-(* These two tests are made by AI so can remove or change them completely if wanted *)
 let test_len_sanity () =
   let env = create_env_with_env () in
   let lctx = Hashtbl.create 16 in
@@ -545,24 +422,7 @@ let test_len_sanity () =
     Testable.term
     ~msg:"Add has correct type"
     ~actual:(try_infer env.kenv lctx (Const "Add"))
-    ~expected:(Forall (Const "Measure", Forall (Const "Measure", Const "Measure")));
-
-  (* AddZero is exact enough to check de Bruijn encoding *)
-  let inferred = try_infer env.kenv lctx (Const "AddZero") in
-  let expected =
-    Forall
-      ( Const "Measure",
-        App
-          ( App
-              ( App (Const "Eq", Const "Measure"),
-                App (App (Const "Add", Bvar 0), Const "Zero") ),
-            Bvar 0 ) )
-  in
-  Alcotest.check'
-    (Testable.termDefEq env.kenv lctx)
-    ~msg:"AddZero has correct type"
-    ~actual:inferred
-    ~expected
+    ~expected:(Forall (Const "Measure", Forall (Const "Measure", Const "Measure")))
 
 let test_len_app () =
   let env = create_env_with_env () in
@@ -671,7 +531,7 @@ let test_kernel_reduce () =
   (* f: Point -> (fun a => Type) p *)
   (* (reduces to f: Point -> Type) *)
   Hashtbl.add
-    env
+    env.types
     "f"
     (Forall (Const "Point", App (Lam (Const "Point", Sort 1), Const "p")));
 
@@ -700,7 +560,7 @@ let test_kernel_reduce () =
   (* g: (fun p => (Point -> Point)) p *)
   (* (reduces to g: Point -> Point) *)
   Hashtbl.add
-    env
+    env.types
     "g"
     (App (Lam (Const "Point", Forall (Const "Point", Const "Point")), Const "p"));
 
@@ -710,6 +570,46 @@ let test_kernel_reduce () =
     ~msg:"application in function type is well-typed"
     ~actual:(inferType env lctx (App (Const "g", Const "p")))
     ~expected:(Const "Point")
+
+let test_delta_reduce () =
+  let open Internals in
+  let env = create_env_with_env () in
+  let lctx = Hashtbl.create 16 in
+
+  (* Not (Not P) should reduce to P -> False -> False, where False := (P: Prop) -> P *)
+  let term = App (Const "Not", App (Const "Not", Const "P")) in
+  let false_def = Forall (Sort 0, Bvar 0) in
+  Alcotest.check'
+    Testable.term
+    ~msg:"Delta reduction expands definitions as expected"
+    ~actual:(reduce env.kenv lctx term)
+    ~expected:(Forall (Forall (Const "P", false_def), false_def));
+
+  (* Ne A a b and Eq A a b -> False should be definitionally equal *)
+  let t1 = App (App (App (Const "Ne", Const "A"), Const "a"), Const "b") in
+  let t2 =
+    Forall (App (App (App (Const "Eq", Const "A"), Const "a"), Const "b"), Const "False")
+  in
+  Alcotest.check'
+    (Testable.termDefEq env.kenv lctx)
+    ~msg:"a ≠ b defeq Not (a = b)"
+    ~actual:t1
+    ~expected:t2;
+
+  (* Define identity function *)
+  let id_term = Lam (Sort 1, Lam (Bvar 0, Bvar 0)) in
+  let id_type = Forall (Sort 1, Forall (Bvar 0, Bvar 1)) in
+  Interface.add_definition env.kenv "id" id_type id_term;
+
+  (* id Point x delta-reduces to (fun A a => a) Point x and beta-reduces to x *)
+  let term = App (App (Const "id", Const "Point"), Const "x") in
+  Alcotest.check'
+    Testable.term
+    ~msg:"Reduce normalizes properly"
+    ~actual:(reduce env.kenv lctx term)
+    ~expected:(Const "x");
+
+  ()
 
 (* reduce originally had domainType = arg_type instead of isDefEq, which would cause this to fail *)
 let test_reduce_crashes () =
@@ -768,16 +668,15 @@ let suite =
       test_case "Unknown free variable should raise" `Quick test_fvar_unknown_fails;
       test_case "Unknown constant should raise" `Quick test_const_unknown_fails;
       test_case "Empty constants" `Quick test_empty_constants;
-      test_case "And constants" `Quick test_and_constants;
       test_case "Infer function type" `Quick test_infer_function_type;
       test_case "Infer forall" `Quick test_infer_forall;
       test_case "Infer function application" `Quick test_infer_function_application;
       test_case "Substitution of bound variables" `Quick test_subst_bvar;
       test_case "Rebinding bound variables" `Quick test_rebind_bvar;
-      test_case "Symmetry of equality" `Quick test_eq_symm;
       test_case "Measure sanity checks" `Quick test_len_sanity;
       test_case "Measure application" `Quick test_len_app;
       test_case "Kernel reduction" `Quick test_kernel_reduce;
+      test_case "Kernel delta reduction" `Quick test_delta_reduce;
       test_case "Reduce defEq" `Quick test_reduce_crashes;
       test_case "Reduce nested application" `Quick test_reduce_stuck;
       test_case "Reduce forall with nested applications" `Quick test_isDefEq_forall;

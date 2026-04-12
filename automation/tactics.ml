@@ -48,9 +48,6 @@ let rec def_eq (e : ctx) (t1 : term) (t2 : term) : bool =
       def_eq e ty1 ty2 && def_eq e r1 (Elab.Reduce.subst e r2 (Bvar bid2) (Bvar bid1))
   | _ -> false
 
-(* Used by future tactics that need to pass the in-scope bids when creating subgoals. *)
-let _goal_stack (g : goal) : int list = List.map (fun h -> h.hyp_bid) g.ctx
-
 let destruct_eq (e : ctx) (t : term) : term * term * term =
   let t = beta_nf e t in
   match t.inner with
@@ -80,44 +77,27 @@ let reflexivity (st : proof_state) : tactic_result =
              (pp_term st.elab_ctx rhs))
 (* need to map to existing error categories*)
 
-(** [infertype] looks up [Bvar] nodes in [lctx]. Hypotheses live in the goal's local
-    context but are not in [lctx] yet — populate it for the duration of [f], then remove
-    them so we leave [lctx] exactly as we found it. *)
-let with_hyps (st : proof_state) (g : goal) (f : unit -> tactic_result) : tactic_result =
-  let cleanup () = List.iter (fun h -> Hashtbl.remove st.elab_ctx.lctx h.hyp_bid) g.ctx in
-  List.iter
-    (fun h -> Hashtbl.add st.elab_ctx.lctx h.hyp_bid (Some h.hyp_name, h.hyp_type))
-    g.ctx;
-  try
-    let result = f () in
-    cleanup ();
-    result
-  with exn ->
-    cleanup ();
-    raise exn
-
 let exact (tm : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
   | Some g ->
-      with_hyps st g (fun () ->
-          (* Catch ill-typed or unknown-name errors from infertype as Failure
-           rather than letting them escape as exceptions. *)
-          _catch_elab st.elab_ctx (fun () ->
-              (* Ask the elaborator what type [tm] actually has. *)
-              let inferred_ty = Elab.Typecheck.infertype st.elab_ctx tm in
-              (* Accept if the inferred type is definitionally equal to the goal type
-             (beta-reduces both sides before comparing). *)
-              if def_eq st.elab_ctx inferred_ty g.goal_type then
-                let st = assign_meta g.goal_id tm st in
-                let st = close_goal g.goal_id st in
-                succeed st
-              else
-                fail
-                  (Printf.sprintf
-                     "exact: term has type '%s' but goal is '%s'."
-                     (pp_term st.elab_ctx inferred_ty)
-                     (pp_term st.elab_ctx g.goal_type))))
+      (* Catch ill-typed or unknown-name errors from infertype as Failure
+        rather than letting them escape as exceptions. *)
+      _catch_elab st.elab_ctx (fun () ->
+          (* Ask the elaborator what type [tm] actually has. *)
+          let inferred_ty = Elab.Typecheck.infertype st.elab_ctx g.lctx tm in
+          (* Accept if the inferred type is definitionally equal to the goal type
+          (beta-reduces both sides before comparing). *)
+          if def_eq st.elab_ctx inferred_ty g.goal_type then
+            let st = assign_meta g.goal_id tm st in
+            let st = close_goal g.goal_id st in
+            succeed st
+          else
+            fail
+              (Printf.sprintf
+                 "exact: term has type '%s' but goal is '%s'."
+                 (pp_term st.elab_ctx inferred_ty)
+                 (pp_term st.elab_ctx g.goal_type)))
 
 (** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
     and opens a new subgoal for [A]. *)
@@ -128,14 +108,16 @@ let apply (tm : term) (st : proof_state) : tactic_result =
       let subgoal_id = gen_hole_id () in
       let sol = mk_app tm (mk_hole subgoal_id) in
       try
-        create_metas st.elab_ctx sol (List.map (fun h -> h.hyp_bid) g.ctx);
-        let sol_ty = infertype st.elab_ctx sol in
+        create_metas st.elab_ctx sol (List.map (fun h -> h.bid) g.lctx);
+        let sol_ty = infertype st.elab_ctx g.lctx sol in
         unify st.elab_ctx sol_ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
         (* basically check that all the holes in tm are filled *)
         ignore (replace_metas st.elab_ctx tm);
         match (Hashtbl.find st.elab_ctx.metas subgoal_id).ty with
         | Some subgoal_ty ->
-            let subgoal = { ctx = g.ctx; goal_type = subgoal_ty; goal_id = subgoal_id } in
+            let subgoal =
+              { lctx = g.lctx; goal_type = subgoal_ty; goal_id = subgoal_id }
+            in
             let st = { st with open_goals = st.open_goals @ [ subgoal ] } in
             let st = assign_meta g.goal_id sol st in
             let st = close_goal g.goal_id st in
@@ -152,7 +134,7 @@ let ensure_sorry_ax (st : proof_state) : unit =
       st.elab_ctx.env
       "sorry_ax"
       { name = "sorry_ax"; ty = elab_ty; data = Axiom };
-    Hashtbl.add st.elab_ctx.kenv "sorry_ax" k_ty)
+    Hashtbl.add st.elab_ctx.kenv.types "sorry_ax" k_ty)
 
 let sorry (st : proof_state) : tactic_result =
   match current_goal st with
@@ -174,18 +156,16 @@ let intro (name : string) (st : proof_state) : tactic_result =
           let hole_id = fresh_id () in
           let hole = mk_hole hole_id in
           let proof_term = mk_fun (Some name) bid premise_ty hole in
+          let new_hyp = { name = Some name; bid; ty = premise_ty } in
           let st_assigned = assign_meta g.goal_id proof_term st in
-          let new_hyp =
-            { hyp_name = name; hyp_bid = bid; hyp_def = None; hyp_type = premise_ty }
-          in
-          let new_ctx_bids = bid :: List.map (fun h -> h.hyp_bid) g.ctx in
-          Hashtbl.replace st.elab_ctx.lctx bid (Some name, premise_ty);
+          let new_lctx = new_hyp :: g.lctx in
+          let new_ctx_bids = List.map (fun h -> h.bid) new_lctx in
           Hashtbl.replace
             st.elab_ctx.metas
             hole_id
             { ty = Some conclusion_ty; context = new_ctx_bids; sol = None };
           let new_goal =
-            { ctx = new_hyp :: g.ctx; goal_type = conclusion_ty; goal_id = hole_id }
+            { lctx = new_lctx; goal_type = conclusion_ty; goal_id = hole_id }
           in
           let remaining_goals = List.tl st_assigned.open_goals in
           Success { st_assigned with open_goals = new_goal :: remaining_goals }
@@ -202,7 +182,7 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
       let cont_ty = mk_arrow (Some name) bid ty g.goal_type in
       let proof_id = fresh_id () in
       let cont_id = fresh_id () in
-      let ctx_bids = List.map (fun h -> h.hyp_bid) g.ctx in
+      let ctx_bids = List.map (fun h -> h.bid) g.lctx in
       Hashtbl.replace
         st.elab_ctx.metas
         proof_id
@@ -215,8 +195,8 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
       let cont_hole = mk_hole cont_id in
       let app_term = mk_app cont_hole proof_hole in
       let st_assigned = assign_meta g.goal_id app_term st in
-      let proof_goal = { ctx = g.ctx; goal_type = ty; goal_id = proof_id } in
-      let cont_goal = { ctx = g.ctx; goal_type = cont_ty; goal_id = cont_id } in
+      let proof_goal = { lctx = g.lctx; goal_type = ty; goal_id = proof_id } in
+      let cont_goal = { lctx = g.lctx; goal_type = cont_ty; goal_id = cont_id } in
       let remaining_goals = List.tl st_assigned.open_goals in
 
       Success { st_assigned with open_goals = proof_goal :: cont_goal :: remaining_goals }
@@ -291,13 +271,13 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
   | Some g -> (
-      let t_ty = beta_nf st.elab_ctx (infertype st.elab_ctx t) in
+      let t_ty = beta_nf st.elab_ctx (infertype st.elab_ctx g.lctx t) in
       let eq_ty, lhs, rhs = destruct_eq st.elab_ctx t_ty in
       let motives = get_rewrite_motives st.elab_ctx g.goal_type eq_ty lhs in
       match motives with
       | p :: _ ->
           let new_goal_ty = mk_app p rhs in
-          let new_hole, st = fresh_goal st g.ctx new_goal_ty in
+          let new_hole, st = fresh_goal st g.lctx new_goal_ty in
           (* Eq.symm A lhs rhs t *)
           let sym =
             mk_app (mk_app (mk_app (mk_app (mk_name "Eq.symm") eq_ty) lhs) rhs) t
@@ -322,16 +302,10 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
-(* This is like with_hyps, but uses a copy of the hashmap to avoid the mess *)
-let add_local_hyps g ctx =
-  let locals = Hashtbl.copy ctx.lctx in
-  List.iter (fun h -> Hashtbl.add locals h.hyp_bid (Some h.hyp_name, h.hyp_type)) g.ctx;
-  { ctx with lctx = locals }
-
 (* This adds a hole of the desired type, again using a copy of the hashmap *)
 let add_hole g hole_id ty ctx =
   let metas = Hashtbl.copy ctx.metas in
-  let ctx_bids = List.map (fun h -> h.hyp_bid) g.ctx in
+  let ctx_bids = List.map (fun h -> h.bid) g.lctx in
   Hashtbl.replace metas hole_id { ty = Some ty; context = ctx_bids; sol = None };
   { ctx with metas }
 
@@ -362,15 +336,14 @@ let infer_motive (exists_type : term) (g : goal) ctx : term option =
 let exists (a : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | Some g -> (
-      let ctx = add_local_hyps g st.elab_ctx in
       (* infer A *)
-      let exists_type = Elab.Typecheck.infertype ctx a in
+      let exists_type = Elab.Typecheck.infertype st.elab_ctx g.lctx a in
       (* infer the motive p *)
-      match infer_motive exists_type g ctx with
+      match infer_motive exists_type g st.elab_ctx with
       | Some p ->
           (* update the goal to (p a) *)
           let new_goal_ty = mk_app p a in
-          let new_hole, st = fresh_goal st g.ctx new_goal_ty in
+          let new_hole, st = fresh_goal st g.lctx new_goal_ty in
           (* construct the proof term *)
           let proof =
             mk_app
@@ -398,7 +371,7 @@ let register () =
         raise
           (Elab.Error.ElabError
              {
-               context = { loc = Some ty.loc; decl_name = None };
+               context = { loc = Some ty.loc; decl_name = None; lctx = None };
                error_type =
                  Elab.Error.InvalidTacticParameter
                    "Expected an identifier, but got a term";
@@ -416,6 +389,7 @@ let register () =
                          end_ = (List.hd (List.rev args)).loc.end_;
                        };
                    decl_name = None;
+                   lctx = None;
                  };
                error_type =
                  Elab.Error.InvalidTacticParameter

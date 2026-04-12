@@ -104,16 +104,17 @@ let load_default_env_for_paths (reference_file : string) : Types.ctx =
   env
 
 let extract_head_binders (ectx : Types.ctx) (ty : Term.term) : (string * string) list =
-  let rec go acc (t : Term.term) =
+  let rec go acc lctx (t : Term.term) =
     match t.inner with
     | Term.Arrow (arg_name_opt, bid, ty_arg, ty_ret) ->
-        Hashtbl.replace ectx.lctx bid (arg_name_opt, ty_arg);
+        (* Hashtbl.replace ectx.lctx bid (arg_name_opt, ty_arg); *)
+        let lctx = Types.{ bid; ty = ty_arg; name = arg_name_opt } :: lctx in
         let name = match arg_name_opt with Some s -> s | None -> "_" in
-        let ty_str = Proofstate.pp_term ectx ty_arg in
-        go (acc @ [ (name, ty_str) ]) ty_ret
+        let ty_str = Pretty.term_to_string ectx ~lctx ty_arg in
+        go (acc @ [ (name, ty_str) ]) lctx ty_ret
     | _ -> acc
   in
-  go [] ty
+  go [] [] ty
 
 let snapshot_environment (e : Types.ctx) : env_item list =
   Hashtbl.fold
@@ -124,7 +125,7 @@ let snapshot_environment (e : Types.ctx) : env_item list =
         | Types.Theorem _ -> "theorem"
         | Types.Def _ -> "definition"
       in
-      let ty_str = Proofstate.pp_term e entry.ty in
+      let ty_str = Pretty.term_to_string e entry.ty in
       { env_name = name; env_kind = kind; env_ty = ty_str } :: acc)
     e.env
     []
@@ -134,20 +135,15 @@ let snapshot_metas (e : Types.ctx) : meta_item list =
   Hashtbl.fold
     (fun mid (m : Types.metavar) acc ->
       let ty_s =
-        match m.ty with Some t -> Some (Proofstate.pp_term e t) | None -> None
+        match m.ty with Some t -> Some (Pretty.term_to_string e t) | None -> None
       in
       let sol_s =
-        match m.sol with Some t -> Some (Proofstate.pp_term e t) | None -> None
+        match m.sol with Some t -> Some (Pretty.term_to_string e t) | None -> None
       in
       { meta_id = mid; meta_ty = ty_s; meta_sol = sol_s; meta_context = m.context } :: acc)
     e.metas
     []
   |> List.sort (fun a b -> compare a.meta_id b.meta_id)
-
-let restore_lctx (dst : Types.ctx) (saved : (int, string option * Term.term) Hashtbl.t) :
-    unit =
-  Hashtbl.clear dst.lctx;
-  Hashtbl.iter (Hashtbl.add dst.lctx) saved
 
 let snapshot_proofstate (filename : string) (line : int) (col : int) :
     proofstate_snapshot option =
@@ -182,17 +178,14 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
       | [] -> None
       | g :: _ ->
           let metas = snapshot_metas st.elab_ctx in
-          let lctx0 = Hashtbl.copy st.elab_ctx.lctx in
           let gty = g.goal_type in
           let gty_red = Reduce.reduce st.elab_ctx gty in
-          let goal_type = Proofstate.pp_term st.elab_ctx gty in
-          let goal_type_reduced = Proofstate.pp_term st.elab_ctx gty_red in
+          let goal_type = Pretty.term_to_string st.elab_ctx gty in
+          let goal_type_reduced = Pretty.term_to_string st.elab_ctx gty_red in
           let head_context =
-            restore_lctx st.elab_ctx lctx0;
             extract_head_binders st.elab_ctx gty_red
             |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
           in
-          restore_lctx st.elab_ctx lctx0;
           let term_context =
             match d.kind with
             | Statement.Theorem (Statement.DefEq proof_tm) | Statement.Def proof_tm ->
@@ -203,42 +196,49 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
                 if not cursor_in_proof then []
                 else
                   let term_context =
-                    let rec go acc (t : Term.term) : (string * string) list =
+                    let rec go acc lctx (t : Term.term) : (string * string) list =
                       if not (range_contains t.loc line col) then acc
                       else
                         match t.inner with
                         | Term.Fun (arg_name_opt, bid, ty_arg, body) ->
-                            if range_contains ty_arg.loc line col then go acc ty_arg
-                            else (
-                              Hashtbl.replace st.elab_ctx.lctx bid (arg_name_opt, ty_arg);
-                              let ty_str = Proofstate.pp_term st.elab_ctx ty_arg in
-                              let name =
-                                match arg_name_opt with Some s -> s | None -> "_"
+                            if range_contains ty_arg.loc line col then go acc lctx ty_arg
+                            else
+                              let ty_str =
+                                Pretty.term_to_string st.elab_ctx ~lctx ty_arg
                               in
-                              go (acc @ [ (name, ty_str) ]) body)
+                              let name = Option.value ~default:"_" arg_name_opt in
+                              let new_lctx =
+                                Types.{ name = Some name; ty = ty_arg; bid } :: lctx
+                              in
+                              go (acc @ [ (name, ty_str) ]) new_lctx body
                         | Term.Arrow (arg_name_opt, bid, ty_arg, ret) ->
-                            if range_contains ty_arg.loc line col then go acc ty_arg
-                            else (
-                              Hashtbl.replace st.elab_ctx.lctx bid (arg_name_opt, ty_arg);
-                              let ty_str = Proofstate.pp_term st.elab_ctx ty_arg in
-                              let name =
-                                match arg_name_opt with Some s -> s | None -> "_"
+                            if range_contains ty_arg.loc line col then go acc lctx ty_arg
+                            else
+                              let ty_str =
+                                Pretty.term_to_string st.elab_ctx ~lctx ty_arg
                               in
-                              go (acc @ [ (name, ty_str) ]) ret)
+                              let name = Option.value ~default:"_" arg_name_opt in
+                              let new_lctx =
+                                Types.{ name = Some name; ty = ty_arg; bid } :: lctx
+                              in
+                              go (acc @ [ (name, ty_str) ]) new_lctx ret
                         | Term.App (f, arg) ->
-                            if range_contains f.loc line col then go acc f else go acc arg
+                            if range_contains f.loc line col then go acc lctx f
+                            else go acc lctx arg
                         | _ -> acc
                     in
-                    go [] proof_tm
+                    go [] [] proof_tm
                   in
                   term_context |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
             | Statement.Theorem (Statement.Proof _) -> []
             | Statement.Axiom -> []
           in
           let hyps =
-            g.ctx
-            |> List.map (fun (h : Proofstate.hyp) ->
-                (h.hyp_name, h.hyp_bid, Proofstate.pp_term st.elab_ctx h.hyp_type))
+            g.lctx
+            |> List.map (fun (h : Types.lctx_entry) ->
+                ( Option.value ~default:"_" h.name,
+                  h.bid,
+                  Proofstate.pp_term st.elab_ctx h.ty ))
           in
           Some
             {
