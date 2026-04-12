@@ -40,7 +40,6 @@ let () =
           print_endline
             ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
           print_endline "";
-          Hashtbl.clear env.lctx;
           true)
       stmts
   in
