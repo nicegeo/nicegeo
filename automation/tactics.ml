@@ -100,11 +100,22 @@ let exact (tm : term) (st : proof_state) : tactic_result =
                  (pp_term st.elab_ctx g.goal_type)))
 
 let hashtbl_set tbl1 tbl2 =
-  Hashtbl.clear tbl1;
-  Hashtbl.iter (fun k v -> Hashtbl.replace tbl1 k v) tbl2
+  if tbl1 != tbl2 then (
+    Hashtbl.clear tbl1;
+    Hashtbl.iter (fun k v -> Hashtbl.replace tbl1 k v) tbl2
+  )
 
-(** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
-    and opens a new subgoal for [A]. *)
+(** [apply tm st] attempts to solve the current goal by applying [tm].
+
+    The tactic repeatedly tries [tm], [tm ?m1], [tm ?m1 ?m2], ... by introducing fresh
+    metavariables as arguments until the inferred type of the application unifies with the
+    goal type. On success it assigns the current goal to the application term and opens
+    one subgoal per introduced metavariable (in argument order), each under the current
+    local context.
+
+    Metavariable assignments produced by unsuccessful attempts are discarded by restoring
+    the original metavariable table before trying the next application. If no application
+    shape yields a well-typed term that unifies with the goal, the tactic fails. *)
 let apply (tm : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
