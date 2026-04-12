@@ -102,8 +102,7 @@ let exact (tm : term) (st : proof_state) : tactic_result =
 let hashtbl_set tbl1 tbl2 =
   if tbl1 != tbl2 then (
     Hashtbl.clear tbl1;
-    Hashtbl.iter (fun k v -> Hashtbl.replace tbl1 k v) tbl2
-  )
+    Hashtbl.iter (fun k v -> Hashtbl.replace tbl1 k v) tbl2)
 
 (** [apply tm st] attempts to solve the current goal by applying [tm].
 
