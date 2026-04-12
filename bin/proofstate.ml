@@ -188,7 +188,10 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           in
           let term_context =
             match d.kind with
-            | Statement.Theorem (Statement.DefEq proof_tm) ->
+            | Statement.Theorem (Statement.DefEq proof_tm) | Statement.Def proof_tm ->
+                let proof_tm =
+                  Typecheck.elaborate env_before_decl proof_tm (Some goal_ty_tm)
+                in
                 let cursor_in_proof = range_contains proof_tm.loc line col in
                 if not cursor_in_proof then []
                 else
@@ -228,7 +231,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
                   in
                   term_context |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
             | Statement.Theorem (Statement.Proof _) -> []
-            | _ -> []
+            | Statement.Axiom -> []
           in
           let hyps =
             g.lctx
@@ -398,6 +401,7 @@ let run (prog : string) (args : string list) : unit =
       exit 2
   | Some (use_json, filename, line, col) -> (
       try
+        Automation.Tactics.register ();
         match snapshot_proofstate filename line col with
         | None ->
             if use_json then
