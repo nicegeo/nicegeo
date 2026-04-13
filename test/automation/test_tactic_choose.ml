@@ -40,7 +40,9 @@ let to_kterm env tm =
   Elab.Reduce.delta_reduce env tm |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
-let _kernel_check env proof goal_ty =
+let kernel_check env proof goal_ty =
+  Printf.printf "%s\n" (pp_term env proof);
+  Printf.printf "%s\n" (pp_term env (replace_metas env proof));
   let proof_k = to_kterm env (replace_metas env proof) in
   let ty_k = to_kterm env (replace_metas env goal_ty) in
   try
@@ -50,15 +52,34 @@ let _kernel_check env proof goal_ty =
   with Kernel.Exceptions.TypeError _ -> false
 
 (** Test for a simple usage of "choose" using just the global context *)
-let test_choose_simple () =
+let test_choose_global () =
   let env, _ = make_env () in
   let st = init_state ~elab_ctx:env (elab env "A") in
   let st = run_tactic (choose (elab env "E")) st in
+  (* check that the goal is the same as before *)
   Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
-  let got = pp_term env (Elab.Reduce.reduce env (List.hd st.open_goals).goal_type) in
+  let goal = List.hd st.open_goals in
+  let got = pp_term env (Elab.Reduce.reduce env goal.goal_type) in
   let exp = pp_term env (elab env "A") in
-  Alcotest.(check string) "new goal is still A" exp got
-(* TODO test for new hypotheses, etc, try to close goal; move on to more complicated tests *)
+  Alcotest.(check string) "new goal is still A" exp got;
+  (* check for the newly added hypotheses *)
+  match goal.lctx with
+  | [hyp_1; hyp_2] ->
+      let a_typ = pp_term env hyp_1.ty in
+      let h = pp_term env (Elab.Reduce.reduce env hyp_2.ty) in
+      Alcotest.(check string) "first hypothesis has type A" exp a_typ;
+      let exp = pp_term env (elab env "True") in
+      Alcotest.(check string) "second hypothesis has type True" exp h;
+      (* finish the proof and do a kernel term check *)
+      let st = run_tactic (exact (mk_bvar hyp_1.bid)) st in (* TODO fails *)
+      Alcotest.(check bool) "no remaining goals" true (is_complete st);
+      Alcotest.(check bool)
+        "kernel accepts proof"
+        true
+        (kernel_check env st.statement goal.goal_type)
+  | _ -> Alcotest.fail "expected two hypotheses in the local context"
+
+(* TODO the above, but apply the hypothesis *)
 
 (* Check that `exists` can infer the motive properly referencing something in the local
    context *)
@@ -133,8 +154,6 @@ let suite =
   let open Alcotest in
   ( "Tactic.choose",
     [
-      test_case "choose simple" `Quick test_choose_simple;
-     (* test_case "exists unifies with local context" `Quick test_exists_lctx;
-      test_case "exists unification test 2" `Quick test_exists_unify;
-        test_case "exists kernel check" `Quick test_exists_kernel_check;*)
+      test_case "choose global context" `Quick test_choose_global;
+      (*test_case "choose unifies with local context" `Quick test_choose_local;*)
     ] )

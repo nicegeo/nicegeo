@@ -92,6 +92,7 @@ let exact (tm : term) (st : proof_state) : tactic_result =
           (* here lean's refine would instead open a goal for each unfilled hole *)
           ignore (replace_metas st.elab_ctx tm);
           let st = assign_meta g.goal_id tm st in
+          Printf.printf "term: %s\n\n" (pp_term st.elab_ctx tm);
           let st = close_goal g.goal_id st in
           succeed st)
 
@@ -388,10 +389,11 @@ let choose (e : term) (st : proof_state) : tactic_result =
           (* define new hypotheses *)
           let bid_a_typ = Elab.Term.gen_binder_id () in
           let hyp_a_typ = { name = None; bid = bid_a_typ; ty = a_typ } in
-          let bid_p = Elab.Term.gen_binder_id () in
-          let hyp_p = { name = None; bid = bid_p; ty = p } in
-          let lctx = hyp_a_typ :: hyp_p :: g.lctx in
-          let g = { g with lctx } in
+          let bid_h = Elab.Term.gen_binder_id () in
+          let ty = mk_app p (mk_bvar bid_a_typ) in
+          let hyp_h = { name = None; bid = bid_h; ty } in
+          let lctx = hyp_a_typ :: hyp_h :: g.lctx in
+          let g = { g with lctx } in (* TODO is hyp order OK? *)
           (* construct the proof term *)
           let new_hole, st = fresh_goal st g.lctx g.goal_type in
           let proof =
@@ -401,11 +403,13 @@ let choose (e : term) (st : proof_state) : tactic_result =
                     (mk_app (mk_app (mk_name "Exists.elim") a_typ) p)
                     g.goal_type)
                  e)
-              new_hole
+              (mk_fun None bid_a_typ a_typ (mk_fun None bid_h ty new_hole))
           in
+          Printf.printf "%s\n" (pp_term st.elab_ctx proof);
           (* update the proof state accordingly (and close duplicated goal) *)
           let st = assign_meta g.goal_id proof st in
           let st = close_goal g.goal_id st in
+          Printf.printf "%s\n" (pp_term st.elab_ctx new_hole);
           succeed st
       | _ -> fail "Argument must have the type [Exists A p]")
   | None -> fail "No goals remaining"
