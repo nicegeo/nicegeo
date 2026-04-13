@@ -520,14 +520,34 @@ Theorem ne_21_of_between : ∀ a b c, Between a b c → b ≠ a :=
     fun (a b c : Point) (h : Between a b c) =>
         Ne.symm Point a b (fst _ _ (snd _ _ (between_distinct a b c h)))
 
+(* The right and middle endpoints are distinct: B(a,b,c) implies c ≠ b. *)
+Theorem ne_32_of_between : ∀ a b c, Between a b c → c ≠ b :=
+    fun (a b c : Point) (h : Between a b c) =>
+        Ne.symm Point b c (ne_23_of_between a b c h)
+
 (* On line L through a and b, on the same side as d, there exists an equilateral triangle. *)
 Theorem iseqtri_sameside_of_ne : ∀ a b d L,
     (ab : a ≠ b) → (aL : OnLine a L) → (bL : OnLine b L) → (dL : ¬OnLine d L) →
     ∃ c, ¬OnLine c L ∧ SameSide c d L ∧ eq_tri a b c := sorry _
 
+Theorem online_3_of_B : ∀ a b c L, Between a b c → OnLine a L → OnLine b L → OnLine c L := sorry _
+
+(* Destructs a three-way conjunction into its three components. *)
+Theorem and_elim_3 : ∀ A B C (M : Prop), A ∧ B ∧ C → (A → B → C → M) → M :=
+    fun A B C M and f => f (fst _ _ (fst _ _ and)) (snd _ _ (fst _ _ and)) (snd _ _ and)
+
+(* Betweenness is symmetric: B(a,b,c) implies B(c,b,a). *)
+Theorem between_symm : ∀ a b c, Between a b c → Between c b a :=
+    fun a b c Babc => fst _ _ (between_distinct a b c Babc)
+
+(* If b ≠ e and B(a,b,c) and B(a,b,d), then ∠ebd = ∠ebc
+   (c and d are on the same ray from b, so the angle to e is the same). *)
+Theorem angle_extension_of_B_B : ∀ a b c d e (be : b ≠ e) (Babc : Between a b c) (Babd : Between a b d),
+    Angle e b d = Angle e b c := sorry _
+
 (* Perpendicular at b, with b between a and c on L, result on same side as f.
-   The proof extends ba beyond b, finds d with bd = ba, then lifts an
-   equilateral triangle on ad to get the right-angle foot. *)
+   The proof extends ba beyond b to d with bd = ba, then constructs the equilateral
+   triangle on ad; SSS congruence of ebd ≅ eba gives ∠eba = ∠ebd = 90°. *)
 Theorem perpendicular_of_online : ∀ (a b c f : Point) (L : Line),
     Between a b c -> OnLine a L -> OnLine b L -> Not (OnLine f L) ->
     ∃ e, SameSide e f L ∧ Angle e b a = 90 ∧ Angle e b c = 90 :=
@@ -538,7 +558,55 @@ Theorem perpendicular_of_online : ∀ (a b c f : Point) (L : Line),
     (fun (d : Point) hd =>
     And.elim1 _ _ _ hd
     (fun (Babd : Between a b d) (ba_bd : length b a = length b d) =>
-    sorry _)))
+
+    have _ _ (online_3_of_B _ _ _ _ Babd aL bL)
+    (fun (dL : OnLine d L) =>
+
+    have _ _ (iseqtri_sameside_of_ne _ _ _ _ (ne_13_of_between _ _ _ Babd) aL dL fL)
+    (fun exists_e =>
+
+    Exists.elim _ _ _ exists_e
+    (fun (e : Point) he =>
+
+    and_elim_3 _ _ _ _ he
+    (fun (eL : ¬OnLine e L) (efL : SameSide e f L) (eqtri : eq_tri a d e) =>
+
+    (* e is not equal to any point on L, since eL says e is off L. *)
+    have _ _ (fun (p: Point) (pL : OnLine p L) => fun (ep : e = p) => eL (Eq.elim _ p (fun x => OnLine x L) pL e (Eq.symm _ _ p ep)))
+    (fun (on_L_not_e : (p : Point) -> OnLine p L -> e ≠ p) =>
+
+    (* SSS: triangles eba and ebd are congruent because eb = eb, ba = bd, ea = ed. *)
+    have _ _ (sss_congruence e b a e b d
+        (on_L_not_e b bL)                                                                      (* e ≠ b *)
+        (ne_21_of_between _ _ _ Babc)                                                          (* b ≠ a *)
+        (on_L_not_e a aL)                                                                      (* e ≠ a *)
+        (on_L_not_e b bL)                                                                      (* e ≠ b *)
+        (ne_23_of_between _ _ _ Babd)                                                          (* b ≠ d *)
+        (on_L_not_e d dL)                                                                      (* e ≠ d *)
+        (Eq.intro _ _)                                                                         (* eb = eb *)
+        ba_bd                                                                                  (* ba = bd *)
+        (EqTrans _ _ _ _ (EqTrans _ _ _ _ (length_symm a e) (snd _ _ eqtri)) (length_symm e d))) (* ea = ed *)
+    (fun eba_ebd_conj =>
+
+    have _ _ (fst _ _ (snd _ _ eba_ebd_conj))
+    (fun (eba_ebd : Angle e b a = Angle e b d) =>
+
+    (* B(a,b,d) and ∠eba = ∠ebd → both angles are right angles (Prop. 2.3). *)
+    have _ _ (right_angle_if_angle_eq _ _ _ _ _ aL dL Babd eL
+        (EqTrans _ _ _ _ (angle_symm a b e (ne_12_of_between _ _ _ Babc) (Ne.symm _ _ _ (on_L_not_e b bL))) eba_ebd))
+    (fun (abe90 : Angle a b e = 90) =>
+
+    have _ _ (right_angle_if_angle_eq _ _ _ _ _ dL aL (between_symm _ _ _ Babd) eL
+        (EqTrans _ _ _ _ (angle_symm d b e (ne_32_of_between _ _ _ Babd) (Ne.symm _ _ _ (on_L_not_e b bL))) (Eq.symm _ _ _ eba_ebd)))
+    (fun (dbe90 : Angle d b e = 90) =>
+
+    Exists.intro _ _ e (
+    And.intro _ _ (And.intro _ _ efL
+        (EqTrans _ _ _ _ (angle_symm e b a (on_L_not_e b bL) (ne_21_of_between _ _ _ Babc)) abe90))
+        (* ∠ebc = ∠ebd (c and d on the same ray from b) = dbe = 90°. *)
+        (EqTrans _ _ _ _ (angle_extension_of_B_B _ _ _ _ _ (Ne.symm _ _ _ (on_L_not_e b bL)) Babd Babc)
+        (EqTrans _ _ _ _ (angle_symm e b d (on_L_not_e b bL) (ne_23_of_between _ _ _ Babd)) dbe90))
+    )))))))))))))
 
 (* Perpendicular at b on L, result on same side as f.
    Variant that does not require an explicit betweenness witness. *)
