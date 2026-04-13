@@ -302,15 +302,12 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
-(** This adds a hole of the desired type, again using a copy of the hashmap *)
-let add_hole (g : goal) (hole_id : int) (ty : term) (ctx : ctx) : ctx =
-  let metas = Hashtbl.copy ctx.metas in
-  (* TODO: would we ever want to add other variables defined inside the term
-  being created (e.g. if we wanted to create `fun x => ?m0` and we wanted to allow
-  ?m0 to be able to depend on `x`) *)
-  let ctx_bids = List.map (fun h -> h.bid) g.lctx in
-  Hashtbl.replace metas hole_id { ty = Some ty; context = ctx_bids; sol = None };
-  { ctx with metas }
+(** Helper function that creates a tuple (hole_id, hole_term) where the hole_term is just
+    the Hole term corresponding to the created hole ID *)
+let create_hole () : int * term =
+  let hole_id = gen_hole_id () in
+  let hole_term = mk_hole hole_id in
+  (hole_id, hole_term)
 
 (** Get the solution term for the hole `hole_id`, or return None if there is no solution
     for the given hole (i.e. unification couldn't find a solution) *)
@@ -322,47 +319,38 @@ let get_hole_sol (ctx : ctx) (hole_id : int) : term option =
   the hole *)
   | None -> failwith "internal nicegeo programming error: created hole does not exist!"
 
-(** Create a new context with a new hole for each element of hole_types, where hole_types
-    contains the required type that the value for that hole needs to have, and `ctx` is
-    the starting context that we want to add holes to.
+(** Create a new context by adding each hole that appears in `expected_term` to the
+    existing context `ctx` if it hasn't been added already.
 
     This function doesn't modify `ctx` itself, instead returning the new context, in
     addition to the list of hole IDs for all of the created holes *)
-let ctx_with_new_holes (g : goal) (ctx : ctx) (hole_types : term list) : ctx * int list =
-  let hole_ids = List.map (fun _ -> gen_hole_id ()) hole_types in
-  let ctx_with_holes_added =
-    List.fold_left2
-      (* TODO: try implementing this without making a new copy of the hash table
-    for each new hole *)
-      (fun curr_ctx hole_id hole_type -> add_hole g hole_id hole_type curr_ctx)
-      ctx
-      hole_ids
-      hole_types
-  in
-  (ctx_with_holes_added, hole_ids)
+let ctx_with_new_holes (g : goal) (ctx : ctx) (expected_term : term) : ctx =
+  (* We only need to copy ctx.metas since create_metas doesn't modify
+  anything else in the context *)
+  let metas = Hashtbl.copy ctx.metas in
+  let new_ctx = { ctx with metas } in
+  (* We want to allow the holes we're adding to reference other variables defined outside the 
+  goal itself (which is what this list is) *)
+  let existing_ctx_bids = List.map (fun h -> h.bid) g.lctx in
+  create_metas new_ctx expected_term existing_ctx_bids;
+  new_ctx
 
 (** Use unification to both check if a given term `t` matches a certain expected format,
     where the expected format is specified as a term with holes for places where arbitrary
-    values are allowed.
+    values are allowed. Specifically, The expected format is specified by `expected_term`,
+    which should use new holes created by the user (e.g. using `create_hole`) for the
+    subterms that need to get inferred in the expected term.
 
-    The expected format is specified by the function `create_expected_term`, which takes
-    in a list of hole IDs (one hole ID for each hole type in `hole_types`), and returns a
-    term `t2` using those hole IDs. This function then solves the equation `t = t2` for
-    the values of the created holes, either returning a list of solutions for those hole
-    values, or None if unification couldn't find a solution for any of the holes.*)
-let match_term_and_solve_holes (g : goal) (ctx : ctx) (hole_types : term list) (t : term)
-    (create_expected_term : int list -> term) : term list option =
-  let ctx, hole_ids = ctx_with_new_holes g ctx hole_types in
-  let expected_term = create_expected_term hole_ids in
+    This function returns a new context that contains the result of unification (instead
+    of modifying the provided context) *)
+let match_term_and_solve_holes (g : goal) (ctx : ctx) (t : term) (expected_term : term) :
+    ctx =
+  (* expected_term has holes added by the user to specify what they want to infer,
+  so make sure those holes are added to the new context *)
+  let ctx = ctx_with_new_holes g ctx expected_term in
   unify ctx t (Hashtbl.create 0) expected_term (Hashtbl.create 0);
 
-  (* TODO: do we want to return a list of options instead so that the user can extract some of the
-  hole solutions even when unification couldn't find a solution for all holes? *)
-  let all_hole_solutions = List.map (fun hole_id -> get_hole_sol ctx hole_id) hole_ids in
-  let holes_with_solutions = List.filter_map (fun x -> x) all_hole_solutions in
-  if List.length holes_with_solutions = List.length all_hole_solutions then
-    Some holes_with_solutions
-  else None
+  ctx
 
 (* 
   This infers the motive p of the existential type when constructing an Exists.intro.
@@ -370,21 +358,12 @@ let match_term_and_solve_holes (g : goal) (ctx : ctx) (hole_types : term list) (
   It then calls unification with a fresh hole for p, to unify the goal with the type
   Exists A ?p, where ?p : A -> Prop. If successful, it returns Some p, otherwise None.
 *)
-let infer_motive (exists_type : term) (g : goal) ctx : term option =
-  let bid = Elab.Term.gen_binder_id () in
-  let hole_type = mk_arrow (Some "A") bid exists_type (mk_sort 0) in
+let infer_motive (exists_type : term) (g : goal) (ctx : ctx) : term option =
+  let motive_hole_id, motive_hole = create_hole () in
 
-  let create_expected_term hole_ids =
-    let hole_id = List.nth hole_ids 0 in
-    mk_app_multiarg (mk_name "Exists") [ exists_type; mk_hole hole_id ]
-  in
-  let hole_solution_list =
-    match_term_and_solve_holes g ctx [ hole_type ] g.goal_type create_expected_term
-  in
-  match hole_solution_list with
-  | Some [ motive_solution ] -> Some motive_solution
-  | None -> None
-  | _ -> failwith "match_term_and_solve_holes returned a list of the wrong length"
+  let expected_term = mk_app_multiarg (mk_name "Exists") [ exists_type; motive_hole ] in
+  let ctx = match_term_and_solve_holes g ctx g.goal_type expected_term in
+  get_hole_sol ctx motive_hole_id
 
 (*
  * This implements the exists tactic, which takes term a as an argument, and constructs
