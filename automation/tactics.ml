@@ -416,6 +416,31 @@ let exists (a : term) (st : proof_state) : tactic_result =
       | None -> fail "Goal must have the form [Exists A p]")
   | None -> fail "No goals remaining"
 
+(** Infer the values of A and B such that the goal type for `g` is `Or A B`, or return
+    None if values of A and B can't be found *)
+let infer_or_type (g : goal) (st : proof_state) : (term * term) option =
+  (* Create holes for both arguments to `Or` (which are both Props representing the type) *)
+  let create_expected_or_type hole_ids =
+    let left_hole, right_hole =
+      match hole_ids with
+      | [ left_hole_id; right_hole_id ] -> (mk_hole left_hole_id, mk_hole right_hole_id)
+      | _ -> failwith "Internal error: Incorrect list size"
+    in
+    mk_app (mk_app (mk_name "Or") left_hole) right_hole
+  in
+  let or_args =
+    match_term_and_solve_holes
+      g
+      st.elab_ctx
+      [ mk_name "Prop"; mk_name "Prop" ]
+      g.goal_type
+      create_expected_or_type
+  in
+  match or_args with
+  | None -> None
+  | Some [ left_type; right_type ] -> Some (left_type, right_type)
+  | _ -> failwith "Internal error: incorrect list length"
+
 let register () =
   register_tactic "reflexivity" Register.(nullary reflexivity);
   register_tactic "exact" Register.(unary_term exact);
