@@ -309,6 +309,35 @@ let add_hole g hole_id ty ctx =
   Hashtbl.replace metas hole_id { ty = Some ty; context = ctx_bids; sol = None };
   { ctx with metas }
 
+(** Get the solution term for the hole `hole_id`, or return None if there is no solution
+    for the given hole (i.e. unification couldn't find a solution) *)
+let get_hole_sol (ctx : ctx) (hole_id : int) : term option =
+  match Hashtbl.find_opt ctx.metas hole_id with
+  | Some mvar -> mvar.sol
+  (* If the hole_id isn't in ctx.metas at all, then that indicates a bug since
+  the user should have added the given hole ID into the context when they created
+  the hole *)
+  | None -> failwith "internal nicegeo programming error: created hole does not exist!"
+
+(** Create a new context with a new hole for each element of hole_types, where hole_types
+    contains the required type that the value for that hole needs to have, and `ctx` is
+    the starting context that we want to add holes to.
+
+    This function doesn't modify `ctx` itself, instead returning the new context, in
+    addition to the list of hole IDs for all of the created holes *)
+let ctx_with_new_holes (g : goal) (ctx : ctx) (hole_types : term list) : ctx * int list =
+  let hole_ids = List.map (fun _ -> gen_hole_id ()) hole_types in
+  let ctx_with_holes_added =
+    List.fold_left2
+      (* TODO: try implementing this without making a new copy of the hash table
+    for each new hole *)
+      (fun curr_ctx hole_id hole_type -> add_hole g hole_id hole_type curr_ctx)
+      ctx
+      hole_ids
+      hole_types
+  in
+  (ctx_with_holes_added, hole_ids)
+
 (* 
   This infers the motive p of the existential type when constructing an Exists.intro.
   It uses the type A to construct the expected type, leaving in a hole for the motive.
@@ -317,15 +346,14 @@ let add_hole g hole_id ty ctx =
 *)
 let infer_motive (exists_type : term) (g : goal) ctx : term option =
   let goal_type = g.goal_type in
-  let hole_id = gen_hole_id () in
   let bid = Elab.Term.gen_binder_id () in
   let hole_type = mk_arrow (Some "A") bid exists_type (mk_sort 0) in
-  let ctx = add_hole g hole_id hole_type ctx in
+
+  let ctx, hole_ids = ctx_with_new_holes g ctx [ hole_type ] in
+  let hole_id = List.nth hole_ids 0 in
   let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
   unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0);
-  match Hashtbl.find_opt ctx.metas hole_id with
-  | Some mvar -> mvar.sol
-  | None -> failwith "internal nicegeo programming error: created hole does not exist!"
+  get_hole_sol ctx hole_id
 
 (*
  * This implements the exists tactic, which takes term a as an argument, and constructs
