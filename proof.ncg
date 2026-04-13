@@ -474,10 +474,136 @@ Theorem segment_of_eq_len : ∀ (a b c d : Point),
 
 
 (* ============================================================
+   Triangle distinctness helpers
+   ============================================================ *)
+
+(* In a non-degenerate triangle, the first and second vertices are distinct. *)
+Theorem ne_12_of_triangle : ∀ (a b c : Point), triangle a b c → a ≠ b :=
+    fun (a b c : Point) (tri : triangle a b c) (hab : a = b) =>
+    tri (
+    Or.elim _ _ _ (point_eq_em a c)
+    (fun (hac : a = c) =>
+        Exists.elim _ _ _ (pt_exists (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle))
+        (fun (d : Point) (hd : distinct_from d (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle)) =>
+        have _ _ (fun (da : d = a) =>
+            (fst _ _ (fst _ _ (distinct_from.elim d (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle) hd)))
+            ((snd _ _ (List.mem_cons Point d a (List.nil Point))) (Or.inl _ _ da)))
+        (fun (da : d ≠ a) =>
+        Exists.elim _ _ _ (line_of_pts d a da)
+        (fun (L : Line) (hL : OnLine d L /\ OnLine a L) =>
+        Exists.intro _ _ L (And.intro _ _
+            (And.intro _ _ (snd _ _ hL)
+                (Eq.elim Point a (fun x => OnLine x L) (snd _ _ hL) b hab))
+            (Eq.elim Point a (fun x => OnLine x L) (snd _ _ hL) c hac))))))
+    (fun (hac : a ≠ c) =>
+        Exists.elim _ _ _ (line_of_pts a c hac)
+        (fun (L : Line) (hL : OnLine a L /\ OnLine c L) =>
+        Exists.intro _ _ L (And.intro _ _
+            (And.intro _ _ (fst _ _ hL)
+                (Eq.elim Point a (fun x => OnLine x L) (fst _ _ hL) b hab))
+            (snd _ _ hL))))
+    )
+
+(* In a non-degenerate triangle, the second and third vertices are distinct. *)
+Theorem ne_23_of_triangle : ∀ (a b c : Point), triangle a b c → b ≠ c :=
+    fun (a b c : Point) (tri : triangle a b c) (hbc : b = c) =>
+    tri (
+    Or.elim _ _ _ (point_eq_em a b)
+    (fun (hab : a = b) =>
+        Exists.elim _ _ _ (pt_exists (List.cons Point b (List.nil Point)) (List.nil Line) (List.nil Circle))
+        (fun (d : Point) (hd : distinct_from d (List.cons Point b (List.nil Point)) (List.nil Line) (List.nil Circle)) =>
+        have _ _ (fun (db : d = b) =>
+            (fst _ _ (fst _ _ (distinct_from.elim d (List.cons Point b (List.nil Point)) (List.nil Line) (List.nil Circle) hd)))
+            ((snd _ _ (List.mem_cons Point d b (List.nil Point))) (Or.inl _ _ db)))
+        (fun (db : d ≠ b) =>
+        Exists.elim _ _ _ (line_of_pts d b db)
+        (fun (L : Line) (hL : OnLine d L /\ OnLine b L) =>
+        Exists.intro _ _ L (And.intro _ _
+            (And.intro _ _
+                (Eq.elim Point b (fun x => OnLine x L) (snd _ _ hL) a (Eq.symm Point a b hab))
+                (snd _ _ hL))
+            (Eq.elim Point b (fun x => OnLine x L) (snd _ _ hL) c hbc))))))
+    (fun (hab : a ≠ b) =>
+        Exists.elim _ _ _ (line_of_pts a b hab)
+        (fun (L : Line) (hL : OnLine a L /\ OnLine b L) =>
+        Exists.intro _ _ L (And.intro _ _
+            (And.intro _ _ (fst _ _ hL) (snd _ _ hL))
+            (Eq.elim Point b (fun x => OnLine x L) (snd _ _ hL) c hbc))))
+    )
+
+(* In a non-degenerate triangle, the first and third vertices are distinct. *)
+Theorem ne_13_of_triangle : ∀ (a b c : Point), triangle a b c → a ≠ c :=
+    fun (a b c : Point) (tri : triangle a b c) (hac : a = c) =>
+    tri (
+    Or.elim _ _ _ (point_eq_em a b)
+    (fun (hab : a = b) =>
+        Exists.elim _ _ _ (pt_exists (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle))
+        (fun (d : Point) (hd : distinct_from d (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle)) =>
+        have _ _ (fun (da : d = a) =>
+            (fst _ _ (fst _ _ (distinct_from.elim d (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle) hd)))
+            ((snd _ _ (List.mem_cons Point d a (List.nil Point))) (Or.inl _ _ da)))
+        (fun (da : d ≠ a) =>
+        Exists.elim _ _ _ (line_of_pts d a da)
+        (fun (L : Line) (hL : OnLine d L /\ OnLine a L) =>
+        Exists.intro _ _ L (And.intro _ _
+            (And.intro _ _ (snd _ _ hL)
+                (Eq.elim Point a (fun x => OnLine x L) (snd _ _ hL) b hab))
+            (Eq.elim Point a (fun x => OnLine x L) (snd _ _ hL) c hac))))))
+    (fun (hab : a ≠ b) =>
+        Exists.elim _ _ _ (line_of_pts a b hab)
+        (fun (L : Line) (hL : OnLine a L /\ OnLine b L) =>
+        Exists.intro _ _ L (And.intro _ _
+            (And.intro _ _ (fst _ _ hL) (snd _ _ hL))
+            (Eq.elim Point a (fun x => OnLine x L) (fst _ _ hL) c hac))))
+    )
+
+
+(* ============================================================
    Proposition 5 (I.5): Base angles of an isoceles triangle are equal
    ============================================================ *)
 
-Theorem angle_eq_of_iso : ∀ a b c, iso_tri a b c → Angle a b c = Angle a c b := sorry _
+(* Proof: case-split on whether a = b.
+   - If a = b: iso gives a = c; both angles collapse to Angle a a a.
+   - If a ≠ b: get a ≠ c and b ≠ c; apply SSS to triangles (a,b,c) and (a,c,b). *)
+Theorem angle_eq_of_iso : ∀ a b c, iso_tri a b c → Angle a b c = Angle a c b :=
+    fun (a b c : Point) (hiso : iso_tri a b c) =>
+    have _ _ (fst _ _ hiso) (fun (tri : triangle a b c) =>
+    have _ _ (snd _ _ hiso) (fun (hlen : Length a b = Length a c) =>
+    Or.elim _ _ _ (point_eq_em a b)
+    (fun (hab : a = b) =>
+        have _ _ (eq_if_len_zero a c
+            (EqTrans Measure (Length a c) (Length a b) Zero
+                (Eq.symm Measure (Length a b) (Length a c) hlen)
+                (len_zero_if_eq a b hab)))
+        (fun (hac : a = c) =>
+        have _ _ (Eq.elim Point a (fun x => Angle a a x = Angle a x a)
+            (Eq.intro Measure (Angle a a a)) c hac)
+        (fun (h1 : Angle a a c = Angle a c a) =>
+            Eq.elim Point a (fun x => Angle a x c = Angle a c x) h1 b hab)))
+    (fun (ab : a ≠ b) =>
+        have _ _ (length_pts_ne a b a c hlen ab) (fun (ac : a ≠ c) =>
+        Or.elim _ _ _ (point_eq_em b c)
+        (fun (hbc : b = c) =>
+            False.elim _
+            (tri (Exists.elim _ _ _ (line_of_pts a b ab)
+            (fun (L : Line) (hL : OnLine a L /\ OnLine b L) =>
+            Exists.intro _ _ L (And.intro _ _
+                (And.intro _ _ (fst _ _ hL) (snd _ _ hL))
+                (Eq.elim Point b (fun x => OnLine x L) (snd _ _ hL) c hbc))))))
+        (fun (bc : b ≠ c) =>
+            fst _ _ (snd _ _
+            (sss_congruence a b c a c b
+                ab bc ac
+                ac (Ne.symm Point b c bc) ab
+                hlen
+                (length_symm b c)
+                (EqTrans Measure (Length c a) (Length a b) (Length b a)
+                    (EqTrans Measure (Length c a) (Length a c) (Length a b)
+                        (length_symm c a)
+                        (Eq.symm Measure (Length a b) (Length a c) hlen))
+                    (length_symm a b))))
+        ))
+    )))
 
 
 (* ============================================================
@@ -530,7 +656,9 @@ Theorem iseqtri_sameside_of_ne : ∀ a b d L,
     (ab : a ≠ b) → (aL : OnLine a L) → (bL : OnLine b L) → (dL : ¬OnLine d L) →
     ∃ c, ¬OnLine c L ∧ SameSide c d L ∧ eq_tri a b c := sorry _
 
-Theorem online_3_of_B : ∀ a b c L, Between a b c → OnLine a L → OnLine b L → OnLine c L := sorry _
+Theorem online_3_of_B : ∀ a b c L, Between a b c → OnLine a L → OnLine b L → OnLine c L :=
+    fun (a b c : Point) (L : Line) (h : Between a b c) (haL : OnLine a L) (hbL : OnLine b L) =>
+        between_collinear_right a b c L h haL hbL
 
 (* Destructs a three-way conjunction into its three components. *)
 Theorem and_elim_3 : ∀ A B C (M : Prop), A ∧ B ∧ C → (A → B → C → M) → M :=
