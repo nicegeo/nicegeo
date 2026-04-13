@@ -456,9 +456,21 @@ Theorem length_eq_B_of_ne : ∀ a b c, (ab : a ≠ b) → (bc : b ≠ c) → ∃
 
 Theorem ne_12_of_between : ∀ a b c, Between a b c → a ≠ b := sorry _
 Theorem ne_21_of_between : ∀ a b c, Between a b c → b ≠ a := sorry _
+Theorem ne_32_of_between : ∀ a b c, Between a b c → c ≠ b := sorry _
 
 Theorem iseqtri_sameside_of_ne : ∀ a b d L, (ab : a ≠ b) → (aL : OnLine a L) → (bL : OnLine b L) → (dL : ¬OnLine d L) → 
     ∃ c, ¬OnLine c L ∧ SameSide c d L ∧ eq_tri a b c := sorry _
+
+Theorem online_3_of_B : ∀ a b c L, Between a b c → OnLine a L → OnLine b L → OnLine c L := sorry _
+
+Theorem and_elim_3 : ∀ A B C (M : Prop), A ∧ B ∧ C → (A → B → C → M) → M :=
+    fun A B C M and f => f (fst _ _ (fst _ _ and)) (snd _ _ (fst _ _ and)) (snd _ _ and)
+
+Theorem between_symm : ∀ a b c, Between a b c → Between c b a := fun a b c Babc => fst _ _ (between_distinct a b c Babc)
+
+Theorem angle_extension_of_B_B : ∀ a b c d e (be : b ≠ e) (Babc : Between a b c) (Babd : Between a b d),
+    Angle e b d = Angle e b c := sorry _
+
 
 (* Proposition 11: To draw a straight line at right angles to a given straight line from a given point on it. 
 Statement taken from synthetic_euclid_4 formalization *)
@@ -475,11 +487,60 @@ Theorem perpendicular_of_online : ∀ (a b c f : Point) (L : Line),
     And.elim1 _ _ _ hd
     (fun (Babd : Between a b d) (ba_bd : length b a = length b d) =>
 
+    have _ _ (online_3_of_B _ _ _ _ Babd aL bL)
+    (fun (dL : OnLine d L) =>
 
-    sorry _
+    have _ _ (iseqtri_sameside_of_ne _ _ _ _ (ne_13_of_between _ _ _ Babd) aL dL fL)
+    (fun exists_e =>
+
+    Exists.elim _ _ _ exists_e
+    (fun (e : Point) he =>
+
+    and_elim_3 _ _ _ _ he
+    (fun (eL : ¬OnLine e L) (efL : SameSide e f L) (eqtri : eq_tri a d e) =>
+    (* want to show congruence of e b a and e b d using sss *)
+    (* need e ≠ b, e ≠ a, b ≠ a, e ≠ d, b ≠ d *)
+    (* have B a b d giving us b ≠ a and b ≠ d *)
+    (* eL is not on L while a, b, d are on L, can use that for contra *)
+
+    (* todo: investigate why unification is bad here *)
+    have _ _ (fun (p: Point) (pL : OnLine p L) => fun (ep : e = p) => eL (Eq.elim _ p (fun x => OnLine x L) pL e (Eq.symm _ _ p ep)))
+    (fun (on_L_not_e : (p : Point) -> OnLine p L -> e ≠ p) =>
+
+    have _ _ (sss_congruence e b a e b d
+    (on_L_not_e b bL) (* e ≠ b *)
+    (ne_21_of_between _ _ _ Babc) (* b ≠ a *)
+    (on_L_not_e a aL) (* e ≠ a *)
+    (on_L_not_e b bL) (* e ≠ b *)
+    (ne_23_of_between _ _ _ Babd) (* b ≠ d *)
+    (on_L_not_e d dL) (* e ≠ d *)
+    (Eq.intro _ _) (* length e b = length e b *)
+    (ba_bd) (* length b a = length b d *)
+    (EqTrans _ _ _ _ (EqTrans _ _ _ _ (length_symm a e) (snd _ _ eqtri)) (length_symm e d)) (* length e a = length e d *)
     )
-    )
-    )
+    (fun eba_ebd_conj =>
+
+    have _ _ (fst _ _ (snd _ _ eba_ebd_conj))
+    (fun (eba_ebd : Angle e b a = Angle e b d) =>
+
+    have _ _ (right_angle_if_angle_eq _ _ _ _ _ aL dL Babd eL (EqTrans _ _ _ _ (angle_symm a b e (ne_12_of_between _ _ _ Babc) (Ne.symm _ _ _ (on_L_not_e b bL))) eba_ebd))
+    (fun (abe90 : Angle a b e = 90) =>
+
+    have _ _ (right_angle_if_angle_eq _ _ _ _ _ dL aL (between_symm _ _ _ Babd) eL (EqTrans _ _ _ _ (angle_symm d b e (ne_32_of_between _ _ _ Babd) (Ne.symm _ _ _ (on_L_not_e b bL))) (Eq.symm _ _ _ eba_ebd)))
+    (fun (dbe90 : Angle d b e = 90) =>
+
+    Exists.intro _ _ e (
+    And.intro _ _ (And.intro _ _ (
+        efL
+    ) (
+        EqTrans _ _ _ _ (angle_symm e b a (on_L_not_e b bL) (ne_21_of_between _ _ _ Babc)) abe90
+    )) (
+        (* angle_extension_of_B_B _ _ _ _ _ (Ne.symm _ _ _ (on_L_not_e b bL)) Babd Babc : ∠ ebc = ∠ ebd *)
+        (* goal: e b c = 90 *)
+        (* (angle_symm e b d (on_L_not_e b bL) (ne_23_of_between _ _ _ Babd)) : ebd = dbe *)
+        EqTrans _ _ _ _ (angle_extension_of_B_B _ _ _ _ _ (Ne.symm _ _ _ (on_L_not_e b bL)) Babd Babc)
+        (EqTrans _ _ _ _ (angle_symm e b d (on_L_not_e b bL) (ne_23_of_between _ _ _ Babd)) dbe90)
+    ))))))))))))))
 
 
 Theorem perpendicular_of_online' : ∀ (a b c f : Point) (L : Line),
