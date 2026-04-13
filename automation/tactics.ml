@@ -99,6 +99,8 @@ let exact (tm : term) (st : proof_state) : tactic_result =
                  (pp_term st.elab_ctx inferred_ty)
                  (pp_term st.elab_ctx g.goal_type)))
 
+(** Modifies the contents of [tbl1] to the contents of [tbl2]. Useful for restoring the
+    state of the ctx.metas table. *)
 let hashtbl_set tbl1 tbl2 =
   if tbl1 != tbl2 then (
     Hashtbl.clear tbl1;
