@@ -452,12 +452,35 @@ by the equal straight lines. *)
 Theorem bisect_segment : ∀ (a b : Point),
     Exists Point (fun e => Between a e b /\ Length a e = Length b e) := sorry _
 
+Theorem length_eq_B_of_ne : ∀ a b c, (ab : a ≠ b) → (bc : b ≠ c) → ∃ d, Between a b d ∧ length b c = length b d := sorry _
+
+Theorem ne_12_of_between : ∀ a b c, Between a b c → a ≠ b := sorry _
+Theorem ne_21_of_between : ∀ a b c, Between a b c → b ≠ a := sorry _
+
+Theorem iseqtri_sameside_of_ne : ∀ a b d L, (ab : a ≠ b) → (aL : OnLine a L) → (bL : OnLine b L) → (dL : ¬OnLine d L) → 
+    ∃ c, ¬OnLine c L ∧ SameSide c d L ∧ eq_tri a b c := sorry _
+
 (* Proposition 11: To draw a straight line at right angles to a given straight line from a given point on it. 
 Statement taken from synthetic_euclid_4 formalization *)
 Theorem perpendicular_of_online : ∀ (a b c f : Point) (L : Line),
     Between a b c -> OnLine a L -> OnLine b L -> Not (OnLine f L) ->
-    Exists Point (fun e => SameSide e f L ∧ Angle e b a = 90 ∧ Angle e b c = 90) := 
+    ∃ e, SameSide e f L ∧ Angle e b a = 90 ∧ Angle e b c = 90 :=
+    fun a b c f L Babc aL bL fL => 
+    have _ _ (length_eq_B_of_ne _ _ _ (ne_12_of_between _ _ _ Babc) (ne_21_of_between _ _ _ Babc))
+    (fun exists_d =>
+
+    Exists.elim _ _ _ exists_d 
+    (fun (d : Point) hd =>
+
+    And.elim1 _ _ _ hd
+    (fun (Babd : Between a b d) (ba_bd : length b a = length b d) =>
+
+
     sorry _
+    )
+    )
+    )
+
 
 Theorem perpendicular_of_online' : ∀ (a b c f : Point) (L : Line),
     a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine f L) -> 
