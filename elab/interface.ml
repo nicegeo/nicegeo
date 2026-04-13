@@ -1,7 +1,5 @@
 module KTerm = Kernel.Term
 
-let () = Tactics.register ()
-
 let parse_term (s : string) : Term.term =
   let lexbuf = Lexing.from_string s in
   Parser.single_term Lexer.token lexbuf
@@ -9,9 +7,8 @@ let parse_term (s : string) : Term.term =
 let create () : Types.ctx =
   {
     env = Hashtbl.create 16;
-    kenv = Hashtbl.create 16;
+    kenv = Kernel.Interface.create ();
     metas = Hashtbl.create 16;
-    lctx = Hashtbl.create 16;
   }
 
 let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
@@ -22,7 +19,7 @@ let process_statement (env : Types.ctx) (stmt : Statement.statement) : unit =
       raise
         (Error.ElabError
            {
-             context = { loc = None; decl_name = None };
+             context = { loc = None; decl_name = None; lctx = None };
              error_type = Error.ImportUnexpected;
            })
 (* TODO: Deal with clashing names in imports *)
@@ -43,7 +40,8 @@ let parse_statements (filename : string) : Statement.statement list =
       raise
         (Error.ElabError
            {
-             context = { loc = Some { start = pos1; end_ = pos2 }; decl_name = None };
+             context =
+               { loc = Some { start = pos1; end_ = pos2 }; decl_name = None; lctx = None };
              error_type =
                Error.ParseError { input = Lexing.lexeme lexbuf; error_msg = msg };
            })
@@ -77,7 +75,7 @@ let rec get_all_statements (filename : string) : Statement.statement list =
           raise
             (Error.ElabError
                {
-                 context = { loc = None; decl_name = None };
+                 context = { loc = None; decl_name = None; lctx = None };
                  error_type = Error.ImportNotAtTop;
                })
       | _ -> ())

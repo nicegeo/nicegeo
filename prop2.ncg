@@ -1,5 +1,3 @@
-Definition Ne : (A: Type) -> A -> A -> Prop := fun A a b => a = b -> False
-Definition Iff : (P : Prop) -> (Q : Prop) -> Prop := fun P Q => (P -> Q) ∧ (Q -> P)
 Definition 0 : Measure := Zero
 
 Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
@@ -134,11 +132,11 @@ Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> a = b -> b = c -> a
 
 Theorem ne_13_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> a ≠ c :=
     fun a b c Babc => 
-    Not.elim _ (fst _ _ (snd _ _ (snd _ _ (between_distinct a b c Babc))))
+    fst _ _ (snd _ _ (snd _ _ (between_distinct a b c Babc)))
 
 Theorem ne_23_of_between : (a: Point) -> (b: Point) -> (c: Point) -> Between a b c -> b ≠ c :=
     fun a b c Babc => 
-    Ne.symm _ _ _ (Not.elim _ (fst _ _ (snd _ _ (between_distinct c b a (fst _ _ (between_distinct a b c Babc))))))
+    Ne.symm _ _ _ (fst _ _ (snd _ _ (between_distinct c b a (fst _ _ (between_distinct a b c Babc)))))
 
 Theorem prop2_ne : (a : Point) -> (b: Point) -> (c: Point)
     -> (bc : b ≠ c) -> (ab : a ≠ b)

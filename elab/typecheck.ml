@@ -45,9 +45,10 @@ open Convert
 open Types
 module KExceptions = Kernel.Exceptions
 
-let raise_at (tm : term) (e : Error.error_type) : 'a =
+let raise_at (tm : term) (lctx : local_ctx option) (e : Error.error_type) : 'a =
   raise
-    (Error.ElabError { context = { loc = Some tm.loc; decl_name = None }; error_type = e })
+    (Error.ElabError
+       { context = { loc = Some tm.loc; decl_name = None; lctx }; error_type = e })
 
 type normterm =
   | Fun of string option * int * term * term
@@ -92,15 +93,17 @@ let rec to_norm (e : ctx) (tm : term) : normterm =
       | VarSpine (head, args) -> VarSpine (head, args @ [ arg ])
       | MetaSpine (head, args) -> MetaSpine (head, args @ [ arg ])
       | Fun _ ->
-          raise_at tm (Error.InternalError "to_norm input should already be in whnf")
+          raise_at tm None (Error.InternalError "to_norm input should already be in whnf")
       | Arrow _ ->
           raise_at
             tm
+            None
             (Error.FunctionExpected
                { not_func = f; not_func_type = { inner = Hole 0; loc = tm.loc }; arg })
       | Sort n ->
           raise_at
             tm
+            None
             (Error.FunctionExpected
                {
                  not_func = f;
@@ -238,7 +241,7 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
   | _, MetaSpine ({ inner = Hole m; _ }, args) -> pattern_match_meta e g2 m args t1
   | VarSpine (h1, args1), VarSpine (h2, args2) when h1.inner = h2.inner ->
       if List.length args1 <> List.length args2 then
-        raise_at t1 (Error.UnificationFailure { left = t1; right = t2 })
+        raise_at t1 None (Error.UnificationFailure { left = t1; right = t2 })
       else
         List.iter2
           (fun arg1 arg2 -> unify ~depth:(depth + 1) e arg1 g1 arg2 g2)
@@ -279,13 +282,14 @@ let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
       raise
         (Error.ElabError
            {
-             context = { loc = Some t1.loc; decl_name = None };
+             context = { loc = Some t1.loc; decl_name = None; lctx = None };
              error_type = Error.UnificationFailure { left = t1; right = t2 };
            })
 
 (** checks that tm has expected type ty, trying to fill in metavariables (holes). If it
     fails it throws an ElabError. *)
-let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
+let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : term) : unit
+    =
   (* print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " has type " ^ Pretty.term_to_string e ty); *)
   match tm.inner with
   | Hole m -> (
@@ -296,7 +300,11 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
           | Some ty1 ->
               unify ~depth:(depth + 1) e ty (Hashtbl.create 0) ty1 (Hashtbl.create 0)
           | None -> Hashtbl.replace e.metas m { ty = Some ty; context; sol })
-      | None -> raise_at tm (Error.InternalError ("unknown meta: " ^ string_of_int m)))
+      | None ->
+          raise_at
+            tm
+            (Some lctx)
+            (Error.InternalError ("unknown meta: " ^ string_of_int m)))
   | Fun (arg, bid, ty_arg, body) -> (
       (* special case: checking type of fun. the algorithm would still work if this was together with
         the remaining cases, but it would solve less cases, as this is a common case. *)
@@ -305,7 +313,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
       match ty_norm with
       | Arrow (_, bid_ex, ty_arg_ex, ty_ret_ex) ->
           (* typecheck lambda ty_arg *)
-          check_is_type ~depth:(depth + 1) e ty_arg;
+          check_is_type ~depth:(depth + 1) e lctx ty_arg;
           (* unify argument types *)
           (try
              unify
@@ -318,6 +326,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
            with Error.ElabError { error_type = UnificationFailure _; _ } ->
              raise_at
                ty_arg
+               (Some lctx)
                (Error.TypeMismatch
                   {
                     term = { inner = Hole 0; loc = ty.loc };
@@ -326,22 +335,23 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
                   }));
           (* check body type by substituting the appropriate bound variable *)
           let ty_ret_ex_subst = Reduce.subst e ty_ret_ex (Bvar bid_ex) (Bvar bid) in
-          Hashtbl.add e.lctx bid (arg, ty_arg);
-          checktype ~depth:(depth + 1) e body ty_ret_ex_subst;
-          Hashtbl.remove e.lctx bid
+          let new_lctx = { bid; name = arg; ty = ty_arg } :: lctx in
+          checktype ~depth:(depth + 1) e new_lctx body ty_ret_ex_subst
       | MetaSpine _ -> (
           (* if the expected type is a hole, go normally *)
-          let infer_ty = infertype ~depth:(depth + 1) e tm in
+          let infer_ty = infertype ~depth:(depth + 1) e lctx tm in
           try unify ~depth:(depth + 1) e infer_ty (Hashtbl.create 0) ty (Hashtbl.create 0)
           with Error.ElabError { error_type = UnificationFailure _; _ } ->
             raise_at
               tm
+              (Some lctx)
               (Error.TypeMismatch
                  { term = tm; inferred_type = infer_ty; expected_type = ty }))
       | _ ->
           let unk = { inner = Hole 0; loc = ty.loc } in
           raise_at
-            ty
+            tm
+            (Some lctx)
             (Error.TypeMismatch
                {
                  term = tm;
@@ -349,11 +359,12 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
                  expected_type = ty;
                }))
   | App _ | Name _ | Arrow _ | Sort _ | Bvar _ -> (
-      let infer_ty = infertype ~depth:(depth + 1) e tm in
+      let infer_ty = infertype ~depth:(depth + 1) e lctx tm in
       try unify ~depth:(depth + 1) e infer_ty (Hashtbl.create 0) ty (Hashtbl.create 0)
       with Error.ElabError { error_type = UnificationFailure _; _ } ->
         raise_at
           tm
+          (Some lctx)
           (Error.TypeMismatch { term = tm; inferred_type = infer_ty; expected_type = ty })
       )
 
@@ -362,7 +373,7 @@ let rec checktype ?(depth = 0) (e : ctx) (tm : term) (ty : term) : unit =
     elaborated, that is only applicable for outside users of [infertype]. The actual
     precondition is that any holes in [tm] has an appropriate entry in [e.metas], which
     can be done with the [create_metas] function in controlled cases. *)
-and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
+and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
   (* print_endline (String.make depth ' ' ^ "inferring type of " ^ Pretty.term_to_string e tm); *)
   let res =
     match tm.inner with
@@ -370,75 +381,81 @@ and infertype ?(depth = 0) (e : ctx) (tm : term) : term =
         match Hashtbl.find_opt e.metas m with
         | Some { ty = Some ty; _ } -> ty
         | Some { sol = Some sol; context; ty = _ } ->
-            let sol_ty = infertype ~depth:(depth + 1) e sol in
+            let sol_ty = infertype ~depth:(depth + 1) e lctx sol in
             Hashtbl.replace e.metas m { sol = Some sol; ty = Some sol_ty; context };
             sol_ty
-        | _ -> raise_at tm Error.CannotInferHole)
+        | _ -> raise_at tm (Some lctx) Error.CannotInferHole)
     | Name name -> (
         match Hashtbl.find_opt e.env name with
-        | Some entry -> uniquify_bids (Reduce.delta_reduce e entry.ty false)
-        | None -> raise_at tm (Error.UnknownName { name }))
+        | Some entry -> uniquify_bids (Reduce.delta_reduce e entry.ty)
+        | None -> raise_at tm (Some lctx) (Error.UnknownName { name }))
     | Fun (arg, bid, ty_arg, body) ->
-        check_is_type ~depth:(depth + 1) e ty_arg;
+        check_is_type ~depth:(depth + 1) e lctx ty_arg;
         let new_bid = gen_binder_id () in
         let body = Reduce.subst e body (Bvar bid) (Bvar new_bid) in
-        Hashtbl.add e.lctx new_bid (arg, ty_arg);
-        let ty_body = infertype ~depth:(depth + 1) e body in
-        Hashtbl.remove e.lctx new_bid;
+        let new_lctx = { bid = new_bid; name = arg; ty = ty_arg } :: lctx in
+        let ty_body = infertype ~depth:(depth + 1) e new_lctx body in
         { inner = Arrow (arg, new_bid, ty_arg, ty_body); loc = tm.loc }
     | Arrow (arg, bid, ty_arg, ty_ret) ->
-        let ty_arg_ty = whnf_beta e (infertype ~depth:(depth + 1) e ty_arg) in
+        let ty_arg_ty = whnf_beta e (infertype ~depth:(depth + 1) e lctx ty_arg) in
         let arg_sort =
           match ty_arg_ty.inner with
           | Sort n -> n
           | _ ->
               raise_at
                 ty_arg
+                (Some lctx)
                 (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty })
         in
-        Hashtbl.add e.lctx bid (arg, ty_arg);
-        let ty_ret_ty = whnf_beta e (infertype ~depth:(depth + 1) e ty_ret) in
+        let new_lctx = { bid; name = arg; ty = ty_arg } :: lctx in
+        let ty_ret_ty = whnf_beta e (infertype ~depth:(depth + 1) e new_lctx ty_ret) in
         let ret_sort =
           match ty_ret_ty.inner with
           | Sort n -> n
           | _ ->
               raise_at
                 ty_ret
+                (Some new_lctx)
                 (Error.TypeExpected { not_type = ty_ret; not_type_infer = ty_ret_ty })
         in
-        Hashtbl.remove e.lctx bid;
         { inner = Sort (if ret_sort = 0 then 0 else max arg_sort ret_sort); loc = tm.loc }
     | App (f, arg) -> (
-        let f_type = whnf_beta e (infertype ~depth:(depth + 1) e f) in
+        let f_type = whnf_beta e (infertype ~depth:(depth + 1) e lctx f) in
         match f_type.inner with
         | Arrow (_, bid, ty_arg, ty_ret) ->
-            checktype ~depth:(depth + 1) e arg ty_arg;
+            checktype ~depth:(depth + 1) e lctx arg ty_arg;
             Reduce.subst e ty_ret (Bvar bid) arg.inner
         | _ ->
             raise_at
               f
+              (Some lctx)
               (Error.FunctionExpected { not_func = f; not_func_type = f_type; arg }))
-    | Bvar b -> (
-        match Hashtbl.find_opt e.lctx b with
-        | Some (_, ty) -> ty
-        | None -> raise_at tm (Error.InternalError "unknown bound variable in infertype"))
+    | Bvar bid -> (
+        match List.find_opt (fun entry -> entry.bid = bid) lctx with
+        | Some { ty; _ } -> ty
+        | None ->
+            raise_at
+              tm
+              (Some lctx)
+              (Error.InternalError "unknown bound variable in infertype"))
     | Sort n -> { inner = Sort (n + 1); loc = tm.loc }
   in
   (* print_endline ("inferred type " ^ Pretty.term_to_string e res ^ " for term " ^ Pretty.term_to_string e tm); *)
   res
 
-and check_is_type ?(depth = 0) (e : ctx) (tm : term) : unit =
+and check_is_type ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : unit =
   (* print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " is a type"); *)
   match tm.inner with
   | Hole _ -> ()
   | _ -> (
-      let inferred_ty = infertype ~depth:(depth + 1) e tm in
+      let inferred_ty = infertype ~depth:(depth + 1) e lctx tm in
       let inferred_ty_whnf = whnf_beta e inferred_ty in
       match inferred_ty_whnf.inner with
       | Sort _ -> ()
       | _ ->
           raise_at
             tm
+            (Some lctx)
             (Error.TypeExpected { not_type = tm; not_type_infer = inferred_ty_whnf }))
 
 let rec create_metas (e : ctx) (tm : term) (stack : int list) =
@@ -462,7 +479,7 @@ let rec replace_metas (e : ctx) (tm : term) : term =
   | Hole m -> (
       match Hashtbl.find_opt e.metas m with
       | Some { sol = Some tm_sol; _ } -> replace_metas e tm_sol
-      | _ -> raise_at tm Error.CannotInferHole)
+      | _ -> raise_at tm None Error.CannotInferHole)
   | Fun (arg, bid, ty_arg, body) ->
       let ty_arg_filled = replace_metas e ty_arg in
       let body_filled = replace_metas e body in
@@ -490,7 +507,7 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
       | Some { data = Theorem axioms; _ } -> axioms
       | Some { data = Def (axioms, _, _); _ } -> axioms
       | Some { data = Axiom; _ } -> [ name ]
-      | None -> raise_at tm (Error.UnknownName { name }))
+      | None -> raise_at tm None (Error.UnknownName { name }))
   | Fun (_, _, ty_arg, body) ->
       union (list_axioms_used e ty_arg) (list_axioms_used e body)
   | Arrow (_, _, ty_arg, ty_ret) ->
@@ -499,51 +516,21 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | _ -> []
 
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
+  let ty_delta = Option.map (Reduce.delta_reduce e) ty in
   create_metas e tm [];
-  let tm_delta = Reduce.delta_reduce e tm false in
-  (match ty with
-  | Some ty -> checktype e tm_delta ty
-  | None -> ignore (infertype e tm_delta));
+  let tm_delta = Reduce.delta_reduce e tm in
+  (match ty_delta with
+  | Some ty -> checktype e [] tm_delta ty
+  | None -> ignore (infertype e [] tm_delta));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
   (* Re-typecheck term to validate meta solutions *)
-  let tm_filled_delta = Reduce.delta_reduce e tm_filled false in
-  (match ty with
-  | Some ty -> checktype e tm_filled_delta ty
-  | None -> ignore (infertype e tm_filled_delta));
+  let tm_filled_delta = Reduce.delta_reduce e tm_filled in
+  (match ty_delta with
+  | Some ty -> checktype e [] tm_filled_delta ty
+  | None -> ignore (infertype e [] tm_filled_delta));
   let tm_reduced = Reduce.reduce e tm_filled in
   tm_reduced
-
-let process_body (e : ctx) (d : declaration) (body : term) =
-  let ty_filled = elaborate e d.ty None in
-  check_is_type e ty_filled;
-  let proof_filled = elaborate e body (Some (Reduce.delta_reduce e ty_filled false)) in
-  let ty_k = Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm in
-  let proof_k =
-    Reduce.delta_reduce e proof_filled true |> Reduce.reduce e |> conv_to_kterm
-  in
-
-  try
-    Kernel.Interface.add_theorem e.kenv d.name ty_k proof_k;
-    Hashtbl.add
-      e.env
-      d.name
-      {
-        name = d.name;
-        ty = ty_filled;
-        data =
-          (match d.kind with
-          | Theorem _ -> Theorem (list_axioms_used e proof_filled)
-          | Def _ -> Def (list_axioms_used e proof_filled, proof_filled, false)
-          | Axiom -> assert false);
-      }
-  with KExceptions.TypeError msg ->
-    raise
-      (Error.ElabError
-         {
-           context = { loc = Some d.name_loc; decl_name = Some d.name };
-           error_type = Error.KernelError { kernel_exn = msg };
-         })
 
 (* Needs to be trusted for faithfulness of meaning *)
 let process_decl (e : ctx) (d : declaration) : unit =
@@ -551,31 +538,62 @@ let process_decl (e : ctx) (d : declaration) : unit =
     raise
       (Error.ElabError
          {
-           context = { loc = Some d.name_loc; decl_name = Some d.name };
+           context = { loc = Some d.name_loc; decl_name = Some d.name; lctx = None };
            error_type = Error.AlreadyDefined d.name;
          })
   else
     try
+      let ty_filled = elaborate e d.ty None in
+      check_is_type e [] ty_filled;
       match d.kind with
-      | Theorem (Proof proof) ->
-          process_body e d (replace_metas e (Tactic.run e proof d.ty))
-      | Theorem (DefEq body) | Def body -> process_body e d body
-      | Axiom -> (
-          let ty_filled = elaborate e d.ty None in
-          check_is_type e ty_filled;
-          let ty_k =
-            Reduce.delta_reduce e ty_filled true |> Reduce.reduce e |> conv_to_kterm
+      | Theorem body ->
+          let proof =
+            match body with
+            | Proof script -> replace_metas e (Tactic.run e script d.ty)
+            | DefEq proof -> proof
           in
-          try
-            Kernel.Interface.add_axiom e.kenv d.name ty_k;
-            Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom }
-          with KExceptions.TypeError msg ->
-            raise
-              (Error.ElabError
-                 {
-                   context = { loc = Some d.name_loc; decl_name = Some d.name };
-                   error_type = Error.KernelError { kernel_exn = msg };
-                 }))
-    with Error.ElabError x ->
-      raise
-        (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })
+          let proof_filled = elaborate e proof (Some ty_filled) in
+
+          Kernel.Interface.add_theorem
+            e.kenv
+            d.name
+            (conv_to_kterm ty_filled)
+            (conv_to_kterm proof_filled);
+          Hashtbl.add
+            e.env
+            d.name
+            {
+              name = d.name;
+              ty = ty_filled;
+              data = Theorem (list_axioms_used e proof_filled);
+            }
+      | Def body ->
+          let body_filled = elaborate e body (Some ty_filled) in
+
+          Kernel.Interface.add_definition
+            e.kenv
+            d.name
+            (conv_to_kterm ty_filled)
+            (conv_to_kterm body_filled);
+          Hashtbl.add
+            e.env
+            d.name
+            {
+              name = d.name;
+              ty = ty_filled;
+              data = Def (list_axioms_used e body_filled, body_filled, false);
+            }
+      | Axiom ->
+          Kernel.Interface.add_axiom e.kenv d.name (conv_to_kterm ty_filled);
+          Hashtbl.add e.env d.name { name = d.name; ty = ty_filled; data = Axiom }
+    with
+    | Error.ElabError x ->
+        raise
+          (Error.ElabError { x with context = { x.context with decl_name = Some d.name } })
+    | KExceptions.TypeError msg ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = Some d.name_loc; decl_name = Some d.name; lctx = None };
+               error_type = Error.KernelError { kernel_exn = msg };
+             })

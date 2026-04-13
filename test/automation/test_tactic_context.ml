@@ -1,7 +1,7 @@
 open Elab.Term
 open Elab.Types
 open Elab.Proofstate
-open Elab.Tactics
+open Automation.Tactics
 
 let t k = { inner = k; loc = dummy_range }
 let name s = t (Name s)
@@ -32,10 +32,10 @@ let test_intro_success () =
             true
             (match g.goal_type.inner with Name "B" -> true | _ -> false);
           (* verify the local context has exactly 1 hypothesis *)
-          Alcotest.(check int) "context has 1 hypothesis" 1 (List.length g.ctx);
+          Alcotest.(check int) "context has 1 hypothesis" 1 (List.length g.lctx);
           (* verify the hypothesis is named "h_A" *)
-          let hyp = List.hd g.ctx in
-          Alcotest.(check string) "hypothesis name" "h_A" hyp.hyp_name
+          let hyp = List.hd g.lctx in
+          Alcotest.(check string) "hypothesis name" "h_A" (Option.get hyp.name)
       | _ -> Alcotest.fail "expected exactly 1 open goal")
 
 (** [intro] should fail safely if goal is not an implication/forall. *)
