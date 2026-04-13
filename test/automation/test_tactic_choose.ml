@@ -64,7 +64,7 @@ let test_choose_global () =
   Alcotest.(check string) "new goal is still (Exists A (fun (a : A) => True))" exp got;
   (* check for the newly added hypotheses *)
   match goal.lctx with
-  | [a; ha] ->
+  | [ha; a] ->
       let a_typ = pp_term env a.ty in
       let h = pp_term env (Elab.Reduce.reduce env ha.ty) in
       let exp = "A" in

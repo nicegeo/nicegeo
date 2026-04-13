@@ -395,10 +395,9 @@ let choose (e : term) (st : proof_state) : tactic_result =
           let bid_h = Elab.Term.gen_binder_id () in
           let ty = mk_app p (mk_bvar bid_a_typ) in
           let hyp_h = { name = None; bid = bid_h; ty } in
-          let lctx = hyp_a_typ :: hyp_h :: g.lctx in
-          let g = { g with lctx } in (* TODO is hyp order OK? *)
+          let subgoal_lctx = hyp_h :: hyp_a_typ :: g.lctx in
           (* construct the proof term *)
-          let new_hole, st = fresh_goal st g.lctx g.goal_type in
+          let new_hole, st = fresh_goal st subgoal_lctx g.goal_type in
           let proof =
             mk_app
               (mk_app
@@ -408,11 +407,9 @@ let choose (e : term) (st : proof_state) : tactic_result =
                  e)
               (mk_fun None bid_a_typ a_typ (mk_fun None bid_h ty new_hole))
           in
-          Printf.printf "%s\n" (pp_term st.elab_ctx (Elab.Reduce.reduce st.elab_ctx proof));
           (* update the proof state accordingly (and close duplicated goal) *)
           let st = assign_meta g.goal_id proof st in
           let st = close_goal g.goal_id st in
-          Printf.printf "%s\n" (pp_term st.elab_ctx new_hole);
           succeed st
       | _ -> fail "Argument must have the type [Exists A p]")
   | None -> fail "No goals remaining"
