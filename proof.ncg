@@ -1,50 +1,94 @@
-Definition 0 : Measure := Zero
+(* ============================================================
+   Measure shorthands
+   ============================================================ *)
+
+Definition 0  : Measure := Zero
 Definition 90 : Measure := RightAngle
 
-Definition length : Point -> Point -> Measure := fun a b => Length a b
-Definition angle : Point -> Point -> Point -> Measure := fun a b c => Angle a b c
-Definition area : Point -> Point -> Point -> Measure := fun a b c => Area a b c
+Definition length : Point -> Point -> Measure := fun a b   => Length a b
+Definition angle  : Point -> Point -> Point -> Measure := fun a b c => Angle  a b c
+Definition area   : Point -> Point -> Point -> Measure := fun a b c => Area   a b c
 
-(* From synthetic euclid 4*)
-Definition diffside : Point -> Point -> Line -> Prop := fun a b L => Not (OnLine a L) /\ Not (OnLine b L) /\ Not (SameSide a b L)
 
-Definition out_circle : Point -> Circle -> Prop := fun a aa => (Not (OnCircle a aa)) /\ (Not (InCircle a aa))  
+(* ============================================================
+   Geometric predicates
+   ============================================================ *)
 
-Definition colinear : Point -> Point -> Point -> Prop := fun a b c => Exists Line (fun L => OnLine a L /\ OnLine b L /\ OnLine c L)
+(* Two points are on opposite sides of a line. *)
+Definition diffside : Point -> Point -> Line -> Prop :=
+    fun a b L => Not (OnLine a L) /\ Not (OnLine b L) /\ Not (SameSide a b L)
 
-Definition triangle : Point -> Point -> Point -> Prop := fun a b c => (colinear a b c -> False)
+(* A point lies strictly outside a circle (neither on it nor inside it). *)
+Definition out_circle : Point -> Circle -> Prop :=
+    fun a aa => Not (OnCircle a aa) /\ Not (InCircle a aa)
 
-Definition eq_tri : Point -> Point -> Point -> Prop := fun a b c =>  (triangle a b c) /\ (Length a b = Length a c) /\ (Length b a = Length b c) /\
-(Length c a =  Length c b)    
+(* Three points are collinear if some line passes through all three. *)
+Definition colinear : Point -> Point -> Point -> Prop :=
+    fun a b c => Exists Line (fun L => OnLine a L /\ OnLine b L /\ OnLine c L)
 
-Definition iso_tri : Point -> Point -> Point -> Prop := fun a b c =>
-    triangle a b c /\ Length a b = Length a c
+(* Three points form a (non-degenerate) triangle iff they are not collinear. *)
+Definition triangle : Point -> Point -> Point -> Prop :=
+    fun a b c => colinear a b c -> False
 
-Definition para : Line -> Line -> Prop := fun M N => ((e : Point) -> Not (OnLine e M) ∨ Not (OnLine e N))
+(* An equilateral triangle: non-degenerate and all three sides equal. *)
+Definition eq_tri : Point -> Point -> Point -> Prop :=
+    fun a b c =>
+        triangle a b c /\
+        Length a b = Length a c /\
+        Length b a = Length b c /\
+        Length c a = Length c b
 
-Definition paragram : Point -> Point -> Point -> Point -> Line -> Line -> Line -> Line -> Prop := fun a b c d L M N O => 
-OnLine a L /\ OnLine b L /\ OnLine b M /\ OnLine c M /\ OnLine c N /\ OnLine d N /\ OnLine d O /\ OnLine a O /\ para L N /\ para M O
+(* An isoceles triangle: non-degenerate with the two sides from a equal (ab = ac). *)
+Definition iso_tri : Point -> Point -> Point -> Prop :=
+    fun a b c => triangle a b c /\ Length a b = Length a c
 
-(* Of quadrilateral figures, a square is that which is both equilateral and right-angled *)
-Definition square : Point -> Point -> Point -> Point -> Prop := fun a b c d => 
-    Length a b = Length b c /\ Length a b = Length c d /\ Length a b = Length d a /\
-    Angle a b c = 90 /\ Angle b c d = 90 /\ Angle c d a = 90 /\ Angle d a b = 90
+(* Two lines are parallel if no point lies on both. *)
+Definition para : Line -> Line -> Prop :=
+    fun M N => (e : Point) -> Not (OnLine e M) ∨ Not (OnLine e N)
+
+(* A parallelogram a-b-c-d with sides on lines L, M, N, O respectively.
+   Vertices go: a and b on L, b and c on M, c and d on N, d and a on O,
+   with L ∥ N and M ∥ O. *)
+Definition paragram : Point -> Point -> Point -> Point -> Line -> Line -> Line -> Line -> Prop :=
+    fun a b c d L M N O =>
+        OnLine a L /\ OnLine b L /\
+        OnLine b M /\ OnLine c M /\
+        OnLine c N /\ OnLine d N /\
+        OnLine d O /\ OnLine a O /\
+        para L N /\ para M O
+
+(* A square: equilateral (all four sides equal to ab) and right-angled
+   (all four interior angles are 90°). *)
+Definition square : Point -> Point -> Point -> Point -> Prop :=
+    fun a b c d =>
+        Length a b = Length b c /\
+        Length a b = Length c d /\
+        Length a b = Length d a /\
+        Angle a b c = 90 /\
+        Angle b c d = 90 /\
+        Angle c d a = 90 /\
+        Angle d a b = 90
+
+(* ============================================================
+   Logic and order utilities
+   ============================================================ *)
 
 (* A strict inequality implies the two values are not equal. *)
 Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
-  fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
-    LtAntisymm b b
-      (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
-      (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
+    fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
+        LtAntisymm b b
+            (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
+            (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
 
 (* Equality is symmetric: a = b implies b = a. *)
 Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> a = b -> b = a :=
-	fun (A: Type) (a b : A) (eq_ab : a = b) => Eq.elim A a (fun (x : A) => x = a) (Eq.intro A a) b eq_ab
+    fun (A: Type) (a b : A) (eq_ab : a = b) =>
+        Eq.elim A a (fun (x : A) => x = a) (Eq.intro A a) b eq_ab
 
 (* Non-equality is symmetric: a ≠ b implies b ≠ a. *)
 Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> a ≠ b -> b ≠ a :=
-	fun (A: Type) (a b: A) (ne_ab: a ≠ b) => fun (eq_ba: b = a) =>
-		ne_ab (Eq.symm A b a eq_ba)
+    fun (A: Type) (a b: A) (ne_ab: a ≠ b) =>
+        fun (eq_ba: b = a) => ne_ab (Eq.symm A b a eq_ba)
 
 (* Eliminates a conjunction by passing both components to a continuation. *)
 Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> A ∧ B -> (f: A -> B -> C) -> C :=
@@ -72,7 +116,11 @@ Theorem on_circle_iff_length_eq : ∀ (a b c : Point) (d : Circle),
     (fun h => on_circle_if_eq_radius a b c d ad bd (Eq.symm _ _ _ h)) 
     (fun h => Eq.symm _ _ _ (eq_radius_if_on_circle a b c d ad bd h))
 
-(* Proposition 1: On a given finite straight line to construct an equilateral triangle. *)
+(* ============================================================
+   Proposition 1 (I.1): Constructing an equilateral triangle
+   ============================================================ *)
+
+(* On a given finite straight line, construct an equilateral triangle. *)
 Theorem equilateral_triangle : ∀ (a b : Point), (ab : a ≠ b) ->
     Exists Point (fun c => Length a b = Length a c /\ Length b c = Length b a) :=
     fun (a b : Point) (ab : a ≠ b) =>
@@ -102,26 +150,18 @@ Theorem equilateral_triangle : ∀ (a b : Point), (ab : a ≠ b) ->
     (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
 	))))))
 
-(* #print axioms equilateral_triangle *)
-
 (* Right cancellation of addition: x + z = y + z implies x = y,
-   proved by ruling out x < y and y < x via the order on Measure. *)
+   by ruling out x < y and y < x via order on Measure. *)
 Theorem AddCancel : ∀ (x y z : Measure), x + z = y + z -> x = y :=
     fun x y z h =>
-    (* by cases LtTricot x y *)
     Or.elim _ _ _ (LtTricot x y)
     (fun (xly : x < y) =>
-    (* LtAdd x y z xly : Lt (Add x z) (Add y z) *)
-    (* LtNe _ _ (LtAdd x y z xly) h : False *)
-    False.elim _ (LtNe _ _ (LtAdd x y z xly) h)
-    )
+        False.elim _ (LtNe _ _ (LtAdd x y z xly) h))
     (fun rest =>
     Or.elim _ _ _ rest
     (fun (ylx: y < x) =>
-    False.elim _ (LtNe _ _ (LtAdd y x z ylx) (Eq.symm _ _ _ h))
-    )
-    (fun (eqxy : x = y) => eqxy)
-    )
+        False.elim _ (LtNe _ _ (LtAdd y x z ylx) (Eq.symm _ _ _ h)))
+    (fun (eqxy : x = y) => eqxy))
 
 
 (* Left cancellation of addition: z + x = z + y implies x = y,
@@ -192,9 +232,13 @@ Theorem ne_23_of_between : ∀ (a b c : Point), Between a b c -> b ≠ c :=
     fun a b c Babc => 
     Ne.symm _ _ _ (fst _ _ (snd _ _ (between_distinct c b a (fst _ _ (between_distinct a b c Babc)))))
 
-(* Proposition 2 helper: the non-degenerate case (a ≠ b) of the compass-and-straightedge
-   construction — builds the equilateral triangle on ab, then walks the target length
-   bc out along its longer diagonal to land at f with Length a f = Length b c. *)
+(* ============================================================
+   Proposition 2 (I.2): Transporting a segment to a given endpoint
+   ============================================================ *)
+
+(* Non-degenerate case (a ≠ b): builds the equilateral triangle on ab, then walks
+   the target length bc out along its longer diagonal to land at f with
+   Length a f = Length b c. *)
 Theorem place_segment_ne : ∀ (a b c : Point),
     (bc : b ≠ c) -> (ab : a ≠ b)
     -> Exists Point (fun f => Length a f = Length b c) :=
@@ -330,7 +374,9 @@ Theorem place_segment : ∀ (a b c : Point),
     (fun (ab : a ≠ b) => place_segment_ne a b c bc ab)
     )
 
-(* #print axioms place_segment *)
+(* ============================================================
+   sorry axiom — closes any goal; proofs using it are not valid
+   ============================================================ *)
 
 Axiom sorry : (P: Prop) -> P
 
@@ -370,7 +416,11 @@ Theorem not_on_circle_if_gt_radius : ∀ (o p q : Point) (aa : Circle),
     LtNe (Length o p) (Length o q) pq_lt
         (Eq.symm _ _ _ (eq_radius_if_on_circle o p q aa o_center p_on q_on))
 
-(* Proposition 3: To cut off from the greater of two given unequal straight lines a straight line equal to the less. *)
+(* ============================================================
+   Proposition 3 (I.3): Cutting off a segment equal to a shorter one
+   ============================================================ *)
+
+(* Given ab < cd, produce e with Length a b = Length c e and B(c, e, d). *)
 Theorem segment_of_eq_len : ∀ (a b c d : Point),
     (Eq _ a b -> False) -> (Lt (Length a b) (Length c d)) ->
     Exists Point (fun e => And (Eq _ (Length a b) (Length c e)) (Between c e d)) :=
@@ -413,131 +463,179 @@ Theorem segment_of_eq_len : ∀ (a b c d : Point),
     )
     )
 
-(* #print axioms segment_of_eq_len *)
 
 
 
 
 
+(* ============================================================
+   Proposition 4 (I.4): SAS congruence (taken as axiom sas_congruence)
+   ============================================================ *)
 
 
+(* ============================================================
+   Proposition 5 (I.5): Base angles of an isoceles triangle are equal
+   ============================================================ *)
 
-(* Proposition 4: If two triangles have two sides equal to two sides respectively 
-and have the angles contained by the equal straight lines equal, 
-then 
-they also have the base equal to the base, the triangle equals the triangle, and the remaining
-angles equal the remaining angles respectively, namely those opposite the equal sides. *)
-
-(* Axiom sas_congruence *)
-
-
-
-(* Proposition 5 (part 1): Equal angles in the base of isoceles triangles *)
 Theorem angle_eq_of_iso : ∀ a b c, iso_tri a b c → Angle a b c = Angle a c b := sorry _
 
-(* Proposition 6: If in a triangle two angles equal one another, 
-then the sides opposite the equal angles also equal one another. *)
+
+(* ============================================================
+   Proposition 6 (I.6): Equal base angles imply isoceles
+   ============================================================ *)
+
+(* If two angles of a triangle are equal, the opposite sides are equal. *)
 Theorem eq_angles_implies_isoceles : ∀ (a b c : Point),
-    triangle a b c -> (Angle a b c = Angle a c b) -> (Length a b = Length a c) := sorry _
+    triangle a b c -> Angle a b c = Angle a c b -> Length a b = Length a c := sorry _
 
 
-(* Proposition 8: If two triangles have the two sides equal to two sides respectively, 
-and also have the base equal to the base, then they also have the angles equal which are contained 
-by the equal straight lines. *)
-
-(* SSS axiom*)
+(* ============================================================
+   Proposition 8 (I.8): SSS congruence (taken as axiom sss_congruence)
+   ============================================================ *)
 
 
-(* Proposition 10: bisecting a segment *)
+(* ============================================================
+   Proposition 10 (I.10): Bisecting a segment
+   ============================================================ *)
+
 Theorem bisect_segment : ∀ (a b : Point),
     Exists Point (fun e => Between a e b /\ Length a e = Length b e) := sorry _
 
-Theorem length_eq_B_of_ne : ∀ a b c, (ab : a ≠ b) → (bc : b ≠ c) → ∃ d, Between a b d ∧ length b c = length b d := sorry _
 
-Theorem ne_12_of_between : ∀ a b c, Between a b c → a ≠ b := sorry _
-Theorem ne_21_of_between : ∀ a b c, Between a b c → b ≠ a := sorry _
+(* ============================================================
+   Proposition 11 (I.11): Erecting a perpendicular at a point on a line
+   ============================================================ *)
 
-Theorem iseqtri_sameside_of_ne : ∀ a b d L, (ab : a ≠ b) → (aL : OnLine a L) → (bL : OnLine b L) → (dL : ¬OnLine d L) → 
+(* Extend segment bc beyond b to a point d with length bd = length ba. *)
+Theorem length_eq_B_of_ne : ∀ a b c, (ab : a ≠ b) → (bc : b ≠ c) →
+    ∃ d, Between a b d ∧ length b c = length b d := sorry _
+
+(* The left and middle endpoints are distinct: B(a,b,c) implies a ≠ b. *)
+Theorem ne_12_of_between : ∀ a b c, Between a b c → a ≠ b :=
+    fun (a b c : Point) (h : Between a b c) =>
+        fst _ _ (snd _ _ (between_distinct a b c h))
+
+(* The middle and left endpoints are distinct: B(a,b,c) implies b ≠ a. *)
+Theorem ne_21_of_between : ∀ a b c, Between a b c → b ≠ a :=
+    fun (a b c : Point) (h : Between a b c) =>
+        Ne.symm Point a b (fst _ _ (snd _ _ (between_distinct a b c h)))
+
+(* On line L through a and b, on the same side as d, there exists an equilateral triangle. *)
+Theorem iseqtri_sameside_of_ne : ∀ a b d L,
+    (ab : a ≠ b) → (aL : OnLine a L) → (bL : OnLine b L) → (dL : ¬OnLine d L) →
     ∃ c, ¬OnLine c L ∧ SameSide c d L ∧ eq_tri a b c := sorry _
 
-(* Proposition 11: To draw a straight line at right angles to a given straight line from a given point on it. 
-Statement taken from synthetic_euclid_4 formalization *)
+(* Perpendicular at b, with b between a and c on L, result on same side as f.
+   The proof extends ba beyond b, finds d with bd = ba, then lifts an
+   equilateral triangle on ad to get the right-angle foot. *)
 Theorem perpendicular_of_online : ∀ (a b c f : Point) (L : Line),
     Between a b c -> OnLine a L -> OnLine b L -> Not (OnLine f L) ->
     ∃ e, SameSide e f L ∧ Angle e b a = 90 ∧ Angle e b c = 90 :=
-    fun a b c f L Babc aL bL fL => 
+    fun a b c f L Babc aL bL fL =>
     have _ _ (length_eq_B_of_ne _ _ _ (ne_12_of_between _ _ _ Babc) (ne_21_of_between _ _ _ Babc))
     (fun exists_d =>
-
-    Exists.elim _ _ _ exists_d 
+    Exists.elim _ _ _ exists_d
     (fun (d : Point) hd =>
-
     And.elim1 _ _ _ hd
     (fun (Babd : Between a b d) (ba_bd : length b a = length b d) =>
+    sorry _)))
 
-
-    sorry _
-    )
-    )
-    )
-
-
+(* Perpendicular at b on L, result on same side as f.
+   Variant that does not require an explicit betweenness witness. *)
 Theorem perpendicular_of_online' : ∀ (a b c f : Point) (L : Line),
-    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine f L) -> 
+    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine f L) ->
     Exists Point (fun c => SameSide c f L ∧ Angle a b c = 90) := sorry _
 
+(* Perpendicular at b on L, result on the opposite side from f. *)
 Theorem perpendicular_of_online'' : ∀ (a b c f : Point) (L : Line),
-    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine f L) -> 
+    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine f L) ->
     Exists Point (fun c => diffside c f L ∧ Angle a b c = 90) := sorry _
 
-(* Proposition 13: If a straight line stands on a straight line, then it makes either two right angles or angles 
-whose sum equals two right angles. *)
-Theorem two_right_of_flat_angle : 
+
+(* ============================================================
+   Proposition 13 (I.13): Angles on a straight line sum to two right angles
+   ============================================================ *)
+
+(* If a line stands on another, the two angles it makes sum to two right angles. *)
+Theorem two_right_of_flat_angle :
     ∀ a b c d L,
     Between a b c -> OnLine a L -> OnLine b L ->
     Not (OnLine d L) -> Angle d b a + Angle d b c = 90 + 90 := sorry _
 
-(* /--Euclid I.13, a corollary if we know one of the angles to be right-/ *)
+(* Corollary of I.13: if one of the two angles at b along a line is 90°, so is the other.
+   Requires b ≠ d (so d and c are distinct points on L giving distinct rays from b). *)
 Theorem right_of_online_right : ∀ (a b c d : Point) (L : Line),
     b ≠ d -> triangle a b c -> OnLine b L ->
     OnLine c L -> OnLine d L -> angle a b d = 90 -> angle a b c = 90 := sorry _
 
-(* /-- Euclid I.15, vertical angles are equal-/ *)
+
+(* ============================================================
+   Proposition 15 (I.15): Vertical angles are equal
+   ============================================================ *)
+
 Theorem vertical_angle : ∀ (a b c d e : Point) (L : Line),
     Angle a b d = Angle c b e := sorry _
 
-Theorem vertical_angle' : 
-∀ (a b c d e : Point),
-Between a b c -> Between d b e -> Not (colinear a b d) -> 
-Angle a b d = Angle c b e := sorry _
+(* Vertical angles are equal given explicit betweenness witnesses
+   and non-collinearity of the two crossing rays. *)
+Theorem vertical_angle' : ∀ (a b c d e : Point),
+    Between a b c -> Between d b e -> Not (colinear a b d) ->
+    Angle a b d = Angle c b e := sorry _
 
-(* /-- Euclid I.16, external angles are greater than interior angles-/ *)
+
+(* ============================================================
+   Proposition 16 (I.16): An exterior angle exceeds either remote interior angle
+   ============================================================ *)
+
+(* B(a,b,c) and triangle abd: the exterior angle dbc exceeds the interior angle bda. *)
 Theorem internal_lt_external : ∀ (a b c d : Point),
-Between a b c -> triangle a b d -> Angle b d a < Angle d b c := sorry _
+    Between a b c -> triangle a b d -> Angle b d a < Angle d b c := sorry _
 
-(* /-- Euclid I.16, external angles are greater than interior angles-/ *)
+(* B(a,b,c) and triangle abd: the exterior angle dbc exceeds the interior angle bad. *)
 Theorem internal_lt_external' : ∀ (a b c d : Point),
-Between a b c -> triangle a b d -> Angle b a d < Angle d b c := sorry _
+    Between a b c -> triangle a b d -> Angle b a d < Angle d b c := sorry _
 
-(* /-- Euclid I.18, Opposite larger sides you have larger angles in a triangle-/ *)
+
+(* ============================================================
+   Proposition 18 (I.18): Larger side opposite larger angle
+   ============================================================ *)
+
+(* In triangle abc, if ca < cb then the angle at b is smaller than the angle at a. *)
 Theorem ang_lt_of_len_lt : ∀ (a b c : Point),
-triangle a b c -> length c a < length c b -> angle c b a < angle c a b := sorry _
+    triangle a b c -> length c a < length c b -> angle c b a < angle c a b := sorry _
 
-(* /--Euclid I.19, larger angles correspond to larger opposide sides in a triangle-/ *)
+
+(* ============================================================
+   Proposition 19 (I.19): Larger angle opposite larger side
+   ============================================================ *)
+
+(* In triangle abc, if angle at b < angle at a, then ca < cb. *)
 Theorem len_lt_of_ang_lt : ∀ (a b c : Point),
     triangle a b c -> angle c b a < angle c a b -> Length c a < Length c b := sorry _
 
-(* Proposition 20, part 1: Triangle inequality *)
+
+(* ============================================================
+   Proposition 20 (I.20): Triangle inequality
+   ============================================================ *)
+
+(* Each side of a triangle is less than the sum of the other two. *)
 Theorem len_lt_of_tri' : ∀ (a b c : Point),
     triangle a b c -> Length a b < Length a c + Length b c := sorry _
 
-(* Prroposition 20, part 2: More triangle inequalities *)
+(* All three triangle inequalities simultaneously. *)
 Theorem len_lt_of_tri : ∀ (a b c : Point),
-    triangle a b c -> Length a b < Length a c + Length b c ∧
-    Length b c < Length b a + Length c a ∧ Length c a < Length c b + Length a b :=
-    sorry _
+    triangle a b c ->
+    Length a b < Length a c + Length b c ∧
+    Length b c < Length b a + Length c a ∧
+    Length c a < Length c b + Length a b := sorry _
 
-(* Proposition 22: Create triangle of specific Lengths *)
+
+(* ============================================================
+   Proposition 22 (I.22): Constructing a triangle from three lengths
+   ============================================================ *)
+
+(* Given lengths a1a2 and b1b2 satisfying the triangle inequalities with base ab,
+   produce e on the same side of L as f with Length a e = a1a2 and Length b e = b1b2. *)
 Theorem triangle_of_ineq : ∀ (a b f a1 a2 b1 b2 e : Point) (L : Line),
     (aL : OnLine a L) -> (bL : OnLine b L) -> (fL : Not (OnLine f L)) ->
     (ab_lt_a1a2_b1b2 : Length a b < Length a1 a2 + Length b1 b2) ->
@@ -546,18 +644,24 @@ Theorem triangle_of_ineq : ∀ (a b f a1 a2 b1 b2 e : Point) (L : Line),
     Exists Point (fun e => Length a e = Length a1 a2 ∧ Length b e = Length b1 b2 ∧ SameSide e f L) := sorry _
 
 
+(* ============================================================
+   Proposition 23 (I.23): Copying an angle
+   ============================================================ *)
 
-(* Proposition 23: Copying an angle *)
+(* Copy angle ecd to vertex a on line L, placing the result on the same side as j. *)
 Theorem angle_copy : ∀ (a b j c d e : Point) (L : Line),
-Not (a = b) -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e -> (Exists Point (fun h => Angle h a b = Angle e c d /\ SameSide h j L )) := sorry _ 
+    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e ->
+    Exists Point (fun h => Angle h a b = Angle e c d ∧ SameSide h j L) := sorry _
 
-
-(* Proposition 23': Copying an angle towards the opposite side *)
+(* Copy angle ecd to vertex a on line L, placing the result on the opposite side from j. *)
 Theorem angle_copy' : ∀ (a b j c d e : Point) (L : Line),
-Not (a = b) -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e -> (Exists Point (fun h => Angle h a b = Angle e c d /\ diffside h j L )) := sorry _ 
+    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e ->
+    Exists Point (fun h => Angle h a b = Angle e c d ∧ diffside h j L) := sorry _
 
 
-(* Proposition 27 *)
+(* ============================================================
+   Parallel line theory (Props 27–34)
+   ============================================================ *)
 
 (* Parallel lines do not intersect. *)
 Theorem para_not_inter : ∀ (L M : Line), para L M -> LinesInter L M -> False :=
@@ -576,6 +680,134 @@ Theorem para_symm : ∀ (L M : Line), para L M -> para M L :=
     Or.elim _ _ _ (hpara p)
     (fun (hnL : Not (OnLine p L)) => Or.inr (Not (OnLine p M)) (Not (OnLine p L)) hnL)
     (fun (hnM : Not (OnLine p M)) => Or.inl (Not (OnLine p M)) (Not (OnLine p L)) hnM)
+
+(* A point on one of two parallel lines is not on the other. *)
+Theorem offline_of_para : ∀ (a : Point) (L M : Line), OnLine a L -> para L M -> Not (OnLine a M) :=
+    fun (a : Point) (L M : Line) (a_on_L : OnLine a L) (hpara : para L M) =>
+    Or.elim _ _ _ (hpara a)
+    (fun (a_not_on_L : Not (OnLine a L)) => False.elim _ (a_not_on_L a_on_L))
+    (fun (a_not_on_M : Not (OnLine a M)) => a_not_on_M)
+
+(* Symmetric form of offline_of_para. *)
+Theorem offline_of_para' : ∀ (a : Point) (L M : Line), OnLine a M -> para L M -> Not (OnLine a L) :=
+    fun (a : Point) (L M : Line) (a_on_M : OnLine a M) (hpara : para L M) =>
+    offline_of_para a M L a_on_M (para_symm L M hpara)
+
+(* A common point witnesses the failure of parallelism. *)
+Theorem not_para_of_onlines : ∀ (a : Point) (L M : Line),
+    OnLine a L -> OnLine a M -> para L M -> False :=
+    fun (a : Point) (L M : Line) (a_on_L : OnLine a L) (a_on_M : OnLine a M) (hpara : para L M) =>
+    offline_of_para a L M a_on_L hpara a_on_M
+
+(* A point lying on two lines shows they are not parallel. *)
+Theorem not_para_of_onlines' : ∀ (a : Point) (L M : Line),
+    OnLine a L -> OnLine a M -> Not (para L M) :=
+    fun (a : Point) (L M : Line) (a_on_L : OnLine a L) (a_on_M : OnLine a M) =>
+    fun (hpara : para L M) => not_para_of_onlines a L M a_on_L a_on_M hpara
+
+(* If two lines are not parallel, classical logic produces a common point. *)
+Theorem common_point_of_not_para : ∀ (L M : Line),
+    Not (para L M) ->
+    Exists Point (fun (a : Point) => OnLine a L /\ OnLine a M) :=
+    fun (L : Line) (M : Line) (hnot_para : Not (para L M)) =>
+    Or.elim _ _ _ (excluded_middle (Exists Point (fun (a : Point) => OnLine a L /\ OnLine a M)))
+    (fun (hex : Exists Point (fun (a : Point) => OnLine a L /\ OnLine a M)) => hex)
+    (fun (hnoex : Not (Exists Point (fun (a : Point) => OnLine a L /\ OnLine a M))) =>
+        False.elim _ (hnot_para
+            (fun (a : Point) =>
+                Or.elim _ _ _ (excluded_middle (OnLine a L))
+                (fun (a_on_L : OnLine a L) =>
+                    Or.elim _ _ _ (excluded_middle (OnLine a M))
+                    (fun (a_on_M : OnLine a M) =>
+                        False.elim _ (hnoex
+                            (Exists.intro _ _ a (And.intro _ _ a_on_L a_on_M))))
+                    (fun (a_not_on_M : Not (OnLine a M)) =>
+                        Or.inr _ _ a_not_on_M))
+                (fun (a_not_on_L : Not (OnLine a L)) =>
+                    Or.inl _ _ a_not_on_L))))
+
+(* A line distinct from L is not a member of the singleton line-list [L]. *)
+Theorem line_not_mem_singleton_of_ne : ∀ (M L : Line),
+    M ≠ L ->
+    Not (List.mem Line M (List.cons Line L (List.nil Line))) :=
+    fun (M L : Line) (ML : M ≠ L) =>
+    fun (mem_ML : List.mem Line M (List.cons Line L (List.nil Line))) =>
+    Or.elim _ _ _ (fst _ _ (List.mem_cons Line M L (List.nil Line)) mem_ML)
+    (fun (eq_ML : M = L) => ML eq_ML)
+    (fun (mem_nil : List.mem Line M (List.nil Line)) => List.not_mem_nil Line M mem_nil)
+
+(* If a point is chosen distinct from the singleton point-list [a], then it is not equal to a. *)
+Theorem distinct_from_single_point_ne : ∀ (p a : Point) (l_list : List Line) (c_list : List Circle),
+    distinct_from p (List.cons Point a (List.nil Point)) l_list c_list ->
+    p ≠ a :=
+    fun (p a : Point) (l_list : List Line) (c_list : List Circle)
+        (hp : distinct_from p (List.cons Point a (List.nil Point)) l_list c_list) =>
+    fun (pa : p = a) =>
+    (fst _ _ (fst _ _ (distinct_from.elim p (List.cons Point a (List.nil Point)) l_list c_list hp)))
+    ((snd _ _ (List.mem_cons Point p a (List.nil Point)))
+        (Or.inl _ _ pa))
+
+(* If a point is chosen to avoid the singleton line-list [L], then it is not on L. *)
+Theorem distinct_from_avoids_single_line : ∀ (p : Point) (p_list : List Point) (L : Line) (c_list : List Circle),
+    distinct_from p p_list (List.cons Line L (List.nil Line)) c_list ->
+    Not (OnLine p L) :=
+    fun (p : Point) (p_list : List Point) (L : Line) (c_list : List Circle)
+        (hp : distinct_from p p_list (List.cons Line L (List.nil Line)) c_list) =>
+    fst _ _
+        ((fst _ _ (List.forall_cons Line (fun (M : Line) => Not (OnLine p M)) L (List.nil Line)))
+        (snd _ _ (fst _ _ (distinct_from.elim p p_list (List.cons Line L (List.nil Line)) c_list hp))))
+
+(* Distinct lines with a common point satisfy LinesInter. *)
+Theorem lines_inter_of_common_point_distinct : ∀ (a : Point) (L M : Line),
+    L ≠ M ->
+    OnLine a L ->
+    OnLine a M ->
+    LinesInter L M :=
+    fun (a : Point) (L M : Line) (LM : L ≠ M) (a_on_L : OnLine a L) (a_on_M : OnLine a M) =>
+    Exists.elim _ _ _
+        (pt_on_line M
+            (List.cons Point a (List.nil Point))
+            (List.cons Line L (List.nil Line))
+            (List.nil Circle)
+            (line_not_mem_singleton_of_ne M L (Ne.symm _ _ _ LM)))
+    (fun (b : Point)
+        (hb : OnLine b M /\ distinct_from b (List.cons Point a (List.nil Point))
+            (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
+    have _ _ (distinct_from_single_point_ne b a (List.cons Line L (List.nil Line)) (List.nil Circle) (snd _ _ hb))
+    (fun (ba : b ≠ a) =>
+    have _ _ (distinct_from_avoids_single_line b (List.cons Point a (List.nil Point)) L (List.nil Circle) (snd _ _ hb))
+    (fun (b_not_on_L : Not (OnLine b L)) =>
+    Exists.elim _ _ _
+        (pt_extension_on_line M b a
+            (List.nil Point)
+            (List.cons Line L (List.nil Line))
+            (List.nil Circle)
+            (fst _ _ hb)
+            a_on_M
+            ba
+            (line_not_mem_singleton_of_ne M L (Ne.symm _ _ _ LM)))
+    (fun (c : Point)
+        (hc : (OnLine c M /\ Between b a c) /\ distinct_from c (List.nil Point)
+            (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
+    have _ _ (distinct_from_avoids_single_line c (List.nil Point) L (List.nil Circle) (snd _ _ hc))
+    (fun (c_not_on_L : Not (OnLine c L)) =>
+    lines_inter_if_diff_sides b c L M
+        (And.intro _ _
+            (And.intro _ _ b_not_on_L c_not_on_L)
+            (pasch_online_not_sameside b a c L
+                (snd _ _ (fst _ _ hc))
+                a_on_L))
+        (fst _ _ hb)
+        (fst _ _ (fst _ _ hc))
+    )))))
+
+(* Proposition 30:
+   lines parallel to the same line are parallel to one another. *)
+Theorem para_trans : ∀ (L M N : Line),
+    L ≠ N ->
+    para L M ->
+    para M N ->
+    para L N := sorry _
 
 (* Proposition 29 *)
 
@@ -603,65 +835,128 @@ Theorem co_interior_angles :
 
 
 
-(* Proposition 31: through a point off a line there exists a parallel line *)
-Theorem para_of_offline: ∀ (a : Point) (M : Line), ¬OnLine a M → ∃ N, OnLine a N ∧ para M N := sorry _
+(* Proposition 31 (I.31): Through a point off a line there exists a parallel line. *)
+Theorem para_of_offline : ∀ (a : Point) (M : Line), ¬OnLine a M → ∃ N, OnLine a N ∧ para M N := sorry _
 
-
-    
-(* Proposition 34: basic length, angle, and area properties of paralellograms *)
+(* Proposition 34 (I.34): Opposite sides, opposite angles, and half-area of a parallelogram.
+   Specifically: ab = cd, angle bad = angle bcd, area abd = area bcd. *)
 Theorem len_ang_arelen_ang_area_eq_of_parallelogram : ∀ (a b c d : Point) (M N O P : Line),
-(paragram a b c d M N O P) -> length a b = length c d /\ angle b a d = angle b c d /\ area a b d = area b c d 
-:= sorry _
+    paragram a b c d M N O P ->
+    length a b = length c d /\ angle b a d = angle b c d /\ area a b d = area b c d := sorry _
 
-(* Proposition 34.1: basic length properties of parallelograms *)
-Theorem len_eq_of_parallelogram :  ∀ (a b c d : Point) (M N O P : Line),
-(paragram a b c d M N O P) -> length a b = length c d := sorry _
+(* Proposition 34.1: Opposite sides of a parallelogram are equal (ab = cd). *)
+Theorem len_eq_of_parallelogram : ∀ (a b c d : Point) (M N O P : Line),
+    paragram a b c d M N O P -> length a b = length c d := sorry _
 
+(* Proposition 34.2: The other pair of opposite sides are equal (ad = cb). *)
+Theorem len_eq_of_parallelogram' : ∀ (a b c d : Point) (M N O P : Line),
+    paragram a b c d M N O P -> length a d = length c b := sorry _
 
-(* Proposition 34.2:basic length properties of paralellograms *)
-Theorem len_eq_of_parallelogram' :  ∀ (a b c d : Point) (M N O P : Line),
-(paragram a b c d M N O P) -> length a d = length c b := sorry _
+(* Proposition 34.3: A diagonal bisects the parallelogram area. *)
+Theorem len_eq_of_parallelogram'' : ∀ (a b c d : Point) (M N O P : Line),
+    paragram a b c d M N O P -> area a b d = area b c d := sorry _
 
-(* Proposition 34.3: basic area properties of paralellograms *)
-Theorem len_eq_of_parallelogram'' :  ∀ (a b c d : Point) (M N O P : Line),
-(paragram a b c d M N O P) -> area a b d  = area b c d := sorry _
+(* ============================================================
+   Helpers for Proposition 46
+   ============================================================ *)
 
-(* TODO helper for Proposition 46:
-   if DE is parallel to AB and BE is parallel to AD, then the two constructed
-   lines DE and BE intersect. *)
+(* Prop 30 corollary: if a transversal L meets N, then it also meets every line
+   parallel to N.  The distinctness L ≠ N is essential: without it the statement
+   is false when L = N. *)
+Theorem lines_inter_of_parallel_through_transversal :
+    ∀ (L N P : Line),
+    L ≠ N ->
+    LinesInter L N ->
+    para N P ->
+    LinesInter P L :=
+    fun (L N P : Line) (LN : L ≠ N) (hLN : LinesInter L N) (NP : para N P) =>
+    Or.elim _ _ _ (excluded_middle (para L P))
+    (fun (LP : para L P) =>
+        Exists.elim _ _ _ (pt_of_linesinter L N hLN)
+        (fun (a : Point) (a_on : OnLine a L /\ OnLine a N) =>
+            False.elim _ (
+                para_not_inter L N
+                    (para_trans L P N LN LP (para_symm N P NP))
+                    hLN)))
+    (fun (not_LP : Not (para L P)) =>
+        Exists.elim _ _ _ (common_point_of_not_para L P not_LP)
+        (fun (a : Point) (a_on : OnLine a L /\ OnLine a P) =>
+            have _ _
+            (fun (PL : P = L) =>
+                Exists.elim _ _ _ (pt_of_linesinter L N hLN)
+                (fun (x : Point) (x_on : OnLine x L /\ OnLine x N) =>
+                    not_para_of_onlines x N P
+                        (snd _ _ x_on)
+                        (Eq.elim _ L (fun Q => OnLine x Q) (fst _ _ x_on) P (Eq.symm _ _ _ PL))
+                        NP))
+            (fun (PL : P ≠ L) =>
+                lines_inter_of_common_point_distinct a P L PL (snd _ _ a_on) (fst _ _ a_on))))
+
+(* If L and N intersect, then any line parallel to L intersects any line parallel to N.
+   Obtained by applying lines_inter_of_parallel_through_transversal twice. *)
 Theorem lines_inter_of_crossing_parallels :
-    ∀ (a : Point) (L N DE BE : Line),
-    OnLine a L -> OnLine a N ->
-    para L DE -> para N BE ->
-    LinesInter DE BE := sorry _
+    ∀ (L N M P : Line),
+    L ≠ N ->
+    LinesInter L N ->
+    para L M ->
+    para N P ->
+    LinesInter M P :=
+    fun (L N M P : Line) (LN : L ≠ N) (hLN : LinesInter L N) (LM : para L M) (NP : para N P) =>
+        lines_inter_of_parallel_through_transversal P L M
+            (fun (PL : P = L) =>
+                Exists.elim _ _ _ (pt_of_linesinter L N hLN)
+                (fun (a : Point) (a_on : OnLine a L /\ OnLine a N) =>
+                    not_para_of_onlines a N P
+                        (snd _ _ a_on)
+                        (Eq.elim _ L (fun Q => OnLine a Q) (fst _ _ a_on) P (Eq.symm _ _ _ PL))
+                        NP))
+            (lines_inter_of_parallel_through_transversal L N P LN hLN NP)
+            LM
 
-(* TODO helper for Proposition 46:
-   points lying on a line parallel to N are on the same side of N, provided one
-   chosen point is already known to be off N. *)
+(* Points lying on a line parallel to N are on the same side of N,
+   provided one known point is already off N. *)
 Theorem same_side_of_points_on_parallel :
-    ∀ (b e : Point) (N BE : Line),
-    OnLine b BE -> OnLine e BE ->
-    para N BE ->
+    ∀ (b e : Point) (N M : Line),
+    OnLine b M -> OnLine e M ->
+    para N M ->
     Not (OnLine b N) ->
-    SameSide b e N := sorry _
+    SameSide b e N :=
+    fun (b e : Point) (N M : Line) (b_on_M : OnLine b M) (e_on_M : OnLine e M)
+        (hpara : para N M) (b_not_on_N : Not (OnLine b N)) =>
+    have _ _ (
+        Or.elim _ _ _ (hpara e)
+        (fun (e_not_on_N : Not (OnLine e N)) => e_not_on_N)
+        (fun (e_not_on_M : Not (OnLine e M)) => False.elim _ (e_not_on_M e_on_M))
+    )
+    (fun (e_not_on_N : Not (OnLine e N)) =>
+    double_negation (SameSide b e N)
+    (fun (b_not_same_e : Not (SameSide b e N)) =>
+        para_not_inter N M hpara
+        (lines_inter_if_diff_sides b e N M
+            (And.intro _ _
+                (And.intro _ _ b_not_on_N e_not_on_N)
+                b_not_same_e)
+            b_on_M
+            e_on_M))
+    )
 
-(* Proposition 46 outline (Euclid I.46)
-   Goal: construct a square on the given segment AB.
+(* ============================================================
+   Proposition 46 (I.46): Constructing a square on a given segment
 
-   Formal plan:
-   1. Build the line L through A and B.
-   2. Erect the perpendicular through A, obtaining the line N through A and C.
-   3. Put D on that perpendicular so that AD = AB.
-   4. Through D draw DE parallel to AB, and through B draw BE parallel to AD.
-   5. Let E be the intersection of DE and BE.
-   6. Show ADEB is a parallelogram, hence opposite sides and angles are equal.
-   7. Use AD = AB together with the parallelogram side equalities to get equilateral.
-   8. Use Prop. 29 and the parallelogram angle equalities to show all four angles are right.
-   9. The resulting square is ABED, so the witnesses are returned in the order (e, d). *)
+   Construction plan:
+     1. Build the line L through a and b.
+     2. Erect a perpendicular N at a, obtaining a point c above L.
+     3. Place d on N so that Length a d = Length a b  (via circle aa).
+     4. Draw DE ∥ L through d, and BE ∥ N through b  (Prop. 31).
+     5. Let e be the intersection of DE and BE.
+     6. ADEB is a parallelogram; Prop. 34 gives opposite-side and angle equalities.
+     7. AD = AB propagates via Prop. 34 to all four sides.
+     8. Prop. 29 on transversal N gives ∠BAD + ∠ADE = 180°; since ∠BAD = 90°,
+        ∠ADE = 90°; parallelogram angle equality yields all four angles = 90°.
+     9. Witnesses returned in the order (e, d): square a b e d.
+   ============================================================ *)
 
-
-(* Proposition 46 : Constructing a square out of a segment *)
-Theorem square_of_len : ∀ (a b : Point), a ≠ b -> 
+Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
     Exists Point (fun d => Exists Point (fun e => square a b d e)) :=
     fun (a : Point) (b : Point) (ab : a ≠ b) =>
 
@@ -729,6 +1024,17 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
                     (fst _ _ ac_on_N) b_on_N))))
     (fun (b_not_on_N : Not (OnLine b N)) =>
 
+    have _ _
+    (lines_inter_if_diff_sides c d L N
+        (And.intro _ _
+            (And.intro _ _ c_not_on_L d_not_on_L)
+            (pasch_online_not_sameside c a d L
+                (fst _ _ hd_data)
+                (fst _ _ ab_on_L)))
+        (snd _ _ ac_on_N)
+        d_on_N)
+    (fun (hLN_inter : LinesInter L N) =>
+
     (* Euclid I.46, second step:
        draw through d a line parallel to ab, and through b a line parallel to ad. *)
     Exists.elim _ _ _ (para_of_offline d L d_not_on_L)
@@ -739,9 +1045,16 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
 
     (* The two constructed parallels meet in the fourth vertex e. *)
     Exists.elim _ _ _ (pt_of_linesinter DE BE
-        (lines_inter_of_crossing_parallels a L N DE BE
-            (fst _ _ ab_on_L) (fst _ _ ac_on_N)
-            (snd _ _ hDE) (snd _ _ hBE)))
+        (lines_inter_of_crossing_parallels L N DE BE
+            (fun (LN_eq : L = N) =>
+                c_not_on_L
+                    (Eq.elim _ N (fun X => OnLine c X)
+                        (snd _ _ ac_on_N)
+                        L
+                        (Eq.symm _ _ _ LN_eq)))
+            hLN_inter
+            (snd _ _ hDE)
+            (snd _ _ hBE)))
     (fun (e : Point) (he_on : OnLine e DE /\ OnLine e BE) =>
 
     have _ _ (para_symm L DE (snd _ _ hDE))
@@ -919,7 +1232,7 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
         (length_symm a d))
     (fun (hAB_DA : Length a b = Length d a) =>
 
-    (* The square is ABED; package the witnesses in that order. *)
+    (* Step 9: package the witnesses — the square is a-b-e-d. *)
     Exists.intro Point (fun d0 => Exists Point (fun e0 => square a b d0 e0)) e
     (Exists.intro Point (fun e0 => square a b e e0) d
         (And.intro _ _
@@ -935,4 +1248,4 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
                     hBED)
                 hEDA)
             hDAB'))
-    ))))))))))))))))))))))))))))))))))))))))))
+    )))))))))))))))))))))))))))))))))))))))))))
