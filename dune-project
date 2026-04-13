@@ -23,6 +23,7 @@
  (description "A longer description")
  (depends
   ocaml
+  sedlex
   (ocamlformat :with-test)
   (alcotest :with-test)
   (ppx_expect :with-test)
