@@ -387,13 +387,18 @@ let choose (e : term) (st : proof_state) : tactic_result =
       (* infer A and p *)
       match infer_choose_types e g st with
       | Some a_typ, Some p ->
-          (* TODO define new hypotheses *)
+          (* define new hypotheses (TODO is None OK for name? is bid right?) *)
+          let bid_a_typ = Elab.Term.gen_binder_id () in
+          let hyp_a_typ = { name = None; bid = bid_a_typ; ty = a_typ } in
+          let bid_p = Elab.Term.gen_binder_id () in
+          let hyp_p = { name = None; bid = bid_p; ty = p } in
           (* TODO update the proof term *)
           let b = g.goal_type in
-          (* TODO update the proof state accordingly *)
-          ignore a_typ;
           ignore b;
-          ignore p;
+          (* TODO update the proof state accordingly *)
+          let lctx = hyp_a_typ :: hyp_p :: g.lctx in
+          let g = { g with lctx } in
+          let st = { st with open_goals = g :: List.tl st.open_goals } in
           succeed st
       | _ -> fail "Argument must have the type [Exists A p]")
   | None -> fail "No goals remaining"
