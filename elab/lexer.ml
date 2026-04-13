@@ -1,9 +1,45 @@
 open Parser
 
-let ident_char = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | 0x80 .. 0x10FFFF]
-let ident_mid_char = [%sedlex.regexp? ident_char | '.' | '\'']
-let ident_end_char = [%sedlex.regexp? ident_char | '\'']
-let ident = [%sedlex.regexp? ident_char | ident_char, Star ident_mid_char, ident_end_char]
+(* Valid identifier characters, stolen and adapted from Lean *)
+
+(* Letter-like Unicode ranges (Greek, Coptic, etc.) *)
+let letter_like_unicode = [%sedlex.regexp?
+    0x3B1 .. 0x3C9     |  (* Lower greek *)
+    0x391 .. 0x3A9     |  (* Upper greek *)
+    0x3CA .. 0x3FB     |  (* Coptic letters *)
+    0x1F00 .. 0x1FFE   |  (* Polytonic Greek Extended *)
+    0x2100 .. 0x214F   |  (* Letter-like symbols block *)
+    0x1D49C .. 0x1D59F    (* Latin Script, Double-struck, Fractur *)
+]
+
+(* Subscript and superscript Unicode *)
+let subscript_superscript_unicode = [%sedlex.regexp?
+    0x207F .. 0x2089  |  (* n superscript and numeric subscripts *)
+    0x2090 .. 0x209C  |  (* letter-like subscripts *)
+    0x1D62 .. 0x1D6A     (* letter-like subscripts *)
+]
+
+(* Characters allowed at the start of an identifier *)
+let ident_start = [%sedlex.regexp?
+    'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | 
+    letter_like_unicode
+]
+
+(* Characters allowed in the middle of an identifier *)
+let ident_continue = [%sedlex.regexp?
+    'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' |
+    '\'' | '?' | '!' | '.' |
+    letter_like_unicode | subscript_superscript_unicode
+]
+
+(* Characters allowed at the end of an identifier, ident_continue without '.' *)
+let ident_end = [%sedlex.regexp?
+    'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' |
+    '\'' | '?' | '!' |
+    letter_like_unicode | subscript_superscript_unicode
+]
+
+let ident = [%sedlex.regexp? ident_start | ident_start, Star ident_continue, ident_end]
 let string_char = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '.' | '/']
 
 let token lexbuf =
