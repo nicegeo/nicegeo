@@ -292,6 +292,16 @@ Theorem point_eq_em : (a: Point) -> (b: Point) -> a = b ∨ a ≠ b :=
     )
     (fun (h: Eq _ Zero (Length a b)) => Or.inl _ _ (eq_if_len_zero a b (Eq.symm _ _ _ h)))
 
+(* If a point is chosen distinct from the singleton line-list [L], then it is not on L. *)
+Theorem distinct_from_single_line_not_on : (p : Point) -> (L : Line) ->
+    distinct_from p (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle) ->
+    Not (OnLine p L) :=
+    fun (p : Point) (L : Line)
+        (hp : distinct_from p (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
+    fst _ _
+        ((fst _ _ (List.forall_cons Line (fun (M : Line) => Not (OnLine p M)) L (List.nil Line)))
+        (snd _ _ (fst _ _ (distinct_from.elim p (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle) hp))))
+
 (* Proposition 2: To place a straight line equal to a given straight line with one end at a given point. *)
 Theorem place_segment : (a : Point) -> (b: Point) -> (c: Point)
     -> Exists Point (fun f => Length a f = Length b c) :=
@@ -538,6 +548,14 @@ Theorem para_not_inter : (L : Line) -> (M : Line) -> para L M -> LinesInter L M 
     (fun (hnM : Not (OnLine p M)) => hnM (snd _ _ hp))
     )
 
+(* Parallelism is symmetric. *)
+Theorem para_symm : (L : Line) -> (M : Line) -> para L M -> para M L :=
+    fun (L : Line) (M : Line) (hpara : para L M) =>
+    fun (p : Point) =>
+    Or.elim _ _ _ (hpara p)
+    (fun (hnL : Not (OnLine p L)) => Or.inr (Not (OnLine p M)) (Not (OnLine p L)) hnL)
+    (fun (hnM : Not (OnLine p M)) => Or.inl (Not (OnLine p M)) (Not (OnLine p L)) hnM)
+
 (* Proposition 29 *)
 
 (* Proposition 29.1: alternate interior angles are equal when lines are parallel. *)
@@ -589,12 +607,46 @@ Theorem len_eq_of_parallelogram' :  (a : Point) -> (b : Point) -> (c : Point) ->
 Theorem len_eq_of_parallelogram'' :  (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) -> (M : Line) -> (N : Line) -> (O : Line) -> (P : Line) ->
 (paragram a b c d M N O P) -> area a b d  = area b c d := sorry _
 
+(* TODO helper for Proposition 46:
+   if DE is parallel to AB and BE is parallel to AD, then the two constructed
+   lines DE and BE intersect. *)
+Theorem lines_inter_of_crossing_parallels :
+    (a : Point) -> (L : Line) -> (N : Line) -> (DE : Line) -> (BE : Line) ->
+    OnLine a L -> OnLine a N ->
+    para L DE -> para N BE ->
+    LinesInter DE BE := sorry _
+
+(* TODO helper for Proposition 46:
+   points lying on a line parallel to N are on the same side of N, provided one
+   chosen point is already known to be off N. *)
+Theorem same_side_of_points_on_parallel :
+    (b : Point) -> (e : Point) -> (N : Line) -> (BE : Line) ->
+    OnLine b BE -> OnLine e BE ->
+    para N BE ->
+    Not (OnLine b N) ->
+    SameSide b e N := sorry _
+
+(* Proposition 46 outline (Euclid I.46)
+   Goal: construct a square on the given segment AB.
+
+   Formal plan:
+   1. Build the line L through A and B.
+   2. Erect the perpendicular through A, obtaining the line N through A and C.
+   3. Put D on that perpendicular so that AD = AB.
+   4. Through D draw DE parallel to AB, and through B draw BE parallel to AD.
+   5. Let E be the intersection of DE and BE.
+   6. Show ADEB is a parallelogram, hence opposite sides and angles are equal.
+   7. Use AD = AB together with the parallelogram side equalities to get equilateral.
+   8. Use Prop. 29 and the parallelogram angle equalities to show all four angles are right.
+   9. The resulting square is ABED, so the witnesses are returned in the order (e, d). *)
+
 
 (* Proposition 46 : Constructing a square out of a segment *)
 Theorem square_of_len : (a : Point) -> (b : Point) -> a ≠ b -> 
     Exists Point (fun d => Exists Point (fun e => square a b d e)) :=
     fun (a : Point) (b : Point) (ab : a ≠ b) =>
 
+    (* Build the base line AB and choose a side of it. *)
     Exists.elim _ _ _ (line_of_pts a b ab)
     (fun (L : Line) (ab_on_L : OnLine a L /\ OnLine b L) =>
 
@@ -603,12 +655,10 @@ Theorem square_of_len : (a : Point) -> (b : Point) -> a ≠ b ->
     Exists.elim _ _ _ (pt_exists (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle))
     (fun (f : Point) (hf : distinct_from f (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
 
-    have _ _
-    (fst _ _
-        ((fst _ _ (List.forall_cons Line (fun (M : Line) => Not (OnLine f M)) L (List.nil Line)))
-        (snd _ _ (fst _ _ (distinct_from.elim f (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle) hf)))))
+    have _ _ (distinct_from_single_line_not_on f L hf)
     (fun (f_not_on_L : Not (OnLine f L)) =>
 
+    (* Erect the perpendicular through A. *)
     Exists.elim _ _ _ (perpendicular_of_online' b a a f L (Ne.symm _ _ _ ab) (snd _ _ ab_on_L) (fst _ _ ab_on_L) f_not_on_L)
     (fun (c : Point) (hc : SameSide c f L ∧ Angle b a c = 90) =>
 
@@ -622,6 +672,7 @@ Theorem square_of_len : (a : Point) -> (b : Point) -> a ≠ b ->
     Exists.elim _ _ _ (line_of_pts a c (Ne.symm _ _ _ ca))
     (fun (N : Line) (ac_on_N : OnLine a N /\ OnLine c N) =>
 
+    (* Put D on the perpendicular so that AD = AB. *)
     Exists.elim _ _ _ (circle_of_ne a b ab)
     (fun (aa : Circle) (aa_data : CenterCircle a aa /\ OnCircle b aa) =>
 
@@ -667,7 +718,202 @@ Theorem square_of_len : (a : Point) -> (b : Point) -> a ≠ b ->
     Exists.elim _ _ _ (para_of_offline b N b_not_on_N)
     (fun (BE : Line) (hBE : OnLine b BE /\ para N BE) =>
 
-    Exists.intro Point (fun d => Exists Point (fun e => square a b d e)) d
-    (Exists.intro Point (fun e => square a b d e) b
-        (sorry _))
-    )))))))))))))))
+    (* The two constructed parallels meet in the fourth vertex e. *)
+    Exists.elim _ _ _ (pt_of_linesinter DE BE
+        (lines_inter_of_crossing_parallels a L N DE BE
+            (fst _ _ ab_on_L) (fst _ _ ac_on_N)
+            (snd _ _ hDE) (snd _ _ hBE)))
+    (fun (e : Point) (he_on : OnLine e DE /\ OnLine e BE) =>
+
+    have _ _ (para_symm L DE (snd _ _ hDE))
+    (fun (hDE_para_L : para DE L) =>
+
+    (* The constructed quadrilateral ADEB is a parallelogram. *)
+    have _ (paragram a d e b N DE BE L)
+    (And.intro _ _
+        (And.intro _ _
+            (And.intro _ _
+                (And.intro _ _
+                    (And.intro _ _
+                        (And.intro _ _
+                            (And.intro _ _
+                                (And.intro _ _
+                                    (And.intro _ _
+                                        (fst _ _ ac_on_N)
+                                        d_on_N)
+                                    (fst _ _ hDE))
+                                (fst _ _ he_on))
+                            (snd _ _ he_on))
+                        (fst _ _ hBE))
+                    (snd _ _ ab_on_L))
+                (fst _ _ ab_on_L))
+            (snd _ _ hBE))
+        hDE_para_L)
+    (fun (hpar : paragram a d e b N DE BE L) =>
+
+    have _ _ (len_eq_of_parallelogram' a d e b N DE BE L hpar)
+    (fun (hab_ed : Length a b = Length e d) =>
+
+    have _ _ (EqTrans _ _ _ _ hab_ed (length_symm e d))
+    (fun (hab_de : Length a b = Length d e) =>
+
+    have _ _ (len_eq_of_parallelogram a d e b N DE BE L hpar)
+    (fun (had_eb : Length a d = Length e b) =>
+
+    have _ _ (EqTrans _ _ _ _ had_eb (length_symm e b))
+    (fun (had_be : Length a d = Length b e) =>
+
+    have _ _ (length_pts_ne a b a d hd ab)
+    (fun (ad : a ≠ d) =>
+
+    have _ _ (length_pts_ne a b d e hab_de ab)
+    (fun (de : d ≠ e) =>
+
+    (* Euclid I.46 next invokes Prop. 29 on the transversal AD cutting the parallels AB and DE:
+       angle BAD + angle ADE = two right angles. *)
+    have _ _ (same_side_of_points_on_parallel b e N BE
+        (fst _ _ hBE) (snd _ _ he_on)
+        (snd _ _ hBE)
+        b_not_on_N)
+    (fun (b_e_same_side_N : SameSide b e N) =>
+
+    have _ _
+    (co_interior_angles b a d e L DE N
+        (snd _ _ hDE)
+        (snd _ _ ab_on_L) (fst _ _ ab_on_L) (Ne.symm _ _ _ ab)
+        (fst _ _ hDE) (fst _ _ he_on) de
+        (fst _ _ ac_on_N) d_on_N ad
+        b_e_same_side_N)
+    (fun (hBAD_ADE : Angle b a d + Angle a d e = 90 + 90) =>
+
+    have _ _
+    (fun (bad_col : colinear b a d) =>
+        Exists.elim _ _ _ bad_col
+        (fun (M : Line) (hM : OnLine b M /\ OnLine a M /\ OnLine d M) =>
+            d_not_on_L
+            (Eq.elim _ M (fun X => OnLine d X)
+                (snd _ _ hM)
+                L
+                (Eq.symm _ _ _
+                    (two_distinct_points_determine_unique_line a b L M ab
+                        (fst _ _ ab_on_L) (snd _ _ ab_on_L)
+                        (snd _ _ (fst _ _ hM)) (fst _ _ (fst _ _ hM)))))))
+    (fun (tri_bad : triangle b a d) =>
+
+    have _ _
+    (right_of_online_right b a d c N
+        (Ne.symm _ _ _ ca)
+        tri_bad
+        (fst _ _ ac_on_N)
+        d_on_N
+        (snd _ _ ac_on_N)
+        (snd _ _ hc))
+    (fun (hDAB : Angle b a d = 90) =>
+
+    have _ _
+    (CancelAdd (Angle a d e) 90 90
+        (Eq.elim _ (Angle b a d) (fun x => x + Angle a d e = 90 + 90)
+            hBAD_ADE
+            90
+            hDAB))
+    (fun (hADE : Angle a d e = 90) =>
+
+    have _ _
+    (EqTrans _ _ _ _
+        (Eq.symm _ _ _ (angle_symm b a d (Ne.symm _ _ _ ab) ad))
+        hDAB)
+    (fun (hDAB' : Angle d a b = 90) =>
+
+    have _ _ (len_ang_arelen_ang_area_eq_of_parallelogram a d e b N DE BE L hpar)
+    (fun (hpar_data : length a d = length e b /\ angle d a b = angle d e b /\ area a d b = area d e b) =>
+
+    have _ _ (length_pts_ne a d e b had_eb ad)
+    (fun (eb : e ≠ b) =>
+
+    have _ _
+    (EqTrans _ _ _ _
+        (Eq.symm _ _ _ (snd _ _ (fst _ _ hpar_data)))
+        hDAB')
+    (fun (hDEB : Angle d e b = 90) =>
+
+    have _ _
+    (EqTrans _ _ _ _
+        (Eq.symm _ _ _ (angle_symm d e b de eb))
+        hDEB)
+    (fun (hBED : Angle b e d = 90) =>
+
+    have _ _ (para_symm N BE (snd _ _ hBE))
+    (fun (hBE_para_N : para BE N) =>
+
+    have _ (paragram d e b a DE BE L N)
+    (And.intro _ _
+        (And.intro _ _
+            (And.intro _ _
+                (And.intro _ _
+                    (And.intro _ _
+                        (And.intro _ _
+                            (And.intro _ _
+                                (And.intro _ _
+                                    (And.intro _ _
+                                        (fst _ _ hDE)
+                                        (fst _ _ he_on))
+                                    (snd _ _ he_on))
+                                (fst _ _ hBE))
+                            (snd _ _ ab_on_L))
+                        (fst _ _ ab_on_L))
+                    (fst _ _ ac_on_N))
+                d_on_N)
+            hDE_para_L)
+        hBE_para_N)
+    (fun (hpar_rot : paragram d e b a DE BE L N) =>
+
+    have _ _ (len_ang_arelen_ang_area_eq_of_parallelogram d e b a DE BE L N hpar_rot)
+    (fun (hpar_rot_data : length d e = length b a /\ angle e d a = angle e b a /\ area d e a = area e b a) =>
+
+    have _ _
+    (EqTrans _ _ _ _
+        (Eq.symm _ _ _ (angle_symm a d e ad de))
+        hADE)
+    (fun (hEDA : Angle e d a = 90) =>
+
+    have _ _
+    (EqTrans _ _ _ _
+        (Eq.symm _ _ _ (snd _ _ (fst _ _ hpar_rot_data)))
+        hEDA)
+    (fun (hEBA : Angle e b a = 90) =>
+
+    have _ _
+    (EqTrans _ _ _ _
+        (angle_symm a b e ab (Ne.symm _ _ _ eb))
+        hEBA)
+    (fun (hABE : Angle a b e = 90) =>
+
+    have _ _
+    (EqTrans _ _ _ _
+        hd
+        had_be)
+    (fun (hAB_BE : Length a b = Length b e) =>
+
+    have _ _
+    (EqTrans _ _ _ _
+        hd
+        (length_symm a d))
+    (fun (hAB_DA : Length a b = Length d a) =>
+
+    (* The square is ABED; package the witnesses in that order. *)
+    Exists.intro Point (fun d0 => Exists Point (fun e0 => square a b d0 e0)) e
+    (Exists.intro Point (fun e0 => square a b e e0) d
+        (And.intro _ _
+            (And.intro _ _
+                (And.intro _ _
+                    (And.intro _ _
+                        (And.intro _ _
+                            (And.intro _ _
+                                hAB_BE
+                                hab_ed)
+                            hAB_DA)
+                        hABE)
+                    hBED)
+                hEDA)
+            hDAB'))
+    ))))))))))))))))))))))))))))))))))))))))))
