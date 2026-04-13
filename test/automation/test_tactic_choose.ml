@@ -54,29 +54,31 @@ let kernel_check env proof goal_ty =
 (** Test for a simple usage of "choose" using just the global context *)
 let test_choose_global () =
   let env, _ = make_env () in
-  let st = init_state ~elab_ctx:env (elab env "A") in
+  let st = init_state ~elab_ctx:env (elab env "Exists A (fun (a : A) => True)") in
   let st = run_tactic (choose (elab env "E")) st in
   (* check that the goal is the same as before *)
   Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
   let goal = List.hd st.open_goals in
   let got = pp_term env (Elab.Reduce.reduce env goal.goal_type) in
-  let exp = pp_term env (elab env "A") in
-  Alcotest.(check string) "new goal is still A" exp got;
+  let exp = "Exists A (fun (a : A) => True)" in
+  Alcotest.(check string) "new goal is still (Exists A (fun (a : A) => True))" exp got;
   (* check for the newly added hypotheses *)
   match goal.lctx with
-  | [hyp_1; hyp_2] ->
-      let a_typ = pp_term env hyp_1.ty in
-      let h = pp_term env (Elab.Reduce.reduce env hyp_2.ty) in
-      Alcotest.(check string) "first hypothesis has type A" exp a_typ;
-      let exp = pp_term env (elab env "True") in
+  | [a; ha] ->
+      let a_typ = pp_term env a.ty in
+      let h = pp_term env (Elab.Reduce.reduce env ha.ty) in
+      let exp = "A" in
+      Alcotest.(check string) "first hypothesis has type A" a_typ exp;
+      let exp = "True" in
       Alcotest.(check string) "second hypothesis has type True" exp h;
       (* finish the proof and do a kernel term check *)
-      let st = run_tactic (exact (mk_bvar hyp_1.bid)) st in (* TODO fails *)
+      let st = run_tactic (exists (mk_bvar a.bid)) st in
+      let st = run_tactic (exact (mk_name "True.intro")) st in
       Alcotest.(check bool) "no remaining goals" true (is_complete st);
       Alcotest.(check bool)
         "kernel accepts proof"
         true
-        (kernel_check env st.statement goal.goal_type)
+        (kernel_check st.elab_ctx st.statement goal.goal_type)
   | _ -> Alcotest.fail "expected two hypotheses in the local context"
 
 (* TODO the above, but apply the hypothesis *)
