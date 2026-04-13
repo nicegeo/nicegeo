@@ -8,7 +8,7 @@ let succeed st = Success st
 let fail msg = Failure msg
 
 (* Used by future tactics that need to catch elaboration errors and return a Failure. *)
-let _catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
+let catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
   try f () with Elab.Error.ElabError info -> fail (Elab.Error.pp_exn ectx info)
 
 let beta_nf (e : ctx) (tm : term) : term = Elab.Reduce.reduce e tm
@@ -83,21 +83,17 @@ let exact (tm : term) (st : proof_state) : tactic_result =
   | Some g ->
       (* Catch ill-typed or unknown-name errors from infertype as Failure
         rather than letting them escape as exceptions. *)
-      _catch_elab st.elab_ctx (fun () ->
-          (* Ask the elaborator what type [tm] actually has. *)
-          let inferred_ty = Elab.Typecheck.infertype st.elab_ctx g.lctx tm in
-          (* Accept if the inferred type is definitionally equal to the goal type
-          (beta-reduces both sides before comparing). *)
-          if def_eq st.elab_ctx inferred_ty g.goal_type then
-            let st = assign_meta g.goal_id tm st in
-            let st = close_goal g.goal_id st in
-            succeed st
-          else
-            fail
-              (Printf.sprintf
-                 "exact: term has type '%s' but goal is '%s'."
-                 (pp_term st.elab_ctx inferred_ty)
-                 (pp_term st.elab_ctx g.goal_type)))
+      catch_elab st.elab_ctx (fun () ->
+          (* try to elaborate the input with the expected goal type *)
+          create_metas st.elab_ctx tm (List.map (fun h -> h.bid) g.lctx);
+          let ty = infertype st.elab_ctx g.lctx tm in
+          unify st.elab_ctx ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
+          (* check all holes are filled *)
+          (* here lean's refine would instead open a goal for each unfilled hole *)
+          ignore (replace_metas st.elab_ctx tm);
+          let st = assign_meta g.goal_id tm st in
+          let st = close_goal g.goal_id st in
+          succeed st)
 
 (** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
     and opens a new subgoal for [A]. *)
@@ -396,4 +392,6 @@ let register () =
                    ("Expected exactly two parameters (name and type), but got "
                    ^ string_of_int (List.length args));
              }));
-  register_tactic "rewrite" Register.(unary_term rewrite)
+  register_tactic "rewrite" Register.(unary_term rewrite);
+  register_tactic "exists" Register.(unary_term exists);
+  ()
