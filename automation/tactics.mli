@@ -42,10 +42,8 @@ val exists : term -> proof_state -> tactic_result
 (**
  * Given a hypothesis of (that unifies with) type [Exists A p], infer [A] and [p],
  * and introduce new hypothesis representing [a : A] and [h : p a].
- * Update the proof term to represent the application of the
- * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
+ * Update the proof term appropriately.
  *)
-let choose (e : term) (st : proof_state) : tactic_result =
-  fail "Not yet implemented"
+val choose : term -> proof_state -> tactic_result
 
 val register : unit -> unit

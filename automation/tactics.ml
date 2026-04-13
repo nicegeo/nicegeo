@@ -361,6 +361,8 @@ let exists (a : term) (st : proof_state) : tactic_result =
  * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
  *)
 let choose (e : term) (st : proof_state) : tactic_result =
+  ignore e;
+  ignore st;
   fail "Not yet implemented"
 
 let register () =
@@ -404,4 +406,5 @@ let register () =
              }));
   register_tactic "rewrite" Register.(unary_term rewrite);
   register_tactic "exists" Register.(unary_term exists);
+  register_tactic "choose" Register.(unary_term choose);
   ()
