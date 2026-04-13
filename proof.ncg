@@ -592,10 +592,82 @@ Theorem len_eq_of_parallelogram'' :  (a : Point) -> (b : Point) -> (c : Point) -
 
 (* Proposition 46 : Constructing a square out of a segment *)
 Theorem square_of_len : (a : Point) -> (b : Point) -> a ≠ b -> 
-    Exists Point (fun c => Exists Point (fun d => square a b c d)) :=
-    sorry _
+    Exists Point (fun d => Exists Point (fun e => square a b d e)) :=
+    fun (a : Point) (b : Point) (ab : a ≠ b) =>
 
+    Exists.elim _ _ _ (line_of_pts a b ab)
+    (fun (L : Line) (ab_on_L : OnLine a L /\ OnLine b L) =>
 
+    (* f is only an auxiliary point chosen fresh from the objects mentioned so far,
+       in particular so that f is not on L and can be used to pick a side of L. *)
+    Exists.elim _ _ _ (pt_exists (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle))
+    (fun (f : Point) (hf : distinct_from f (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
 
+    have _ _
+    (fst _ _
+        ((fst _ _ (List.forall_cons Line (fun (M : Line) => Not (OnLine f M)) L (List.nil Line)))
+        (snd _ _ (fst _ _ (distinct_from.elim f (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle) hf)))))
+    (fun (f_not_on_L : Not (OnLine f L)) =>
 
+    Exists.elim _ _ _ (perpendicular_of_online' b a a f L (Ne.symm _ _ _ ab) (snd _ _ ab_on_L) (fst _ _ ab_on_L) f_not_on_L)
+    (fun (c : Point) (hc : SameSide c f L ∧ Angle b a c = 90) =>
 
+    have _ _ (same_side_not_on_line c f L (fst _ _ hc))
+    (fun (c_not_on_L : Not (OnLine c L)) =>
+
+    have _ _
+    (fun (ca_eq : c = a) => c_not_on_L (Eq.elim _ a (fun x => OnLine x L) (fst _ _ ab_on_L) c (Eq.symm _ _ _ ca_eq)))
+    (fun (ca : c ≠ a) =>
+
+    Exists.elim _ _ _ (line_of_pts a c (Ne.symm _ _ _ ca))
+    (fun (N : Line) (ac_on_N : OnLine a N /\ OnLine c N) =>
+
+    Exists.elim _ _ _ (circle_of_ne a b ab)
+    (fun (aa : Circle) (aa_data : CenterCircle a aa /\ OnCircle b aa) =>
+
+    (* Put d on the perpendicular ray through a so that ad = ab:
+       since a is inside the circle centered at a through b, extending the ray ca
+       reaches the circle at a point d. *)
+    Exists.elim _ _ _ (pt_oncircle_of_inside_ne c a aa ca (center_lies_inside_circle a aa (fst _ _ aa_data)))
+    (fun (d : Point) (hd_data : Between c a d /\ OnCircle d aa) =>
+
+    have _ _ (between_collinear_right c a d N (fst _ _ hd_data) (snd _ _ ac_on_N) (fst _ _ ac_on_N))
+    (fun (d_on_N : OnLine d N) =>
+
+    have _ _
+    (snd _ _ (on_circle_iff_length_eq a b d aa (fst _ _ aa_data) (snd _ _ aa_data)) (snd _ _ hd_data))
+    (fun (hd : Length a b = Length a d) =>
+
+    have _ _
+    (fun (d_on_L : OnLine d L) =>
+        c_not_on_L
+        (between_collinear_right d a c L
+            (fst _ _ (between_distinct c a d (fst _ _ hd_data)))
+            d_on_L
+            (fst _ _ ab_on_L)))
+    (fun (d_not_on_L : Not (OnLine d L)) =>
+
+    have _ _
+    (fun (b_on_N : OnLine b N) =>
+        c_not_on_L
+        (Eq.elim _ N (fun M => OnLine c M)
+            (snd _ _ ac_on_N)
+            L
+            (Eq.symm _ _ _
+                (two_distinct_points_determine_unique_line a b L N ab
+                    (fst _ _ ab_on_L) (snd _ _ ab_on_L)
+                    (fst _ _ ac_on_N) b_on_N))))
+    (fun (b_not_on_N : Not (OnLine b N)) =>
+
+    (* Euclid I.46, second step:
+       draw through d a line parallel to ab, and through b a line parallel to ad. *)
+    Exists.elim _ _ _ (para_of_offline d L d_not_on_L)
+    (fun (DE : Line) (hDE : OnLine d DE /\ para L DE) =>
+
+    Exists.elim _ _ _ (para_of_offline b N b_not_on_N)
+    (fun (BE : Line) (hBE : OnLine b BE /\ para N BE) =>
+
+    Exists.intro Point (fun d => Exists Point (fun e => square a b d e)) d
+    (Exists.intro Point (fun e => square a b d e) b
+        (sorry _))
+    )))))))))))))))
