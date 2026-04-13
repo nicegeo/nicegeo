@@ -354,10 +354,8 @@ let exists (a : term) (st : proof_state) : tactic_result =
   | None -> fail "No goals remaining"
 
 (*
- * TODO comment, implement, consider local context vs elab context,
- * remove any extra args, etc
- *
- * TODO is this doing second order unif? if so will it just fail?
+ * Infer both [A] and the motive [p] for the choose tactic, by way of unifying
+ * with the input term [e : Exists ?? ??]
  *)
 let infer_choose_types (e : term) (g : goal) (st : proof_state) : term option * term option =
   let hole_a_typ = gen_hole_id () in
@@ -371,7 +369,7 @@ let infer_choose_types (e : term) (g : goal) (st : proof_state) : term option * 
   let e_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx e in 
   unify ctx e_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
   match Hashtbl.find_opt ctx.metas hole_a_typ, Hashtbl.find_opt ctx.metas hole_p with
-  | Some mvar1, Some mvar2 -> mvar1.sol, mvar2.sol (* TODO do I need two here? one for hole_a_typ? *)
+  | Some mvar1, Some mvar2 -> mvar1.sol, mvar2.sol
   | _ -> failwith "internal nicegeo programming error: created hole does not exist!"
 
 (*
@@ -387,7 +385,7 @@ let choose (e : term) (st : proof_state) : tactic_result =
       (* infer A and p *)
       match infer_choose_types e g st with
       | Some a_typ, Some p ->
-          (* define new hypotheses (TODO is None OK for name? is bid right or do I need prev. generated ones from infer_choose_types?) *)
+          (* define new hypotheses *)
           let bid_a_typ = Elab.Term.gen_binder_id () in
           let hyp_a_typ = { name = None; bid = bid_a_typ; ty = a_typ } in
           let bid_p = Elab.Term.gen_binder_id () in
