@@ -397,6 +397,8 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
         let ty_body = infertype ~depth:(depth + 1) e new_lctx body in
         { inner = Arrow (arg, new_bid, ty_arg, ty_body); loc = tm.loc }
     | Arrow (arg, bid, ty_arg, ty_ret) ->
+        (* Call check_is_type on ty_arg to fill any holes we can in the argument type, 
+           not failing if it's a hole (as in the case of ∀ a, ...) *)
         check_is_type ~depth:(depth + 1) e lctx ty_arg;
         let new_lctx = { bid; name = arg; ty = ty_arg } :: lctx in
         let ty_ret_ty = whnf_beta e (infertype ~depth:(depth + 1) e new_lctx ty_ret) in
