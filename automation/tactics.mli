@@ -35,10 +35,9 @@ val intros : string list -> tactic
 val rewrite : term -> proof_state -> tactic_result
 
 (** [split st] decomposes a goal of the form [And A B] into two subgoals [A] and [B],
-    using [And.intro] as the proof skeleton. Fails if the goal is not a conjunction. 
+    using [And.intro] as the proof skeleton. Fails if the goal is not a conjunction.
     (Normalizes, but does not do unification) *)
 val split : proof_state -> tactic_result
-
 
 (** [exists a] takes in a term [a] of type [A], and constructs a new goal [p a], where the
     old goal had form [Exists A p]. The motive [p] is inferred from the goal and the type

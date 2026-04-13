@@ -6,7 +6,6 @@ open Elab.Tactic
 open Automation.Tactics
 
 let path_to_env = "../../../../synthetic/env.ncg"
-
 let name s = mk_name s
 
 let make_env () =
@@ -30,8 +29,7 @@ let run_tactic tac st =
   | Success st' -> st'
 
 let to_kterm env tm =
-  Elab.Reduce.delta_reduce env tm
-  |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
+  Elab.Reduce.delta_reduce env tm |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
 
 let kernel_check env proof goal_ty =
   let proof_k = to_kterm env (replace_metas env proof) in
@@ -61,7 +59,8 @@ let test_split_success () =
             true
             (match g_b.goal_type.inner with Name "B" -> true | _ -> false)
       | _ ->
-          Alcotest.failf "expected exactly 2 open goals, got %d"
+          Alcotest.failf
+            "expected exactly 2 open goals, got %d"
             (List.length st'.open_goals))
 
 let test_split_failure_non_and () =
@@ -102,7 +101,9 @@ let test_split_preserves_ctx () =
       List.iter
         (fun g ->
           Alcotest.(check int) "subgoal inherits context" 1 (List.length g.lctx);
-          Alcotest.(check string) "hypothesis name" "h"
+          Alcotest.(check string)
+            "hypothesis name"
+            "h"
             (match (List.hd g.lctx).name with Some n -> n | None -> ""))
         st'.open_goals
 
@@ -119,7 +120,8 @@ let test_split_kernel_check () =
   let goal_ty = elab env "And A B" in
   let st = init_state ~elab_ctx:env goal_ty in
   let st =
-    st |> run_tactic split |> run_tactic (exact (name "a_proof"))
+    st |> run_tactic split
+    |> run_tactic (exact (name "a_proof"))
     |> run_tactic (exact (name "b_proof"))
   in
   Alcotest.(check bool) "no remaining goals" true (is_complete st);

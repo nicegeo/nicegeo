@@ -311,24 +311,25 @@ let split (st : proof_state) : tactic_result =
           let hole_a, st = fresh_goal st g.lctx a in
           let hole_b, st = fresh_goal st g.lctx b in
           let proof =
-            mk_app
-              (mk_app (mk_app (mk_app (mk_name "And.intro") a) b) hole_a)
-              hole_b
+            mk_app (mk_app (mk_app (mk_app (mk_name "And.intro") a) b) hole_a) hole_b
           in
           let st = assign_meta g.goal_id proof st in
           let st = close_goal g.goal_id st in
-          
-          succeed st 
+
+          succeed st
       | _ ->
           fail
-            (Printf.sprintf "split: goal '%s' is not a conjunction."
+            (Printf.sprintf
+               "split: goal '%s' is not a conjunction."
                (pp_term st.elab_ctx ty)))
+
 (* This adds a hole of the desired type, again using a copy of the hashmap *)
 let add_hole g hole_id ty ctx =
   let metas = Hashtbl.copy ctx.metas in
   let ctx_bids = List.map (fun h -> h.bid) g.lctx in
   Hashtbl.replace metas hole_id { ty = Some ty; context = ctx_bids; sol = None };
   { ctx with metas }
+
 (*
   This infers the motive p of the existential type when constructing an Exists.intro.
   It uses the type A to construct the expected type, leaving in a hole for the motive.
