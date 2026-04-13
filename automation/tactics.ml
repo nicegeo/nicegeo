@@ -376,7 +376,7 @@ let infer_motive (exists_type : term) (g : goal) ctx : term option =
 
   let create_expected_term hole_ids =
     let hole_id = List.nth hole_ids 0 in
-    mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id)
+    mk_app_multiarg (mk_name "Exists") [ exists_type; mk_hole hole_id ]
   in
   let hole_solution_list =
     match_term_and_solve_holes g ctx [ hole_type ] g.goal_type create_expected_term
@@ -405,9 +405,7 @@ let exists (a : term) (st : proof_state) : tactic_result =
           let new_hole, st = fresh_goal st g.lctx new_goal_ty in
           (* construct the proof term *)
           let proof =
-            mk_app
-              (mk_app (mk_app (mk_app (mk_name "Exists.intro") exists_type) p) a)
-              new_hole
+            mk_app_multiarg (mk_name "Exists.intro") [ exists_type; p; a; new_hole ]
           in
           (* update the proof state accordingly *)
           let st = assign_meta g.goal_id proof st in
