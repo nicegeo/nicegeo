@@ -353,6 +353,16 @@ let exists (a : term) (st : proof_state) : tactic_result =
       | None -> fail "Goal must have the form [Exists A p]")
   | None -> fail "No goals remaining"
 
+(*
+ * Given a hypothesis of (that unifies with) type [Exists A p], infer A and p,
+ * and introduce new hypothesis representing the first and (dependent) second 
+ * projections of the existential. Do not delete the hypothesis. Do not change
+ * the goal. Do update the proof term to represent the application of the
+ * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
+ *)
+let choose (e : term) (st : proof_state) : tactic_result =
+  fail "Not yet implemented"
+
 let register () =
   register_tactic "reflexivity" Register.(nullary reflexivity);
   register_tactic "exact" Register.(unary_term exact);
