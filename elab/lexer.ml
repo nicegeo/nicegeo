@@ -91,8 +91,7 @@ let token lexbuf =
     | any ->
         let bad = Sedlexing.Utf8.lexeme lexbuf in
         failwith (Printf.sprintf "unexpected character: %S" bad)
-    | _ ->
-        failwith "unreachable"
+    | _ -> failwith "unreachable"
   and comment lexbuf =
     match%sedlex lexbuf with
     | "*)" -> ()
