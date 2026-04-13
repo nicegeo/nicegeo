@@ -389,3 +389,7 @@ Theorem AddCancel : (x: Measure) -> (y: Measure) -> (z: Measure) -> Eq _ (Add x 
 #reduce (fun (x : Measure) => x) Zero
 
 #infer distinct_from
+
+Axiom foiwefbaγβααjoeiwf : Type
+Axiom error : foiwefbaγβααjoeiwf
+
