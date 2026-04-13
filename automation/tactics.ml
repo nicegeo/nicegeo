@@ -426,7 +426,7 @@ let infer_or_type (g : goal) (st : proof_state) : (term * term) option =
       | [ left_hole_id; right_hole_id ] -> (mk_hole left_hole_id, mk_hole right_hole_id)
       | _ -> failwith "Internal error: Incorrect list size"
     in
-    mk_app (mk_app (mk_name "Or") left_hole) right_hole
+    mk_app_multiarg (mk_name "Or") [ left_hole; right_hole ]
   in
   let or_args =
     match_term_and_solve_holes
@@ -441,6 +441,22 @@ let infer_or_type (g : goal) (st : proof_state) : (term * term) option =
   | Some [ left_type; right_type ] -> Some (left_type, right_type)
   | _ -> failwith "Internal error: incorrect list length"
 
+let left (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> fail "No goals remaining"
+  | Some g -> (
+      match infer_or_type g st with
+      | None -> fail "Goal must be of the form [Or A B]"
+      | Some (left_type, right_type) ->
+          let new_goal_hole, st = fresh_goal st g.lctx left_type in
+
+          let curr_goal_proof =
+            mk_app_multiarg (mk_name "Or.inl") [ left_type; right_type; new_goal_hole ]
+          in
+          let st = assign_meta g.goal_id curr_goal_proof st in
+          let st = close_goal g.goal_id st in
+          succeed st)
+
 let register () =
   register_tactic "reflexivity" Register.(nullary reflexivity);
   register_tactic "exact" Register.(unary_term exact);
@@ -448,6 +464,7 @@ let register () =
   register_tactic "sorry" Register.(nullary sorry);
   register_tactic "intro" Register.(unary_ident intro);
   register_tactic "intros" Register.(variadic_ident intros);
+  register_tactic "left" Register.(nullary left);
   (* There's a clever design somewhere that lets me write this with some combinators, but for time's sake this one gets hard-coded for now. *)
   register_tactic "have" (function
     | [ { inner = Name name; _ }; ty ] -> have name ty
