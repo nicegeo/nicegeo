@@ -354,6 +354,16 @@ let exists (a : term) (st : proof_state) : tactic_result =
   | None -> fail "No goals remaining"
 
 (*
+ * TODO comment, implement, consider local context vs elab context,
+ * remove any extra args, etc
+ *)
+let infer_choose_types e g st =
+  ignore e;
+  ignore g;
+  ignore st;
+  None
+
+(*
  * Given a term whose type unifies with type [Exists A p], infer A and p,
  * and introduce new hypothesis representing the first and (dependent) second 
  * projections of the existential. Do not delete any hypotheses. Do not change
@@ -361,9 +371,18 @@ let exists (a : term) (st : proof_state) : tactic_result =
  * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
  *)
 let choose (e : term) (st : proof_state) : tactic_result =
-  ignore e;
-  ignore st;
-  fail "Not yet implemented"
+  match current_goal st with
+  | Some g -> (
+      (* infer A and p *)
+      match infer_choose_types e g st with
+      | Some p ->
+          (* TODO define new hypotheses *)
+          (* TODO update the proof term *)
+          (* TODO update the proof state accordingly *)
+          ignore p;
+          succeed st
+      | None -> fail "Argument must have the type [Exists A p]")
+  | None -> fail "No goals remaining"
 
 let register () =
   register_tactic "reflexivity" Register.(nullary reflexivity);
