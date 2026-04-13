@@ -341,6 +341,29 @@ let ctx_with_new_holes (g : goal) (ctx : ctx) (hole_types : term list) : ctx * i
   in
   (ctx_with_holes_added, hole_ids)
 
+(** Use unification to both check if a given term `t` matches a certain expected format,
+    where the expected format is specified as a term with holes for places where arbitrary
+    values are allowed.
+
+    The expected format is specified by the function `create_expected_term`, which takes
+    in a list of hole IDs (one hole ID for each hole type in `hole_types`), and returns a
+    term `t2` using those hole IDs. This function then solves the equation `t = t2` for
+    the values of the created holes, either returning a list of solutions for those hole
+    values, or None if unification couldn't find a solution for any of the holes.*)
+let match_term_and_solve_holes (g : goal) (ctx : ctx) (hole_types : term list) (t : term)
+    (create_expected_term : int list -> term) : term list option =
+  let ctx, hole_ids = ctx_with_new_holes g ctx hole_types in
+  let expected_term = create_expected_term hole_ids in
+  unify ctx t (Hashtbl.create 0) expected_term (Hashtbl.create 0);
+
+  (* TODO: do we want to return a list of options instead so that the user can extract some of the
+  hole solutions even when unification couldn't find a solution for all holes? *)
+  let all_hole_solutions = List.map (fun hole_id -> get_hole_sol ctx hole_id) hole_ids in
+  let holes_with_solutions = List.filter_map (fun x -> x) all_hole_solutions in
+  if List.length holes_with_solutions = List.length all_hole_solutions then
+    Some holes_with_solutions
+  else None
+
 (* 
   This infers the motive p of the existential type when constructing an Exists.intro.
   It uses the type A to construct the expected type, leaving in a hole for the motive.
@@ -348,15 +371,20 @@ let ctx_with_new_holes (g : goal) (ctx : ctx) (hole_types : term list) : ctx * i
   Exists A ?p, where ?p : A -> Prop. If successful, it returns Some p, otherwise None.
 *)
 let infer_motive (exists_type : term) (g : goal) ctx : term option =
-  let goal_type = g.goal_type in
   let bid = Elab.Term.gen_binder_id () in
   let hole_type = mk_arrow (Some "A") bid exists_type (mk_sort 0) in
 
-  let ctx, hole_ids = ctx_with_new_holes g ctx [ hole_type ] in
-  let hole_id = List.nth hole_ids 0 in
-  let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
-  unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0);
-  get_hole_sol ctx hole_id
+  let create_expected_term hole_ids =
+    let hole_id = List.nth hole_ids 0 in
+    mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id)
+  in
+  let hole_solution_list =
+    match_term_and_solve_holes g ctx [ hole_type ] g.goal_type create_expected_term
+  in
+  match hole_solution_list with
+  | Some [ motive_solution ] -> Some motive_solution
+  | None -> None
+  | _ -> failwith "match_term_and_solve_holes returned a list of the wrong length"
 
 (*
  * This implements the exists tactic, which takes term a as an argument, and constructs
