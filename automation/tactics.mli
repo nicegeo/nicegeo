@@ -1,11 +1,6 @@
-open Term
-open Proofstate
-
-type tactic_result =
-  | Success of proof_state
-  | Failure of string
-
-type tactic = proof_state -> tactic_result
+open Elab.Term
+open Elab.Proofstate
+open Elab.Tactic
 
 val reflexivity : proof_state -> tactic_result
 
@@ -18,11 +13,9 @@ val sorry : proof_state -> tactic_result
     or no goals remain. *)
 val exact : term -> proof_state -> tactic_result
 
-(** [apply name st] looks up [name] as a hypothesis or global lemma and attempts to close
-    the current goal. If the lemma type is [A -> B] and [B] matches the goal, the goal is
-    closed and a new subgoal for [A] is opened. If the type directly matches the goal (no
-    arrow), it behaves like [exact]. *)
-val apply : string -> proof_state -> tactic_result
+(** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
+    and opens a new subgoal for [A]. *)
+val apply : term -> proof_state -> tactic_result
 
 (* sequences tactics *)
 val seq : tactic -> tactic -> tactic
@@ -47,3 +40,9 @@ val rewrite : term -> proof_state -> tactic_result
 val split : proof_state -> tactic_result
 
 
+(** [exists a] takes in a term [a] of type [A], and constructs a new goal [p a], where the
+    old goal had form [Exists A p]. The motive [p] is inferred from the goal and the type
+    of the argument [a]. *)
+val exists : term -> proof_state -> tactic_result
+
+val register : unit -> unit

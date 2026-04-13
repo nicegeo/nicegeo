@@ -21,6 +21,9 @@ type type_error_kind =
   | AppNonFuncError of term
   | LamDomainError of term
   | ForallSortError of term * term
+  | AlreadyDefined of string
+  | DeclarationTypeError of term
+  | ProofTypeMismatch of term * term
 
 (*
  * Type error information
