@@ -12,8 +12,9 @@ let make_env () =
   let env = Elab.Interface.create () in
   Elab.Interface.process_file env path_to_env;
   let process s =
-    let lexbuf = Lexing.from_string s in
-    let stmts = Elab.Parser.main Elab.Lexer.token lexbuf in
+    let lexbuf = Sedlexing.Utf8.from_string s in
+    let parse = MenhirLib.Convert.Simplified.traditional2revised Elab.Parser.main in
+    let stmts = parse (Sedlexing.with_tokenizer Elab.Lexer.token lexbuf) in
     List.iter (Elab.Interface.process_statement env) stmts
   in
   process
