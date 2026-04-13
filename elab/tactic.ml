@@ -106,7 +106,7 @@ module Register = struct
         raise
           (Error.ElabError
              {
-               context = { loc = None; decl_name = None };
+               context = { loc = None; decl_name = None; lctx = None };
                error_type =
                  Error.InvalidTacticParameter
                    "Expected exactly one term parameter, but got nothing";
@@ -146,7 +146,7 @@ module Register = struct
         raise
           (Error.ElabError
              {
-               context = { loc = None; decl_name = None };
+               context = { loc = None; decl_name = None; lctx = None };
                error_type =
                  Error.InvalidTacticParameter
                    "Expected exactly one identifier parameter, but got nothing";
@@ -202,7 +202,7 @@ module Register = struct
               raise
                 (Error.ElabError
                    {
-                     context = { loc = Some loc; decl_name = None };
+                     context = { loc = Some loc; decl_name = None; lctx = None };
                      error_type = Error.UnknownName { name = id };
                    })
         in
@@ -211,7 +211,7 @@ module Register = struct
         raise
           (Error.ElabError
              {
-               context = { loc = Some t.loc; decl_name = None };
+               context = { loc = Some t.loc; decl_name = None; lctx = None };
                error_type =
                  Error.InvalidTacticParameter "Expected a tactic name, but got a term.";
              })
@@ -219,7 +219,7 @@ module Register = struct
         raise
           (Error.ElabError
              {
-               context = { loc = None; decl_name = None };
+               context = { loc = None; decl_name = None; lctx = None };
                error_type =
                  Error.InvalidTacticParameter "Expected a tactic, but got nothing";
              })
