@@ -357,7 +357,7 @@ let exists (a : term) (st : proof_state) : tactic_result =
  * TODO comment, implement, consider local context vs elab context,
  * remove any extra args, etc
  *)
-let infer_choose_types e g st =
+let infer_choose_types e g st : (term * term) option =
   ignore e;
   ignore g;
   ignore st;
@@ -375,10 +375,11 @@ let choose (e : term) (st : proof_state) : tactic_result =
   | Some g -> (
       (* infer A and p *)
       match infer_choose_types e g st with
-      | Some p ->
+      | Some (a_typ, p) ->
           (* TODO define new hypotheses *)
           (* TODO update the proof term *)
           (* TODO update the proof state accordingly *)
+          ignore a_typ;
           ignore p;
           succeed st
       | None -> fail "Argument must have the type [Exists A p]")
