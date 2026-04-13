@@ -528,7 +528,39 @@ Not (a = b) -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e ->
 
 (* Proposition 27 *)
 
+(* Parallel lines do not intersect. *)
+Theorem para_not_inter : (L : Line) -> (M : Line) -> para L M -> LinesInter L M -> False :=
+    fun L M hpara hinter =>
+    Exists.elim _ _ _ (pt_of_linesinter L M hinter)
+    (fun (p : Point) (hp : OnLine p L /\ OnLine p M) =>
+    Or.elim _ _ _ (hpara p)
+    (fun (hnL : Not (OnLine p L)) => hnL (fst _ _ hp))
+    (fun (hnM : Not (OnLine p M)) => hnM (snd _ _ hp))
+    )
+
 (* Proposition 29 *)
+
+(* Proposition 29.1: alternate interior angles are equal when lines are parallel. *)
+Theorem alternate_interior_angle :
+    (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) ->
+    (L : Line) -> (M : Line) -> (T : Line) ->
+    para L M ->
+    OnLine a L -> OnLine b L -> a ≠ b ->
+    OnLine c M -> OnLine d M -> c ≠ d ->
+    OnLine b T -> OnLine c T -> b ≠ c ->
+    diffside a d T ->
+    Angle a b c = Angle b c d := sorry _
+
+(* Proposition 29.2: co-interior angles sum to two right angles. *)
+Theorem co_interior_angles :
+    (a : Point) -> (b : Point) -> (c : Point) -> (d : Point) ->
+    (L : Line) -> (M : Line) -> (T : Line) ->
+    para L M ->
+    OnLine a L -> OnLine b L -> a ≠ b ->
+    OnLine c M -> OnLine d M -> c ≠ d ->
+    OnLine b T -> OnLine c T -> b ≠ c ->
+    SameSide a d T ->
+    Angle a b c + Angle b c d = 90 + 90 := sorry _
 
 
 
