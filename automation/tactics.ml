@@ -354,9 +354,9 @@ let exists (a : term) (st : proof_state) : tactic_result =
   | None -> fail "No goals remaining"
 
 (*
- * Given a hypothesis of (that unifies with) type [Exists A p], infer A and p,
+ * Given a term whose type unifies with type [Exists A p], infer A and p,
  * and introduce new hypothesis representing the first and (dependent) second 
- * projections of the existential. Do not delete the hypothesis. Do not change
+ * projections of the existential. Do not delete any hypotheses. Do not change
  * the goal. Do update the proof term to represent the application of the
  * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
  *)
