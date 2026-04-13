@@ -90,10 +90,12 @@ let exact (tm : term) (st : proof_state) : tactic_result =
           unify st.elab_ctx ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
           (* check all holes are filled *)
           (* here lean's refine would instead open a goal for each unfilled hole *)
+          Printf.printf "term: %s\n\n" (pp_term st.elab_ctx tm);
           ignore (replace_metas st.elab_ctx tm);
           let st = assign_meta g.goal_id tm st in
           Printf.printf "term: %s\n\n" (pp_term st.elab_ctx tm);
           let st = close_goal g.goal_id st in
+          Printf.printf "term: %s\n\n" (pp_term st.elab_ctx tm);
           succeed st)
 
 (** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
@@ -386,6 +388,7 @@ let choose (e : term) (st : proof_state) : tactic_result =
       (* infer A and p *)
       match infer_choose_types e g st with
       | Some a_typ, Some p ->
+        (* TODO try to implement by first making the goal the entire function with that type (a : A) -> p a -> b, so the hole is that. Stick hole in entire term, don't add hypotheses yet. Close goal. Next, add hypotheses; update goals again. etc. *)
           (* define new hypotheses *)
           let bid_a_typ = Elab.Term.gen_binder_id () in
           let hyp_a_typ = { name = None; bid = bid_a_typ; ty = a_typ } in
@@ -405,7 +408,7 @@ let choose (e : term) (st : proof_state) : tactic_result =
                  e)
               (mk_fun None bid_a_typ a_typ (mk_fun None bid_h ty new_hole))
           in
-          Printf.printf "%s\n" (pp_term st.elab_ctx proof);
+          Printf.printf "%s\n" (pp_term st.elab_ctx (Elab.Reduce.reduce st.elab_ctx proof));
           (* update the proof state accordingly (and close duplicated goal) *)
           let st = assign_meta g.goal_id proof st in
           let st = close_goal g.goal_id st in
