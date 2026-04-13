@@ -302,9 +302,12 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
-(* This adds a hole of the desired type, again using a copy of the hashmap *)
-let add_hole g hole_id ty ctx =
+(** This adds a hole of the desired type, again using a copy of the hashmap *)
+let add_hole (g : goal) (hole_id : int) (ty : term) (ctx : ctx) : ctx =
   let metas = Hashtbl.copy ctx.metas in
+  (* TODO: would we ever want to add other variables defined inside the term
+  being created (e.g. if we wanted to create `fun x => ?m0` and we wanted to allow
+  ?m0 to be able to depend on `x`) *)
   let ctx_bids = List.map (fun h -> h.bid) g.lctx in
   Hashtbl.replace metas hole_id { ty = Some ty; context = ctx_bids; sol = None };
   { ctx with metas }
