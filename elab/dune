@@ -1,9 +1,9 @@
 (library
  (name elab)
  (public_name nicegeo.elab)
- (libraries kernel))
-
-(ocamllex lexer)
+ (libraries kernel sedlex menhirLib)
+ (preprocess
+  (pps sedlex.ppx)))
 
 (menhir
  (modules parser))
