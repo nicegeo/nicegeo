@@ -414,14 +414,6 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
                 let goal_lctx = List.rev and_lctx @ g.lctx in
                 let st = assign_meta g.goal_id proof st in
                 let st = close_goal g.goal_id st in
-                Hashtbl.replace
-                  st.elab_ctx.metas
-                  new_goal_id
-                  {
-                    ty = Some g.goal_type;
-                    context = List.map (fun h -> h.bid) goal_lctx;
-                    sol = None;
-                  };
                 let new_goal =
                   { lctx = goal_lctx; goal_type = g.goal_type; goal_id = new_goal_id }
                 in
