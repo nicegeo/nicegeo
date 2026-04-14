@@ -382,7 +382,8 @@ let infer_choose_types (e : term) (g : goal) (st : proof_state) :
  * the goal. Do update the proof term to represent the application of the
  * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
  *)
-let choose (e : term) (st : proof_state) : tactic_result =
+let choose (names : string * string) (e : term) (st : proof_state) : tactic_result =
+  ignore names;
   match current_goal st with
   | Some g -> (
       (* infer A and p *)
@@ -452,5 +453,36 @@ let register () =
              }));
   register_tactic "rewrite" Register.(unary_term rewrite);
   register_tactic "exists" Register.(unary_term exists);
-  register_tactic "choose" Register.(unary_term choose);
+  (* I don't feel comfortable enough with registration yet to extend Register *)
+  register_tactic "choose" (function
+  | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
+    | trm :: _ ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = Some trm.loc; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   "Expected an identifier, but got a term";
+             })
+    | args ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                   lctx = None;
+                 };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   ("Expected exactly three parameters (two names and a term), but got "
+                   ^ string_of_int (List.length args));
+             }));
   ()

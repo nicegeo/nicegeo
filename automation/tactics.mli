@@ -42,6 +42,6 @@ val exists : term -> proof_state -> tactic_result
 (** * Given a term whose type unifies with [Exists A p], infer [A] and [p], * and
     introduce new hypotheses representing [a : A] and [h : p a]. * Update the proof term
     appropriately. *)
-val choose : term -> proof_state -> tactic_result
+val choose : string * string -> term -> proof_state -> tactic_result
 
 val register : unit -> unit

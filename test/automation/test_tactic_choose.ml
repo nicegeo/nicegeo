@@ -57,7 +57,7 @@ let kernel_check env proof goal_ty =
 let test_choose_global () =
   let env, _ = make_env () in
   let st = init_state ~elab_ctx:env (elab env "Exists A (fun (a : A) => True)") in
-  let st = run_tactic (choose (elab env "E")) st in
+  let st = run_tactic (choose ("a", "H")  (elab env "E")) st in
   (* check that the goal is the same as before *)
   Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
   let goal = List.hd st.open_goals in
@@ -94,7 +94,7 @@ let test_choose_local () =
     | [ { name = Some "e"; bid; _ } ] -> bid
     | _ -> Alcotest.fail "expected one hypothesis named b in local context"
   in
-  let st = run_tactic (choose (mk_bvar bid)) st in
+  let st = run_tactic (choose ("a", "H") (mk_bvar bid)) st in
   Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
   let goal = List.hd st.open_goals in
   let got =
