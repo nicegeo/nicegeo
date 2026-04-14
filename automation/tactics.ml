@@ -388,6 +388,64 @@ let exists (a : term) (st : proof_state) : tactic_result =
       | None -> fail "Goal must have the form [Exists A p]")
   | None -> fail "No goals remaining"
 
+(*
+ * Infer both [A] and the motive [p] for the choose tactic, by way of unifying
+ * with the input term [e : Exists ?? ??]
+ *)
+let infer_choose_types (e : term) (g : goal) (st : proof_state) :
+    term option * term option =
+  let hole_a_typ = gen_hole_id () in
+  let hole_p = gen_hole_id () in
+  let a_typ_sort = mk_sort 1 in
+  let ctx = add_hole g hole_a_typ a_typ_sort st.elab_ctx in
+  let bid = Elab.Term.gen_binder_id () in
+  let p_hole_type = mk_arrow (Some "A") bid (mk_hole hole_a_typ) (mk_sort 0) in
+  let ctx = add_hole g hole_p p_hole_type ctx in
+  let expected =
+    mk_app (mk_app (mk_name "Exists") (mk_hole hole_a_typ)) (mk_hole hole_p)
+  in
+  let e_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx e in
+  unify ctx e_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
+  match (Hashtbl.find_opt ctx.metas hole_a_typ, Hashtbl.find_opt ctx.metas hole_p) with
+  | Some mvar1, Some mvar2 -> (mvar1.sol, mvar2.sol)
+  | _ -> failwith "internal nicegeo programming error: created hole does not exist!"
+
+(*
+ * Given a term whose type unifies with type [Exists A p], infer A and p,
+ * and introduce new hypothesis representing the first and (dependent) second 
+ * projections of the existential. Do not delete any hypotheses. Do not change
+ * the goal. Do update the proof term to represent the application of the
+ * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
+ *)
+let choose (names : string * string) (e : term) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | Some g -> (
+      (* infer A and p *)
+      match infer_choose_types e g st with
+      | Some a_typ, Some p ->
+          (* define new hypotheses *)
+          let bid_a_typ = Elab.Term.gen_binder_id () in
+          let hyp_a_typ = { name = Some (fst names); bid = bid_a_typ; ty = a_typ } in
+          let bid_h = Elab.Term.gen_binder_id () in
+          let ty = mk_app p (mk_bvar bid_a_typ) in
+          let hyp_h = { name = Some (snd names); bid = bid_h; ty } in
+          let subgoal_lctx = hyp_h :: hyp_a_typ :: g.lctx in
+          (* construct the proof term *)
+          let new_hole, st = fresh_goal st subgoal_lctx g.goal_type in
+          let proof =
+            mk_app
+              (mk_app
+                 (mk_app (mk_app (mk_app (mk_name "Exists.elim") a_typ) p) g.goal_type)
+                 e)
+              (mk_fun None bid_a_typ a_typ (mk_fun None bid_h ty new_hole))
+          in
+          (* update the proof state accordingly (and close duplicated goal) *)
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+          succeed st
+      | _ -> fail "Argument must have the type [Exists A p]")
+  | None -> fail "No goals remaining"
+
 let register () =
   register_tactic "try" Register.(tactical try_tac);
   register_tactic "repeat" Register.(tactical repeat);
@@ -431,4 +489,36 @@ let register () =
              }));
   register_tactic "rewrite" Register.(unary_term rewrite);
   register_tactic "exists" Register.(unary_term exists);
+  (* I don't feel comfortable enough with registration yet to extend Register *)
+  register_tactic "choose" (function
+    | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
+    | trm :: _ ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = Some trm.loc; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   "Expected an identifier, but got a term";
+             })
+    | args ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                   lctx = None;
+                 };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   ("Expected exactly three parameters (two names and a term), but got "
+                   ^ string_of_int (List.length args));
+             }));
   ()
