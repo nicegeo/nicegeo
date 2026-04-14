@@ -359,20 +359,42 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
   | Some g -> (
       create_metas st.elab_ctx tm (List.map (fun h -> h.bid) g.lctx);
       let tm_ty = infertype st.elab_ctx g.lctx tm in
-      (* head reduce type once to unfold definitions like tri *)
-      let tm_ty = Elab.Typecheck.whnf st.elab_ctx tm_ty in
 
-      (* returns remaining names, reversed final lctx, proof  *)
-      let rec destruct tm ty names proof : string list * term list * term =
+      (* returns name if leaf, remaining names, reversed final lctx, proof *)
+      let rec destruct tm ty names lctx proof : string option * string list * local_ctx * term =
         match ty.inner with
         | App ({inner=App({inner=Name "And"; _}, a); _}, b) -> (
-          (* And.elim a_ty b_ty goal_ty (fun a b => erm) tm *)
-          ([], [])
+            (* And.elim a_ty b_ty goal_ty (fun a b => proof) tm *)
+            let a_bid, b_bid = gen_binder_id (), gen_binder_id () in
+          let b_name, names, lctx, proof = destruct (mk_bvar b_bid) b names lctx proof in
+          let a_name, names, lctx, proof = destruct (mk_bvar a_bid) a names lctx proof in
+          let proof = mk_app (mk_app (mk_app (mk_app (mk_app (mk_name "And.elim") a) b) g.goal_type) (mk_fun a_name a_bid a (mk_fun b_name b_bid b proof))) tm in
+          (None, names, lctx, proof)
         )
-        | tm ->  ([], [])
+        | _ -> (
+          match tm.inner with 
+          | Bvar bid ->
+          Some (List.hd names), List.tl names, { name = Some (List.hd names); bid; ty } :: lctx, proof
+          | _ -> failwith "destruct_ands: expected a variable"
+        )
       in
 
-    succeed st
+      (* head reduce type once to unfold definitions like eqtri *)
+      let tm_ty = Elab.Typecheck.whnf st.elab_ctx tm_ty in
+      (* check tm_ty is And *)
+      match tm_ty.inner with
+      | App ({ inner = App ({ inner = Name "And"; _ }, _); _ }, _) ->
+        let new_goal_id = gen_hole_id () in
+        let _, _, and_lctx, proof = destruct tm tm_ty (List.rev names) [] (mk_hole new_goal_id) in
+        let goal_lctx = (List.rev and_lctx) @ g.lctx in
+        let st = assign_meta g.goal_id proof st in
+        let st = close_goal g.goal_id st in
+        Hashtbl.replace st.elab_ctx.metas new_goal_id { ty = Some g.goal_type; context = List.map (fun h -> h.bid) goal_lctx; sol = None };
+        let new_goal = { lctx = goal_lctx; goal_type = g.goal_type; goal_id = new_goal_id } in
+        let st = { st with open_goals = new_goal :: st.open_goals } in
+        succeed st
+      | _ -> fail "destruct_ands: expected a term of type And"
+
   )
 
 let register () =

@@ -259,3 +259,26 @@ Theorem prop2 : ∀ (a b c : Point), ∃ f, Length a f = Length b c :=
     )
     (fun (ab : a ≠ b) => prop2_ne a b c bc ab)
     )
+
+Theorem test1 : ∀ (A B C D E : Prop), A ∧ B ∧ C ∧ D ∧ E → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+Theorem test2 : ∀ (A B C D E : Prop), A ∧ (B ∧ (C ∧ (D ∧ E))) → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+
+Theorem test3 : ∀ (A B C D E : Prop), (A ∧ B) ∧ (C ∧ (D ∧ E)) → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
