@@ -13,5 +13,4 @@ let test_app_multiarg () =
 
 let suite =
   let open Alcotest in
-  ( "Tactic.construct_or",
-    [ test_case "application multiple arguments" `Quick test_app_multiarg ] )
+  ("Tactic.utils", [ test_case "application multiple arguments" `Quick test_app_multiarg ])
