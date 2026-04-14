@@ -90,12 +90,9 @@ let exact (tm : term) (st : proof_state) : tactic_result =
           unify st.elab_ctx ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
           (* check all holes are filled *)
           (* here lean's refine would instead open a goal for each unfilled hole *)
-          Printf.printf "term: %s\n\n" (pp_term st.elab_ctx tm);
           ignore (replace_metas st.elab_ctx tm);
           let st = assign_meta g.goal_id tm st in
-          Printf.printf "term: %s\n\n" (pp_term st.elab_ctx tm);
           let st = close_goal g.goal_id st in
-          Printf.printf "term: %s\n\n" (pp_term st.elab_ctx tm);
           succeed st)
 
 (** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal

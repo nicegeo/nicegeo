@@ -26,6 +26,7 @@ let make_env () =
   in
   process "Axiom A : Type";
   process "Axiom E : Exists A (fun (a : A) => True)";
+  process "Axiom B : Prop";
   (env, process)
 
 let elab env s = Elab.Typecheck.elaborate env (Elab.Interface.parse_term s) None
@@ -41,8 +42,8 @@ let to_kterm env tm =
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
-  Printf.printf "%s\n" (pp_term env proof);
   Printf.printf "%s\n" (pp_term env (replace_metas env proof));
+  Printf.printf "%s\n" (pp_term env goal_ty);
   let proof_k = to_kterm env (replace_metas env proof) in
   let ty_k = to_kterm env (replace_metas env goal_ty) in
   try
@@ -81,81 +82,53 @@ let test_choose_global () =
         (kernel_check st.elab_ctx st.statement goal.goal_type)
   | _ -> Alcotest.fail "expected two hypotheses in the local context"
 
-(* TODO the above, but apply the hypothesis *)
-
-(* Check that `exists` can infer the motive properly referencing something in the local
-   context *)
-    (*
-let test_exists_lctx () =
+(** Test for a usage of choose that uses local context *)
+let test_choose_local () =
   let env, _ = make_env () in
-  let goal_ty = elab env "(b : A) -> Exists A (fun (c : A) => b = c)" in
+  let goal_ty = (elab env "(e : Exists A (fun (a : A) => B)) -> B") in
   let st = init_state ~elab_ctx:env goal_ty in
-  let st = run_tactic (intro "b") st in
+  let st = run_tactic (intro "e") st in
   let bid =
     match (List.hd st.open_goals).lctx with
-    | [ { name = Some "b"; bid; _ } ] -> bid
+    | [ { name = Some "e"; bid; _ } ] -> bid
     | _ -> Alcotest.fail "expected one hypothesis named b in local context"
   in
-  let st = run_tactic (exists (mk_bvar bid)) st in
+  let st = run_tactic (choose (mk_bvar bid)) st in
   Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
+  let goal = List.hd st.open_goals in
   let got =
     Elab.Pretty.term_to_string
       env
       ~lctx:(List.hd st.open_goals).lctx
-      (Elab.Reduce.reduce env (List.hd st.open_goals).goal_type)
+      (Elab.Reduce.reduce env goal.goal_type)
   in
-  let exp = "Eq A b b" in
-  Alcotest.(check string) "new goal is b = b" exp got;
-  (* close the goal and typecheck because we can *)
-  let st = run_tactic reflexivity st in
-  Alcotest.(check int) "no remaining goals" 0 (List.length st.open_goals);
-  Alcotest.(check bool)
-    "kernel accepts proof"
-    true
-    (kernel_check env st.statement goal_ty);
-  ()
-
-let test_exists_unify () =
-  let open Elab.Types in
-  let env, _ = make_env () in
-  let goal_ty =
-    elab
-      env
-      "(B : Type) -> (Q : B -> Prop) -> (b : B) -> (hb : Q b) -> (fun P => Exists B P) Q"
-  in
-  let st = init_state ~elab_ctx:env goal_ty in
-  let st = run_tactic (intros [ "B"; "Q"; "b"; "hb" ]) st in
-  let b_entry = List.find (fun h -> h.name = Some "b") (List.hd st.open_goals).lctx in
-  let st = run_tactic (exists (mk_bvar b_entry.bid)) st in
-  let hb_entry = List.find (fun h -> h.name = Some "hb") (List.hd st.open_goals).lctx in
-  let st = run_tactic (exact (mk_bvar hb_entry.bid)) st in
-  Alcotest.(check int) "no remaining goals" 0 (List.length st.open_goals);
-  Alcotest.(check bool)
-    "kernel accepts proof"
-    true
-    (kernel_check env st.statement goal_ty);
-  ()
-
-(*
-  Checks that using `exists` and then closing a trivial goal produces
-  a proof term that the kernel accepts.
-*)
-let test_exists_kernel_check () =
-  let env, _ = make_env () in
-  let goal_ty = elab env "Exists A (fun (a : A) => True)" in
-  let st = init_state ~elab_ctx:env goal_ty in
-  let st = run_tactic (exists (elab env "a")) st in
-  let st = run_tactic (exact (mk_name "True.intro")) st in
-  Alcotest.(check bool) "no remaining goals" true (is_complete st);
-  Alcotest.(check bool)
-    "kernel accepts proof"
-    true
-    (kernel_check env st.statement goal_ty)*)
+  (* check for the right goal *)
+  let exp = "B" in
+  Alcotest.(check string) "new goal is B" exp got;
+  (* check hypotheses *)
+  match goal.lctx with
+  | [ha; a; e] ->
+      let a_typ = pp_term env a.ty in
+      let h = pp_term env (Elab.Reduce.reduce env ha.ty) in
+      let exp = "A" in
+      Alcotest.(check string) "first new hypothesis has type A" a_typ exp;
+      let exp = "B" in
+      Alcotest.(check string) "second new hypothesis has type B" exp h;
+      let exp = "Exists A (fun (a : A) => B)" in
+      Alcotest.(check string) "old hypothesis still has the right type" exp (pp_term env e.ty);
+      (* finish the proof and do a kernel term check *)
+      let st = run_tactic (exact (mk_bvar ha.bid)) st in
+      Alcotest.(check bool) "no remaining goals" true (is_complete st);
+      Alcotest.(check bool)
+        "kernel accepts proof"
+        true
+        (kernel_check st.elab_ctx st.statement goal_ty)
+  | _ -> Alcotest.fail "expected three hypotheses in the local context"
 
 let suite =
   let open Alcotest in
   ( "Tactic.choose",
     [
       test_case "choose global context" `Quick test_choose_global;
-      (*test_case "choose unifies with local context" `Quick test_choose_local;*)
+      test_case "choose local context" `Quick test_choose_local;
     ] )
