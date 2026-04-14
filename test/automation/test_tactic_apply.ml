@@ -1,6 +1,7 @@
 open Elab.Term
 open Elab.Types
 open Elab.Proofstate
+open Elab.Tactic
 open Automation.Tactics
 
 let e = Elab.Interface.create ()
@@ -63,6 +64,26 @@ let test_apply_no_goals () =
   | Failure _ -> ()
   | Success _ -> Alcotest.fail "expected Failure on completed state"
 
+let test_apply_no_args () =
+  let st = start_with_hyp "h" (mk_name "A") (mk_name "A") in
+  let tm = bind_names (List.hd st.open_goals) (mk_name "h") in
+  match apply tm st with
+  | Success st -> Alcotest.(check bool) "proof complete after apply" true (is_complete st)
+  | Failure msg -> Alcotest.failf "expected Success but got Failure: %s" msg
+
+let test_multiple_args () =
+  let st = start_with_hyp "h" (Elab.Interface.parse_term "A -> B -> A") (mk_name "A") in
+  let tm = bind_names (List.hd st.open_goals) (mk_name "h") in
+  match apply tm st with
+  | Success st -> (
+      Alcotest.(check int) "two subgoals remaining" 2 (List.length st.open_goals);
+      match st.open_goals with
+      | [ g1; g2 ] ->
+          Alcotest.(check bool) "first subgoal is A" true (g1.goal_type.inner = Name "A");
+          Alcotest.(check bool) "second subgoal is B" true (g2.goal_type.inner = Name "B")
+      | _ -> Alcotest.fail "expected exactly two subgoals")
+  | Failure msg -> Alcotest.failf "expected Success but got Failure: %s" msg
+
 let suite =
   let open Alcotest in
   ( "Tactic.apply",
@@ -71,4 +92,6 @@ let suite =
       test_case "fails on conclusion mismatch" `Quick test_apply_conclusion_mismatch;
       test_case "fails on unknown name" `Quick test_apply_unknown_name;
       test_case "fails when no goals remaining" `Quick test_apply_no_goals;
+      test_case "test apply works like exact" `Quick test_apply_no_args;
+      test_case "test multiple arguments" `Quick test_multiple_args;
     ] )
