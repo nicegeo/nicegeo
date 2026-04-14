@@ -50,7 +50,7 @@ let test_intro_failure () =
 
 (** [have] should split the current goal G into two goals:
     - The type T
-    - The continuation T -> G *)
+    - The goal G with a hypothesis of type T *)
 let test_have_success () =
   let ctx = setup_env () in
   let goal_ty = name "B" in
@@ -66,11 +66,17 @@ let test_have_success () =
             "first goal is A"
             true
             (match proof_goal.goal_type.inner with Name "A" -> true | _ -> false);
-          (* second goal continuation (h_A : A) -> B *)
+          (* second goal continuation B *)
           Alcotest.(check bool)
-            "second goal is Arrow"
+            "second goal is B"
             true
-            (match cont_goal.goal_type.inner with Arrow _ -> true | _ -> false)
+            (match cont_goal.goal_type.inner with Name "B" -> true | _ -> false);
+          (* verify the continuation goal has the new hypothesis in its context *)
+          let hyp = List.hd cont_goal.lctx in
+          Alcotest.(check bool)
+            "hypothesis in continuation goal"
+            true
+            (hyp = { name = Some "h_A"; bid = hyp.bid; ty = name "A" })
       | _ ->
           Alcotest.failf
             "expected exactly 2 open goals, got %d"

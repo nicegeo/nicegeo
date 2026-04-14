@@ -362,7 +362,9 @@ intros caa cbb.
 (* hack because exact doesn't fill holes *)
 exists c.
 apply (And.intro _ _).
-apply (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa).
+have h ((Length a b = Length a c → OnCircle c aa) ∧ (OnCircle c aa → Length a b = Length a c)).
+exact (on_circle_iff_length_eq a b c aa aaa baa).
+apply (snd _ _ h caa).
 apply (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb).
 Qed.
 
