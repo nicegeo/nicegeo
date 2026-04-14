@@ -45,25 +45,40 @@
         "title": "NiceGeo: Run Diagnostics"
       },
       {
-        "command": "nicegeo.proofState.showPanel",
+        "command": "nicegeo.proofMode.enter",
         "category": "NiceGeo",
-        "title": "Show Proof State"
+        "title": "Enter Proof Mode"
+      },
+      {
+        "command": "nicegeo.proofMode.exit",
+        "category": "NiceGeo",
+        "title": "Exit Proof Mode"
+      },
+      {
+        "command": "nicegeo.proofMode.toggle",
+        "category": "NiceGeo",
+        "title": "Toggle Proof Mode"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "nicegeo.proofState.showPanel",
-          "when": "editorLangId == nicegeo",
-          "group": "navigation@50"
+          "command": "nicegeo.proofMode.enter",
+          "when": "editorLangId == nicegeo && !nicegeo.proofMode",
+          "group": "navigation@49"
+        },
+        {
+          "command": "nicegeo.proofMode.exit",
+          "when": "editorLangId == nicegeo && nicegeo.proofMode",
+          "group": "navigation@51"
         }
       ]
     },
     "views": {
-      "explorer": [
+      "nicegeoSidebar": [
         {
           "id": "nicegeoProofStateWebview",
-          "name": "NiceGeo Proof State",
+          "name": "Proof State",
           "type": "webview"
         }
       ]
@@ -107,8 +122,29 @@
           "minimum": 100,
           "maximum": 10000,
           "description": "Debounce delay in milliseconds for on-type diagnostics."
+        },
+        "nicegeo.proofState.followCursor": {
+          "type": "boolean",
+          "default": true,
+          "description": "While proof mode is on and the NiceGeo Proof State view is visible, refresh proof state as the cursor moves (tactic prefix before the cursor)."
+        },
+        "nicegeo.proofState.followCursorDebounceMs": {
+          "type": "number",
+          "default": 300,
+          "minimum": 50,
+          "maximum": 5000,
+          "description": "Debounce for follow-cursor proof state updates (milliseconds)."
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "nicegeoSidebar",
+          "title": "NiceGeo",
+          "icon": "media/nicegeo-view.svg"
+        }
+      ]
     }
   }
 }
