@@ -25,6 +25,16 @@ export interface ProofStateAtResponse {
     hyps: { name: string; bid: number; type: string }[];
     environment?: { name: string; kind: string; type: string }[];
     metas?: { id: number; type: string | null; solution: string | null; context: number[] }[];
+    tacticSteps?: {
+      index: number;
+      name: string;
+      args: string[];
+      goalBefore: string | null;
+      goalsAfter: string[];
+      status: string;
+      atCursor: boolean;
+    }[];
+    tacticsApplied?: number;
   };
 }
 

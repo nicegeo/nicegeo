@@ -22,6 +22,17 @@ export interface ProofStateAtPayload {
     environment?: { name: string; kind: string; type: string }[];
     /** Metavariables (holes) in the elaboration context. */
     metas?: { id: number; type: string | null; solution: string | null; context: number[] }[];
+    /** Step-by-step tactic execution info for theorem proof scripts. */
+    tacticSteps?: {
+      index: number;
+      name: string;
+      args: string[];
+      goalBefore: string | null;
+      goalsAfter: string[];
+      status: string;
+      atCursor: boolean;
+    }[];
+    tacticsApplied?: number;
   };
 }
 
@@ -40,6 +51,19 @@ function section(title: string, body: string): string {
 function listItems(rows: { label: string; value: string }[]): string {
   if (rows.length === 0) return `<p class="muted">(none)</p>`;
   return `<ul>${rows.map((r) => `<li><span class="name">${escapeHtml(r.label)}</span> : ${escapeHtml(r.value)}</li>`).join("")}</ul>`;
+}
+
+
+function renderFriendlyTerm(raw: string, hyps: { name: string; bid: number; type: string }[]): string {
+  const byBid = new Map<number, string>();
+  for (const h of hyps) {
+    byBid.set(h.bid, h.name);
+  }
+  return raw.replace(/!(\d+)/g, (_m, g1) => {
+    const bid = Number(g1);
+    const name = byBid.get(bid);
+    return name ?? `!${g1}`;
+  });
 }
 
 export function buildProofStateHtml(data: ProofStateAtPayload): string {
@@ -61,11 +85,15 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
 
   const decl = data.declaration;
   const ps = data.proofState;
+  const tacticScriptHint =
+    (ps?.tacticSteps?.length ?? 0) > 0
+      ? `<p class="muted" style="font-size:12px;margin-top:8px">Executed tactics are highlighted; remaining tactics are dimmed.</p>`
+      : "";
   const declBlock =
     decl &&
     section(
       "Declaration",
-      `<p><strong>${escapeHtml(decl.name)}</strong> <span class="muted">(${escapeHtml(decl.kind)})</span></p>`,
+      `<p><strong>${escapeHtml(decl.name)}</strong> <span class="muted">(${escapeHtml(decl.kind)})</span></p>${tacticScriptHint}`,
     );
 
   if (!ps) {
@@ -74,15 +102,19 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
     </style></head><body>${declBlock ?? ""}<p>No proof state.</p></body></html>`;
   }
 
+  const goalFriendly = renderFriendlyTerm(ps.goalType, ps.hyps);
+  const reducedFriendly =
+    ps.goalTypeReduced !== undefined ? renderFriendlyTerm(ps.goalTypeReduced, ps.hyps) : undefined;
+
   const reduced =
-    ps.goalTypeReduced !== undefined && ps.goalTypeReduced !== ps.goalType
+    reducedFriendly !== undefined && reducedFriendly !== goalFriendly
       ? section(
           "Goal (β-reduced)",
-          `<p class="goal">⊢ ${escapeHtml(ps.goalTypeReduced)}</p>`,
+          `<p class="goal">⊢ ${escapeHtml(reducedFriendly)}</p>`,
         )
       : "";
 
-  const goal = section("Goal", `<p class="goal">⊢ ${escapeHtml(ps.goalType)}</p>`);
+  const goal = section("Goal", `<p class="goal">⊢ ${escapeHtml(goalFriendly)}</p>`);
   const head = section(
     "Head context",
     listItems(ps.headContext.map((c) => ({ label: c.name, value: c.type }))),
@@ -117,21 +149,44 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
           })
           .join("")}</ul></details>`;
 
-  const hyps = section(
-    "Goal hypotheses",
-    listItems(
-      ps.hyps.map((h) => ({
-        label: `${h.name} [${h.bid}]`,
-        value: h.type,
-      })),
-    ),
+  const hypsBody = listItems(
+    ps.hyps.map((h) => ({
+      label: h.name,
+      value: renderFriendlyTerm(h.type, ps.hyps),
+    })),
   );
+  const hyps = `<section class="block goal-hyps"><h2>Goal hypotheses</h2>${hypsBody}</section>`;
+
+  const tacticSteps = ps.tacticSteps ?? [];
+  const applied = Math.max(0, Math.min(ps.tacticsApplied ?? 0, tacticSteps.length));
+  const tacticBlock =
+    tacticSteps.length === 0
+      ? section("Tactic progress", `<p class="muted">(none)</p>`)
+      : `<section class="block"><h2>Tactic progress</h2><p class="muted">Executed ${applied}/${tacticSteps.length}</p><ul class="tactic-list">${tacticSteps
+          .map((s, i) => {
+            const args = s.args.length > 0 ? ` ${s.args.join(" ")}` : "";
+            const isExecuted = i < applied;
+            const after =
+              s.goalsAfter.length > 0
+                ? s.goalsAfter.map((g) => renderFriendlyTerm(g, ps.hyps)).join(" | ")
+                : "(solved)";
+            const cursorTag = s.atCursor ? ` <span class="cursor-pill">cursor</span>` : "";
+            const stateClass = isExecuted ? "tactic-executed" : "tactic-remaining";
+            const stateText = isExecuted ? "executed" : "remaining";
+            const detail = isExecuted
+              ? `<div class="tactic-after"><span class="muted">after:</span> ${escapeHtml(after)}</div>`
+              : `<div class="tactic-after muted">after: (pending)</div>`;
+            return `<li class="tactic-item ${stateClass}"><div><span class="name">[${s.index}] ${escapeHtml(s.name)}${escapeHtml(args)}</span>${cursorTag}</div><div class="tactic-meta"><span class="muted">status:</span> ${escapeHtml(s.status)} <span class="tactic-state">${stateText}</span></div>${detail}</li>`;
+          })
+          .join("")}</ul></section>`;
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
     body { font-family: var(--vscode-font-family); font-size: 13px; color: var(--vscode-foreground); padding: 12px; }
     h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 8px; color: var(--vscode-descriptionForeground); }
     .block:first-child h2 { margin-top: 0; }
-    .goal { font-family: var(--vscode-editor-font-family); font-size: 13px; }
+    .goal { font-family: var(--vscode-editor-font-family); font-size: 13px; color: var(--vscode-terminal-ansiGreen); }
+    .goal-hyps li { color: var(--vscode-terminal-ansiYellow); }
+    .goal-hyps .name { color: var(--vscode-terminal-ansiYellow); }
     .name { font-weight: 600; }
     ul { padding-left: 18px; margin: 8px 0; }
     li { margin: 4px 0; font-family: var(--vscode-editor-font-family); font-size: 12px; }
@@ -139,14 +194,24 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
     details.fold { margin: 12px 0; }
     details.fold summary { cursor: pointer; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--vscode-descriptionForeground); margin-bottom: 8px; }
     li.mono { font-family: var(--vscode-editor-font-family); font-size: 12px; margin: 4px 0; }
+    .tactic-list { list-style: none; padding-left: 0; }
+    .tactic-item { border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 8px; margin: 8px 0; }
+    .tactic-executed { background: color-mix(in srgb, var(--vscode-terminal-ansiGreen) 12%, transparent); }
+    .tactic-remaining { opacity: 0.7; background: color-mix(in srgb, var(--vscode-editor-foreground) 6%, transparent); }
+    .tactic-meta { margin-top: 2px; }
+    .tactic-state { margin-left: 8px; padding: 1px 6px; border-radius: 999px; font-size: 11px; border: 1px solid var(--vscode-panel-border); }
+    .cursor-pill { margin-left: 8px; padding: 1px 6px; border-radius: 999px; background: var(--vscode-textBlockQuote-background); font-size: 11px; }
+    .tactic-after { margin-top: 4px; }
+
   </style></head><body>
     ${declBlock ?? ""}
+    ${envBlock}
+    ${metaBlock}
     ${head}
+    ${hyps}
     ${goal}
     ${reduced}
     ${term}
-    ${envBlock}
-    ${metaBlock}
-    ${hyps}
+    ${tacticBlock}
   </body></html>`;
 }
