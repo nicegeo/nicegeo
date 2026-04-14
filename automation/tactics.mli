@@ -13,8 +13,8 @@ val sorry : proof_state -> tactic_result
     or no goals remain. *)
 val exact : term -> proof_state -> tactic_result
 
-(** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
-    and opens a new subgoal for [A]. *)
+(** [apply term st] attempts to solve the current goal by applying [term], opening
+    subgoals for the remaining arguments (if any). *)
 val apply : term -> proof_state -> tactic_result
 
 (* sequences tactics *)
