@@ -384,39 +384,51 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
         | _ -> (
             match tm.inner with
             | Bvar bid ->
-                ( Some (List.hd names),
-                  List.tl names,
-                  { name = Some (List.hd names); bid; ty } :: lctx,
-                  proof )
-            | _ -> failwith "destruct_ands: expected a variable")
+                if names = [] then
+                  failwith "destruct_ands: not enough names provided for destructuring"
+                else
+                  ( Some (List.hd names),
+                    List.tl names,
+                    { name = Some (List.hd names); bid; ty } :: lctx,
+                    proof )
+            | _ ->
+                failwith
+                  "destruct_ands: unreachable; expected to hit leaf node when we hit a \
+                   non-And type")
       in
 
       (* head reduce type once to unfold definitions like eqtri *)
       let tm_ty = Elab.Typecheck.whnf st.elab_ctx tm_ty in
       (* check tm_ty is And *)
       match tm_ty.inner with
-      | App ({ inner = App ({ inner = Name "And"; _ }, _); _ }, _) ->
+      | App ({ inner = App ({ inner = Name "And"; _ }, _); _ }, _) -> (
           let new_goal_id = gen_hole_id () in
-          let _, _, and_lctx, proof =
-            destruct tm tm_ty (List.rev names) [] (mk_hole new_goal_id)
-          in
-          let goal_lctx = List.rev and_lctx @ g.lctx in
-          let st = assign_meta g.goal_id proof st in
-          let st = close_goal g.goal_id st in
-          Hashtbl.replace
-            st.elab_ctx.metas
-            new_goal_id
-            {
-              ty = Some g.goal_type;
-              context = List.map (fun h -> h.bid) goal_lctx;
-              sol = None;
-            };
-          let new_goal =
-            { lctx = goal_lctx; goal_type = g.goal_type; goal_id = new_goal_id }
-          in
-          let st = { st with open_goals = new_goal :: st.open_goals } in
-          succeed st
-      | _ -> fail "destruct_ands: expected a term of type And")
+          match
+            try Ok (destruct tm tm_ty (List.rev names) [] (mk_hole new_goal_id))
+            with Failure msg -> Error msg
+          with
+          | Ok (_, remaining_names, and_lctx, proof) ->
+              if remaining_names <> [] then
+                fail "destruct_ands: too many names provided for destructuring"
+              else
+                let goal_lctx = List.rev and_lctx @ g.lctx in
+                let st = assign_meta g.goal_id proof st in
+                let st = close_goal g.goal_id st in
+                Hashtbl.replace
+                  st.elab_ctx.metas
+                  new_goal_id
+                  {
+                    ty = Some g.goal_type;
+                    context = List.map (fun h -> h.bid) goal_lctx;
+                    sol = None;
+                  };
+                let new_goal =
+                  { lctx = goal_lctx; goal_type = g.goal_type; goal_id = new_goal_id }
+                in
+                let st = { st with open_goals = new_goal :: st.open_goals } in
+                succeed st
+          | Error msg -> fail msg)
+      | _ -> fail "destruct_ands: expected a term of type And A B")
 
 let register () =
   register_tactic "reflexivity" Register.(nullary reflexivity);
