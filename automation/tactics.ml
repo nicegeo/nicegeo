@@ -353,6 +353,28 @@ let exists (a : term) (st : proof_state) : tactic_result =
       | None -> fail "Goal must have the form [Exists A p]")
   | None -> fail "No goals remaining"
 
+let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g -> (
+      create_metas st.elab_ctx tm (List.map (fun h -> h.bid) g.lctx);
+      let tm_ty = infertype st.elab_ctx g.lctx tm in
+      (* head reduce type once to unfold definitions like tri *)
+      let tm_ty = Elab.Typecheck.whnf st.elab_ctx tm_ty in
+
+      (* returns remaining names, reversed final lctx, proof  *)
+      let rec destruct tm ty names proof : string list * term list * term =
+        match ty.inner with
+        | App ({inner=App({inner=Name "And"; _}, a); _}, b) -> (
+          (* And.elim a_ty b_ty goal_ty (fun a b => erm) tm *)
+          ([], [])
+        )
+        | tm ->  ([], [])
+      in
+
+    succeed st
+  )
+
 let register () =
   register_tactic "reflexivity" Register.(nullary reflexivity);
   register_tactic "exact" Register.(unary_term exact);
@@ -394,4 +416,31 @@ let register () =
              }));
   register_tactic "rewrite" Register.(unary_term rewrite);
   register_tactic "exists" Register.(unary_term exists);
+  register_tactic "destruct_ands" (function
+    | tm :: names ->
+        let names =
+          List.map
+            (function
+              | { inner = Name id; _ } -> id
+              | term ->
+                  raise
+                    (Elab.Error.ElabError
+                       {
+                         context = { loc = Some term.loc; decl_name = None; lctx = None };
+                         error_type =
+                           Elab.Error.InvalidTacticParameter
+                             "Expected an identifier, but got a term";
+                       }))
+            names
+        in
+        destruct_ands tm names
+    | [] ->
+        (* uhh we don't have access to tactic location here *)
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = None; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter "Expected at least one parameter";
+             }));
   ()
