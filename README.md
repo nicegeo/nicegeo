@@ -47,4 +47,4 @@ dune runtest
 	  and checking parsed proofs. 
 	- `elab/typecheck.ml` contains the type checking and unification logic for automatically filling holes, and
 	  calls the kernel to check the final produced term.
-	- `elab/lexer.mll` and `elab/parser.mly` define the grammar for the text file parser. 
+	- `elab/lexer.ml` (implemented with sedlex) and `elab/parser.mly` define the grammar for the text file parser. 

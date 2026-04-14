@@ -401,16 +401,9 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
         let ty_body = infertype ~depth:(depth + 1) e new_lctx body in
         { inner = Arrow (arg, new_bid, ty_arg, ty_body); loc = tm.loc }
     | Arrow (arg, bid, ty_arg, ty_ret) ->
-        let ty_arg_ty = whnf e (infertype ~depth:(depth + 1) e lctx ty_arg) in
-        let arg_sort =
-          match ty_arg_ty.inner with
-          | Sort n -> n
-          | _ ->
-              raise_at
-                ty_arg
-                (Some lctx)
-                (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty })
-        in
+        (* Call check_is_type on ty_arg to fill any holes we can in the argument type, 
+           not failing if it's a hole (as in the case of ∀ a, ...) *)
+        check_is_type ~depth:(depth + 1) e lctx ty_arg;
         let new_lctx = { bid; name = arg; ty = ty_arg } :: lctx in
         let ty_ret_ty = whnf e (infertype ~depth:(depth + 1) e new_lctx ty_ret) in
         let ret_sort =
@@ -421,6 +414,16 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
                 ty_ret
                 (Some new_lctx)
                 (Error.TypeExpected { not_type = ty_ret; not_type_infer = ty_ret_ty })
+        in
+        let ty_arg_ty = whnf e (infertype ~depth:(depth + 1) e lctx ty_arg) in
+        let arg_sort =
+          match ty_arg_ty.inner with
+          | Sort n -> n
+          | _ ->
+              raise_at
+                ty_arg
+                (Some lctx)
+                (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty })
         in
         { inner = Sort (if ret_sort = 0 then 0 else max arg_sort ret_sort); loc = tm.loc }
     | App (f, arg) -> (
@@ -548,7 +551,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
       | Theorem body ->
           let proof =
             match body with
-            | Proof script -> replace_metas e (Tactic.run e script d.ty)
+            | Proof script -> replace_metas e (Tactic.run e script ty_filled)
             | DefEq proof -> proof
           in
           let proof_filled = elaborate e proof (Some ty_filled) in
