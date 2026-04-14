@@ -388,7 +388,6 @@ let choose (e : term) (st : proof_state) : tactic_result =
       (* infer A and p *)
       match infer_choose_types e g st with
       | Some a_typ, Some p ->
-        (* TODO try to implement by first making the goal the entire function with that type (a : A) -> p a -> b, so the hole is that. Stick hole in entire term, don't add hypotheses yet. Close goal. Next, add hypotheses; update goals again. etc. *)
           (* define new hypotheses *)
           let bid_a_typ = Elab.Term.gen_binder_id () in
           let hyp_a_typ = { name = None; bid = bid_a_typ; ty = a_typ } in
