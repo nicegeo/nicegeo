@@ -19,6 +19,16 @@ type meta_item = {
   meta_context : int list;
 }
 
+type tactic_step_item = {
+  step_index : int;
+  step_name : string;
+  step_args : string list;
+  step_goal_before : string option;
+  step_goals_after : string list;
+  step_status : string;
+  step_at_cursor : bool;
+}
+
 type proofstate_snapshot = {
   decl_name : string;
   decl_kind : string;
@@ -34,6 +44,8 @@ type proofstate_snapshot = {
   hyps : (string * int * string) list;
   environment : env_item list;
   metas : meta_item list;
+  tactic_steps : tactic_step_item list;
+  tactics_applied : int;
 }
 
 let usage_standalone (prog : string) : unit =
@@ -51,6 +63,27 @@ let parse_args (args : string list) : (bool * string * int * int) option =
 let json_escape (s : string) : string = String.escaped s
 let pos_col (p : Lexing.position) : int = p.pos_cnum - p.pos_bol + 1
 
+let pos_lex_lt (line_a : int) (col_a : int) (line_b : int) (col_b : int) : bool =
+  line_a < line_b || (line_a = line_b && col_a < col_b)
+
+let tac_ends_before_or_at_cursor (tac : Statement.tactic) (line : int) (col : int) : bool =
+  let e = tac.loc.end_ in
+  pos_lex_lt e.pos_lnum (pos_col e) line col
+  || (e.pos_lnum = line && pos_col e = col)
+
+let cursor_strictly_after_range_end (r : Term.range) (line : int) (col : int) : bool =
+  let e = r.end_ in
+  pos_lex_lt e.pos_lnum (pos_col e) line col
+
+let tactics_prefix_from_tactics_only (tacs : Statement.tactic list) (line : int) (col : int) :
+    int =
+  let rec go n = function
+    | [] -> n
+    | tac :: rest ->
+        if tac_ends_before_or_at_cursor tac line col then go (n + 1) rest else n
+  in
+  go 0 tacs
+
 let decl_kind_to_string (k : Statement.decl_type) : string =
   match k with
   | Statement.Theorem _ -> "theorem"
@@ -62,8 +95,7 @@ let decl_end_loc (d : Statement.declaration) : Lexing.position =
   | Statement.Theorem body -> (
       match body with
       | Statement.DefEq tm -> tm.loc.end_
-      | Statement.Proof tactics -> (
-          match List.rev tactics with t :: _ -> t.loc.end_ | [] -> d.ty.loc.end_))
+      | Statement.Proof ps -> ps.qed_loc.end_)
   | Statement.Def body -> body.loc.end_
   | Statement.Axiom -> d.ty.loc.end_
 
@@ -80,6 +112,15 @@ let range_contains (r : Term.range) (line : int) (col : int) : bool =
   else if line = s_line then col >= s_col
   else if line = e_line then col <= e_col
   else true
+
+(** Cursor on [Qed] or after it runs the full script; otherwise count tactics fully before cursor. *)
+let tactics_prefix_count (ps : Statement.proof_script) (line : int) (col : int) : int =
+  let n = List.length ps.tactics in
+  if
+    range_contains ps.qed_loc line col
+    || cursor_strictly_after_range_end ps.qed_loc line col
+  then n
+  else tactics_prefix_from_tactics_only ps.tactics line col
 
 let find_repo_root (start_path : string) : string option =
   let rec go dir =
@@ -145,6 +186,81 @@ let snapshot_metas (e : Types.ctx) : meta_item list =
     []
   |> List.sort (fun a b -> compare a.meta_id b.meta_id)
 
+let pp_goal_type (e : Types.ctx) (g : Proofstate.goal) : string =
+  Pretty.term_to_string e ~lctx:g.lctx g.goal_type
+
+let snapshot_tactic_steps (e : Types.ctx) (goal_ty_tm : Term.term)
+    (tacs : Statement.tactic list) (line : int) (col : int) : tactic_step_item list =
+  let init_state = Proofstate.init_state ~elab_ctx:e goal_ty_tm in
+  let rec loop idx (st : Proofstate.proof_state) acc (remaining : Statement.tactic list) =
+    match remaining with
+    | [] -> List.rev acc
+    | (tac : Statement.tactic) :: rest -> (
+        let goal_before =
+          Option.map (pp_goal_type st.elab_ctx) (Proofstate.current_goal st)
+        in
+        let at_cursor = range_contains tac.loc line col in
+        let args_pp = List.map (Pretty.term_to_string st.elab_ctx) tac.args in
+        let mk_step status (next_state : Proofstate.proof_state) =
+          {
+            step_index = idx;
+            step_name = tac.name;
+            step_args = args_pp;
+            step_goal_before = goal_before;
+            step_goals_after =
+              List.map (pp_goal_type next_state.elab_ctx) next_state.open_goals;
+            step_status = status;
+            step_at_cursor = at_cursor;
+          }
+        in
+        match Tactic.apply_tactic_step st tac with
+        | Tactic.Tactic_step_unknown ->
+            let step = mk_step "unknown tactic" st in
+            List.rev (step :: acc)
+        | Tactic.Tactic_step_failed msg ->
+            let step = mk_step ("failure: " ^ msg) st in
+            List.rev (step :: acc)
+        | Tactic.Tactic_step_ok new_st ->
+            let step = mk_step "ok" new_st in
+            loop (idx + 1) new_st (step :: acc) rest)
+  in
+  loop 1 init_state [] tacs
+
+let term_context_at_cursor (env_before_decl : Types.ctx) (goal_ty_tm : Term.term)
+    (kind : Statement.decl_type) (elab_ctx : Types.ctx) (line : int) (col : int) :
+    context_item list =
+  match kind with
+  | Statement.Theorem (Statement.DefEq proof_tm) | Statement.Def proof_tm ->
+      let proof_tm = Typecheck.elaborate env_before_decl proof_tm (Some goal_ty_tm) in
+      let cursor_in_proof = range_contains proof_tm.loc line col in
+      if not cursor_in_proof then []
+      else
+        let rec go acc lctx (t : Term.term) : (string * string) list =
+          if not (range_contains t.loc line col) then acc
+          else
+            match t.inner with
+            | Term.Fun (arg_name_opt, bid, ty_arg, body) ->
+                if range_contains ty_arg.loc line col then go acc lctx ty_arg
+                else
+                  let ty_str = Pretty.term_to_string elab_ctx ~lctx ty_arg in
+                  let name = Option.value ~default:"_" arg_name_opt in
+                  let new_lctx = Types.{ name = Some name; ty = ty_arg; bid } :: lctx in
+                  go (acc @ [ (name, ty_str) ]) new_lctx body
+            | Term.Arrow (arg_name_opt, bid, ty_arg, ret) ->
+                if range_contains ty_arg.loc line col then go acc lctx ty_arg
+                else
+                  let ty_str = Pretty.term_to_string elab_ctx ~lctx ty_arg in
+                  let name = Option.value ~default:"_" arg_name_opt in
+                  let new_lctx = Types.{ name = Some name; ty = ty_arg; bid } :: lctx in
+                  go (acc @ [ (name, ty_str) ]) new_lctx ret
+            | Term.App (f, arg) ->
+                if range_contains f.loc line col then go acc lctx f else go acc lctx arg
+            | _ -> acc
+        in
+        go [] [] proof_tm |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
+  | Statement.Theorem (Statement.Proof _) -> []
+  | Statement.Axiom -> []
+
 let snapshot_proofstate (filename : string) (line : int) (col : int) :
     proofstate_snapshot option =
   let env = load_default_env_for_paths filename in
@@ -172,10 +288,46 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
   | None -> None
   | Some (d, env_before_decl) -> (
       let goal_ty_tm = Typecheck.elaborate env_before_decl d.ty None in
-      let st = Proofstate.init_state ~elab_ctx:env_before_decl goal_ty_tm in
+      let init_st = Proofstate.init_state ~elab_ctx:env_before_decl goal_ty_tm in
+      let st, tactics_applied =
+        match d.kind with
+        | Statement.Theorem (Statement.Proof ps) ->
+            let k = tactics_prefix_count ps line col in
+            (Tactic.apply_first_k_tactics init_st ps.tactics k, k)
+        | _ -> (init_st, 0)
+      in
       let environment = snapshot_environment env_before_decl in
+      let tactic_steps =
+        match d.kind with
+        | Statement.Theorem (Statement.Proof ps) ->
+            snapshot_tactic_steps env_before_decl goal_ty_tm ps.tactics line col
+        | _ -> []
+      in
+      let term_context =
+        term_context_at_cursor env_before_decl goal_ty_tm d.kind st.elab_ctx line col
+      in
       match st.open_goals with
-      | [] -> None
+      | [] ->
+          let metas = snapshot_metas st.elab_ctx in
+          Some
+            {
+              decl_name = d.name;
+              decl_kind = decl_kind_to_string d.kind;
+              decl_file = d.name_loc.start.pos_fname;
+              decl_start_line = d.name_loc.start.pos_lnum;
+              decl_start_col = pos_col d.name_loc.start;
+              decl_end_line = (decl_end_loc d).pos_lnum;
+              decl_end_col = pos_col (decl_end_loc d);
+              goal_type = "(no open goals)";
+              goal_type_reduced = "(no open goals)";
+              head_context = [];
+              term_context;
+              hyps = [];
+              environment;
+              metas;
+              tactic_steps;
+              tactics_applied;
+            }
       | g :: _ ->
           let metas = snapshot_metas st.elab_ctx in
           let gty = g.goal_type in
@@ -186,59 +338,12 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
             extract_head_binders st.elab_ctx gty_red
             |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
           in
-          let term_context =
-            match d.kind with
-            | Statement.Theorem (Statement.DefEq proof_tm) | Statement.Def proof_tm ->
-                let proof_tm =
-                  Typecheck.elaborate env_before_decl proof_tm (Some goal_ty_tm)
-                in
-                let cursor_in_proof = range_contains proof_tm.loc line col in
-                if not cursor_in_proof then []
-                else
-                  let term_context =
-                    let rec go acc lctx (t : Term.term) : (string * string) list =
-                      if not (range_contains t.loc line col) then acc
-                      else
-                        match t.inner with
-                        | Term.Fun (arg_name_opt, bid, ty_arg, body) ->
-                            if range_contains ty_arg.loc line col then go acc lctx ty_arg
-                            else
-                              let ty_str =
-                                Pretty.term_to_string st.elab_ctx ~lctx ty_arg
-                              in
-                              let name = Option.value ~default:"_" arg_name_opt in
-                              let new_lctx =
-                                Types.{ name = Some name; ty = ty_arg; bid } :: lctx
-                              in
-                              go (acc @ [ (name, ty_str) ]) new_lctx body
-                        | Term.Arrow (arg_name_opt, bid, ty_arg, ret) ->
-                            if range_contains ty_arg.loc line col then go acc lctx ty_arg
-                            else
-                              let ty_str =
-                                Pretty.term_to_string st.elab_ctx ~lctx ty_arg
-                              in
-                              let name = Option.value ~default:"_" arg_name_opt in
-                              let new_lctx =
-                                Types.{ name = Some name; ty = ty_arg; bid } :: lctx
-                              in
-                              go (acc @ [ (name, ty_str) ]) new_lctx ret
-                        | Term.App (f, arg) ->
-                            if range_contains f.loc line col then go acc lctx f
-                            else go acc lctx arg
-                        | _ -> acc
-                    in
-                    go [] [] proof_tm
-                  in
-                  term_context |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
-            | Statement.Theorem (Statement.Proof _) -> []
-            | Statement.Axiom -> []
-          in
           let hyps =
             g.lctx
             |> List.map (fun (h : Types.lctx_entry) ->
-                ( Option.value ~default:"_" h.name,
-                  h.bid,
-                  Proofstate.pp_term st.elab_ctx h.ty ))
+                   ( Option.value ~default:"_" h.name,
+                     h.bid,
+                     Proofstate.pp_term st.elab_ctx h.ty ))
           in
           Some
             {
@@ -256,6 +361,8 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
               hyps;
               environment;
               metas;
+              tactic_steps;
+              tactics_applied;
             })
 
 let print_snapshot_text (snap : proofstate_snapshot) : unit =
@@ -312,6 +419,33 @@ let print_snapshot_text (snap : proofstate_snapshot) : unit =
       List.iter
         (fun (name, bid, ty) -> Printf.printf "  %s [%d] : %s\n" name bid ty)
         snap.hyps);
+  Printf.printf "\nTactic progress:\n";
+  (match snap.tactic_steps with
+  | [] -> Printf.printf "  (none)\n"
+  | _ ->
+      List.iter
+        (fun s ->
+          let args =
+            if s.step_args = [] then "" else " " ^ String.concat " " s.step_args
+          in
+          let before =
+            match s.step_goal_before with Some g -> g | None -> "(no current goal)"
+          in
+          let after =
+            if s.step_goals_after = [] then "(solved)"
+            else String.concat " | " s.step_goals_after
+          in
+          let cursor_tag = if s.step_at_cursor then "  <cursor>" else "" in
+          Printf.printf
+            "  [%d] %s%s  status=%s%s\n      before: %s\n      after:  %s\n"
+            s.step_index
+            s.step_name
+            args
+            s.step_status
+            cursor_tag
+            before
+            after)
+        snap.tactic_steps);
   Printf.printf "\n"
 
 let print_snapshot_json (filename : string) (line : int) (col : int)
@@ -319,21 +453,21 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
   let ctx_items (xs : context_item list) : string =
     xs
     |> List.map (fun { name; ty } ->
-        Printf.sprintf
-          "{\"name\":\"%s\",\"type\":\"%s\"}"
-          (json_escape name)
-          (json_escape ty))
+           Printf.sprintf
+             "{\"name\":\"%s\",\"type\":\"%s\"}"
+             (json_escape name)
+             (json_escape ty))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
   let hyps_items =
     snap.hyps
     |> List.map (fun (name, bid, ty) ->
-        Printf.sprintf
-          "{\"name\":\"%s\",\"bid\":%d,\"type\":\"%s\"}"
-          (json_escape name)
-          bid
-          (json_escape ty))
+           Printf.sprintf
+             "{\"name\":\"%s\",\"bid\":%d,\"type\":\"%s\"}"
+             (json_escape name)
+             bid
+             (json_escape ty))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
@@ -344,31 +478,50 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
   let json_int_list (xs : int list) : string =
     "[" ^ String.concat "," (List.map string_of_int xs) ^ "]"
   in
+  let json_string_list (xs : string list) : string =
+    xs |> List.map (fun s -> Printf.sprintf "\"%s\"" (json_escape s)) |> String.concat ","
+    |> fun s -> "[" ^ s ^ "]"
+  in
   let env_items =
     snap.environment
     |> List.map (fun e ->
-        Printf.sprintf
-          "{\"name\":\"%s\",\"kind\":\"%s\",\"type\":\"%s\"}"
-          (json_escape e.env_name)
-          (json_escape e.env_kind)
-          (json_escape e.env_ty))
+           Printf.sprintf
+             "{\"name\":\"%s\",\"kind\":\"%s\",\"type\":\"%s\"}"
+             (json_escape e.env_name)
+             (json_escape e.env_kind)
+             (json_escape e.env_ty))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
   let meta_items =
     snap.metas
     |> List.map (fun m ->
-        Printf.sprintf
-          "{\"id\":%d,\"type\":%s,\"solution\":%s,\"context\":%s}"
-          m.meta_id
-          (json_opt_string m.meta_ty)
-          (json_opt_string m.meta_sol)
-          (json_int_list m.meta_context))
+           Printf.sprintf
+             "{\"id\":%d,\"type\":%s,\"solution\":%s,\"context\":%s}"
+             m.meta_id
+             (json_opt_string m.meta_ty)
+             (json_opt_string m.meta_sol)
+             (json_int_list m.meta_context))
+    |> String.concat ","
+    |> fun s -> "[" ^ s ^ "]"
+  in
+  let tactic_items =
+    snap.tactic_steps
+    |> List.map (fun s ->
+           Printf.sprintf
+             "{\"index\":%d,\"name\":\"%s\",\"args\":%s,\"goalBefore\":%s,\"goalsAfter\":%s,\"status\":\"%s\",\"atCursor\":%s}"
+             s.step_index
+             (json_escape s.step_name)
+             (json_string_list s.step_args)
+             (json_opt_string s.step_goal_before)
+             (json_string_list s.step_goals_after)
+             (json_escape s.step_status)
+             (if s.step_at_cursor then "true" else "false"))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
   Printf.printf
-    "{\"ok\":true,\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d},\"declaration\":{\"name\":\"%s\",\"kind\":\"%s\",\"file\":\"%s\",\"startLine\":%d,\"startCol\":%d,\"endLine\":%d,\"endCol\":%d},\"proofState\":{\"goalType\":\"%s\",\"goalTypeReduced\":\"%s\",\"headContext\":%s,\"termContext\":%s,\"hyps\":%s,\"environment\":%s,\"metas\":%s}}\n"
+    "{\"ok\":true,\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d},\"declaration\":{\"name\":\"%s\",\"kind\":\"%s\",\"file\":\"%s\",\"startLine\":%d,\"startCol\":%d,\"endLine\":%d,\"endCol\":%d},\"proofState\":{\"goalType\":\"%s\",\"goalTypeReduced\":\"%s\",\"headContext\":%s,\"termContext\":%s,\"hyps\":%s,\"environment\":%s,\"metas\":%s,\"tacticSteps\":%s,\"tacticsApplied\":%d}}\n"
     (json_escape filename)
     line
     col
@@ -386,6 +539,8 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     hyps_items
     env_items
     meta_items
+    tactic_items
+    snap.tactics_applied
 
 let run (prog : string) (args : string list) : unit =
   match parse_args args with
