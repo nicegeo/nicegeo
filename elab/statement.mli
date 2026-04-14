@@ -9,9 +9,14 @@ type tactic = {
   loc : range;  (** The source location of the tactic (for error reporting). *)
 }
 
+type proof_script = {
+  tactics : tactic list;
+  qed_loc : range;  (** Span of the closing [Qed] token. *)
+}
+
 type theorem_body =
-  | Proof of tactic list
-      (** [Proof(tactics)] represents a proof script, which is a sequence of tactics. *)
+  | Proof of proof_script
+      (** Proof script tactics plus the location of [Qed] (declaration range ends there). *)
   | DefEq of term  (** [DefEq(term)] represents defining a theorem by a term. *)
 
 (** The body of a declaration: either a proof or definition body or an axiom. *)
