@@ -329,10 +329,16 @@ let ctx_with_new_holes (g : goal) (ctx : ctx) (expected_term : term) : ctx =
   anything else in the context *)
   let metas = Hashtbl.copy ctx.metas in
   let new_ctx = { ctx with metas } in
-  (* We want to allow the holes we're adding to reference other variables defined outside the 
-  goal itself (which is what this list is) *)
-  let existing_ctx_bids = List.map (fun h -> h.bid) g.lctx in
-  create_metas new_ctx expected_term existing_ctx_bids;
+  (* g.lctx includes a list of local variables (represented as binder IDs) that
+  are in scope when the goal term would be used (e.g. the variables x and y in
+  `fun x => fun y => <hole for g>`)
+
+  In general, the goal type is allowed to depend on any variables that are in
+  scope when it's used, and using those binder IDs here ensures that all holes
+  created are allowed to reference said variables.
+   *)
+  let outer_local_var_bids = List.map (fun h -> h.bid) g.lctx in
+  create_metas new_ctx expected_term outer_local_var_bids;
   new_ctx
 
 (** Use unification to both check if a given term `t` matches a certain expected format,
