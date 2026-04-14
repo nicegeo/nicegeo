@@ -491,7 +491,7 @@ let register () =
   register_tactic "exists" Register.(unary_term exists);
   (* I don't feel comfortable enough with registration yet to extend Register *)
   register_tactic "choose" (function
-  | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
+    | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
     | trm :: _ ->
         raise
           (Elab.Error.ElabError
