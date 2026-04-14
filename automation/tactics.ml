@@ -383,7 +383,6 @@ let infer_choose_types (e : term) (g : goal) (st : proof_state) :
  * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
  *)
 let choose (names : string * string) (e : term) (st : proof_state) : tactic_result =
-  ignore names;
   match current_goal st with
   | Some g -> (
       (* infer A and p *)
@@ -391,10 +390,10 @@ let choose (names : string * string) (e : term) (st : proof_state) : tactic_resu
       | Some a_typ, Some p ->
           (* define new hypotheses *)
           let bid_a_typ = Elab.Term.gen_binder_id () in
-          let hyp_a_typ = { name = None; bid = bid_a_typ; ty = a_typ } in
+          let hyp_a_typ = { name = Some (fst names); bid = bid_a_typ; ty = a_typ } in
           let bid_h = Elab.Term.gen_binder_id () in
           let ty = mk_app p (mk_bvar bid_a_typ) in
-          let hyp_h = { name = None; bid = bid_h; ty } in
+          let hyp_h = { name = Some (snd names); bid = bid_h; ty } in
           let subgoal_lctx = hyp_h :: hyp_a_typ :: g.lctx in
           (* construct the proof term *)
           let new_hole, st = fresh_goal st subgoal_lctx g.goal_type in
