@@ -43,8 +43,6 @@ let to_kterm env tm =
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
-  Printf.printf "%s\n" (pp_term env (replace_metas env proof));
-  Printf.printf "%s\n" (pp_term env goal_ty);
   let proof_k = to_kterm env (replace_metas env proof) in
   let ty_k = to_kterm env (replace_metas env goal_ty) in
   try
