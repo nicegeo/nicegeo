@@ -504,58 +504,39 @@ Theorem ne_12_of_triangle : ∀ (a b c : Point), triangle a b c → a ≠ b :=
             (snd _ _ hL))))
     )
 
+Theorem swap_12_triangle : ∀ a b c, triangle a b c → triangle b a c :=
+    fun a b c tri (colbca : colinear b a c) => 
+    tri (
+        Exists.elim _ _ _ colbca
+        (fun L hL =>
+        Exists.intro _ _ L
+        (   
+        And.intro _ _ (And.intro _ _ (snd _ _ (fst _ _ hL)) (fst _ _ (fst _ _ hL))) (snd _ _ hL)
+        )
+        )
+    )
+
+Theorem swap_23_triangle : ∀ a b c, triangle a b c → triangle a c b :=
+    fun a b c tri (colbca : colinear a c b) => 
+    tri (
+        Exists.elim _ _ _ colbca
+        (fun L hL =>
+        Exists.intro _ _ L
+        (   
+        And.intro _ _ (And.intro _ _ (fst _ _ (fst _ _ hL)) (snd _ _ hL)) (snd _ _ (fst _ _ hL))
+        )
+        )
+    )
+
 (* In a non-degenerate triangle, the second and third vertices are distinct. *)
 Theorem ne_23_of_triangle : ∀ (a b c : Point), triangle a b c → b ≠ c :=
-    fun (a b c : Point) (tri : triangle a b c) (hbc : b = c) =>
-    tri (
-    Or.elim _ _ _ (point_eq_em a b)
-    (fun (hab : a = b) =>
-        Exists.elim _ _ _ (pt_exists (List.cons Point b (List.nil Point)) (List.nil Line) (List.nil Circle))
-        (fun (d : Point) (hd : distinct_from d (List.cons Point b (List.nil Point)) (List.nil Line) (List.nil Circle)) =>
-        have _ _ (fun (db : d = b) =>
-            (fst _ _ (fst _ _ (distinct_from.elim d (List.cons Point b (List.nil Point)) (List.nil Line) (List.nil Circle) hd)))
-            ((snd _ _ (List.mem_cons Point d b (List.nil Point))) (Or.inl _ _ db)))
-        (fun (db : d ≠ b) =>
-        Exists.elim _ _ _ (line_of_pts d b db)
-        (fun (L : Line) (hL : OnLine d L /\ OnLine b L) =>
-        Exists.intro _ _ L (And.intro _ _
-            (And.intro _ _
-                (Eq.elim Point b (fun x => OnLine x L) (snd _ _ hL) a (Eq.symm Point a b hab))
-                (snd _ _ hL))
-            (Eq.elim Point b (fun x => OnLine x L) (snd _ _ hL) c hbc))))))
-    (fun (hab : a ≠ b) =>
-        Exists.elim _ _ _ (line_of_pts a b hab)
-        (fun (L : Line) (hL : OnLine a L /\ OnLine b L) =>
-        Exists.intro _ _ L (And.intro _ _
-            (And.intro _ _ (fst _ _ hL) (snd _ _ hL))
-            (Eq.elim Point b (fun x => OnLine x L) (snd _ _ hL) c hbc))))
-    )
+    fun (a b c : Point) (tri : triangle a b c) =>
+    ne_12_of_triangle b c a (swap_23_triangle _ _ _ (swap_12_triangle _ _ _ tri))
 
 (* In a non-degenerate triangle, the first and third vertices are distinct. *)
 Theorem ne_13_of_triangle : ∀ (a b c : Point), triangle a b c → a ≠ c :=
-    fun (a b c : Point) (tri : triangle a b c) (hac : a = c) =>
-    tri (
-    Or.elim _ _ _ (point_eq_em a b)
-    (fun (hab : a = b) =>
-        Exists.elim _ _ _ (pt_exists (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle))
-        (fun (d : Point) (hd : distinct_from d (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle)) =>
-        have _ _ (fun (da : d = a) =>
-            (fst _ _ (fst _ _ (distinct_from.elim d (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle) hd)))
-            ((snd _ _ (List.mem_cons Point d a (List.nil Point))) (Or.inl _ _ da)))
-        (fun (da : d ≠ a) =>
-        Exists.elim _ _ _ (line_of_pts d a da)
-        (fun (L : Line) (hL : OnLine d L /\ OnLine a L) =>
-        Exists.intro _ _ L (And.intro _ _
-            (And.intro _ _ (snd _ _ hL)
-                (Eq.elim Point a (fun x => OnLine x L) (snd _ _ hL) b hab))
-            (Eq.elim Point a (fun x => OnLine x L) (snd _ _ hL) c hac))))))
-    (fun (hab : a ≠ b) =>
-        Exists.elim _ _ _ (line_of_pts a b hab)
-        (fun (L : Line) (hL : OnLine a L /\ OnLine b L) =>
-        Exists.intro _ _ L (And.intro _ _
-            (And.intro _ _ (fst _ _ hL) (snd _ _ hL))
-            (Eq.elim Point a (fun x => OnLine x L) (fst _ _ hL) c hac))))
-    )
+    fun (a b c : Point) (tri : triangle a b c) =>
+    ne_12_of_triangle a c b (swap_23_triangle _ _ _ tri)
 
 
 (* ============================================================
