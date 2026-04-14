@@ -65,7 +65,7 @@ let test_choose_global () =
   Alcotest.(check string) "new goal is still (Exists A (fun (a : A) => True))" exp got;
   (* check for the newly added hypotheses *)
   match goal.lctx with
-  | [ha; a] ->
+  | [ ha; a ] ->
       let a_typ = pp_term env a.ty in
       let h = pp_term env (Elab.Reduce.reduce env ha.ty) in
       let exp = "A" in
@@ -85,7 +85,7 @@ let test_choose_global () =
 (** Test for a usage of choose that uses local context *)
 let test_choose_local () =
   let env, _ = make_env () in
-  let goal_ty = (elab env "(e : Exists A (fun (a : A) => B)) -> B") in
+  let goal_ty = elab env "(e : Exists A (fun (a : A) => B)) -> B" in
   let st = init_state ~elab_ctx:env goal_ty in
   let st = run_tactic (intro "e") st in
   let bid =
@@ -107,7 +107,7 @@ let test_choose_local () =
   Alcotest.(check string) "new goal is B" exp got;
   (* check hypotheses *)
   match goal.lctx with
-  | [ha; a; e] ->
+  | [ ha; a; e ] ->
       let a_typ = pp_term env a.ty in
       let h = pp_term env (Elab.Reduce.reduce env ha.ty) in
       let exp = "A" in
@@ -115,7 +115,10 @@ let test_choose_local () =
       let exp = "B" in
       Alcotest.(check string) "second new hypothesis has type B" exp h;
       let exp = "Exists A (fun (a : A) => B)" in
-      Alcotest.(check string) "old hypothesis still has the right type" exp (pp_term env e.ty);
+      Alcotest.(check string)
+        "old hypothesis still has the right type"
+        exp
+        (pp_term env e.ty);
       (* finish the proof and do a kernel term check *)
       let st = run_tactic (exact (mk_bvar ha.bid)) st in
       Alcotest.(check bool) "no remaining goals" true (is_complete st);

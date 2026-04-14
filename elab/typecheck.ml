@@ -479,7 +479,7 @@ let rec replace_metas (e : ctx) (tm : term) : term =
   | Hole m -> (
       match Hashtbl.find_opt e.metas m with
       | Some { sol = Some tm_sol; _ } -> replace_metas e tm_sol
-      | _ -> Printf.printf "%s\n\n" "could not replace metas"; raise_at tm None Error.CannotInferHole)
+      | _ -> raise_at tm None Error.CannotInferHole)
   | Fun (arg, bid, ty_arg, body) ->
       let ty_arg_filled = replace_metas e ty_arg in
       let body_filled = replace_metas e body in

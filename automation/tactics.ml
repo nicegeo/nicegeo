@@ -357,7 +357,8 @@ let exists (a : term) (st : proof_state) : tactic_result =
  * Infer both [A] and the motive [p] for the choose tactic, by way of unifying
  * with the input term [e : Exists ?? ??]
  *)
-let infer_choose_types (e : term) (g : goal) (st : proof_state) : term option * term option =
+let infer_choose_types (e : term) (g : goal) (st : proof_state) :
+    term option * term option =
   let hole_a_typ = gen_hole_id () in
   let hole_p = gen_hole_id () in
   let a_typ_sort = mk_sort 1 in
@@ -365,11 +366,13 @@ let infer_choose_types (e : term) (g : goal) (st : proof_state) : term option * 
   let bid = Elab.Term.gen_binder_id () in
   let p_hole_type = mk_arrow (Some "A") bid (mk_hole hole_a_typ) (mk_sort 0) in
   let ctx = add_hole g hole_p p_hole_type ctx in
-  let expected = mk_app (mk_app (mk_name "Exists") (mk_hole hole_a_typ)) (mk_hole hole_p) in
-  let e_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx e in 
+  let expected =
+    mk_app (mk_app (mk_name "Exists") (mk_hole hole_a_typ)) (mk_hole hole_p)
+  in
+  let e_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx e in
   unify ctx e_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
-  match Hashtbl.find_opt ctx.metas hole_a_typ, Hashtbl.find_opt ctx.metas hole_p with
-  | Some mvar1, Some mvar2 -> mvar1.sol, mvar2.sol
+  match (Hashtbl.find_opt ctx.metas hole_a_typ, Hashtbl.find_opt ctx.metas hole_p) with
+  | Some mvar1, Some mvar2 -> (mvar1.sol, mvar2.sol)
   | _ -> failwith "internal nicegeo programming error: created hole does not exist!"
 
 (*
@@ -397,9 +400,7 @@ let choose (e : term) (st : proof_state) : tactic_result =
           let proof =
             mk_app
               (mk_app
-                 (mk_app
-                    (mk_app (mk_app (mk_name "Exists.elim") a_typ) p)
-                    g.goal_type)
+                 (mk_app (mk_app (mk_app (mk_name "Exists.elim") a_typ) p) g.goal_type)
                  e)
               (mk_fun None bid_a_typ a_typ (mk_fun None bid_h ty new_hole))
           in
