@@ -360,12 +360,10 @@ intros c facts.
 apply (And.elim1 _ _ _ facts).
 intros caa cbb.
 (* hack because exact doesn't fill holes *)
-apply (Exists.intro _ _ c).
+exists c.
 apply (And.intro _ _).
 apply (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa).
 apply (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb).
-(* (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb)) *)
-
 Qed.
 
 
