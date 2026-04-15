@@ -24,6 +24,9 @@ let mk_arrow x bid ty ret = mk_term (Arrow (x, bid, ty, ret))
 let mk_fun x bid ty body = mk_term (Fun (x, bid, ty, body))
 let fresh_id () : int = gen_hole_id ()
 
+let mk_app_multiarg (func : term) (args : term list) : term =
+  List.fold_left (fun created_term curr_arg -> mk_app created_term curr_arg) func args
+
 (** [fresh_goal st lctx ty] updates the proof state with a new open goal with goal state
     [ty] and goal context [lctx]. Also returns the hole representing the goal. *)
 let fresh_goal (st : proof_state) (lctx : local_ctx) (ty : term) : term * proof_state =
