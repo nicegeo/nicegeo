@@ -36,14 +36,10 @@ let run_tactic tac st =
   | Failure msg -> Alcotest.failf "tactic failed: %s" msg
   | Success st' -> st'
 
-(** Convert an elab term to a kernel term *)
-let to_kterm env tm =
-  Elab.Reduce.delta_reduce env tm |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
-
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
 let kernel_check env proof goal_ty =
-  let proof_k = to_kterm env (replace_metas env proof) in
-  let ty_k = to_kterm env (replace_metas env goal_ty) in
+  let proof_k = Elab.Convert.conv_to_kterm (replace_metas env proof) in
+  let ty_k = Elab.Convert.conv_to_kterm (replace_metas env goal_ty) in
   try
     Kernel.Interface.add_theorem env.kenv "test" ty_k proof_k;
     Hashtbl.remove env.kenv.types "test";
