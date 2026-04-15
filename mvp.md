@@ -42,7 +42,6 @@
 - Package the square as `square a b e d`.
 
 ## Validation used
-- `python3 check_parens.py proof.ncg`
 - `dune exec nicegeo proof.ncg`
 - `python3 deps.py square_of_len`
 - `#print axioms square_of_len`
