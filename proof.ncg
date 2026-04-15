@@ -2213,13 +2213,255 @@ Theorem internal_lt_external' : ∀ (a b c d : Point),
         abe_dbc))))))
 
 
+Theorem col_213_of_col : ∀ (a b c : Point),
+    colinear a b c -> colinear b a c :=
+    fun (a b c : Point) (col_abc : colinear a b c) =>
+    Exists.elim _ _ _ col_abc
+    (fun (L : Line) (on_L : OnLine a L /\ OnLine b L /\ OnLine c L) =>
+    Exists.intro _ _ L
+        (And.intro _ _
+            (And.intro _ _
+                (snd _ _ (fst _ _ on_L))
+                (fst _ _ (fst _ _ on_L)))
+            (snd _ _ on_L)))
+
+Theorem col_312_of_col : ∀ (a b c : Point),
+    colinear a b c -> colinear c a b :=
+    fun (a b c : Point) (col_abc : colinear a b c) =>
+    Exists.elim _ _ _ col_abc
+    (fun (L : Line) (on_L : OnLine a L /\ OnLine b L /\ OnLine c L) =>
+    Exists.intro _ _ L
+        (And.intro _ _
+            (And.intro _ _
+                (snd _ _ on_L)
+                (fst _ _ (fst _ _ on_L)))
+            (snd _ _ (fst _ _ on_L))))
+
+Theorem tri_132_of_tri_123 : ∀ (a b c : Point),
+    triangle a b c -> triangle a c b :=
+    fun (a b c : Point) (tri_abc : triangle a b c) =>
+    swap_23_triangle a b c tri_abc
+
+Theorem tri_213_of_tri_123 : ∀ (a b c : Point),
+    triangle a b c -> triangle b a c :=
+    fun (a b c : Point) (tri_abc : triangle a b c) =>
+    swap_12_triangle a b c tri_abc
+
+Theorem tri_312_of_tri_123 : ∀ (a b c : Point),
+    triangle a b c -> triangle c a b :=
+    fun (a b c : Point) (tri_abc : triangle a b c) =>
+    tri_213_of_tri_123 a c b (tri_132_of_tri_123 a b c tri_abc)
+
+Theorem tri_321_of_tri_123 : ∀ (a b c : Point),
+    triangle a b c -> triangle c b a :=
+    fun (a b c : Point) (tri_abc : triangle a b c) =>
+    tri_132_of_tri_123 c a b (tri_312_of_tri_123 a b c tri_abc)
+
+Theorem tri_143_of_tri_col : ∀ (a b c d : Point),
+    a ≠ d -> triangle a b c -> colinear a b d -> triangle a d c :=
+    fun (a b c d : Point) (ad : a ≠ d) (tri_abc : triangle a b c) (col_abd : colinear a b d) =>
+    fun (col_adc : colinear a d c) =>
+    tri_abc
+        (Exists.elim _ _ _ col_abd
+            (fun (L : Line) (ad_on_L : OnLine a L /\ OnLine b L /\ OnLine d L) =>
+            Exists.intro _ _ L
+                (And.intro _ _
+                    (And.intro _ _
+                        (fst _ _ (fst _ _ ad_on_L))
+                        (snd _ _ (fst _ _ ad_on_L)))
+                    (online_of_col_online a d c L
+                        ad
+                        (fst _ _ (fst _ _ ad_on_L))
+                        (snd _ _ ad_on_L)
+                        col_adc))))
+
+Theorem tri_of_B_tri : ∀ (a b c d : Point),
+    Between a b c -> triangle d a c -> triangle d b c :=
+    fun (a b c d : Point) (Babc : Between a b c) (tri_dac : triangle d a c) =>
+    tri_321_of_tri_123 c b d
+        (tri_143_of_tri_col c a d b
+            (ne_32_of_between a b c Babc)
+            (tri_321_of_tri_123 d a c tri_dac)
+            (col_312_of_col a b c (col_of_B a b c Babc)))
+
+Theorem diffside_of_B_offline' : ∀ (a b c : Point) (L : Line),
+    Between a b c -> OnLine b L -> Not (OnLine a L) -> diffside a c L :=
+    fun (a b c : Point) (L : Line) (Babc : Between a b c) (bL : OnLine b L) (a_not_on_L : Not (OnLine a L)) =>
+    And.intro _ _
+        (And.intro _ _
+            a_not_on_L
+            (fun (cL : OnLine c L) =>
+                a_not_on_L (online_3_of_B c b a L (between_symm a b c Babc) cL bL)))
+        (pasch_online_not_sameside a b c L Babc bL)
+
+Theorem sameside_of_B_online_3 : ∀ (a b c : Point) (L : Line),
+    Between a b c -> OnLine a L -> Not (OnLine c L) -> SameSide b c L :=
+    fun (a b c : Point) (L : Line) (Babc : Between a b c) (aL : OnLine a L) (c_not_on_L : Not (OnLine c L)) =>
+    pasch_online_sameside a b c L
+        Babc
+        aL
+        (fun (bL : OnLine b L) => c_not_on_L (online_3_of_B a b c L Babc aL bL))
+
+Theorem zero_lt_angle_of_offline : ∀ (a b c : Point) (L : Line),
+    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine c L) -> 0 < Angle c a b :=
+    fun (a b c : Point) (L : Line) (ab : a ≠ b) (aL : OnLine a L) (bL : OnLine b L) (c_not_on_L : Not (OnLine c L)) =>
+    zero_lt_angle_of_tri a b c (triangle_of_ne_online a b c L ab aL bL c_not_on_L)
+
+Theorem B_length_eq_of_ne_lt : ∀ (a b c d : Point),
+    c ≠ d -> Length c d < Length a b ->
+    Exists Point (fun f => Between a f b /\ Length a f = Length c d) :=
+    fun (a b c d : Point) (cd : c ≠ d) (cd_lt_ab : Length c d < Length a b) =>
+    Exists.elim _ _ _ (segment_of_eq_len c d a b cd cd_lt_ab)
+    (fun (f : Point) (hf : Length c d = Length a f /\ Between a f b) =>
+    Exists.intro _ _ f
+        (And.intro _ _
+            (snd _ _ hf)
+            (Eq.symm _ _ _ (fst _ _ hf))))
+
+Theorem angle_lt_of_B_tri : ∀ (a b c d : Point),
+    Between c d b -> triangle a b c -> Angle c a d < Angle c a b :=
+    fun (a b c d : Point) (Bcdb : Between c d b) (tri_abc : triangle a b c) =>
+    Exists.elim _ _ _ (line_of_pts a b (ne_12_of_triangle a b c tri_abc))
+    (fun (L : Line) (ab_on_L : OnLine a L /\ OnLine b L) =>
+    Exists.elim _ _ _ (line_of_pts a c (ne_13_of_triangle a b c tri_abc))
+    (fun (M : Line) (ac_on_M : OnLine a M /\ OnLine c M) =>
+    have _ _ (angle_add_of_sameside a c b d M L
+        (fst _ _ ac_on_M)
+        (snd _ _ ac_on_M)
+        (fst _ _ ab_on_L)
+        (snd _ _ ab_on_L)
+        (same_side_symm d b M
+            (sameside_of_B_online_3 c d b M
+                Bcdb
+                (snd _ _ ac_on_M)
+                (online_2_of_triangle a b c M
+                    (fst _ _ ac_on_M)
+                    (snd _ _ ac_on_M)
+                    tri_abc)))
+        (same_side_symm d c L
+            (sameside_of_B_online_3 b d c L
+                (between_symm c d b Bcdb)
+                (snd _ _ ab_on_L)
+                (online_3_of_triangle a b c L
+                    (fst _ _ ab_on_L)
+                    (snd _ _ ab_on_L)
+                    tri_abc))))
+    (fun (cad_split : Angle c a b = Angle d a c + Angle d a b) =>
+    have _ _ (angle_symm d a c
+        (ne_of_online_not_online' a d L (fst _ _ ab_on_L)
+            (fun (dL : OnLine d L) =>
+                (online_3_of_triangle a b c L
+                    (fst _ _ ab_on_L)
+                    (snd _ _ ab_on_L)
+                    tri_abc)
+                (online_3_of_B b d c L
+                    (between_symm c d b Bcdb)
+                    (snd _ _ ab_on_L)
+                    dL)))
+        (ne_13_of_triangle a b c tri_abc))
+    (fun (dac_cad : Angle d a c = Angle c a d) =>
+    have _ _ (zero_lt_angle_of_offline a b d L
+        (ne_12_of_triangle a b c tri_abc)
+        (fst _ _ ab_on_L)
+        (snd _ _ ab_on_L)
+        (fun (dL : OnLine d L) =>
+            (online_3_of_triangle a b c L
+                (fst _ _ ab_on_L)
+                (snd _ _ ab_on_L)
+                tri_abc)
+            (online_3_of_B b d c L
+                (between_symm c d b Bcdb)
+                (snd _ _ ab_on_L)
+                dL)))
+    (fun (adb_pos : 0 < Angle d a b) =>
+    have _ _ (LtAdd 0 (Angle d a b) (Angle c a d) adb_pos)
+    (fun (lt_sum : 0 + Angle c a d < Angle d a b + Angle c a d) =>
+    have _ _
+        (Eq.elim _ (0 + Angle c a d)
+            (fun x => x < Angle d a b + Angle c a d)
+            lt_sum
+            (Angle c a d)
+            (ZeroAdd (Angle c a d)))
+    (fun (lt_sum' : Angle c a d < Angle d a b + Angle c a d) =>
+    have _ _
+        (Eq.elim _ (Angle d a b + Angle c a d)
+            (fun x => Angle c a d < x)
+            lt_sum'
+            (Angle c a b)
+            (EqTrans _ _ _ _
+                (AddComm (Angle d a b) (Angle c a d))
+                (EqTrans _ _ _ _
+                    (AddCongRight (Angle c a d) (Angle d a c) (Angle d a b) (Eq.symm _ _ _ dac_cad))
+                    (Eq.symm _ _ _ cad_split))))
+    (fun (lt_sum'' : Angle c a d < Angle c a b) =>
+    lt_sum''))))))))
+
+
 (* ============================================================
    Proposition 18 (I.18): Larger side opposite larger angle
    ============================================================ *)
 
 (* In triangle abc, if ca < cb then the angle at b is smaller than the angle at a. *)
 Theorem ang_lt_of_len_lt : ∀ (a b c : Point),
-    triangle a b c -> length c a < length c b -> angle c b a < angle c a b := sorry _ (* TODO *)
+    triangle a b c -> length c a < length c b -> angle c b a < angle c a b :=
+    fun (a b c : Point) (tri_abc : triangle a b c) (ca_lt_cb : Length c a < Length c b) =>
+    Exists.elim _ _ _ (B_length_eq_of_ne_lt c b c a
+        (Ne.symm _ _ _ (ne_13_of_triangle a b c tri_abc))
+        ca_lt_cb)
+    (fun (d : Point) (hd : Between c d b /\ Length c d = Length c a) =>
+    have _ _
+        (internal_lt_external' b d c a
+            (between_symm c d b (fst _ _ hd))
+            (tri_321_of_tri_123 a d b
+                (tri_of_B_tri c d b a
+                    (fst _ _ hd)
+                    (tri_132_of_tri_123 a b c tri_abc))))
+    (fun (dba_adc : Angle d b a < Angle a d c) =>
+    have _ _
+        (angle_eq_of_iso c a d
+            (And.intro _ _
+                (tri_312_of_tri_123 a d c
+                    (tri_of_B_tri b d c a
+                        (between_symm c d b (fst _ _ hd))
+                        tri_abc))
+                (Eq.symm _ _ _ (snd _ _ hd))))
+    (fun (cad_cda : Angle c a d = Angle c d a) =>
+    have _ _ (angle_lt_of_B_tri a b c d (fst _ _ hd) tri_abc)
+    (fun (cad_cab : Angle c a d < Angle c a b) =>
+    have _ _
+        (Eq.elim _ (Angle d b a)
+            (fun x => x < Angle a d c)
+            dba_adc
+            (Angle c b a)
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _
+                    (angle_symm a b d
+                        (ne_12_of_triangle a b c tri_abc)
+                        (ne_12_of_between b d c (between_symm c d b (fst _ _ hd)))))
+                (EqTrans _ _ _ _
+                    (angle_extension_of_B b d c a
+                        (Ne.symm _ _ _ (ne_12_of_triangle a b c tri_abc))
+                        (between_symm c d b (fst _ _ hd)))
+                    (angle_symm a b c
+                        (ne_12_of_triangle a b c tri_abc)
+                        (ne_23_of_triangle a b c tri_abc)))))
+    (fun (cba_adc : Angle c b a < Angle a d c) =>
+    have _ _
+        (Eq.elim _ (Angle a d c)
+            (fun x => Angle c b a < x)
+            cba_adc
+            (Angle c a d)
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _
+                    (angle_symm c d a
+                        (ne_12_of_between c d b (fst _ _ hd))
+                        (Ne.symm _ _ _ (ne_12_of_triangle a d c
+                            (tri_of_B_tri b d c a
+                                (between_symm c d b (fst _ _ hd))
+                                tri_abc)))))
+                (Eq.symm _ _ _ cad_cda)))
+    (fun (cba_cad : Angle c b a < Angle c a d) =>
+    LtTrans _ _ _ cba_cad cad_cab))))))
 
 
 (* ============================================================
@@ -2228,7 +2470,25 @@ Theorem ang_lt_of_len_lt : ∀ (a b c : Point),
 
 (* In triangle abc, if angle at b < angle at a, then ca < cb. *)
 Theorem len_lt_of_ang_lt : ∀ (a b c : Point),
-    triangle a b c -> angle c b a < angle c a b -> Length c a < Length c b := sorry _ (* TODO *)
+    triangle a b c -> angle c b a < angle c a b -> Length c a < Length c b :=
+    fun (a b c : Point) (tri_abc : triangle a b c) (cba_cab : Angle c b a < Angle c a b) =>
+    Or.elim _ _ _ (LtTricot (Length c a) (Length c b))
+    (fun (ca_lt_cb : Length c a < Length c b) =>
+        ca_lt_cb)
+    (fun (rest : Length c b < Length c a \/ Length c a = Length c b) =>
+    Or.elim _ _ _ rest
+    (fun (cb_lt_ca : Length c b < Length c a) =>
+        False.elim _ (LtAntisymm _ _ cba_cab
+            (ang_lt_of_len_lt b a c
+                (tri_213_of_tri_123 a b c tri_abc)
+                cb_lt_ca)))
+    (fun (ca_eq_cb : Length c a = Length c b) =>
+        False.elim _ (LtNe _ _ cba_cab
+            (Eq.symm _ _ _
+                (angle_eq_of_iso c a b
+                    (And.intro _ _
+                        (tri_312_of_tri_123 a b c tri_abc)
+                        ca_eq_cb))))))
 
 
 (* ============================================================
@@ -2237,14 +2497,407 @@ Theorem len_lt_of_ang_lt : ∀ (a b c : Point),
 
 (* Each side of a triangle is less than the sum of the other two. *)
 Theorem len_lt_of_tri' : ∀ (a b c : Point),
-    triangle a b c -> Length a b < Length a c + Length b c := sorry _ (* TODO *)
+    triangle a b c -> Length a b < Length a c + Length b c :=
+    fun (a b c : Point) (tri_abc : triangle a b c) =>
+    Exists.elim _ _ _ (length_eq_B_of_ne a c b
+        (ne_13_of_triangle a b c tri_abc)
+        (Ne.symm _ _ _ (ne_23_of_triangle a b c tri_abc)))
+    (fun (d : Point) (hd : Between a c d /\ Length c b = Length c d) =>
+    have _ _
+        (tri_143_of_tri_col a c b d
+            (ne_13_of_between a c d (fst _ _ hd))
+            (tri_132_of_tri_123 a b c tri_abc)
+            (col_of_B a c d (fst _ _ hd)))
+    (fun (tri_adb : triangle a d b) =>
+    have _ _
+        (angle_lt_of_B_tri b a d c
+            (between_symm a c d (fst _ _ hd))
+            (tri_312_of_tri_123 a d b tri_adb))
+    (fun (dbc_dba : Angle d b c < Angle d b a) =>
+    have _ _
+        (angle_eq_of_iso c d b
+            (And.intro _ _
+                (tri_143_of_tri_col c a b d
+                    (ne_23_of_between a c d (fst _ _ hd))
+                    (tri_312_of_tri_123 a b c tri_abc)
+                    (col_213_of_col a c d (col_of_B a c d (fst _ _ hd))))
+                (Eq.symm _ _ _ (snd _ _ hd))))
+    (fun (cdb_cbd : Angle c d b = Angle c b d) =>
+    have _ _
+        (EqTrans _ _ _ _
+            (angle_symm a d b
+                (ne_12_of_triangle a d b tri_adb)
+                (ne_23_of_triangle a d b tri_adb))
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _
+                    (angle_extension_of_B d c a b
+                        (ne_23_of_triangle a d b tri_adb)
+                        (between_symm a c d (fst _ _ hd))))
+                (EqTrans _ _ _ _
+                    (angle_symm b d c
+                        (Ne.symm _ _ _ (ne_23_of_triangle a d b tri_adb))
+                        (Ne.symm _ _ _ (ne_23_of_between a c d (fst _ _ hd))))
+                    (EqTrans _ _ _ _
+                        cdb_cbd
+                        (angle_symm c b d
+                            (Ne.symm _ _ _ (ne_23_of_triangle a b c tri_abc))
+                            (Ne.symm _ _ _ (ne_23_of_triangle a d b tri_adb))))))))
+    (fun (adb_dbc : Angle a d b = Angle d b c) =>
+    have _ _
+        (Eq.elim _ (Angle d b c)
+            (fun x => x < Angle d b a)
+            dbc_dba
+            (Angle a d b)
+            (Eq.symm _ _ _ adb_dbc))
+    (fun (adb_dba : Angle a d b < Angle d b a) =>
+    have _ _
+        (Eq.elim _ (Angle d b a)
+            (fun x => Angle a d b < x)
+            adb_dba
+            (Angle a b d)
+            (Eq.symm _ _ _
+                (angle_symm a b d
+                    (ne_12_of_triangle a b c tri_abc)
+                    (Ne.symm _ _ _ (ne_23_of_triangle a d b tri_adb)))))
+    (fun (adb_abd : Angle a d b < Angle a b d) =>
+    have _ _
+        (len_lt_of_ang_lt b d a
+            (tri_321_of_tri_123 a d b tri_adb)
+            adb_abd)
+    (fun (ab_lt_ad : Length a b < Length a d) =>
+    Eq.elim _ (Length a d)
+        (fun x => Length a b < x)
+        ab_lt_ad
+        (Length a c + Length b c)
+        (EqTrans _ _ _ _
+            (Eq.symm _ _ _ (between_add_lengths a c d (fst _ _ hd)))
+            (EqTrans _ _ _ _
+                (AddCongLeft (Length c d) (Length c b) (Length a c) (Eq.symm _ _ _ (snd _ _ hd)))
+                (AddCongLeft (Length c b) (Length b c) (Length a c) (length_symm c b)))))))))))
 
 (* All three triangle inequalities simultaneously. *)
 Theorem len_lt_of_tri : ∀ (a b c : Point),
     triangle a b c ->
     Length a b < Length a c + Length b c ∧
     Length b c < Length b a + Length c a ∧
-    Length c a < Length c b + Length a b := sorry _ (* TODO *)
+    Length c a < Length c b + Length a b :=
+    fun (a b c : Point) (tri_abc : triangle a b c) =>
+    And.intro _ _
+        (And.intro _ _
+            (len_lt_of_tri' a b c tri_abc)
+            (len_lt_of_tri' b c a
+                (tri_132_of_tri_123 b a c
+                    (tri_213_of_tri_123 a b c tri_abc))))
+        (len_lt_of_tri' c a b (tri_312_of_tri_123 a b c tri_abc))
+
+Theorem LtCancelLeft : ∀ (x y z : Measure), z + x < z + y -> x < y :=
+    fun (x y z : Measure) (h : z + x < z + y) =>
+    Or.elim _ _ _ (LtTricot x y)
+        (fun (x_lt_y : x < y) => x_lt_y)
+        (fun (rest : y < x \/ x = y) =>
+        Or.elim _ _ _ rest
+            (fun (y_lt_x : y < x) =>
+                False.elim _ (LtAntisymm _ _ h
+                    (Eq.elim _ _ (fun t => t < z + x)
+                        (Eq.elim _ _ (fun t => y + z < t)
+                            (LtAdd y x z y_lt_x)
+                            _
+                            (AddComm x z))
+                        _
+                        (AddComm y z))))
+            (fun (x_eq_y : x = y) =>
+                False.elim _ (LtIrrefl (z + y)
+                    (Eq.elim _ _ (fun t => t < z + y)
+                        h
+                        _
+                        (AddCongLeft x y z x_eq_y)))))
+
+Theorem LtCancelRight : ∀ (x y z : Measure), x + z < y + z -> x < y :=
+    fun (x y z : Measure) (h : x + z < y + z) =>
+    LtCancelLeft x y z
+        (Eq.elim _ _ (fun t => t < z + y)
+            (Eq.elim _ _ (fun t => x + z < t)
+                h
+                _
+                (AddComm y z))
+            _
+            (AddComm x z))
+
+Theorem length_eq_B_of_ne_four : ∀ (a b c d : Point),
+    a ≠ b -> c ≠ d ->
+    Exists Point (fun e => Between a b e /\ Length b e = Length c d) :=
+    fun (a b c d : Point) (ab : a ≠ b) (cd : c ≠ d) =>
+    Exists.elim _ _ _ (place_segment b c d)
+    (fun (f : Point) (hbf : Length b f = Length c d) =>
+    have _ _ (length_pts_ne c d b f (Eq.symm _ _ _ hbf) cd)
+    (fun (bf : b ≠ f) =>
+    Exists.elim _ _ _ (circle_of_ne b f bf)
+    (fun (aa : Circle) (haa : CenterCircle b aa /\ OnCircle f aa) =>
+    Exists.elim _ _ _ (pt_oncircle_of_inside_ne a b aa ab
+        (center_lies_inside_circle b aa (fst _ _ haa)))
+    (fun (e : Point) (he : Between a b e /\ OnCircle e aa) =>
+    Exists.intro _ _ e
+        (And.intro _ _
+            (fst _ _ he)
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _ (snd _ _ (on_circle_iff_length_eq b f e aa (fst _ _ haa) (snd _ _ haa)) (snd _ _ he)))
+                hbf))))))
+
+Theorem B_or_B_of_B_B : ∀ (a b c d : Point),
+    c ≠ d -> Between a b c -> Between a b d -> Between b c d \/ Between b d c :=
+    fun (a b c d : Point) (cd : c ≠ d) (Babc : Between a b c) (Babd : Between a b d) =>
+    Exists.elim _ _ _ (line_of_pts a b (ne_12_of_between a b c Babc))
+    (fun (L : Line) (ab_on_L : OnLine a L /\ OnLine b L) =>
+    have _ _ (online_3_of_B a b c L Babc (fst _ _ ab_on_L) (snd _ _ ab_on_L))
+    (fun (cL : OnLine c L) =>
+    have _ _ (online_3_of_B a b d L Babd (fst _ _ ab_on_L) (snd _ _ ab_on_L))
+    (fun (dL : OnLine d L) =>
+    Or.elim _ _ _ (between_linear c b d L
+        cL
+        (snd _ _ ab_on_L)
+        dL
+        (ne_32_of_between a b c Babc)
+        (ne_23_of_between a b d Babd)
+        cd)
+        (fun (Bcbd : Between c b d) =>
+            False.elim _ ((between_separation a b c d Babc Babd) Bcbd))
+        (fun (rest : Between b c d \/ Between c d b) =>
+        Or.elim _ _ _ rest
+            (fun (Bbcd : Between b c d) => Or.inl _ _ Bbcd)
+            (fun (Bcdb : Between c d b) => Or.inr _ _ (between_symm c d b Bcdb))))))
+
+Theorem B_or_B_of_circ_pt : ∀ (a b c : Point) (aa : Circle),
+    a ≠ b -> CenterCircle a aa -> OnCircle c aa -> Not (OnCircle b aa) ->
+    Exists Point (fun e => (Between a e b \/ Between a b e) /\ OnCircle e aa) :=
+    fun (a b c : Point) (aa : Circle) (ab : a ≠ b)
+        (aaa : CenterCircle a aa) (caa : OnCircle c aa) (b_not_on_aa : Not (OnCircle b aa)) =>
+    Exists.elim _ _ _ (pt_oncircle_of_inside_ne b a aa (Ne.symm _ _ _ ab)
+        (center_lies_inside_circle a aa aaa))
+    (fun (d : Point) (hd : Between b a d /\ OnCircle d aa) =>
+    Exists.elim _ _ _ (pt_oncircle_of_inside_ne d a aa (ne_32_of_between b a d (fst _ _ hd))
+        (center_lies_inside_circle a aa aaa))
+    (fun (e : Point) (he : Between d a e /\ OnCircle e aa) =>
+    have _ _ (fun (eb : e = b) =>
+        b_not_on_aa (Eq.elim _ _ (fun x => OnCircle x aa) (snd _ _ he) b eb))
+    (fun (eb : e ≠ b) =>
+    Exists.intro _ _ e
+        (And.intro _ _
+            (B_or_B_of_B_B d a e b eb (fst _ _ he) (between_symm b a d (fst _ _ hd)))
+            (snd _ _ he)))))
+
+Theorem in_circle_of_lt_lt : ∀ (a b c d : Point) (aa bb : Circle),
+    CenterCircle a aa -> CenterCircle b bb ->
+    OnCircle c aa -> OnCircle d bb ->
+    Length a b < Length a c + Length b d ->
+    Length a c < Length a b + Length b d ->
+    Exists Point (fun e => OnCircle e aa /\ InCircle e bb) :=
+    fun (a b c d : Point) (aa bb : Circle)
+        (aaa : CenterCircle a aa) (bbb : CenterCircle b bb)
+        (caa : OnCircle c aa) (dbb : OnCircle d bb)
+        (ab_lt_ac_bd : Length a b < Length a c + Length b d)
+        (ac_lt_ab_bd : Length a c < Length a b + Length b d) =>
+    Or.elim _ _ _ (point_eq_em a b)
+        (fun (ab_eq : a = b) =>
+            have _ _
+                (Eq.elim Point a
+                    (fun p => Length p c < Length b d)
+                    (Eq.elim _ (Length a b + Length b d)
+                        (fun x => Length a c < x)
+                        ac_lt_ab_bd
+                        (Length b d)
+                        (EqTrans _ _ _ _
+                            (AddComm (Length a b) (Length b d))
+                            (EqTrans _ _ _ _
+                                (AddCongLeft (Length a b) Zero (Length b d) (len_zero_if_eq a b ab_eq))
+                                (AddZero (Length b d)))))
+                    b
+                    ab_eq)
+            (fun (bc_lt_bd : Length b c < Length b d) =>
+            Exists.intro _ _ c
+                    (And.intro _ _
+                        caa
+                        (in_circle_if_lt_radius b d c bb
+                            bbb
+                            dbb
+                            bc_lt_bd))))
+        (fun (ab : a ≠ b) =>
+        Or.elim _ _ _ (excluded_middle (OnCircle b aa))
+            (fun (b_on_aa : OnCircle b aa) =>
+                Exists.intro _ _ b
+                    (And.intro _ _
+                        b_on_aa
+                        (center_lies_inside_circle b bb bbb)))
+            (fun (b_not_on_aa : Not (OnCircle b aa)) =>
+            have _ _ (B_or_B_of_circ_pt a b c aa ab aaa caa b_not_on_aa)
+            (fun (hex : Exists Point (fun e => (Between a e b \/ Between a b e) /\ OnCircle e aa)) =>
+            Exists.elim _ _ _ hex
+            (fun (e : Point) (he : (Between a e b \/ Between a b e) /\ OnCircle e aa) =>
+            Or.elim _ _ _ (fst _ _ he)
+                (fun (Baeb : Between a e b) =>
+                have _ _
+                    (EqTrans _ _ _ _
+                        (Eq.symm _ _ _ (AddCongRight (Length a e) (Length a c) (Length e b)
+                            (Eq.symm _ _ _ (length_eq_of_oncircle a c e aa aaa caa (snd _ _ he)))))
+                        (between_add_lengths a e b Baeb))
+                (fun (ac_eb_ab : Length a c + Length e b = Length a b) =>
+                have _ _
+                    (Eq.elim _ (Length a b)
+                        (fun x => x < Length a c + Length b d)
+                        ab_lt_ac_bd
+                        (Length a c + Length e b)
+                        (Eq.symm _ _ _ ac_eb_ab))
+                (fun (ac_eb_lt_ac_bd : Length a c + Length e b < Length a c + Length b d) =>
+                Exists.intro _ _ e
+                    (And.intro _ _
+                        (snd _ _ he)
+                        (in_circle_if_lt_radius b d e bb
+                            bbb
+                            dbb
+                            (Eq.elim _ (Length e b)
+                                (fun x => x < Length b d)
+                                (LtCancelLeft (Length e b) (Length b d) (Length a c) ac_eb_lt_ac_bd)
+                                (Length b e)
+                                (length_symm e b))))))
+                )
+                (fun (Babe : Between a b e) =>
+                have _ _
+                    (EqTrans _ _ _ _
+                        (between_add_lengths a b e Babe)
+                        (EqTrans _ _ _ _
+                            (Eq.symm _ _ _ (length_eq_of_oncircle a c e aa aaa caa (snd _ _ he)))
+                            (Eq.intro _ _)))
+                (fun (ab_be_ac : Length a b + Length b e = Length a c) =>
+                have _ _
+                    (Eq.elim _ (Length a c)
+                        (fun x => x < Length a b + Length b d)
+                        ac_lt_ab_bd
+                        (Length a b + Length b e)
+                        (Eq.symm _ _ _ ab_be_ac))
+                (fun (ab_be_lt_ab_bd : Length a b + Length b e < Length a b + Length b d) =>
+                Exists.intro _ _ e
+                    (And.intro _ _
+                        (snd _ _ he)
+                        (in_circle_if_lt_radius b d e bb
+                            bbb
+                            dbb
+                            (LtCancelLeft (Length b e) (Length b d) (Length a b) ab_be_lt_ab_bd)))))
+                )))))
+
+Theorem circint_of_lt_lt : ∀ (a b c d : Point) (aa bb : Circle),
+    CenterCircle a aa -> CenterCircle b bb ->
+    OnCircle c aa -> OnCircle d bb ->
+    Length a b < Length a c + Length b d ->
+    Length a c < Length a b + Length b d ->
+    Length b d < Length a c + Length a b ->
+    CirclesInter aa bb :=
+    fun (a b c d : Point) (aa bb : Circle)
+        (aaa : CenterCircle a aa) (bbb : CenterCircle b bb)
+        (caa : OnCircle c aa) (dbb : OnCircle d bb)
+        (ab_lt_ac_bd : Length a b < Length a c + Length b d)
+        (ac_lt_ab_bd : Length a c < Length a b + Length b d)
+        (bd_lt_ac_ab : Length b d < Length a c + Length a b) =>
+    Exists.elim _ _ _ (in_circle_of_lt_lt a b c d aa bb aaa bbb caa dbb ab_lt_ac_bd ac_lt_ab_bd)
+    (fun (e : Point) (he : OnCircle e aa /\ InCircle e bb) =>
+    Exists.elim _ _ _ (in_circle_of_lt_lt b a d c bb aa bbb aaa dbb caa
+        (Eq.elim _ (Length a b)
+            (fun x => x < Length b d + Length a c)
+            (Eq.elim _ (Length a c + Length b d)
+                (fun x => Length a b < x)
+                ab_lt_ac_bd
+                (Length b d + Length a c)
+                (AddComm (Length a c) (Length b d)))
+            (Length b a)
+            (length_symm a b))
+        (Eq.elim _ _ (fun x => Length b d < x)
+            bd_lt_ac_ab
+            (Length b a + Length a c)
+            (EqTrans _ _ _ _
+                (AddComm (Length a c) (Length a b))
+                (AddCongRight (Length a b) (Length b a) (Length a c) (length_symm a b)))))
+    (fun (f : Point) (hf : OnCircle f bb /\ InCircle f aa) =>
+    circles_inter_if_on_in e f aa bb
+        (fst _ _ he)
+        (snd _ _ hf)
+        (snd _ _ he)
+        (fst _ _ hf)))
+
+Theorem neq_seg1_of_tri_ineq : ∀ (a b a1 a2 b1 b2 : Point),
+    Length a b < Length a1 a2 + Length b1 b2 ->
+    Length b1 b2 < Length a1 a2 + Length a b ->
+    a1 ≠ a2 :=
+    fun (a b a1 a2 b1 b2 : Point)
+        (ab_lt_a1a2_b1b2 : Length a b < Length a1 a2 + Length b1 b2)
+        (b1b2_lt_a1a2_ab : Length b1 b2 < Length a1 a2 + Length a b) =>
+    fun (a1a2_eq : a1 = a2) =>
+        LtAntisymm _ _
+            (Eq.elim _ (Zero + Length b1 b2)
+                (fun x => Length a b < x)
+                (Eq.elim _ (Length a1 a2) (fun x => Length a b < x + Length b1 b2)
+                    ab_lt_a1a2_b1b2
+                    Zero
+                    (len_zero_if_eq a1 a2 a1a2_eq))
+                (Length b1 b2)
+                (ZeroAdd (Length b1 b2)))
+            (Eq.elim _ (Zero + Length a b)
+                (fun x => Length b1 b2 < x)
+                (Eq.elim _ (Length a1 a2) (fun x => Length b1 b2 < x + Length a b)
+                    b1b2_lt_a1a2_ab
+                    Zero
+                    (len_zero_if_eq a1 a2 a1a2_eq))
+                (Length a b)
+                (ZeroAdd (Length a b)))
+
+Theorem neq_seg2_of_tri_ineq : ∀ (a b a1 a2 b1 b2 : Point),
+    Length a b < Length a1 a2 + Length b1 b2 ->
+    Length a1 a2 < Length a b + Length b1 b2 ->
+    b1 ≠ b2 :=
+    fun (a b a1 a2 b1 b2 : Point)
+        (ab_lt_a1a2_b1b2 : Length a b < Length a1 a2 + Length b1 b2)
+        (a1a2_lt_ab_b1b2 : Length a1 a2 < Length a b + Length b1 b2) =>
+    fun (b1b2_eq : b1 = b2) =>
+        LtAntisymm _ _
+            (Eq.elim _ (Length a1 a2 + Zero)
+                (fun x => Length a b < x)
+                (Eq.elim _ (Length b1 b2) (fun x => Length a b < Length a1 a2 + x)
+                    ab_lt_a1a2_b1b2
+                    Zero
+                    (len_zero_if_eq b1 b2 b1b2_eq))
+                (Length a1 a2)
+                (AddZero (Length a1 a2)))
+            (Eq.elim _ (Length a b + Zero)
+                (fun x => Length a1 a2 < x)
+                (Eq.elim _ (Length b1 b2) (fun x => Length a1 a2 < Length a b + x)
+                    a1a2_lt_ab_b1b2
+                    Zero
+                    (len_zero_if_eq b1 b2 b1b2_eq))
+                (Length a b)
+                (AddZero (Length a b)))
+
+Theorem neq_base_of_tri_ineq : ∀ (a b a1 a2 b1 b2 : Point),
+    Length a1 a2 < Length a b + Length b1 b2 ->
+    Length b1 b2 < Length a1 a2 + Length a b ->
+    a ≠ b :=
+    fun (a b a1 a2 b1 b2 : Point)
+        (a1a2_lt_ab_b1b2 : Length a1 a2 < Length a b + Length b1 b2)
+        (b1b2_lt_a1a2_ab : Length b1 b2 < Length a1 a2 + Length a b) =>
+    fun (ab_eq : a = b) =>
+        LtAntisymm _ _
+            (Eq.elim _ (Zero + Length b1 b2)
+                (fun x => Length a1 a2 < x)
+                (Eq.elim _ (Length a b) (fun x => Length a1 a2 < x + Length b1 b2)
+                    a1a2_lt_ab_b1b2
+                    Zero
+                    (len_zero_if_eq a b ab_eq))
+                (Length b1 b2)
+                (ZeroAdd (Length b1 b2)))
+            (Eq.elim _ (Length a1 a2 + Zero)
+                (fun x => Length b1 b2 < x)
+                (Eq.elim _ (Length a b) (fun x => Length b1 b2 < Length a1 a2 + x)
+                    b1b2_lt_a1a2_ab
+                    Zero
+                    (len_zero_if_eq a b ab_eq))
+                (Length a1 a2)
+                (AddZero (Length a1 a2)))
 
 
 (* ============================================================
@@ -2258,22 +2911,212 @@ Theorem triangle_of_ineq : ∀ (a b f a1 a2 b1 b2 e : Point) (L : Line),
     (ab_lt_a1a2_b1b2 : Length a b < Length a1 a2 + Length b1 b2) ->
     (a1a2_lt_ab_b1b2 : Length a1 a2 < Length a b + Length b1 b2) ->
     (b1b2_lt_a1a2_ab : Length b1 b2 < Length a1 a2 + Length a b) ->
-    Exists Point (fun e => Length a e = Length a1 a2 ∧ Length b e = Length b1 b2 ∧ SameSide e f L) := sorry _ (* TODO *)
+    Exists Point (fun e => Length a e = Length a1 a2 ∧ Length b e = Length b1 b2 ∧ SameSide e f L) :=
+    fun (a b f a1 a2 b1 b2 e : Point) (L : Line)
+        (aL : OnLine a L) (bL : OnLine b L) (fL : Not (OnLine f L))
+        (ab_lt_a1a2_b1b2 : Length a b < Length a1 a2 + Length b1 b2)
+        (a1a2_lt_ab_b1b2 : Length a1 a2 < Length a b + Length b1 b2)
+        (b1b2_lt_a1a2_ab : Length b1 b2 < Length a1 a2 + Length a b) =>
+    have _ _ (neq_seg1_of_tri_ineq a b a1 a2 b1 b2 ab_lt_a1a2_b1b2 b1b2_lt_a1a2_ab)
+    (fun (a1a2_ne : a1 ≠ a2) =>
+    have _ _ (neq_seg2_of_tri_ineq a b a1 a2 b1 b2 ab_lt_a1a2_b1b2 a1a2_lt_ab_b1b2)
+    (fun (b1b2_ne : b1 ≠ b2) =>
+    have _ _ (neq_base_of_tri_ineq a b a1 a2 b1 b2 a1a2_lt_ab_b1b2 b1b2_lt_a1a2_ab)
+    (fun (ab : a ≠ b) =>
+    Exists.elim _ _ _ (length_eq_B_of_ne_four b a a1 a2 (Ne.symm _ _ _ ab) a1a2_ne)
+    (fun (c : Point) (hc : Between b a c /\ Length a c = Length a1 a2) =>
+    Exists.elim _ _ _ (length_eq_B_of_ne_four a b b1 b2 ab b1b2_ne)
+    (fun (d : Point) (hd : Between a b d /\ Length b d = Length b1 b2) =>
+    Exists.elim _ _ _ (circle_of_ne a c (ne_23_of_between b a c (fst _ _ hc)))
+    (fun (aa : Circle) (haa : CenterCircle a aa /\ OnCircle c aa) =>
+    Exists.elim _ _ _ (circle_of_ne b d (ne_23_of_between a b d (fst _ _ hd)))
+    (fun (bb : Circle) (hbb : CenterCircle b bb /\ OnCircle d bb) =>
+    Exists.elim _ _ _ (pt_sameside_of_circlesinter f a b L aa bb
+        aL
+        bL
+        fL
+        (fst _ _ haa)
+        (fst _ _ hbb)
+        (circint_of_lt_lt a b c d aa bb
+            (fst _ _ haa)
+            (fst _ _ hbb)
+            (snd _ _ haa)
+            (snd _ _ hbb)
+            (Eq.elim _ (Length b1 b2)
+                (fun x => Length a b < Length a c + x)
+                (Eq.elim _ (Length a1 a2) (fun x => Length a b < x + Length b1 b2)
+                    ab_lt_a1a2_b1b2
+                    (Length a c)
+                    (Eq.symm _ _ _ (snd _ _ hc)))
+                (Length b d)
+                (Eq.symm _ _ _ (snd _ _ hd)))
+            (Eq.elim _ (Length b1 b2)
+                (fun x => Length a c < Length a b + x)
+                (Eq.elim _ (Length a1 a2) (fun x => x < Length a b + Length b1 b2)
+                    a1a2_lt_ab_b1b2
+                    (Length a c)
+                    (Eq.symm _ _ _ (snd _ _ hc)))
+                (Length b d)
+                (Eq.symm _ _ _ (snd _ _ hd)))
+            (Eq.elim _ (Length a1 a2)
+                (fun x => Length b d < x + Length a b)
+                (Eq.elim _ (Length b1 b2) (fun x => x < Length a1 a2 + Length a b)
+                    b1b2_lt_a1a2_ab
+                    (Length b d)
+                    (Eq.symm _ _ _ (snd _ _ hd)))
+                (Length a c)
+                (Eq.symm _ _ _ (snd _ _ hc)))))
+    (fun (e : Point) (he : SameSide e f L /\ (OnCircle e aa /\ OnCircle e bb)) =>
+    Exists.intro _ _ e
+        (And.intro _ _
+            (And.intro _ _
+                (EqTrans _ _ _ _
+                    (Eq.symm _ _ _ (length_eq_of_oncircle a c e aa (fst _ _ haa) (snd _ _ haa) (fst _ _ (snd _ _ he))))
+                    (snd _ _ hc))
+                (EqTrans _ _ _ _
+                    (Eq.symm _ _ _ (length_eq_of_oncircle b d e bb (fst _ _ hbb) (snd _ _ hbb) (snd _ _ (snd _ _ he))))
+                    (snd _ _ hd)))
+            (fst _ _ he))))))))))
 
 
 (* ============================================================
    Proposition 23 (I.23): Copying an angle
    ============================================================ *)
 
+Theorem triangle_copy : ∀ (a b g d e f : Point) (L : Line),
+    triangle d e f -> OnLine a L -> OnLine b L -> Not (OnLine g L) ->
+    Length a b = Length d e ->
+    Exists Point (fun c => Length a c = Length d f /\ Length b c = Length e f /\ SameSide c g L) :=
+    fun (a b g d e f : Point) (L : Line)
+        (tri_def : triangle d e f) (aL : OnLine a L) (bL : OnLine b L) (gL : Not (OnLine g L))
+        (ab_de : Length a b = Length d e) =>
+    triangle_of_ineq a b g d f e f e L
+        aL
+        bL
+        gL
+        (Eq.elim _ (Length d e) (fun x => x < Length d f + Length e f)
+            (fst _ _ (fst _ _ (len_lt_of_tri d e f tri_def)))
+            (Length a b)
+            (Eq.symm _ _ _ ab_de))
+        (Eq.elim _ (Length e f + Length d e) (fun x => Length d f < x)
+            (Eq.elim _ (Length f d) (fun x => x < Length e f + Length d e)
+                (Eq.elim _ (Length f e + Length d e) (fun x => Length f d < x)
+                    (fst _ _ (fst _ _ (len_lt_of_tri f d e (tri_312_of_tri_123 d e f tri_def))))
+                    (Length e f + Length d e)
+                    (AddCongRight (Length f e) (Length e f) (Length d e) (length_symm f e)))
+                (Length d f)
+                (length_symm f d))
+            (Length a b + Length e f)
+            (EqTrans _ _ _ _
+                (AddCongLeft (Length d e) (Length a b) (Length e f) (Eq.symm _ _ _ ab_de))
+                (AddComm (Length e f) (Length a b))))
+        (Eq.elim _ (Length d e + Length d f) (fun x => Length e f < x)
+            (Eq.elim _ (Length e d + Length f d) (fun x => Length e f < x)
+                (fst _ _ (fst _ _ (len_lt_of_tri e f d (tri_132_of_tri_123 e d f (tri_213_of_tri_123 d e f tri_def)))))
+                (Length d e + Length d f)
+                (EqTrans _ _ _ _
+                    (AddCongRight (Length e d) (Length d e) (Length f d) (length_symm e d))
+                    (AddCongLeft (Length f d) (Length d f) (Length d e) (length_symm f d))))
+            (Length d f + Length a b)
+            (EqTrans _ _ _ _
+                (AddCongRight (Length d e) (Length a b) (Length d f) (Eq.symm _ _ _ ab_de))
+                (AddComm (Length a b) (Length d f))))
+
 (* Copy angle ecd to vertex a on line L, placing the result on the same side as j. *)
 Theorem angle_copy : ∀ (a b j c d e : Point) (L : Line),
     a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e ->
-    Exists Point (fun h => Angle h a b = Angle e c d ∧ SameSide h j L) := sorry _ (* TODO *)
+    Exists Point (fun h => Angle h a b = Angle e c d ∧ SameSide h j L) :=
+    fun (a b j c d e : Point) (L : Line)
+        (ab : a ≠ b) (aL : OnLine a L) (bL : OnLine b L) (jL : Not (OnLine j L))
+        (tri_cde : triangle c d e) =>
+    Exists.elim _ _ _ (length_eq_B_of_ne_four a b c d ab (ne_12_of_triangle c d e tri_cde))
+    (fun (g : Point) (hg : Between a b g /\ Length b g = Length c d) =>
+    Exists.elim _ _ _ (length_eq_B_of_ne_four c d a b (ne_12_of_triangle c d e tri_cde) ab)
+    (fun (f : Point) (hf : Between c d f /\ Length d f = Length a b) =>
+    have _ _
+        (EqTrans _ _ _ _
+            (Eq.symm _ _ _ (between_add_lengths a b g (fst _ _ hg)))
+            (EqTrans _ _ _ _
+                (AddCongLeft (Length b g) (Length c d) (Length a b) (snd _ _ hg))
+                (EqTrans _ _ _ _
+                    (AddComm (Length a b) (Length c d))
+                    (EqTrans _ _ _ _
+                        (AddCongLeft (Length a b) (Length d f) (Length c d) (Eq.symm _ _ _ (snd _ _ hf)))
+                        (between_add_lengths c d f (fst _ _ hf))))))
+    (fun (ag_cf : Length a g = Length c f) =>
+    Exists.elim _ _ _ (triangle_copy a g j c f e L
+        (tri_143_of_tri_col c d e f
+            (ne_13_of_between c d f (fst _ _ hf))
+            tri_cde
+            (col_of_B c d f (fst _ _ hf)))
+        aL
+        (online_3_of_B a b g L (fst _ _ hg) aL bL)
+        jL
+        ag_cf)
+    (fun (h : Point) (hh : Length a h = Length c e /\ Length g h = Length f e /\ SameSide h j L) =>
+    have _ _
+        (fst _ _ (snd _ _
+            (sss_congruence h a g e c f
+                (ne_of_sameside' a h j L aL (snd _ _ hh))
+                (ne_13_of_between a b g (fst _ _ hg))
+                (length_pts_ne f e h g
+                    (EqTrans _ _ _ _
+                        (Eq.symm _ _ _ (snd _ _ (fst _ _ hh)))
+                        (length_symm g h))
+                    (Ne.symm _ _ _
+                        (ne_23_of_triangle c e f
+                            (tri_132_of_tri_123 c f e
+                                (tri_143_of_tri_col c d e f
+                                    (ne_13_of_between c d f (fst _ _ hf))
+                                    tri_cde
+                                    (col_of_B c d f (fst _ _ hf)))))))
+                (Ne.symm _ _ _ (ne_13_of_triangle c d e tri_cde))
+                (ne_13_of_between c d f (fst _ _ hf))
+                (ne_23_of_triangle c e f
+                    (tri_132_of_tri_123 c f e
+                        (tri_143_of_tri_col c d e f
+                            (ne_13_of_between c d f (fst _ _ hf))
+                            tri_cde
+                            (col_of_B c d f (fst _ _ hf)))))
+                (EqTrans _ _ _ _
+                    (Eq.symm _ _ _ (length_symm a h))
+                    (EqTrans _ _ _ _
+                        (fst _ _ (fst _ _ hh))
+                        (length_symm c e)))
+                ag_cf
+                (snd _ _ (fst _ _ hh)))))
+    (fun (hag_ecf : Angle h a g = Angle e c f) =>
+    Exists.intro _ _ h
+        (And.intro _ _
+            (EqTrans _ _ _ _
+                (angle_extension_of_B a b g h
+                    (ne_of_sameside a h j L aL (snd _ _ hh))
+                    (fst _ _ hg))
+                (EqTrans _ _ _ _
+                    hag_ecf
+                    (Eq.symm _ _ _
+                            (angle_extension_of_B c d f e
+                                (ne_13_of_triangle c d e tri_cde)
+                                (fst _ _ hf)))))
+            (snd _ _ hh)))))))
 
 (* Copy angle ecd to vertex a on line L, placing the result on the opposite side from j. *)
 Theorem angle_copy' : ∀ (a b j c d e : Point) (L : Line),
     a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e ->
-    Exists Point (fun h => Angle h a b = Angle e c d ∧ diffside h j L) := sorry _ (* TODO *)
+    Exists Point (fun h => Angle h a b = Angle e c d ∧ diffside h j L) :=
+    fun (a b j c d e : Point) (L : Line)
+        (ab : a ≠ b) (aL : OnLine a L) (bL : OnLine b L) (jL : Not (OnLine j L))
+        (tri_cde : triangle c d e) =>
+    Exists.elim _ _ _ (diffside_of_not_online' j L jL)
+    (fun (f : Point) (jf_diffside : diffside j f L) =>
+    Exists.elim _ _ _ (angle_copy a b f c d e L ab aL bL (snd _ _ (fst _ _ jf_diffside)) tri_cde)
+    (fun (h : Point) (hh : Angle h a b = Angle e c d /\ SameSide h f L) =>
+    Exists.intro _ _ h
+        (And.intro _ _
+            (fst _ _ hh)
+            (diffside_of_sameside_diffside f h j L
+                (same_side_symm h f L (snd _ _ hh))
+                (diffside_symm j f L jf_diffside)))))
 
 
 (* ============================================================

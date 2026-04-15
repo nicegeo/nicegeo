@@ -80,41 +80,69 @@ Helpers proved:
 
 ---
 
-## Prop 18 — Larger side opposite larger angle
+## Prop 18 — Larger side opposite larger angle ✓
 **Milestone:** `ang_lt_of_len_lt`
 > `triangle a b c → length c a < length c b → angle c b a < angle c a b`
-> TODO
+> ✓ PROVED
+
+Helpers proved:
+- `col_213_of_col` ✓
+- `col_312_of_col` ✓
+- `tri_132_of_tri_123` ✓
+- `tri_213_of_tri_123` ✓
+- `tri_312_of_tri_123` ✓
+- `tri_321_of_tri_123` ✓
+- `tri_143_of_tri_col` ✓
+- `tri_of_B_tri` ✓
+- `diffside_of_B_offline'` ✓
+- `sameside_of_B_online_3` ✓
+- `zero_lt_angle_of_offline` ✓
+- `B_length_eq_of_ne_lt` ✓
+- `angle_lt_of_B_tri` ✓
 
 ---
 
-## Prop 19 — Larger angle opposite larger side
+## Prop 19 — Larger angle opposite larger side ✓
 **Milestone:** `len_lt_of_ang_lt`
 > `triangle a b c → angle c b a < angle c a b → Length c a < Length c b`
-> TODO
+> ✓ PROVED
 
 ---
 
-## Prop 20 — Triangle inequality
+## Prop 20 — Triangle inequality ✓
 **Milestone:** `len_lt_of_tri`
 > All three inequalities: each side < sum of the other two
-> TODO
+> ✓ PROVED
 
 Helper:
-- `len_lt_of_tri'`: `triangle a b c → Length a b < Length a c + Length b c` — TODO
+- `len_lt_of_tri'`: `triangle a b c → Length a b < Length a c + Length b c` ✓
 
 ---
 
-## Prop 22 — Constructing a triangle from three lengths
+## Prop 22 — Constructing a triangle from three lengths ✓
 **Milestone:** `triangle_of_ineq`
 > Given lengths satisfying triangle inequality, construct point e on same side as f
-> TODO
+> ✓ PROVED
+
+Helpers proved:
+- `LtCancelLeft` ✓
+- `LtCancelRight` ✓
+- `length_eq_B_of_ne_four` ✓
+- `B_or_B_of_B_B` ✓
+- `B_or_B_of_circ_pt` ✓
+- `in_circle_of_lt_lt` ✓
+- `circint_of_lt_lt` ✓
 
 ---
 
-## Prop 23 — Copying an angle
+## Prop 23 — Copying an angle ✓
 **Milestone:** `angle_copy` / `angle_copy'`
 > Copy angle ecd to vertex a on line L, same/opposite side as j
-> TODO
+> ✓ PROVED
+
+Helpers proved:
+- `triangle_copy` ✓
+- `length_eq_B_of_ne_four` ✓
 
 ---
 
@@ -165,16 +193,10 @@ Next direction:
 
 ---
 
-## Prop 31 — Parallel through a point
+## Prop 31 — Parallel through a point ✓
 **Milestone:** `para_of_offline`
 > `¬OnLine a M → ∃ N, OnLine a N ∧ para M N`
-> TODO
-
-Current status:
-- the proof route is in place and checks structurally
-- remaining unresolved inputs come from Prop. 23:
-  - `angle_copy`
-  - `angle_copy'`
+> ✓ PROVED
 
 ---
 
@@ -199,14 +221,11 @@ Prop 46 local helpers:
 - `same_side_of_points_on_parallel` ✓
 
 Current direct blockers:
-- `para_of_offline`
 - `len_ang_arelen_ang_area_eq_of_parallelogram`
 - `len_eq_of_parallelogram`
 - `len_eq_of_parallelogram'`
 
 Current transitive blockers:
-- `angle_copy`
-- `angle_copy'`
 - `len_ang_arelen_ang_area_eq_of_parallelogram`
 - `len_eq_of_parallelogram`
 - `len_eq_of_parallelogram'`
