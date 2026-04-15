@@ -56,18 +56,6 @@ function listItems(rows: { label: string; value: string }[]): string {
 }
 
 
-function renderFriendlyTerm(raw: string, hyps: { name: string; bid: number; type: string }[]): string {
-  const byBid = new Map<number, string>();
-  for (const h of hyps) {
-    byBid.set(h.bid, h.name);
-  }
-  return raw.replace(/!(\d+)/g, (_m, g1) => {
-    const bid = Number(g1);
-    const name = byBid.get(bid);
-    return name ?? `!${g1}`;
-  });
-}
-
 function friendlyCtxNames(ctxBids: number[], hyps: { name: string; bid: number; type: string }[]): string[] {
   const byBid = new Map<number, string>();
   for (const h of hyps) {
@@ -116,9 +104,9 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
     </style></head><body>${declBlock ?? ""}<p>No proof state.</p></body></html>`;
   }
 
-  const goalFriendly = renderFriendlyTerm(ps.goalType, ps.hyps);
+  const goalFriendly = ps.goalType;
   const reducedFriendly =
-    ps.goalTypeReduced !== undefined ? renderFriendlyTerm(ps.goalTypeReduced, ps.hyps) : undefined;
+    ps.goalTypeReduced !== undefined ? ps.goalTypeReduced : undefined;
 
   const reduced =
     reducedFriendly !== undefined && reducedFriendly !== goalFriendly
@@ -165,8 +153,8 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
   const solvedMetas = metaList.filter((m) => m.solution != null);
   const renderMeta = (m: { id: number; type: string | null; solution: string | null; context: number[] }) => {
     const short = compactMetaLabel(m.id);
-    const ty = m.type != null ? renderFriendlyTerm(m.type, ps.hyps) : "(unknown type)";
-    const sol = m.solution != null ? renderFriendlyTerm(m.solution, ps.hyps) : null;
+    const ty = m.type != null ? m.type : "(unknown type)";
+    const sol = m.solution != null ? m.solution : null;
     const ctxNames = friendlyCtxNames(m.context ?? [], ps.hyps);
     const ctx =
       ctxNames.length > 0
@@ -189,7 +177,7 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
   const hypsBody = listItems(
     ps.hyps.map((h) => ({
       label: h.name,
-      value: renderFriendlyTerm(h.type, ps.hyps),
+      value: h.type,
     })),
   );
   const hyps = `<section class="block goal-hyps"><h2>Goal hypotheses</h2>${hypsBody}</section>`;
@@ -203,7 +191,7 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
           .map((s, i) => {
             const args = s.args.length > 0 ? ` ${s.args.join(" ")}` : "";
             const isExecuted = i < applied;
-            const afterPretty = s.goalsAfter.map((g) => renderFriendlyTerm(g, ps.hyps));
+            const afterPretty = s.goalsAfter;
             const after =
               s.goalsAfter.length === 0
                 ? "(solved)"

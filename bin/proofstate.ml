@@ -174,14 +174,14 @@ let snapshot_environment (e : Types.ctx) : env_item list =
     []
   |> List.sort (fun a b -> String.compare a.env_name b.env_name)
 
-let snapshot_metas (e : Types.ctx) : meta_item list =
+let snapshot_metas ?(lctx : Types.local_ctx = []) (e : Types.ctx) : meta_item list =
   Hashtbl.fold
     (fun mid (m : Types.metavar) acc ->
       let ty_s =
-        match m.ty with Some t -> Some (Pretty.term_to_string e t) | None -> None
+        match m.ty with Some t -> Some (Pretty.term_to_string e ~lctx t) | None -> None
       in
       let sol_s =
-        match m.sol with Some t -> Some (Pretty.term_to_string e t) | None -> None
+        match m.sol with Some t -> Some (Pretty.term_to_string e ~lctx t) | None -> None
       in
       { meta_id = mid; meta_ty = ty_s; meta_sol = sol_s; meta_context = m.context } :: acc)
     e.metas
@@ -193,7 +193,7 @@ let pp_goal_type (e : Types.ctx) (g : Proofstate.goal) : string =
 
 let snapshot_tactic_steps (e : Types.ctx) (goal_ty_tm : Term.term)
     (tacs : Statement.tactic list) (line : int) (col : int) : tactic_step_item list =
-  let e = {e with metas = Hashtbl.copy e.metas} in
+  let e = { e with metas = Hashtbl.copy e.metas } in
   let init_state = Proofstate.init_state ~elab_ctx:e goal_ty_tm in
   let rec loop idx (st : Proofstate.proof_state) acc (remaining : Statement.tactic list) =
     match remaining with
@@ -202,8 +202,13 @@ let snapshot_tactic_steps (e : Types.ctx) (goal_ty_tm : Term.term)
         let goal_before =
           Option.map (pp_goal_type st.elab_ctx) (Proofstate.current_goal st)
         in
+        let lctx_for_args =
+          match Proofstate.current_goal st with Some g -> g.lctx | None -> []
+        in
         let at_cursor = range_contains tac.loc line col in
-        let args_pp = List.map (Pretty.term_to_string st.elab_ctx) tac.args in
+        let args_pp =
+          List.map (Pretty.term_to_string st.elab_ctx ~lctx:lctx_for_args) tac.args
+        in
         let mk_step status (next_state : Proofstate.proof_state) =
           {
             step_index = idx;
@@ -366,11 +371,13 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
               open_goal_types;
             }
       | g :: _ ->
-          let metas = snapshot_metas st.elab_ctx in
+          let metas = snapshot_metas ~lctx:g.lctx st.elab_ctx in
           let gty = g.goal_type in
           let gty_red = Reduce.reduce st.elab_ctx gty in
           let goal_type = Pretty.term_to_string st.elab_ctx ~lctx:g.lctx gty in
-          let goal_type_reduced = Pretty.term_to_string st.elab_ctx ~lctx:g.lctx gty_red in
+          let goal_type_reduced =
+            Pretty.term_to_string st.elab_ctx ~lctx:g.lctx gty_red
+          in
           let head_context =
             extract_head_binders st.elab_ctx gty_red
             |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
@@ -502,8 +509,7 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     |> fun s -> "[" ^ s ^ "]"
   in
   let hyps_items =
-    snap.hyps
-    |> List.rev
+    snap.hyps |> List.rev
     |> List.map (fun (name, bid, ty) ->
            Printf.sprintf
              "{\"name\":\"%s\",\"bid\":%d,\"type\":\"%s\"}"

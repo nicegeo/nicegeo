@@ -51,6 +51,24 @@ function findRepoRoot(startFilePath: string): string | null {
   }
 }
 
+function toolMissingMessage(tool: string, cwd: string): string {
+  if (tool === "dune") {
+    return [
+      "Could not start `dune` (not found in PATH).",
+      "Install OCaml tooling and dune, then reopen VS Code from a shell where opam is active.",
+      `Working directory: ${cwd}`,
+    ].join("\n");
+  }
+  if (tool === "opam") {
+    return [
+      "Could not start `opam` (not found in PATH).",
+      "Install opam, then run `opam install . --deps-only` in the project.",
+      `Working directory: ${cwd}`,
+    ].join("\n");
+  }
+  return `Could not start '${tool}' (not found in PATH).`;
+}
+
 /** `dune exec` may print "Entering directory" lines before the JSON line. */
 function parseJsonLineFromStdout(output: string): ProofStateAtResponse | null {
   const lines = output.split(/\r?\n/);
@@ -82,44 +100,47 @@ export function runProofStateAt(
   const repoRoot = findRepoRoot(filePath);
   const cwd = repoRoot ?? workspaceRoot ?? process.cwd();
 
-  return new Promise((resolve) => {
-    const child = spawn(
-      "dune",
-      [
-        "exec",
-        "nicegeo-proofstate",
-        "--",
-        "--json",
-        filePath,
-        String(line1),
-        String(col1),
-      ],
-      { cwd },
-    );
-    const chunks: Buffer[] = [];
-    const onData = (b: Buffer) => chunks.push(b);
-    child.stdout.on("data", onData);
-    child.stderr.on("data", onData);
-    child.on("close", (exitCode) => {
-      const output = Buffer.concat(chunks).toString("utf8");
-      const parsed = parseJsonLineFromStdout(output);
-      if (parsed) {
-        resolve(parsed);
-        return;
-      }
-      resolve({
-        ok: false,
-        error:
-          exitCode !== 0
-            ? output.trim() || `nicegeo exited with code ${exitCode}`
-            : "Could not parse proof state JSON from nicegeo output.",
+  const proofstateArgs = ["exec", "nicegeo-proofstate", "--", "--json", filePath, String(line1), String(col1)];
+  const attempts: Array<{ cmd: string; args: string[] }> = [
+    { cmd: "dune", args: proofstateArgs },
+    { cmd: "opam", args: ["exec", "--", "dune", ...proofstateArgs] },
+  ];
+
+  const runAttempt = (idx: number): Promise<ProofStateAtResponse> =>
+    new Promise((resolve) => {
+      const attempt = attempts[idx];
+      const child = spawn(attempt.cmd, attempt.args, { cwd });
+      const chunks: Buffer[] = [];
+      const onData = (b: Buffer) => chunks.push(b);
+      child.stdout.on("data", onData);
+      child.stderr.on("data", onData);
+      child.on("close", (exitCode) => {
+        const output = Buffer.concat(chunks).toString("utf8");
+        const parsed = parseJsonLineFromStdout(output);
+        if (parsed) {
+          resolve(parsed);
+          return;
+        }
+        resolve({
+          ok: false,
+          error:
+            exitCode !== 0
+              ? output.trim() || `nicegeo exited with code ${exitCode}`
+              : "Could not parse proof state JSON from nicegeo output.",
+        });
+      });
+      child.on("error", (err: NodeJS.ErrnoException) => {
+        if (err?.code === "ENOENT" && idx + 1 < attempts.length) {
+          void runAttempt(idx + 1).then(resolve);
+          return;
+        }
+        if (err?.code === "ENOENT") {
+          resolve({ ok: false, error: toolMissingMessage(attempt.cmd, cwd) });
+          return;
+        }
+        resolve({ ok: false, error: err instanceof Error ? err.message : String(err) });
       });
     });
-    child.on("error", (err) => {
-      resolve({
-        ok: false,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    });
-  });
+
+  return runAttempt(0);
 }
