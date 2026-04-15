@@ -66,6 +66,18 @@ function renderFriendlyTerm(raw: string, hyps: { name: string; bid: number; type
   });
 }
 
+function friendlyCtxNames(ctxBids: number[], hyps: { name: string; bid: number; type: string }[]): string[] {
+  const byBid = new Map<number, string>();
+  for (const h of hyps) {
+    byBid.set(h.bid, h.name);
+  }
+  return ctxBids.map((bid) => byBid.get(bid) ?? `#${bid}`);
+}
+
+function compactMetaLabel(metaId: number): string {
+  return `m${metaId}`;
+}
+
 export function buildProofStateHtml(data: ProofStateAtPayload): string {
   if (!data.ok) {
     const err = data.error ?? "Unknown error";
@@ -116,7 +128,7 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
 
   const goal = section("Goal", `<p class="goal">⊢ ${escapeHtml(goalFriendly)}</p>`);
   const head = section(
-    "Head context",
+    "Goal parameters",
     listItems(ps.headContext.map((c) => ({ label: c.name, value: c.type }))),
   );
 
@@ -134,20 +146,30 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
         )}</details>`;
 
   const metaList = ps.metas ?? [];
+  const openMetas = metaList.filter((m) => m.solution == null);
+  const solvedMetas = metaList.filter((m) => m.solution != null);
+  const renderMeta = (m: { id: number; type: string | null; solution: string | null; context: number[] }) => {
+    const short = compactMetaLabel(m.id);
+    const ty = m.type != null ? renderFriendlyTerm(m.type, ps.hyps) : "(unknown type)";
+    const sol = m.solution != null ? renderFriendlyTerm(m.solution, ps.hyps) : null;
+    const ctxNames = friendlyCtxNames(m.context ?? [], ps.hyps);
+    const ctx =
+      ctxNames.length > 0
+        ? `<div class="meta-ctx"><span class="muted">context:</span> ${escapeHtml(ctxNames.join(", "))}</div>`
+        : "";
+    const solved =
+      sol != null
+        ? `<div class="meta-sol"><span class="muted">solution:</span> ${escapeHtml(sol)}</div>`
+        : "";
+    return `<li class="mono meta-item"><div><span class="name">?${escapeHtml(short)}</span> <span class="muted">(#${m.id})</span></div><div><span class="muted">type:</span> ${escapeHtml(ty)}</div>${solved}${ctx}</li>`;
+  };
   const metaBlock =
     metaList.length === 0
       ? ""
-      : `<details class="fold"><summary>Metas (${metaList.length})</summary><ul>${metaList
-          .map((m) => {
-            const ty = m.type != null ? ` : ${escapeHtml(m.type)}` : "";
-            const sol = m.solution != null ? ` := ${escapeHtml(m.solution)}` : "";
-            const ctx =
-              m.context && m.context.length > 0
-                ? ` <span class="muted">ctx=[${m.context.join(",")}]</span>`
-                : "";
-            return `<li class="mono">?${m.id}${ty}${sol}${ctx}</li>`;
-          })
-          .join("")}</ul></details>`;
+      : `<details class="fold"><summary>Metas (${metaList.length}) - open ${openMetas.length}, solved ${solvedMetas.length}</summary>
+          ${openMetas.length > 0 ? `<h3 class="meta-heading">Open</h3><ul>${openMetas.map(renderMeta).join("")}</ul>` : `<p class="muted">No open metas.</p>`}
+          ${solvedMetas.length > 0 ? `<details class="fold nested"><summary>Solved (${solvedMetas.length})</summary><ul>${solvedMetas.map(renderMeta).join("")}</ul></details>` : ""}
+        </details>`;
 
   const hypsBody = listItems(
     ps.hyps.map((h) => ({
@@ -202,6 +224,11 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
     .tactic-state { margin-left: 8px; padding: 1px 6px; border-radius: 999px; font-size: 11px; border: 1px solid var(--vscode-panel-border); }
     .cursor-pill { margin-left: 8px; padding: 1px 6px; border-radius: 999px; background: var(--vscode-textBlockQuote-background); font-size: 11px; }
     .tactic-after { margin-top: 4px; }
+    .meta-heading { margin: 8px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--vscode-descriptionForeground); }
+    .meta-item { border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 6px; margin: 6px 0; }
+    .meta-sol { margin-top: 2px; color: var(--vscode-terminal-ansiGreen); }
+    .meta-ctx { margin-top: 2px; }
+    details.fold.nested { margin-top: 8px; }
 
   </style></head><body>
     ${declBlock ?? ""}
