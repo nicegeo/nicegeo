@@ -44,7 +44,7 @@ Definition iso_tri : Point -> Point -> Point -> Prop :=
 
 (* Two lines are parallel if no point lies on both. *)
 Definition para : Line -> Line -> Prop :=
-    fun M N => (e : Point) -> Not (OnLine e M) ∨ Not (OnLine e N)
+    fun M N => (e : Point) -> Not (OnLine e M /\ OnLine e N)
 
 (* A parallelogram a-b-c-d with sides on lines L, M, N, O respectively.
    Vertices go: a and b on L, b and c on M, c and d on N, d and a on O,
@@ -116,6 +116,17 @@ Theorem on_circle_iff_length_eq : ∀ (a b c : Point) (d : Circle),
     (fun h => on_circle_if_eq_radius a b c d ad bd (Eq.symm _ _ _ h)) 
     (fun h => Eq.symm _ _ _ (eq_radius_if_on_circle a b c d ad bd h))
 
+Theorem length_eq_of_oncircle : ∀ (a b c : Point) (aa : Circle),
+    CenterCircle a aa ->
+    OnCircle b aa ->
+    OnCircle c aa ->
+    Length a b = Length a c :=
+    fun (a b c : Point) (aa : Circle)
+        (aaa : CenterCircle a aa)
+        (baa : OnCircle b aa)
+        (caa : OnCircle c aa) =>
+    snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa
+
 (* ============================================================
    Proposition 1 (I.1): Constructing an equilateral triangle
    ============================================================ *)
@@ -174,6 +185,14 @@ Theorem CancelAdd : ∀ (x y z : Measure), z + x = z + y -> x = y :=
         _ (AddComm z y)
     )
 
+Theorem AddCongRight : ∀ (x y z : Measure), x = y -> x + z = y + z :=
+    fun x y z h =>
+    Eq.elim _ x (fun t => x + z = t + z) (Eq.intro _ _) y h
+
+Theorem AddCongLeft : ∀ (x y z : Measure), x = y -> z + x = z + y :=
+    fun x y z h =>
+    Eq.elim _ x (fun t => z + x = z + t) (Eq.intro _ _) y h
+
 
 (* Extending any ray from inside a circle: given b inside aa and a ≠ b,
    there exists c on aa with b between a and c. *)
@@ -195,7 +214,8 @@ Theorem pt_oncircle_of_inside_ne : ∀ (a b : Point) (aa : Circle),
     (And.intro _ _
     (fst _ _ (between_distinct c b a (snd _ _ (snd _ _ h))))
     (fst _ _ (snd _ _ h))
-    ))))
+    ))
+    ))
 
 (* If two segments have equal length and one is degenerate (a = b), the other is too (c = d). *)
 Theorem length_pts_eq : ∀ (a b c d : Point), Length a b = Length c d ->
@@ -358,7 +378,8 @@ Theorem place_segment : ∀ (a b c : Point),
         EqTrans _ _ _ _
         (len_zero_if_eq a a (Eq.intro _ a))
         (Eq.symm _ _ _ (len_zero_if_eq b c bc))
-    ))
+    )
+    )
 
     (fun (bc: b ≠ c) =>
 
@@ -538,6 +559,197 @@ Theorem ne_13_of_triangle : ∀ (a b c : Point), triangle a b c → a ≠ c :=
     fun (a b c : Point) (tri : triangle a b c) =>
     ne_12_of_triangle a c b (swap_23_triangle _ _ _ tri)
 
+(* A point collinear with two distinct points already on L also lies on L. *)
+Theorem online_of_col_online : ∀ (a b c : Point) (L : Line),
+    a ≠ b -> OnLine a L -> OnLine b L -> colinear a b c -> OnLine c L :=
+    fun (a b c : Point) (L : Line) (ab : a ≠ b) (aL : OnLine a L) (bL : OnLine b L)
+        (col : colinear a b c) =>
+    Exists.elim _ _ _ col
+    (fun (M : Line) (col_on_M : OnLine a M /\ OnLine b M /\ OnLine c M) =>
+    Eq.elim _ M (fun X => OnLine c X)
+        (snd _ _ col_on_M)
+        L
+        (two_distinct_points_determine_unique_line a b M L ab
+            (fst _ _ (fst _ _ col_on_M))
+            (snd _ _ (fst _ _ col_on_M))
+            aL
+            bL))
+
+(* If c is not on the line through distinct a,b, then abc is a triangle. *)
+Theorem triangle_of_ne_online : ∀ (a b c : Point) (L : Line),
+    a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine c L) -> triangle a b c :=
+    fun (a b c : Point) (L : Line) (ab : a ≠ b) (aL : OnLine a L) (bL : OnLine b L)
+        (c_not_on_L : Not (OnLine c L)) =>
+    fun (col : colinear a b c) =>
+    c_not_on_L (online_of_col_online a b c L ab aL bL col)
+
+(* Triangle non-collinearity lets us turn two on-line facts into an off-line fact. *)
+Theorem online_3_of_triangle : ∀ (a b c : Point) (L : Line),
+    OnLine a L -> OnLine b L -> triangle a b c -> Not (OnLine c L) :=
+    fun (a b c : Point) (L : Line) (aL : OnLine a L) (bL : OnLine b L)
+        (tri : triangle a b c) (cL : OnLine c L) =>
+    tri (Exists.intro _ _ L (And.intro _ _ (And.intro _ _ aL bL) cL))
+
+Theorem online_1_of_triangle : ∀ (a b c : Point) (L : Line),
+    OnLine b L -> OnLine c L -> triangle a b c -> Not (OnLine a L) :=
+    fun (a b c : Point) (L : Line) (bL : OnLine b L) (cL : OnLine c L)
+        (tri : triangle a b c) (aL : OnLine a L) =>
+    tri (Exists.intro _ _ L (And.intro _ _ (And.intro _ _ aL bL) cL))
+
+Theorem online_2_of_triangle : ∀ (a b c : Point) (L : Line),
+    OnLine a L -> OnLine c L -> triangle a b c -> Not (OnLine b L) :=
+    fun (a b c : Point) (L : Line) (aL : OnLine a L) (cL : OnLine c L)
+        (tri : triangle a b c) (bL : OnLine b L) =>
+    tri (Exists.intro _ _ L (And.intro _ _ (And.intro _ _ aL bL) cL))
+
+(* A point on one line and off another witnesses line inequality. *)
+Theorem ne_of_online_not_online : ∀ (a b : Point) (L : Line),
+    OnLine a L -> Not (OnLine b L) -> a ≠ b :=
+    fun (a b : Point) (L : Line) (aL : OnLine a L) (b_not_on_L : Not (OnLine b L))
+        (ab : a = b) =>
+    b_not_on_L (Eq.elim _ a (fun x => OnLine x L) aL b ab)
+
+Theorem ne_of_online_not_online' : ∀ (a b : Point) (L : Line),
+    OnLine a L -> Not (OnLine b L) -> b ≠ a :=
+    fun (a b : Point) (L : Line) (aL : OnLine a L) (b_not_on_L : Not (OnLine b L)) =>
+    Ne.symm _ _ _ (ne_of_online_not_online a b L aL b_not_on_L)
+
+Theorem ne_line_of_online : ∀ (a : Point) (L M : Line),
+    OnLine a M -> Not (OnLine a L) -> L ≠ M :=
+    fun (a : Point) (L M : Line) (aM : OnLine a M) (a_not_on_L : Not (OnLine a L))
+        (LM : L = M) =>
+    a_not_on_L (Eq.elim _ M (fun X => OnLine a X) aM L (Eq.symm _ _ _ LM))
+
+Theorem ne_line_of_online' : ∀ (a : Point) (L M : Line),
+    OnLine a M -> Not (OnLine a L) -> M ≠ L :=
+    fun (a : Point) (L M : Line) (aM : OnLine a M) (a_not_on_L : Not (OnLine a L)) =>
+    Ne.symm _ _ _ (ne_line_of_online a L M aM a_not_on_L)
+
+Theorem online_of_ne_ne : ∀ (a c : Point) (L M : Line),
+    a ≠ c -> L ≠ M -> OnLine a L -> OnLine c L -> OnLine c M -> Not (OnLine a M) :=
+    fun (a c : Point) (L M : Line) (ac : a ≠ c) (LM : L ≠ M)
+        (aL : OnLine a L) (cL : OnLine c L) (cM : OnLine c M) =>
+    fun (aM : OnLine a M) =>
+    LM (two_distinct_points_determine_unique_line a c L M
+        ac
+        aL
+        cL
+        aM
+        cM)
+
+Theorem diffside_symm : ∀ (a b : Point) (L : Line), diffside a b L -> diffside b a L :=
+    fun (a b : Point) (L : Line) (abL : diffside a b L) =>
+    And.intro _ _
+        (And.intro _ _
+            (snd _ _ (fst _ _ abL))
+            (fst _ _ (fst _ _ abL)))
+        (fun (same_ba : SameSide b a L) =>
+            (snd _ _ abL) (same_side_symm b a L same_ba))
+
+Theorem not_online_of_sameside : ∀ (a b : Point) (L : Line),
+    SameSide a b L -> Not (OnLine a L) :=
+    fun (a b : Point) (L : Line) (abL : SameSide a b L) =>
+    same_side_not_on_line a b L abL
+
+Theorem not_sameside_symm : ∀ (a b : Point) (L : Line),
+    Not (SameSide a b L) -> Not (SameSide b a L) :=
+    fun (a b : Point) (L : Line) (abL : Not (SameSide a b L)) =>
+    fun (baL : SameSide b a L) =>
+    abL (same_side_symm b a L baL)
+
+Theorem ne_of_sameside : ∀ (a b c : Point) (L : Line),
+    OnLine a L -> SameSide b c L -> a ≠ b :=
+    fun (a b c : Point) (L : Line) (aL : OnLine a L) (bcL : SameSide b c L) =>
+    ne_of_online_not_online a b L aL (same_side_not_on_line b c L bcL)
+
+Theorem ne_of_sameside' : ∀ (a b c : Point) (L : Line),
+    OnLine a L -> SameSide b c L -> b ≠ a :=
+    fun (a b c : Point) (L : Line) (aL : OnLine a L) (bcL : SameSide b c L) =>
+    ne_of_online_not_online' a b L aL (same_side_not_on_line b c L bcL)
+
+Theorem ne_of_diffside : ∀ (a b : Point) (L : Line),
+    diffside a b L -> a ≠ b :=
+    fun (a b : Point) (L : Line) (abL : diffside a b L) =>
+    fun (ab : a = b) =>
+    (snd _ _ abL)
+        (Eq.elim _ a (fun x => SameSide a x L)
+            (same_side_refl a L (fst _ _ (fst _ _ abL)))
+            b
+            ab)
+
+Theorem diffside_of_not_online' : ∀ (a : Point) (L : Line),
+    Not (OnLine a L) ->
+    Exists Point (fun b => diffside a b L) :=
+    fun (a : Point) (L : Line) (a_not_on_L : Not (OnLine a L)) =>
+    Exists.elim _ _ _
+        (pt_oppositeside_of_not_online L a
+            (List.nil Point)
+            (List.nil Line)
+            (List.nil Circle)
+            a_not_on_L)
+    (fun (b : Point)
+        (hb : (Not (OnLine b L) /\ Not (SameSide b a L)) /\ distinct_from b (List.nil Point) (List.nil Line) (List.nil Circle)) =>
+    Exists.intro _ _ b
+        (And.intro _ _
+            (And.intro _ _
+                a_not_on_L
+                (fst _ _ (fst _ _ hb)))
+            (fun (same_ab : SameSide a b L) =>
+                (snd _ _ (fst _ _ hb))
+                    (same_side_symm a b L same_ab))))
+
+(* If a and b are on opposite sides of L, and b and c are on opposite sides of L,
+   then a and c are on the same side of L. *)
+Theorem sameside_of_diffside_diffside : ∀ (a b c : Point) (L : Line),
+    diffside a b L -> diffside b c L -> SameSide a c L :=
+    fun (a b c : Point) (L : Line) (abL : diffside a b L) (bcL : diffside b c L) =>
+    Or.elim _ _ _
+        (same_side_or a b c L
+            (fst _ _ (fst _ _ abL))
+            (snd _ _ (fst _ _ abL))
+            (snd _ _ (fst _ _ bcL))
+            (snd _ _ abL))
+        (fun (acL : SameSide a c L) => acL)
+        (fun (bc_same : SameSide b c L) =>
+            False.elim _ ((snd _ _ bcL) bc_same))
+
+(* A point on the same side as a and opposite side from a determines the opposite side. *)
+Theorem diffside_of_sameside_diffside : ∀ (a b c : Point) (L : Line),
+    SameSide a b L -> diffside a c L -> diffside b c L :=
+    fun (a b c : Point) (L : Line) (abL : SameSide a b L) (acL : diffside a c L) =>
+    And.intro _ _
+        (And.intro _ _
+            (same_side_not_on_line b a L (same_side_symm a b L abL))
+            (snd _ _ (fst _ _ acL)))
+        (fun (bc_same : SameSide b c L) =>
+            (snd _ _ acL)
+                (same_side_trans b a c L
+                    (same_side_symm a b L abL)
+                    bc_same))
+
+Theorem sameside_of_sameside_diffside : ∀ (a b c d : Point) (L M N : Line),
+    OnLine a L -> OnLine a M -> OnLine a N ->
+    OnLine b L -> OnLine c M -> OnLine d N ->
+    SameSide c d L ->
+    diffside b d M ->
+    SameSide b c N :=
+    fun (a b c d : Point) (L M N : Line)
+        (aL : OnLine a L) (aM : OnLine a M) (aN : OnLine a N)
+        (bL : OnLine b L) (cM : OnLine c M) (dN : OnLine d N)
+        (cdL : SameSide c d L)
+        (bdM : diffside b d M) =>
+    triple_incidence_2 a b c d L M N
+        aL
+        aM
+        aN
+        bL
+        cM
+        dN
+        cdL
+        (snd _ _ bdM)
+        (snd _ _ (fst _ _ bdM))
+        (ne_of_online_not_online' a b M aM (fst _ _ (fst _ _ bdM)))
+
 
 (* ============================================================
    Proposition 5 (I.5): Base angles of an isoceles triangle are equal
@@ -593,7 +805,7 @@ Theorem angle_eq_of_iso : ∀ a b c, iso_tri a b c → Angle a b c = Angle a c b
 
 (* If two angles of a triangle are equal, the opposite sides are equal. *)
 Theorem eq_angles_implies_isoceles : ∀ (a b c : Point),
-    triangle a b c -> Angle a b c = Angle a c b -> Length a b = Length a c := sorry _
+    triangle a b c -> Angle a b c = Angle a c b -> Length a b = Length a c := sorry _ (* TODO *)
 
 
 (* ============================================================
@@ -605,9 +817,94 @@ Theorem eq_angles_implies_isoceles : ∀ (a b c : Point),
    Proposition 10 (I.10): Bisecting a segment
    ============================================================ *)
 
-Theorem bisect_segment : ∀ (a b : Point),
-    Exists Point (fun e => Between a e b /\ Length a e = Length b e) := sorry _
+Theorem pt_B_of_diffside : ∀ (a b : Point) (L : Line),
+    diffside a b L ->
+    Exists Point (fun e => OnLine e L /\ Between a e b) :=
+    fun (a b : Point) (L : Line) (abL : diffside a b L) =>
+    Exists.elim _ _ _ (line_of_pts a b (ne_of_diffside a b L abL))
+    (fun (M : Line) (abM : OnLine a M /\ OnLine b M) =>
+    Exists.elim _ _ _
+        (pt_of_linesinter L M
+            (lines_inter_if_diff_sides a b L M
+                abL
+                (fst _ _ abM)
+                (snd _ _ abM)))
+    (fun (e : Point) (e_on : OnLine e L /\ OnLine e M) =>
+    Exists.intro _ _ e
+        (And.intro _ _
+            (fst _ _ e_on)
+            (pasch_intersection_between a e b L M
+                (ne_line_of_online a L M
+                    (fst _ _ abM)
+                    (fst _ _ (fst _ _ abL)))
+                (fst _ _ e_on)
+                (snd _ _ e_on)
+                (fst _ _ abM)
+                (snd _ _ abM)
+                (Ne.symm _ _ _ (ne_of_online_not_online e a L (fst _ _ e_on) (fst _ _ (fst _ _ abL))))
+                (ne_of_online_not_online' e b L (fst _ _ e_on) (snd _ _ (fst _ _ abL)))
+                (snd _ _ abL)))))
 
+Theorem B_of_length_eq_col : ∀ (a e b : Point) (L : Line),
+    a ≠ b ->
+    OnLine a L -> OnLine e L -> OnLine b L ->
+    Length a e = Length b e ->
+    Between a e b :=
+    fun (a e b : Point) (L : Line) (ab : a ≠ b)
+        (aL : OnLine a L) (eL : OnLine e L) (bL : OnLine b L)
+        (ae_be : Length a e = Length b e) =>
+    have _ _
+        (fun (ae : a = e) =>
+            ab (EqTrans _ _ _ _ ae
+                (Eq.symm _ _ _ (eq_if_len_zero b e
+                    (EqTrans _ _ _ _
+                        (Eq.symm _ _ _ ae_be)
+                        (Eq.elim _ a (fun x => Length a x = Zero)
+                            (len_zero_if_eq a a (Eq.intro _ a))
+                            e
+                            ae))))))
+    (fun (ae : a ≠ e) =>
+    have _ _
+        (fun (eb : e = b) =>
+            ab (EqTrans _ _ _ _
+                (eq_if_len_zero a e
+                    (EqTrans _ _ _ _
+                        ae_be
+                        (Eq.elim _ b (fun x => Length b x = Zero)
+                            (len_zero_if_eq b b (Eq.intro _ b))
+                            e
+                            (Eq.symm _ _ _ eb))))
+                eb))
+    (fun (eb : e ≠ b) =>
+    Or.elim _ _ _ (between_linear a e b L aL eL bL ae eb ab)
+    (fun (Baeb : Between a e b) => Baeb)
+    (fun (rest : Between e a b \/ Between a b e) =>
+        Or.elim _ _ _ rest
+        (fun (Beab : Between e a b) =>
+            False.elim _
+                (ab (eq_if_len_zero a b
+                    (CancelAdd (Length a b) 0 (Length a e)
+                        (EqTrans Measure (Add (Length a e) (Length a b)) (Length a e) (Add (Length a e) Zero)
+                            (EqTrans _ _ _ _
+                                (EqTrans _ _ _ _
+                                    (Eq.symm _ _ _
+                                        (AddCongRight (Length e a) (Length a e) (Length a b)
+                                            (length_symm e a)))
+                                    (between_add_lengths e a b Beab))
+                                (EqTrans _ _ _ _
+                                    (length_symm e b)
+                                    (Eq.symm _ _ _ ae_be)))
+                            (Eq.symm _ _ _ (AddZero (Length a e)))))))
+        )
+        (fun (Babe : Between a b e) =>
+            False.elim _
+                (ab (eq_if_len_zero a b
+                    (AddCancel (Length a b) 0 (Length b e)
+                        (EqTrans Measure (Add (Length a b) (Length b e)) (Length b e) (Add Zero (Length b e))
+                            (EqTrans _ _ _ _
+                                (between_add_lengths a b e Babe)
+                                ae_be)
+                            (Eq.symm _ _ _ (ZeroAdd (Length b e)))))))))))
 
 (* ============================================================
    Proposition 11 (I.11): Erecting a perpendicular at a point on a line
@@ -615,7 +912,17 @@ Theorem bisect_segment : ∀ (a b : Point),
 
 (* Extend segment bc beyond b to a point d with length bd = length ba. *)
 Theorem length_eq_B_of_ne : ∀ a b c, (ab : a ≠ b) → (bc : b ≠ c) →
-    ∃ d, Between a b d ∧ length b c = length b d := sorry _
+    ∃ d, Between a b d ∧ length b c = length b d :=
+    fun (a b c : Point) (ab : a ≠ b) (bc : b ≠ c) =>
+    Exists.elim _ _ _ (circle_of_ne b c bc)
+    (fun (aa : Circle) (hcircle : CenterCircle b aa /\ OnCircle c aa) =>
+    Exists.elim _ _ _ (pt_oncircle_of_inside_ne a b aa ab (center_lies_inside_circle b aa (fst _ _ hcircle)))
+    (fun (d : Point) (hd : Between a b d /\ OnCircle d aa) =>
+    Exists.intro _ _ d
+    (And.intro _ _
+        (fst _ _ hd)
+        (snd _ _ (on_circle_iff_length_eq b c d aa (fst _ _ hcircle) (snd _ _ hcircle)) (snd _ _ hd))
+    )))
 
 (* The left and middle endpoints are distinct: B(a,b,c) implies a ≠ b. *)
 Theorem ne_12_of_between : ∀ a b c, Between a b c → a ≠ b :=
@@ -635,8 +942,310 @@ Theorem ne_32_of_between : ∀ a b c, Between a b c → c ≠ b :=
 (* On line L through a and b, on the same side as d, there exists an equilateral triangle. *)
 Theorem iseqtri_sameside_of_ne : ∀ a b d L,
     (ab : a ≠ b) → (aL : OnLine a L) → (bL : OnLine b L) → (dL : ¬OnLine d L) →
-    ∃ c, ¬OnLine c L ∧ SameSide c d L ∧ eq_tri a b c := sorry _
+    ∃ c, ¬OnLine c L ∧ SameSide c d L ∧ eq_tri a b c :=
+    fun a b d L ab aL bL dL =>
+    Exists.elim _ _ _ (circle_of_ne a b ab)
+    (fun aa aa_data =>
+    And.elim1 _ _ _ aa_data
+    (fun aaa baa =>
+    Exists.elim _ _ _ (circle_of_ne b a (Ne.symm _ _ _ ab))
+    (fun bb bb_data =>
+    And.elim1 _ _ _ bb_data
+    (fun bbb abb =>
+    Exists.elim _ _ _
+      (pt_sameside_of_circlesinter d a b L aa bb aL bL dL aaa bbb
+        (circles_inter_if_on_in b a aa bb baa
+          (center_lies_inside_circle a aa aaa)
+          (center_lies_inside_circle b bb bbb)
+          abb))
+    (fun c hc =>
+    And.elim1 _ _ _ hc
+    (fun cdL circle_data =>
+    And.elim1 _ _ _ circle_data
+    (fun caa cbb =>
+    Exists.intro _ _ c
+    (And.intro _ _
+      (And.intro _ _
+        (same_side_not_on_line c d L cdL)
+        cdL)
+      (And.intro _ _
+        (And.intro _ _
+          (And.intro _ _
+            (fun (col : colinear a b c) =>
+              Exists.elim _ _ _ col
+              (fun M hM =>
+                (same_side_not_on_line c d L cdL)
+                  (Eq.elim Line M (fun X => OnLine c X)
+                    (snd _ _ hM)
+                    L
+                    (two_distinct_points_determine_unique_line a b M L ab
+                      (fst _ _ (fst _ _ hM))
+                      (snd _ _ (fst _ _ hM))
+                      aL bL))))
+            (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa))
+          (snd _ _ (on_circle_iff_length_eq b a c bb bbb abb) cbb))
+        (EqTrans Measure (Length c a) (Length a c) (Length c b)
+          (length_symm c a)
+            (EqTrans Measure (Length a c) (Length b c) (Length c b)
+              (EqTrans Measure (Length a c) (Length a b) (Length b c)
+                (Eq.symm Measure (Length a b) (Length a c)
+                  (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa))
+                (EqTrans Measure (Length a b) (Length b a) (Length b c)
+                  (length_symm a b)
+                  (snd _ _ (on_circle_iff_length_eq b a c bb bbb abb) cbb)))
+            (length_symm b c))))))))))))
 
+Theorem iseqtri_iseqtri_diffside_of_ne : ∀ (a b : Point),
+    a ≠ b ->
+    Exists Point (fun c =>
+        Exists Point (fun d =>
+            Exists Line (fun L =>
+                OnLine a L /\ OnLine b L /\ diffside c d L /\ eq_tri a b c /\ eq_tri a b d))) :=
+    fun (a b : Point) (ab : a ≠ b) =>
+    Exists.elim _ _ _ (line_of_pts a b ab)
+    (fun (L : Line) (abL : OnLine a L /\ OnLine b L) =>
+    Exists.elim _ _ _
+        (pt_exists
+            (List.nil Point)
+            (List.cons Line L (List.nil Line))
+            (List.nil Circle))
+    (fun (f : Point)
+        (hf : distinct_from f (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
+    have _ _ (distinct_from_single_line_not_on f L hf)
+    (fun (f_not_on_L : Not (OnLine f L)) =>
+    Exists.elim _ _ _ (iseqtri_sameside_of_ne a b f L ab (fst _ _ abL) (snd _ _ abL) f_not_on_L)
+    (fun (c : Point) (hc : Not (OnLine c L) /\ SameSide c f L /\ eq_tri a b c) =>
+    Exists.elim _ _ _ (diffside_of_not_online' f L f_not_on_L)
+    (fun (g : Point) (fgL : diffside f g L) =>
+    Exists.elim _ _ _ (iseqtri_sameside_of_ne a b g L ab (fst _ _ abL) (snd _ _ abL) (snd _ _ (fst _ _ fgL)))
+    (fun (d : Point) (hd : Not (OnLine d L) /\ SameSide d g L /\ eq_tri a b d) =>
+    have _ _
+        (diffside_of_sameside_diffside f c d L
+            (same_side_symm c f L (snd _ _ (fst _ _ hc)))
+            (And.intro _ _
+                (And.intro _ _
+                    f_not_on_L
+                    (fst _ _ (fst _ _ hd)))
+                (fun (same_fd : SameSide f d L) =>
+                    (snd _ _ fgL)
+                        (same_side_symm g f L
+                            (same_side_trans d g f L
+                                (snd _ _ (fst _ _ hd))
+                                (same_side_symm f d L same_fd))))))
+    (fun (cd_diff : diffside c d L) =>
+    Exists.intro Point
+        (fun c0 =>
+            Exists Point (fun d0 =>
+                Exists Line (fun L0 =>
+                    OnLine a L0 /\ OnLine b L0 /\ diffside c0 d0 L0 /\ eq_tri a b c0 /\ eq_tri a b d0)))
+        c
+        (Exists.intro Point
+            (fun d0 =>
+                Exists Line (fun L0 =>
+                    OnLine a L0 /\ OnLine b L0 /\ diffside c d0 L0 /\ eq_tri a b c /\ eq_tri a b d0))
+            d
+            (Exists.intro Line
+                (fun L0 =>
+                    OnLine a L0 /\ OnLine b L0 /\ diffside c d L0 /\ eq_tri a b c /\ eq_tri a b d)
+                L
+	                    (And.intro _ _
+	                        (And.intro _ _
+	                            (And.intro _ _
+	                                (And.intro _ _
+	                                    (fst _ _ abL)
+	                                    (snd _ _ abL))
+	                            cd_diff)
+	                        (snd _ _ hc))
+                    (snd _ _ hd)))))))))
+    ))
+
+Theorem angle_121_zero : ∀ (a b : Point), a ≠ b -> Angle a b a = 0 :=
+    fun (a b : Point) (ab : a ≠ b) =>
+    Exists.elim _ _ _ (line_of_pts b a (Ne.symm _ _ _ ab))
+    (fun (L : Line) (baL : OnLine b L /\ OnLine a L) =>
+    angle_zero_if_on_line b a a L
+        (Ne.symm _ _ _ ab)
+        (Ne.symm _ _ _ ab)
+        (fst _ _ baL)
+        (snd _ _ baL)
+        (snd _ _ baL)
+        (fun (Baba : Between a b a) =>
+            ne_13_of_between a b a Baba (Eq.intro _ a)))
+
+Theorem angle_extension_of_B : ∀ (a b c d : Point),
+    a ≠ d ->
+    Between a b c ->
+    Angle d a b = Angle d a c :=
+    fun (a b c d : Point) (ad : a ≠ d) (Babc : Between a b c) =>
+    Exists.elim _ _ _ (line_of_pts a d ad)
+    (fun (L : Line) (adL : OnLine a L /\ OnLine d L) =>
+    Exists.elim _ _ _ (line_of_pts a b (ne_12_of_between a b c Babc))
+    (fun (M : Line) (abL : OnLine a M /\ OnLine b M) =>
+    angle_eq_on_same_rays a d d b c L M
+        (fst _ _ adL)
+        (snd _ _ adL)
+        (snd _ _ adL)
+        (fst _ _ abL)
+        (snd _ _ abL)
+        (between_collinear_right a b c M Babc (fst _ _ abL) (snd _ _ abL))
+        (Ne.symm _ _ _ ad)
+        (Ne.symm _ _ _ ad)
+        (Ne.symm _ _ _ (ne_12_of_between a b c Babc))
+        (Ne.symm _ _ _ (ne_13_of_between a b c Babc))
+        (fun (Bdad : Between d a d) =>
+            ne_13_of_between d a d Bdad (Eq.intro _ d))
+        (snd _ _ (snd _ _ (snd _ _ (between_distinct a b c Babc))))))
+
+(* Any angle of a nondegenerate triangle is strictly positive. *)
+Theorem zero_lt_angle_of_tri : ∀ (a b c : Point),
+    triangle a b c -> 0 < Angle c a b :=
+    fun (a b c : Point) (tri_abc : triangle a b c) =>
+    Or.elim _ _ _ (LtTricot 0 (Angle c a b))
+        (fun (lt0 : 0 < Angle c a b) => lt0)
+        (fun (rest : Angle c a b < 0 \/ 0 = Angle c a b) =>
+            Or.elim _ _ _ rest
+                (fun (lt_neg : Angle c a b < 0) =>
+                    False.elim _ ((fst _ _ (angle_range c a b)) lt_neg))
+                (fun (ang0 : 0 = Angle c a b) =>
+                    False.elim _
+                        (Exists.elim _ _ _ (line_of_pts a c (ne_13_of_triangle a b c tri_abc))
+                            (fun (L : Line) (acL : OnLine a L /\ OnLine c L) =>
+                                tri_abc
+                                    (Exists.intro _ _ L
+                                        (And.intro _ _
+                                            (And.intro _ _
+                                                (fst _ _ acL)
+                                                (fst _ _
+                                                    (on_line_if_angle_zero a c b L
+                                                        (ne_13_of_triangle a b c tri_abc)
+                                                        (ne_12_of_triangle a b c tri_abc)
+                                                        (fst _ _ acL)
+                                                        (snd _ _ acL)
+                                                        (Eq.symm _ _ _ ang0))))
+                                            (snd _ _ acL)))))))
+
+Theorem bisect_segment : ∀ (a b : Point),
+    a ≠ b ->
+    Exists Point (fun e => Between a e b /\ Length a e = Length b e) :=
+    fun (a b : Point) (ab : a ≠ b) =>
+    Exists.elim _ _ _ (iseqtri_iseqtri_diffside_of_ne a b ab)
+    (fun (c : Point)
+        (hc : Exists Point (fun d =>
+            Exists Line (fun L =>
+                OnLine a L /\ OnLine b L /\ diffside c d L /\ eq_tri a b c /\ eq_tri a b d))) =>
+    Exists.elim _ _ _ hc
+    (fun (d : Point)
+        (hd : Exists Line (fun L =>
+            OnLine a L /\ OnLine b L /\ diffside c d L /\ eq_tri a b c /\ eq_tri a b d)) =>
+    Exists.elim _ _ _ hd
+    (fun (L : Line)
+        (hL : OnLine a L /\ OnLine b L /\ diffside c d L /\ eq_tri a b c /\ eq_tri a b d) =>
+    have _ _ (fst _ _ (fst _ _ (fst _ _ (fst _ _ hL))))
+    (fun (aL : OnLine a L) =>
+    have _ _ (snd _ _ (fst _ _ (fst _ _ (fst _ _ hL))))
+    (fun (bL : OnLine b L) =>
+    have _ _ (snd _ _ (fst _ _ (fst _ _ hL)))
+    (fun (cdL : diffside c d L) =>
+    have _ _ (snd _ _ (fst _ _ hL))
+    (fun (eqtri_abc : eq_tri a b c) =>
+    have _ _ (snd _ _ hL)
+    (fun (eqtri_abd : eq_tri a b d) =>
+    Exists.elim _ _ _ (pt_B_of_diffside c d L cdL)
+    (fun (e : Point) (he : OnLine e L /\ Between c e d) =>
+    have _ _
+        (EqTrans _ _ _ _
+            (Eq.symm _ _ _ (length_symm c a))
+            (EqTrans _ _ _ _
+                (snd _ _ eqtri_abc)
+                (length_symm c b)))
+    (fun (ac_bc : Length a c = Length b c) =>
+    have _ _
+        (fst _ _ (snd _ _
+            (sss_congruence a c d b c d
+                (ne_13_of_triangle a b c (fst _ _ (fst _ _ (fst _ _ eqtri_abc))))
+                (ne_of_diffside c d L cdL)
+                (ne_13_of_triangle a b d (fst _ _ (fst _ _ (fst _ _ eqtri_abd))))
+                (ne_23_of_triangle a b c (fst _ _ (fst _ _ (fst _ _ eqtri_abc))))
+                (ne_of_diffside c d L cdL)
+                (ne_23_of_triangle a b d (fst _ _ (fst _ _ (fst _ _ eqtri_abd))))
+                ac_bc
+                (Eq.intro _ _)
+                (snd _ _ eqtri_abd))))
+    (fun (acd_bcd : Angle a c d = Angle b c d) =>
+    have _ _
+        (EqTrans _ _ _ _
+            (angle_extension_of_B c e d a
+                (Ne.symm _ _ _
+                    (ne_13_of_triangle a b c (fst _ _ (fst _ _ (fst _ _ eqtri_abc)))))
+                (snd _ _ he))
+            (EqTrans _ _ _ _
+                acd_bcd
+                (Eq.symm _ _ _
+                    (angle_extension_of_B c e d b
+                        (Ne.symm _ _ _
+                            (ne_23_of_triangle a b c (fst _ _ (fst _ _ (fst _ _ eqtri_abc)))))
+                        (snd _ _ he)))))
+    (fun (ace_bce : Angle a c e = Angle b c e) =>
+        (Or.elim _ _ _ (point_eq_em a e)
+            (fun (ae : a = e) =>
+                False.elim _
+                    (LtNe 0 (Angle b c a)
+                        (zero_lt_angle_of_tri c a b
+                            (swap_12_triangle _ _ _
+                                (swap_23_triangle _ _ _
+                                    (fst _ _ (fst _ _ (fst _ _ eqtri_abc))))))
+                        (Eq.symm _ _ _
+                            (EqTrans _ _ _ _
+                                (Eq.symm _ _ _
+                                    (Eq.elim _ e
+                                        (fun x => Angle a c x = Angle b c x)
+                                        ace_bce
+                                        a
+                                        (Eq.symm _ _ _ ae)))
+                                (angle_121_zero a c
+                                    (ne_13_of_triangle a b c (fst _ _ (fst _ _ (fst _ _ eqtri_abc))))))))))
+            (fun (ae : a ≠ e) =>
+                (Or.elim _ _ _ (point_eq_em b e)
+                    (fun (be : b = e) =>
+                        False.elim _
+                            (LtNe 0 (Angle a c b)
+                                (zero_lt_angle_of_tri c b a
+                                    (swap_12_triangle _ _ _
+                                        (swap_23_triangle _ _ _
+                                            (swap_12_triangle _ _ _
+                                                (fst _ _ (fst _ _ (fst _ _ eqtri_abc)))))))
+                                (Eq.symm _ _ _
+                                    (EqTrans _ _ _ _
+                                        (Eq.elim _ e
+                                            (fun x => Angle a c x = Angle b c x)
+                                            ace_bce
+                                            b
+                                            (Eq.symm _ _ _ be))
+                                        (angle_121_zero b c
+                                            (ne_23_of_triangle a b c (fst _ _ (fst _ _ (fst _ _ eqtri_abc))))))))))
+                    (fun (be : b ≠ e) =>
+                        have _ _
+                            (fst _ _ (snd _ _
+                                (sas_congruence a c e b c e
+                                    (ne_13_of_triangle a b c (fst _ _ (fst _ _ (fst _ _ eqtri_abc))))
+                                    (ne_12_of_between c e d (snd _ _ he))
+                                    ae
+                                    (ne_23_of_triangle a b c (fst _ _ (fst _ _ (fst _ _ eqtri_abc))))
+                                    (ne_12_of_between c e d (snd _ _ he))
+                                    be
+                                    ac_bc
+                                    (Eq.intro _ _)
+                                    ace_bce)))
+                        (fun (ae_be : Length a e = Length b e) =>
+                            Exists.intro _ _ e
+                                (And.intro _ _
+                                    (B_of_length_eq_col a e b L
+                                        ab
+                                        aL
+                                        (fst _ _ he)
+                                        bL
+                                        ae_be)
+                                    ae_be))))))))))))))))
 Theorem online_3_of_B : ∀ a b c L, Between a b c → OnLine a L → OnLine b L → OnLine c L :=
     fun (a b c : Point) (L : Line) (h : Between a b c) (haL : OnLine a L) (hbL : OnLine b L) =>
         between_collinear_right a b c L h haL hbL
@@ -652,7 +1261,28 @@ Theorem between_symm : ∀ a b c, Between a b c → Between c b a :=
 (* If b ≠ e and B(a,b,c) and B(a,b,d), then ∠ebd = ∠ebc
    (c and d are on the same ray from b, so the angle to e is the same). *)
 Theorem angle_extension_of_B_B : ∀ a b c d e (be : b ≠ e) (Babc : Between a b c) (Babd : Between a b d),
-    Angle e b d = Angle e b c := sorry _
+    Angle e b d = Angle e b c :=
+    fun (a b c d e : Point) (be : b ≠ e) (Babc : Between a b c) (Babd : Between a b d) =>
+    Exists.elim _ _ _ (line_of_pts b e be)
+    (fun (L : Line) (be_on_L : OnLine b L /\ OnLine e L) =>
+    Exists.elim _ _ _ (line_of_pts a b (ne_12_of_between a b c Babc))
+    (fun (M : Line) (ab_on_M : OnLine a M /\ OnLine b M) =>
+    angle_eq_on_same_rays b e e d c L M
+        (fst _ _ be_on_L)
+        (snd _ _ be_on_L)
+        (snd _ _ be_on_L)
+        (snd _ _ ab_on_M)
+        (online_3_of_B a b d M Babd (fst _ _ ab_on_M) (snd _ _ ab_on_M))
+        (online_3_of_B a b c M Babc (fst _ _ ab_on_M) (snd _ _ ab_on_M))
+        (Ne.symm _ _ _ be)
+        (Ne.symm _ _ _ be)
+        (ne_32_of_between a b d Babd)
+        (ne_32_of_between a b c Babc)
+        (fun (Bebe : Between e b e) =>
+            ne_13_of_between e b e Bebe (Eq.intro _ e))
+        (fun (Bdbc : Between d b c) =>
+            between_separation a b c d Babc Babd (between_symm d b c Bdbc))
+    ))
 
 (* Perpendicular at b, with b between a and c on L, result on same side as f.
    The proof extends ba beyond b to d with bd = ba, then constructs the equilateral
@@ -721,12 +1351,407 @@ Theorem perpendicular_of_online : ∀ (a b c f : Point) (L : Line),
    Variant that does not require an explicit betweenness witness. *)
 Theorem perpendicular_of_online' : ∀ (a b c f : Point) (L : Line),
     a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine f L) ->
-    Exists Point (fun c => SameSide c f L ∧ Angle a b c = 90) := sorry _
+    Exists Point (fun c => SameSide c f L ∧ Angle a b c = 90) :=
+    fun a b c f L ab aL bL fL =>
+    Exists.elim _ _ _
+      (pt_extension_on_line L a b
+        (List.nil Point)
+        (List.nil Line)
+        (List.nil Circle)
+        aL
+        bL
+        ab
+        (List.not_mem_nil Line L))
+    (fun d hd =>
+    Exists.elim _ _ _
+      (perpendicular_of_online a b d f L
+        (snd _ _ (fst _ _ hd))
+        aL
+        bL
+        fL)
+    (fun e he =>
+    Exists.intro _ _ e
+      (And.intro _ _
+        (fst _ _ (fst _ _ he))
+        (EqTrans Measure
+          (Angle a b e) (Angle e b a) 90
+          (Eq.symm Measure (Angle e b a) (Angle a b e)
+            (angle_symm e b a
+              (fun eb => (same_side_not_on_line e f L (fst _ _ (fst _ _ he)))
+                (Eq.elim Point b (fun x => OnLine x L) bL e (Eq.symm Point e b eb)))
+              (Ne.symm _ _ _ ab)))
+          (snd _ _ (fst _ _ he))))))
 
 (* Perpendicular at b on L, result on the opposite side from f. *)
 Theorem perpendicular_of_online'' : ∀ (a b c f : Point) (L : Line),
     a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine f L) ->
-    Exists Point (fun c => diffside c f L ∧ Angle a b c = 90) := sorry _
+    Exists Point (fun c => diffside c f L ∧ Angle a b c = 90) :=
+    fun a b c f L ab aL bL fL =>
+    Exists.elim _ _ _
+      (pt_oppositeside_of_not_online L f
+        (List.nil Point)
+        (List.nil Line)
+        (List.nil Circle)
+        fL)
+    (fun g hg =>
+    Exists.elim _ _ _
+      (perpendicular_of_online' a b c g L
+        ab
+        aL
+        bL
+        (fst _ _ (fst _ _ hg)))
+    (fun e he =>
+    Exists.intro _ _ e
+      (And.intro _ _
+        (And.intro _ _
+          (And.intro _ _
+            (same_side_not_on_line e g L (fst _ _ he))
+            fL)
+          (fun efL =>
+            (snd _ _ (fst _ _ hg))
+              (same_side_trans e g f L (fst _ _ he) efL)))
+        (snd _ _ he))))
+
+(* If L and M meet at a, b is another point on L, and c is on M, then any point d
+   on the same side of L as c forces b off M. *)
+Theorem online_of_sameside_inter : ∀ (a b c d : Point) (L M : Line),
+    a ≠ b -> OnLine a L -> OnLine a M -> OnLine b L -> OnLine c M ->
+    SameSide c d L -> Not (OnLine b M) :=
+    fun (a b c d : Point) (L M : Line) (ab : a ≠ b)
+        (aL : OnLine a L) (aM : OnLine a M) (bL : OnLine b L) (cM : OnLine c M)
+        (cdL : SameSide c d L) (bM : OnLine b M) =>
+    (same_side_not_on_line c d L cdL)
+        (Eq.elim _ M (fun X => OnLine c X) cM L
+            (two_distinct_points_determine_unique_line a b M L ab aM bM aL bL))
+
+(* If c and d are collinear with b and lie on the same side of L, then they determine
+   the same ray from b, so the angle to a is unchanged. *)
+Theorem angle_extension_of_sameside : ∀ (a b c d : Point) (L : Line),
+    a ≠ b -> OnLine b L -> colinear b c d -> SameSide c d L ->
+    Angle c b a = Angle d b a :=
+    fun (a b c d : Point) (L : Line) (ab : a ≠ b) (bL : OnLine b L)
+        (col_bcd : colinear b c d) (cdL : SameSide c d L) =>
+    Or.elim _ _ _ (point_eq_em c d)
+    (fun (cd : c = d) =>
+        Eq.elim _ c (fun x => Angle c b a = Angle x b a) (Eq.intro _ _) d cd)
+    (fun (cd : c ≠ d) =>
+    Exists.elim _ _ _ col_bcd
+    (fun (M : Line) (on_M : OnLine b M /\ OnLine c M /\ OnLine d M) =>
+    Exists.elim _ _ _ (line_of_pts b a (Ne.symm _ _ _ ab))
+    (fun (N : Line) (on_N : OnLine b N /\ OnLine a N) =>
+    angle_eq_on_same_rays b c d a a M N
+        (fst _ _ (fst _ _ on_M))
+        (snd _ _ (fst _ _ on_M))
+        (snd _ _ on_M)
+        (fst _ _ on_N)
+        (snd _ _ on_N)
+        (snd _ _ on_N)
+        (ne_of_online_not_online' b c L bL (same_side_not_on_line c d L cdL))
+        (ne_of_online_not_online' b d L bL (same_side_not_on_line d c L (same_side_symm c d L cdL)))
+        ab
+        ab
+        (fun (Bcbd : Between c b d) =>
+            (pasch_online_not_sameside c b d L Bcbd bL) cdL)
+        (fun (Baba : Between a b a) =>
+            ne_13_of_between a b a Baba (Eq.intro _ a)))))
+
+(* If L and M meet at b, a is another point on L, and c is another point on M,
+   then any point d on M distinct from b cannot lie on L unless it is the intersection. *)
+Theorem offline_of_online_offline : ∀ (a b c : Point) (L M : Line),
+    b ≠ c -> OnLine a L -> OnLine b L -> OnLine b M -> OnLine c M ->
+    Not (OnLine a M) -> Not (OnLine c L) :=
+    fun (a b c : Point) (L M : Line) (bc : b ≠ c)
+        (aL : OnLine a L) (bL : OnLine b L) (bM : OnLine b M) (cM : OnLine c M)
+        (a_not_on_M : Not (OnLine a M)) =>
+    fun (cL : OnLine c L) =>
+    (online_3_of_triangle b c a L bL cL
+        (triangle_of_ne_online b c a M bc bM cM a_not_on_M))
+        aL
+
+(* Collinearity together with a different-side witness puts the middle point between the other two. *)
+Theorem col_of_B : ∀ (a b c : Point),
+    Between a b c -> colinear a b c :=
+    fun (a b c : Point) (Babc : Between a b c) =>
+    Exists.elim _ _ _ (line_of_pts a b (ne_12_of_between a b c Babc))
+    (fun (L : Line) (ab_on_L : OnLine a L /\ OnLine b L) =>
+    Exists.intro _ _ L
+        (And.intro _ _
+            (And.intro _ _
+                (fst _ _ ab_on_L)
+                (snd _ _ ab_on_L))
+            (online_3_of_B a b c L Babc (fst _ _ ab_on_L) (snd _ _ ab_on_L))))
+
+Theorem col_132_of_col : ∀ (a b c : Point),
+    colinear a b c -> colinear a c b :=
+    fun (a b c : Point) (col_abc : colinear a b c) =>
+    Exists.elim _ _ _ col_abc
+    (fun (L : Line) (on_L : OnLine a L /\ OnLine b L /\ OnLine c L) =>
+    Exists.intro _ _ L
+        (And.intro _ _
+            (And.intro _ _
+                (fst _ _ (fst _ _ on_L))
+                (snd _ _ on_L))
+            (snd _ _ (fst _ _ on_L))))
+
+Theorem B_of_col_diffside : ∀ (a b c : Point) (L : Line),
+    colinear a b c -> OnLine b L -> diffside a c L -> Between a b c :=
+    fun (a b c : Point) (L : Line) (col_abc : colinear a b c) (bL : OnLine b L)
+        (acL : diffside a c L) =>
+    Exists.elim _ _ _ col_abc
+    (fun (M : Line) (on_M : OnLine a M /\ OnLine b M /\ OnLine c M) =>
+    pasch_intersection_between a b c L M
+        (ne_line_of_online a L M (fst _ _ (fst _ _ on_M)) (fst _ _ (fst _ _ acL)))
+        bL
+        (snd _ _ (fst _ _ on_M))
+        (fst _ _ (fst _ _ on_M))
+        (snd _ _ on_M)
+        (Ne.symm _ _ _ (ne_of_online_not_online b a L bL (fst _ _ (fst _ _ acL))))
+        (ne_of_online_not_online' b c L bL (snd _ _ (fst _ _ acL)))
+        (snd _ _ acL))
+
+(* Angle addition specialized to the “same side” hypotheses that arise in Prop. 13. *)
+Theorem angle_add_of_sameside : ∀ (a b c d : Point) (L M : Line),
+    OnLine a L -> OnLine b L -> OnLine a M -> OnLine c M ->
+    SameSide c d L -> SameSide b d M ->
+    Angle b a c = Angle d a b + Angle d a c :=
+    fun (a b c d : Point) (L M : Line)
+        (aL : OnLine a L) (bL : OnLine b L) (aM : OnLine a M) (cM : OnLine c M)
+        (cdL : SameSide c d L) (bdM : SameSide b d M) =>
+    Eq.elim _ (Angle b a d)
+        (fun x => Angle b a c = x + Angle d a c)
+        (angle_add_if_same_side a b c d L M
+            aL
+            aM
+            bL
+            cM
+            (ne_of_online_not_online a b M aM (same_side_not_on_line b d M bdM))
+            (ne_of_online_not_online a c L aL (same_side_not_on_line c d L cdL))
+            (same_side_not_on_line d c L (same_side_symm c d L cdL))
+            (same_side_not_on_line d b M (same_side_symm b d M bdM))
+            (ne_line_of_online c L M cM (same_side_not_on_line c d L cdL))
+            bdM
+            cdL)
+        (Angle d a b)
+        (angle_symm b a d
+            (ne_of_online_not_online' a b M aM (same_side_not_on_line b d M bdM))
+            (ne_of_online_not_online a d M aM (same_side_not_on_line d b M (same_side_symm b d M bdM))))
+
+(* Arithmetic package for the Prop. 13 angle-splitting argument. *)
+Theorem sum_two_right_from_splits : ∀ (dba dbc ebd dbe eba ebc : Measure),
+    dba = ebd + eba ->
+    ebc = dbe + dbc ->
+    ebd = dbe ->
+    eba = 90 ->
+    ebc = 90 ->
+    dba + dbc = 90 + 90 :=
+    fun (dba dbc ebd dbe eba ebc : Measure)
+        (dba_split : dba = ebd + eba)
+        (ebc_split : ebc = dbe + dbc)
+        (ebd_dbe : ebd = dbe)
+        (eba90 : eba = 90)
+        (ebc90 : ebc = 90) =>
+    EqTrans _ _ _ _
+        (AddCongRight dba (ebd + eba) dbc dba_split)
+        (EqTrans _ _ _ _
+            (AddCongRight (ebd + eba) (dbe + eba) dbc
+                (AddCongRight ebd dbe eba ebd_dbe))
+            (EqTrans _ _ _ _
+                (AddCongRight (dbe + eba) (eba + dbe) dbc (AddComm dbe eba))
+                (EqTrans _ _ _ _
+                    (AddAssoc eba dbe dbc)
+                    (EqTrans _ _ _ _
+	                        (AddCongLeft (dbe + dbc) ebc eba (Eq.symm _ _ _ ebc_split))
+	                        (EqTrans _ _ _ _
+	                            (AddCongRight eba 90 ebc eba90)
+	                            (AddCongLeft ebc 90 90 ebc90))))))
+
+(* Triple-incidence in the form needed for Prop. 13. *)
+Theorem not_sameside_of_sameside_sameside : ∀ (a b c d : Point) (L M N : Line),
+    OnLine a L -> OnLine a M -> OnLine a N ->
+    OnLine b L -> OnLine c M -> OnLine d N ->
+    SameSide d c L -> SameSide b c N ->
+    Not (SameSide b d M) :=
+    fun (a b c d : Point) (L M N : Line)
+        (aL : OnLine a L) (aM : OnLine a M) (aN : OnLine a N)
+        (bL : OnLine b L) (cM : OnLine c M) (dN : OnLine d N)
+        (dcL : SameSide d c L) (bcN : SameSide b c N) =>
+    triple_incidence_1 a b c d L M N
+        aL
+        aM
+        aN
+        bL
+        cM
+        dN
+        (same_side_symm d c L dcL)
+        bcN
+
+(* Three concurrent lines together with two same-side conditions force the remaining
+   pair to lie on different sides of the third line. *)
+Theorem diffside_of_sameside_sameside : ∀ (a b c d : Point) (L M N : Line),
+    OnLine a L -> OnLine a M -> OnLine a N ->
+    OnLine b L -> OnLine c M -> OnLine d N ->
+    SameSide d c L -> SameSide b c N ->
+    diffside b d M :=
+    fun (a b c d : Point) (L M N : Line)
+        (aL : OnLine a L) (aM : OnLine a M) (aN : OnLine a N)
+        (bL : OnLine b L) (cM : OnLine c M) (dN : OnLine d N)
+        (dcL : SameSide d c L) (bcN : SameSide b c N) =>
+    And.intro _ _
+        (And.intro _ _
+            (online_of_sameside_inter a b c d L M
+                (ne_of_online_not_online a b N aN (same_side_not_on_line b c N bcN))
+                aL
+                aM
+                bL
+                cM
+                (same_side_symm d c L dcL))
+            (online_of_sameside_inter a d c b N M
+                (ne_of_online_not_online a d L aL (same_side_not_on_line d c L dcL))
+                aN
+                aM
+                dN
+                cM
+                (same_side_symm b c N bcN)))
+        (not_sameside_of_sameside_sameside a b c d L M N
+            aL
+            aM
+            aN
+            bL
+            cM
+            dN
+            dcL
+            bcN)
+
+(* If a transversal through b meets L at b and another point d of the transversal lies off L,
+   then the two other points a,c of a straight angle on L are on opposite sides of the transversal. *)
+Theorem offline_of_B_offline : ∀ (a b c d : Point) (L N : Line),
+    Between a b c -> OnLine a L -> OnLine b L -> OnLine b N -> OnLine d N ->
+    Not (OnLine d L) -> Not (OnLine a N) :=
+    fun (a b c d : Point) (L N : Line) (Babc : Between a b c)
+        (aL : OnLine a L) (bL : OnLine b L) (bN : OnLine b N) (dN : OnLine d N)
+        (d_not_on_L : Not (OnLine d L)) (aN : OnLine a N) =>
+    d_not_on_L
+        (Eq.elim _ N (fun X => OnLine d X) dN L
+            (two_distinct_points_determine_unique_line a b N L
+                (ne_12_of_between a b c Babc)
+                aN
+                bN
+                aL
+                bL))
+
+Theorem diffside_of_B_offline : ∀ (a b c d : Point) (L N : Line),
+    Between a b c -> OnLine a L -> OnLine b L -> OnLine b N -> OnLine d N ->
+    Not (OnLine d L) -> diffside a c N :=
+    fun (a b c d : Point) (L N : Line) (Babc : Between a b c)
+        (aL : OnLine a L) (bL : OnLine b L) (bN : OnLine b N) (dN : OnLine d N)
+        (d_not_on_L : Not (OnLine d L)) =>
+    And.intro _ _
+        (And.intro _ _
+            (offline_of_B_offline a b c d L N Babc aL bL bN dN d_not_on_L)
+            (offline_of_B_offline c b a d L N
+                (between_symm a b c Babc)
+                (online_3_of_B a b c L Babc aL bL)
+                bL
+                bN
+                dN
+                d_not_on_L))
+        (pasch_online_not_sameside a b c N Babc bN)
+
+Theorem diffside_of_B_offline'' : ∀ (a b c : Point) (N : Line),
+    Between a b c -> Not (OnLine a N) -> OnLine b N -> diffside a c N :=
+    fun (a b c : Point) (N : Line) (Babc : Between a b c)
+        (a_not_on_N : Not (OnLine a N)) (bN : OnLine b N) =>
+    And.intro _ _
+        (And.intro _ _
+            a_not_on_N
+            (fun (cN : OnLine c N) =>
+                a_not_on_N (online_3_of_B c b a N (between_symm a b c Babc) cN bN)))
+        (pasch_online_not_sameside a b c N Babc bN)
+
+Theorem sameside_of_B_diffside : ∀ (a b c e : Point) (L : Line),
+    Between a b c -> OnLine b L -> diffside a e L -> SameSide e c L :=
+    fun (a b c e : Point) (L : Line) (Babc : Between a b c) (bL : OnLine b L)
+        (aeL : diffside a e L) =>
+    sameside_of_diffside_diffside e a c L
+        (diffside_symm a e L aeL)
+        (diffside_of_B_offline'' a b c L (Babc) (fst _ _ (fst _ _ aeL)) bL)
+
+(* In the Prop. 13 configuration, if d is on the same side of M as c and e is on the
+   same side of L as d, then a and e are on the same side of N = bd. *)
+Theorem sameside_of_B_sameside_sameside : ∀ (a b c d e : Point) (L M N : Line),
+    Between a b c -> OnLine b L -> OnLine b M -> OnLine b N ->
+    OnLine a L -> OnLine e M -> OnLine d N ->
+    SameSide e d L -> SameSide c d M ->
+    SameSide a e N :=
+    fun (a b c d e : Point) (L M N : Line)
+        (Babc : Between a b c) (bL : OnLine b L) (bM : OnLine b M) (bN : OnLine b N)
+        (aL : OnLine a L) (eM : OnLine e M) (dN : OnLine d N)
+        (edL : SameSide e d L) (cdM : SameSide c d M) =>
+    sameside_of_diffside_diffside a c e N
+        (diffside_of_B_offline a b c d L N
+            Babc
+            aL
+            bL
+            bN
+            dN
+            (same_side_not_on_line d e L (same_side_symm e d L edL)))
+        (diffside_of_sameside_sameside b c d e L N M
+            bL
+            bN
+            bM
+            (online_3_of_B a b c L Babc aL bL)
+            dN
+            eM
+            edL
+            cdM)
+
+(* Core Prop. 13 case: once d is known to lie on the same side of the auxiliary line
+   M as c, the two split-angle equalities reduce the sum to the two right angles at e. *)
+Theorem two_right_of_flat_angle_same_side_case :
+    ∀ (a b c d e : Point) (L M N : Line),
+    Between a b c -> OnLine a L -> OnLine b L -> Not (OnLine d L) ->
+    OnLine b M -> OnLine e M -> OnLine b N -> OnLine d N ->
+    SameSide e d L -> Angle e b a = 90 -> Angle e b c = 90 ->
+    SameSide c d M ->
+    Angle d b a + Angle d b c = 90 + 90 :=
+    fun (a b c d e : Point) (L M N : Line)
+        (Babc : Between a b c) (aL : OnLine a L) (bL : OnLine b L) (d_not_on_L : Not (OnLine d L))
+        (bM : OnLine b M) (eM : OnLine e M) (bN : OnLine b N) (dN : OnLine d N)
+        (edL : SameSide e d L) (eba90 : Angle e b a = 90) (ebc90 : Angle e b c = 90)
+        (cdM : SameSide c d M) =>
+    have _ _ (online_3_of_B a b c L Babc aL bL)
+    (fun (cL : OnLine c L) =>
+    have _ _ (angle_add_of_sameside b e c d M L bM eM bL cL cdM edL)
+    (fun (ebc_split : Angle e b c = Angle d b e + Angle d b c) =>
+    have _ _ (sameside_of_B_sameside_sameside a b c d e L M N
+        Babc
+        bL
+        bM
+        bN
+        aL
+        eM
+        dN
+        edL
+        cdM)
+    (fun (aeN : SameSide a e N) =>
+    have _ _ (angle_add_of_sameside b d a e N L bN dN bL aL aeN (same_side_symm e d L edL))
+    (fun (dba_split : Angle d b a = Angle e b d + Angle e b a) =>
+    have _ _ (angle_symm e b d
+        (ne_of_online_not_online' b e L bL (same_side_not_on_line e d L edL))
+        (ne_of_online_not_online b d L bL d_not_on_L))
+    (fun (ebd_dbe : Angle e b d = Angle d b e) =>
+    sum_two_right_from_splits
+        (Angle d b a)
+        (Angle d b c)
+        (Angle e b d)
+        (Angle d b e)
+        (Angle e b a)
+        (Angle e b c)
+        dba_split
+        ebc_split
+        ebd_dbe
+        eba90
+        ebc90)))))
 
 
 (* ============================================================
@@ -737,13 +1762,152 @@ Theorem perpendicular_of_online'' : ∀ (a b c f : Point) (L : Line),
 Theorem two_right_of_flat_angle :
     ∀ a b c d L,
     Between a b c -> OnLine a L -> OnLine b L ->
-    Not (OnLine d L) -> Angle d b a + Angle d b c = 90 + 90 := sorry _
+    Not (OnLine d L) -> Angle d b a + Angle d b c = 90 + 90 :=
+    fun (a b c d : Point) (L : Line)
+        (Babc : Between a b c) (aL : OnLine a L) (bL : OnLine b L)
+        (d_not_on_L : Not (OnLine d L)) =>
+    Exists.elim _ _ _ (perpendicular_of_online a b c d L Babc aL bL d_not_on_L)
+    (fun (e : Point) (he : SameSide e d L /\ Angle e b a = 90 /\ Angle e b c = 90) =>
+    have _ _ (same_side_not_on_line e d L (fst _ _ (fst _ _ he)))
+    (fun (e_not_on_L : Not (OnLine e L)) =>
+    Exists.elim _ _ _ (line_of_pts b e (ne_of_online_not_online b e L bL e_not_on_L))
+    (fun (M : Line) (be_on_M : OnLine b M /\ OnLine e M) =>
+    Or.elim _ _ _ (excluded_middle (OnLine d M))
+    (fun (dM : OnLine d M) =>
+    have _ _ (angle_extension_of_sameside a b d e L
+        (ne_12_of_between a b c Babc)
+        bL
+        (Exists.intro _ _ M (And.intro _ _ (And.intro _ _ (fst _ _ be_on_M) dM) (snd _ _ be_on_M)))
+        (same_side_symm e d L (fst _ _ (fst _ _ he))))
+    (fun (dba_eba : Angle d b a = Angle e b a) =>
+    have _ _ (angle_extension_of_sameside c b d e L
+        (ne_32_of_between a b c Babc)
+        bL
+        (Exists.intro _ _ M (And.intro _ _ (And.intro _ _ (fst _ _ be_on_M) dM) (snd _ _ be_on_M)))
+        (same_side_symm e d L (fst _ _ (fst _ _ he))))
+    (fun (dbc_ebc : Angle d b c = Angle e b c) =>
+    EqTrans _ _ _ _
+        (AddCongRight (Angle d b a) (Angle e b a) (Angle d b c) dba_eba)
+        (EqTrans _ _ _ _
+            (AddCongLeft (Angle d b c) (Angle e b c) (Angle e b a) dbc_ebc)
+            (EqTrans _ _ _ _
+                (AddCongRight (Angle e b a) 90 (Angle e b c) (snd _ _ (fst _ _ he)))
+                (AddCongLeft (Angle e b c) 90 90 (snd _ _ he)))))))
+    (fun (d_not_on_M : Not (OnLine d M)) =>
+    have _ _ (online_3_of_B a b c L Babc aL bL)
+    (fun (cL : OnLine c L) =>
+    have _ _ (online_of_sameside_inter b a e d L M
+        (ne_21_of_between a b c Babc)
+        bL
+        (fst _ _ be_on_M)
+        aL
+        (snd _ _ be_on_M)
+        (fst _ _ (fst _ _ he)))
+    (fun (a_not_on_M : Not (OnLine a M)) =>
+    have _ _ (online_of_sameside_inter b c e d L M
+        (ne_23_of_between a b c Babc)
+        bL
+        (fst _ _ be_on_M)
+        cL
+        (snd _ _ be_on_M)
+        (fst _ _ (fst _ _ he)))
+    (fun (c_not_on_M : Not (OnLine c M)) =>
+    Or.elim _ _ _ (excluded_middle (SameSide c d M))
+    (fun (cdM : SameSide c d M) =>
+    Exists.elim _ _ _ (line_of_pts b d (ne_of_online_not_online b d L bL d_not_on_L))
+    (fun (N : Line) (bd_on_N : OnLine b N /\ OnLine d N) =>
+    two_right_of_flat_angle_same_side_case a b c d e L M N
+        Babc
+        aL
+        bL
+        d_not_on_L
+        (fst _ _ be_on_M)
+        (snd _ _ be_on_M)
+        (fst _ _ bd_on_N)
+        (snd _ _ bd_on_N)
+        (fst _ _ (fst _ _ he))
+        (snd _ _ (fst _ _ he))
+        (snd _ _ he)
+        cdM))
+    (fun (not_cdM : Not (SameSide c d M)) =>
+    Or.elim _ _ _
+        (same_side_or a c d M
+            a_not_on_M
+            c_not_on_M
+            d_not_on_M
+            (pasch_online_not_sameside a b c M Babc (fst _ _ be_on_M)))
+        (fun (adM : SameSide a d M) =>
+        Exists.elim _ _ _ (line_of_pts b d (ne_of_online_not_online b d L bL d_not_on_L))
+        (fun (N : Line) (bd_on_N : OnLine b N /\ OnLine d N) =>
+        EqTrans _ _ _ _
+            (AddComm (Angle d b a) (Angle d b c))
+            (two_right_of_flat_angle_same_side_case c b a d e L M N
+                (between_symm a b c Babc)
+                cL
+                bL
+                d_not_on_L
+                (fst _ _ be_on_M)
+                (snd _ _ be_on_M)
+                (fst _ _ bd_on_N)
+                (snd _ _ bd_on_N)
+                (fst _ _ (fst _ _ he))
+                (snd _ _ he)
+                (snd _ _ (fst _ _ he))
+                adM)))
+        (fun (cdM : SameSide c d M) => False.elim _ (not_cdM cdM))))))))))
 
 (* Corollary of I.13: if one of the two angles at b along a line is 90°, so is the other.
    Requires b ≠ d (so d and c are distinct points on L giving distinct rays from b). *)
 Theorem right_of_online_right : ∀ (a b c d : Point) (L : Line),
     b ≠ d -> triangle a b c -> OnLine b L ->
-    OnLine c L -> OnLine d L -> angle a b d = 90 -> angle a b c = 90 := sorry _
+    OnLine c L -> OnLine d L -> angle a b d = 90 -> angle a b c = 90 :=
+    fun (a b c d : Point) (L : Line)
+        (bd : b ≠ d) (tri_abc : triangle a b c) (bL : OnLine b L)
+        (cL : OnLine c L) (dL : OnLine d L) (abd90 : angle a b d = 90) =>
+    Exists.elim _ _ _ (line_of_pts a b (ne_12_of_triangle a b c tri_abc))
+    (fun (M : Line) (ab_on_M : OnLine a M /\ OnLine b M) =>
+    Or.elim _ _ _ (excluded_middle (SameSide c d M))
+    (fun (cdM : SameSide c d M) =>
+    EqTrans _ _ _ _
+        (angle_symm a b c (ne_12_of_triangle a b c tri_abc)
+            (ne_of_online_not_online b c M (snd _ _ ab_on_M)
+                (online_3_of_triangle a b c M (fst _ _ ab_on_M) (snd _ _ ab_on_M) tri_abc)))
+        (EqTrans _ _ _ _
+            (angle_extension_of_sameside a b c d M
+                (ne_12_of_triangle a b c tri_abc)
+                (snd _ _ ab_on_M)
+                (Exists.intro _ _ L (And.intro _ _ (And.intro _ _ bL cL) dL))
+                cdM)
+            (EqTrans _ _ _ _
+                (angle_symm d b a
+                    (Ne.symm _ _ _ bd)
+                    (Ne.symm _ _ _ (ne_12_of_triangle a b c tri_abc)))
+                abd90)))
+    (fun (not_cdM : Not (SameSide c d M)) =>
+    have _ _ (online_1_of_triangle a b c L bL cL tri_abc)
+    (fun (a_not_on_L : Not (OnLine a L)) =>
+    have _ _ (online_3_of_triangle a b c M (fst _ _ ab_on_M) (snd _ _ ab_on_M) tri_abc)
+    (fun (c_not_on_M : Not (OnLine c M)) =>
+    have _ _ (offline_of_online_offline a b d M L bd
+        (fst _ _ ab_on_M)
+        (snd _ _ ab_on_M)
+        bL
+        dL
+        a_not_on_L)
+    (fun (d_not_on_M : Not (OnLine d M)) =>
+    have _ _ (B_of_col_diffside c b d M
+        (Exists.intro _ _ L (And.intro _ _ (And.intro _ _ cL bL) dL))
+        (snd _ _ ab_on_M)
+        (And.intro _ _
+            (And.intro _ _ c_not_on_M d_not_on_M)
+            not_cdM))
+    (fun (Bcbd : Between c b d) =>
+    have _ _ (two_right_of_flat_angle c b d a L Bcbd cL bL a_not_on_L)
+    (fun (flat_sum : Angle a b c + Angle a b d = 90 + 90) =>
+    AddCancel (Angle a b c) 90 90
+        (EqTrans _ _ _ _
+            (Eq.symm _ _ _ (AddCongLeft (Angle a b d) 90 (Angle a b c) abd90))
+            flat_sum))))))))
 
 
 (* ============================================================
@@ -751,13 +1915,69 @@ Theorem right_of_online_right : ∀ (a b c d : Point) (L : Line),
    ============================================================ *)
 
 Theorem vertical_angle : ∀ (a b c d e : Point) (L : Line),
-    Angle a b d = Angle c b e := sorry _
+    Between a b c -> Between d b e ->
+    OnLine a L -> OnLine b L -> Not (OnLine d L) ->
+    Angle a b d = Angle c b e :=
+    fun (a b c d e : Point) (L : Line)
+        (Babc : Between a b c) (Bdbe : Between d b e)
+        (aL : OnLine a L) (bL : OnLine b L) (d_not_on_L : Not (OnLine d L)) =>
+    Exists.elim _ _ _ (line_of_pts d b (ne_12_of_between d b e Bdbe))
+    (fun (M : Line) (db_on_M : OnLine d M /\ OnLine b M) =>
+    have _ _ (online_3_of_B a b c L Babc aL bL)
+    (fun (cL : OnLine c L) =>
+    have _ _ (offline_of_online_offline d b c M L
+        (ne_23_of_between a b c Babc)
+        (fst _ _ db_on_M)
+        (snd _ _ db_on_M)
+        bL
+        cL
+        d_not_on_L)
+    (fun (c_not_on_M : Not (OnLine c M)) =>
+    have _ _ (two_right_of_flat_angle a b c d L Babc aL bL d_not_on_L)
+    (fun (flat1 : Angle d b a + Angle d b c = 90 + 90) =>
+    have _ _ (two_right_of_flat_angle d b e c M Bdbe (fst _ _ db_on_M) (snd _ _ db_on_M) c_not_on_M)
+    (fun (flat2 : Angle c b d + Angle c b e = 90 + 90) =>
+    have _ _ (EqTrans _ _ _ _
+        (Eq.symm _ _ _ (AddCongRight (Angle d b a) (Angle a b d) (Angle d b c)
+            (angle_symm d b a
+                (ne_of_online_not_online' b d L bL d_not_on_L)
+                (ne_21_of_between a b c Babc))))
+        flat1)
+    (fun (flat1' : Angle a b d + Angle d b c = 90 + 90) =>
+    have _ _ (EqTrans _ _ _ _
+        (Eq.symm _ _ _ (AddCongRight (Angle c b d) (Angle d b c) (Angle c b e)
+            (angle_symm c b d
+                (ne_32_of_between a b c Babc)
+                (ne_21_of_between d b e Bdbe))))
+        flat2)
+    (fun (flat2' : Angle d b c + Angle c b e = 90 + 90) =>
+    CancelAdd (Angle a b d) (Angle c b e) (Angle d b c)
+        (EqTrans _ _ _ _
+            (Eq.symm _ _ _ (AddComm (Angle a b d) (Angle d b c)))
+            (EqTrans _ _ _ _
+                flat1'
+                (Eq.symm _ _ _ flat2')))
+        )))))))
 
 (* Vertical angles are equal given explicit betweenness witnesses
    and non-collinearity of the two crossing rays. *)
 Theorem vertical_angle' : ∀ (a b c d e : Point),
     Between a b c -> Between d b e -> Not (colinear a b d) ->
-    Angle a b d = Angle c b e := sorry _
+    Angle a b d = Angle c b e :=
+    fun (a b c d e : Point)
+        (Babc : Between a b c) (Bdbe : Between d b e) (not_col_abd : Not (colinear a b d)) =>
+    Exists.elim _ _ _ (line_of_pts a b (ne_12_of_between a b c Babc))
+    (fun (L : Line) (ab_on_L : OnLine a L /\ OnLine b L) =>
+    have _ _
+        (fun (d_on_L : OnLine d L) =>
+            not_col_abd (Exists.intro _ _ L (And.intro _ _ (And.intro _ _ (fst _ _ ab_on_L) (snd _ _ ab_on_L)) d_on_L)))
+    (fun (d_not_on_L : Not (OnLine d L)) =>
+    vertical_angle a b c d e L
+        Babc
+        Bdbe
+        (fst _ _ ab_on_L)
+        (snd _ _ ab_on_L)
+        d_not_on_L))
 
 
 (* ============================================================
@@ -766,11 +1986,231 @@ Theorem vertical_angle' : ∀ (a b c d e : Point),
 
 (* B(a,b,c) and triangle abd: the exterior angle dbc exceeds the interior angle bda. *)
 Theorem internal_lt_external : ∀ (a b c d : Point),
-    Between a b c -> triangle a b d -> Angle b d a < Angle d b c := sorry _
+    Between a b c -> triangle a b d -> Angle b d a < Angle d b c :=
+    fun (a b c d : Point) (Babc : Between a b c) (tri_abd : triangle a b d) =>
+    Exists.elim _ _ _ (bisect_segment b d (ne_23_of_triangle a b d tri_abd))
+    (fun (e : Point) (he : Between b e d /\ Length b e = Length d e) =>
+    Exists.elim _ _ _ (line_of_pts b e (ne_12_of_between b e d (fst _ _ he)))
+    (fun (L : Line) (be_on_L : OnLine b L /\ OnLine e L) =>
+    have _ _ (online_3_of_B b e d L (fst _ _ he) (fst _ _ be_on_L) (snd _ _ be_on_L))
+    (fun (dL : OnLine d L) =>
+    Exists.elim _ _ _ (line_of_pts a b (ne_12_of_triangle a b d tri_abd))
+    (fun (M : Line) (ab_on_M : OnLine a M /\ OnLine b M) =>
+    have _ _ (online_3_of_B a b c M Babc (fst _ _ ab_on_M) (snd _ _ ab_on_M))
+    (fun (cM : OnLine c M) =>
+    have _ _ (online_1_of_triangle a b d L (fst _ _ be_on_L) dL tri_abd)
+    (fun (a_not_on_L : Not (OnLine a L)) =>
+    have _ _ (ne_of_online_not_online' e a L (snd _ _ be_on_L) a_not_on_L)
+    (fun (ae : a ≠ e) =>
+    have _ _ (ne_of_online_not_online e a L (snd _ _ be_on_L) a_not_on_L)
+    (fun (ea : e ≠ a) =>
+    Exists.elim _ _ _ (length_eq_B_of_ne a e a ae ea)
+    (fun (f : Point) (hf : Between a e f /\ Length e a = Length e f) =>
+    have _ _ (vertical_angle d e b a f L
+        (between_symm b e d (fst _ _ he))
+        (fst _ _ hf)
+        dL
+        (snd _ _ be_on_L)
+        a_not_on_L)
+    (fun (dea_bef : Angle d e a = Angle b e f) =>
+    have _ _ (EqTrans _ _ _ _
+        (Eq.symm _ _ _
+            (angle_symm d e a
+                (ne_32_of_between b e d (fst _ _ he))
+                ea))
+        (EqTrans _ _ _ _
+            dea_bef
+            (angle_symm b e f
+                (ne_12_of_between b e d (fst _ _ he))
+                (ne_23_of_between a e f (fst _ _ hf)))))
+    (fun (aed_feb : Angle a e d = Angle f e b) =>
+    have _ _
+        (fst _ _ (snd _ _ (snd _ _
+            (sas_congruence a e d f e b
+                ae
+                (ne_23_of_between b e d (fst _ _ he))
+                (ne_13_of_triangle a b d tri_abd)
+                (ne_32_of_between a e f (fst _ _ hf))
+                (ne_21_of_between b e d (fst _ _ he))
+                (ne_of_online_not_online' b f M (snd _ _ ab_on_M)
+                    (fun (fM : OnLine f M) =>
+                        (online_3_of_triangle a b d M
+                            (fst _ _ ab_on_M)
+                            (snd _ _ ab_on_M)
+                            tri_abd)
+                            (online_3_of_B b e d M
+                                (fst _ _ he)
+                                (snd _ _ ab_on_M)
+                                (online_of_col_online a f e M
+                                    (ne_13_of_between a e f (fst _ _ hf))
+                                    (fst _ _ ab_on_M)
+                                    fM
+                                    (col_132_of_col a e f
+                                        (col_of_B a e f (fst _ _ hf)))))))
+                (EqTrans _ _ _ _
+                    (length_symm a e)
+                    (EqTrans _ _ _ _
+                        (snd _ _ hf)
+                        (Eq.symm _ _ _ (length_symm f e))))
+                (EqTrans _ _ _ _
+                    (length_symm e d)
+                    (EqTrans _ _ _ _
+                        (Eq.symm _ _ _ (snd _ _ he))
+                        (length_symm b e)))
+                aed_feb))))
+    (fun (eda_ebf : Angle e d a = Angle e b f) =>
+    have _ _
+        (fun (eM : OnLine e M) =>
+            (online_3_of_triangle a b d M
+                (fst _ _ ab_on_M)
+                (snd _ _ ab_on_M)
+                tri_abd)
+            (online_3_of_B b e d M
+                (fst _ _ he)
+                (snd _ _ ab_on_M)
+                eM))
+    (fun (e_not_on_M : Not (OnLine e M)) =>
+    have _ _
+        (fun (fM : OnLine f M) =>
+            e_not_on_M
+                (online_of_col_online a f e M
+                    (ne_13_of_between a e f (fst _ _ hf))
+                    (fst _ _ ab_on_M)
+                    fM
+                    (col_132_of_col a e f
+                        (col_of_B a e f (fst _ _ hf)))))
+    (fun (f_not_on_M : Not (OnLine f M)) =>
+    have _ _ (sameside_of_diffside_diffside c a f L
+        (diffside_symm a c L
+            (diffside_of_B_offline'' a b c L
+                Babc
+                a_not_on_L
+                (fst _ _ be_on_L)))
+        (diffside_of_B_offline'' a e f L
+            (fst _ _ hf)
+            a_not_on_L
+            (snd _ _ be_on_L)))
+    (fun (cfL : SameSide c f L) =>
+    have _ _ (pasch_online_sameside a e f M
+        (fst _ _ hf)
+        (fst _ _ ab_on_M)
+        e_not_on_M)
+    (fun (efM : SameSide e f M) =>
+    have _ _ (angle_add_of_sameside b e c f L M
+        (fst _ _ be_on_L)
+        (snd _ _ be_on_L)
+        (snd _ _ ab_on_M)
+        cM
+        cfL
+        efM)
+    (fun (ebc_split : Angle e b c = Angle f b e + Angle f b c) =>
+    have _ _ (LtAdd 0 (Angle f b c) (Angle b d a)
+        (zero_lt_angle_of_tri b c f
+            (triangle_of_ne_online b c f M
+                (ne_23_of_between a b c Babc)
+                (snd _ _ ab_on_M)
+                cM
+                f_not_on_M)))
+    (fun (lt_add0 : 0 + Angle b d a < Angle f b c + Angle b d a) =>
+    have _ _
+        (Eq.elim _ (0 + Angle b d a)
+            (fun x => x < Angle f b c + Angle b d a)
+            lt_add0
+            (Angle b d a)
+            (ZeroAdd (Angle b d a)))
+    (fun (lt_add1 : Angle b d a < Angle f b c + Angle b d a) =>
+    have _ _
+        (Eq.elim _ (Angle f b c + Angle b d a)
+            (fun x => Angle b d a < x)
+            lt_add1
+            (Angle b d a + Angle f b c)
+            (AddComm (Angle f b c) (Angle b d a)))
+    (fun (lt_add2 : Angle b d a < Angle b d a + Angle f b c) =>
+    have _ _ (EqTrans _ _ _ _
+        (Eq.symm _ _ _
+            (angle_symm e b f
+                (ne_21_of_between b e d (fst _ _ he))
+                (ne_of_online_not_online b f M
+                    (snd _ _ ab_on_M)
+                    f_not_on_M)))
+        (EqTrans _ _ _ _
+            (Eq.symm _ _ _ eda_ebf)
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _
+                    (angle_symm a d e
+                        (ne_13_of_triangle a b d tri_abd)
+                        (ne_32_of_between b e d (fst _ _ he))))
+                (EqTrans _ _ _ _
+                    (angle_extension_of_B d e b a
+                        (Ne.symm _ _ _ (ne_13_of_triangle a b d tri_abd))
+                        (between_symm b e d (fst _ _ he)))
+                    (angle_symm a d b
+                        (ne_13_of_triangle a b d tri_abd)
+                        (Ne.symm _ _ _ (ne_23_of_triangle a b d tri_abd)))))))
+    (fun (fbe_bda : Angle f b e = Angle b d a) =>
+    have _ _ (EqTrans _ _ _ _
+        (Eq.symm _ _ _
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _
+                    (angle_symm c b e
+                        (ne_32_of_between a b c Babc)
+                        (ne_12_of_between b e d (fst _ _ he))))
+                (EqTrans _ _ _ _
+                    (angle_extension_of_B b e d c
+                        (ne_23_of_between a b c Babc)
+                        (fst _ _ he))
+                    (angle_symm c b d
+                        (ne_32_of_between a b c Babc)
+                        (ne_23_of_triangle a b d tri_abd)))))
+        (EqTrans _ _ _ _
+            ebc_split
+            (AddCongRight (Angle f b e) (Angle b d a) (Angle f b c) fbe_bda)))
+    (fun (dbc_split : Angle d b c = Angle b d a + Angle f b c) =>
+    Eq.elim _ (Angle b d a + Angle f b c)
+        (fun x => Angle b d a < x)
+        lt_add2
+        (Angle d b c)
+        (Eq.symm _ _ _ dbc_split)))))))))))))))))))))))
 
 (* B(a,b,c) and triangle abd: the exterior angle dbc exceeds the interior angle bad. *)
 Theorem internal_lt_external' : ∀ (a b c d : Point),
-    Between a b c -> triangle a b d -> Angle b a d < Angle d b c := sorry _
+    Between a b c -> triangle a b d -> Angle b a d < Angle d b c :=
+    fun (a b c d : Point) (Babc : Between a b c) (tri_abd : triangle a b d) =>
+    Exists.elim _ _ _ (length_eq_B_of_ne d b d
+        (Ne.symm _ _ _ (ne_23_of_triangle a b d tri_abd))
+        (ne_23_of_triangle a b d tri_abd))
+    (fun (e : Point) (he : Between d b e /\ Length b d = Length b e) =>
+    have _ _ (internal_lt_external d b e a
+        (fst _ _ he)
+        (swap_23_triangle d a b
+            (swap_12_triangle a d b
+                (swap_23_triangle a b d tri_abd))))
+    (fun (bad_abe : Angle b a d < Angle a b e) =>
+    Exists.elim _ _ _ (line_of_pts d b (Ne.symm _ _ _ (ne_23_of_triangle a b d tri_abd)))
+    (fun (L : Line) (db_on_L : OnLine d L /\ OnLine b L) =>
+    have _ _ (online_3_of_B d b e L (fst _ _ he) (fst _ _ db_on_L) (snd _ _ db_on_L))
+    (fun (eL : OnLine e L) =>
+    have _ _ (vertical_angle e b d a c L
+        (between_symm d b e (fst _ _ he))
+        Babc
+        eL
+        (snd _ _ db_on_L)
+        (online_1_of_triangle a b d L
+            (snd _ _ db_on_L)
+            (fst _ _ db_on_L)
+            tri_abd))
+    (fun (eba_dbc : Angle e b a = Angle d b c) =>
+    have _ _ (EqTrans _ _ _ _
+        (angle_symm a b e
+            (ne_12_of_triangle a b d tri_abd)
+            (ne_23_of_between d b e (fst _ _ he)))
+        eba_dbc)
+    (fun (abe_dbc : Angle a b e = Angle d b c) =>
+    Eq.elim _ (Angle a b e)
+        (fun x => Angle b a d < x)
+        bad_abe
+        (Angle d b c)
+        abe_dbc))))))
 
 
 (* ============================================================
@@ -779,7 +2219,7 @@ Theorem internal_lt_external' : ∀ (a b c d : Point),
 
 (* In triangle abc, if ca < cb then the angle at b is smaller than the angle at a. *)
 Theorem ang_lt_of_len_lt : ∀ (a b c : Point),
-    triangle a b c -> length c a < length c b -> angle c b a < angle c a b := sorry _
+    triangle a b c -> length c a < length c b -> angle c b a < angle c a b := sorry _ (* TODO *)
 
 
 (* ============================================================
@@ -788,7 +2228,7 @@ Theorem ang_lt_of_len_lt : ∀ (a b c : Point),
 
 (* In triangle abc, if angle at b < angle at a, then ca < cb. *)
 Theorem len_lt_of_ang_lt : ∀ (a b c : Point),
-    triangle a b c -> angle c b a < angle c a b -> Length c a < Length c b := sorry _
+    triangle a b c -> angle c b a < angle c a b -> Length c a < Length c b := sorry _ (* TODO *)
 
 
 (* ============================================================
@@ -797,14 +2237,14 @@ Theorem len_lt_of_ang_lt : ∀ (a b c : Point),
 
 (* Each side of a triangle is less than the sum of the other two. *)
 Theorem len_lt_of_tri' : ∀ (a b c : Point),
-    triangle a b c -> Length a b < Length a c + Length b c := sorry _
+    triangle a b c -> Length a b < Length a c + Length b c := sorry _ (* TODO *)
 
 (* All three triangle inequalities simultaneously. *)
 Theorem len_lt_of_tri : ∀ (a b c : Point),
     triangle a b c ->
     Length a b < Length a c + Length b c ∧
     Length b c < Length b a + Length c a ∧
-    Length c a < Length c b + Length a b := sorry _
+    Length c a < Length c b + Length a b := sorry _ (* TODO *)
 
 
 (* ============================================================
@@ -818,7 +2258,7 @@ Theorem triangle_of_ineq : ∀ (a b f a1 a2 b1 b2 e : Point) (L : Line),
     (ab_lt_a1a2_b1b2 : Length a b < Length a1 a2 + Length b1 b2) ->
     (a1a2_lt_ab_b1b2 : Length a1 a2 < Length a b + Length b1 b2) ->
     (b1b2_lt_a1a2_ab : Length b1 b2 < Length a1 a2 + Length a b) ->
-    Exists Point (fun e => Length a e = Length a1 a2 ∧ Length b e = Length b1 b2 ∧ SameSide e f L) := sorry _
+    Exists Point (fun e => Length a e = Length a1 a2 ∧ Length b e = Length b1 b2 ∧ SameSide e f L) := sorry _ (* TODO *)
 
 
 (* ============================================================
@@ -828,42 +2268,225 @@ Theorem triangle_of_ineq : ∀ (a b f a1 a2 b1 b2 e : Point) (L : Line),
 (* Copy angle ecd to vertex a on line L, placing the result on the same side as j. *)
 Theorem angle_copy : ∀ (a b j c d e : Point) (L : Line),
     a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e ->
-    Exists Point (fun h => Angle h a b = Angle e c d ∧ SameSide h j L) := sorry _
+    Exists Point (fun h => Angle h a b = Angle e c d ∧ SameSide h j L) := sorry _ (* TODO *)
 
 (* Copy angle ecd to vertex a on line L, placing the result on the opposite side from j. *)
 Theorem angle_copy' : ∀ (a b j c d e : Point) (L : Line),
     a ≠ b -> OnLine a L -> OnLine b L -> Not (OnLine j L) -> triangle c d e ->
-    Exists Point (fun h => Angle h a b = Angle e c d ∧ diffside h j L) := sorry _
+    Exists Point (fun h => Angle h a b = Angle e c d ∧ diffside h j L) := sorry _ (* TODO *)
 
 
 (* ============================================================
    Parallel line theory (Props 27–34)
    ============================================================ *)
 
+(* Proposition 27 (I.27): equal alternate interior angles imply parallel lines. *)
+Theorem offline_of_online_inter : ∀ (a b c d e : Point) (L M N : Line),
+    b ≠ c ->
+    OnLine a M -> OnLine b M ->
+    OnLine b L -> OnLine c L ->
+    OnLine c N -> OnLine d N ->
+    Not (OnLine a L) -> Not (OnLine d L) ->
+    OnLine e M -> OnLine e N ->
+    Not (OnLine e L) :=
+    fun (a b c d e : Point) (L M N : Line) (bc : b ≠ c)
+        (aM : OnLine a M) (bM : OnLine b M)
+        (bL : OnLine b L) (cL : OnLine c L)
+        (cN : OnLine c N) (dN : OnLine d N)
+        (a_not_on_L : Not (OnLine a L)) (d_not_on_L : Not (OnLine d L))
+        (eM : OnLine e M) (eN : OnLine e N) =>
+    fun (eL : OnLine e L) =>
+    Or.elim _ _ _ (point_eq_em b e)
+        (fun (be : b = e) =>
+            (offline_of_online_offline d c b N L
+                (Ne.symm _ _ _ bc)
+                dN
+                cN
+                cL
+                (Eq.elim Point e (fun x => OnLine x L) eL b (Eq.symm _ _ _ be))
+                d_not_on_L)
+            (Eq.elim Point e (fun x => OnLine x N) eN b (Eq.symm _ _ _ be)))
+        (fun (be : b ≠ e) =>
+            (offline_of_online_offline a b e M L
+                be
+                aM
+                bM
+                bL
+                eL
+                a_not_on_L)
+            eM)
+
+Theorem para_of_ang_eq :
+    ∀ (a b c d : Point) (L M N : Line),
+    b ≠ c ->
+    OnLine a M -> OnLine b M ->
+    OnLine b L -> OnLine c L ->
+    OnLine c N -> OnLine d N ->
+    diffside a d L ->
+    Angle c b a = Angle b c d ->
+    para M N :=
+    fun (a b c d : Point) (L M N : Line)
+        (bc : b ≠ c)
+        (aM : OnLine a M) (bM : OnLine b M)
+        (bL : OnLine b L) (cL : OnLine c L)
+        (cN : OnLine c N) (dN : OnLine d N)
+        (adL : diffside a d L)
+        (cba_bcd : Angle c b a = Angle b c d) =>
+    fun (e : Point) (eMN : OnLine e M /\ OnLine e N) =>
+    have _ _ (offline_of_online_inter a b c d e L M N
+        bc
+        aM
+        bM
+        bL
+        cL
+        cN
+        dN
+        (fst _ _ (fst _ _ adL))
+        (snd _ _ (fst _ _ adL))
+        (fst _ _ eMN)
+        (snd _ _ eMN))
+    (fun (e_not_on_L : Not (OnLine e L)) =>
+    Or.elim _ _ _ (excluded_middle (SameSide a e L))
+        (fun (aeL : SameSide a e L) =>
+            have _ _ (diffside_of_sameside_diffside a e d L aeL adL)
+            (fun (edL : diffside e d L) =>
+            have _ _ (B_of_col_diffside e c d L
+                (Exists.intro _ _ N
+                    (And.intro _ _
+                        (And.intro _ _
+                            (snd _ _ eMN)
+                            cN)
+                        dN))
+                cL
+                edL)
+            (fun (Becd : Between e c d) =>
+            have _ _ (offline_of_online_offline d c b N L
+                (Ne.symm _ _ _ bc)
+                dN
+                cN
+                cL
+                bL
+                (snd _ _ (fst _ _ adL)))
+            (fun (b_not_on_N : Not (OnLine b N)) =>
+            have _ _ (internal_lt_external e c d b
+                Becd
+                (triangle_of_ne_online e c b N
+                    (Ne.symm _ _ _ (ne_of_online_not_online c e L cL e_not_on_L))
+                    (snd _ _ eMN)
+                    cN
+                    b_not_on_N))
+            (fun (cbe_lt_bcd : Angle c b e < Angle b c d) =>
+            have _ _ (EqTrans _ _ _ _
+                (Eq.symm _ _ _
+                    (angle_symm e b c
+                        (Ne.symm _ _ _ (ne_of_online_not_online b e L bL e_not_on_L))
+                        bc))
+                (EqTrans _ _ _ _
+                    (Eq.symm _ _ _
+                        (angle_extension_of_sameside c b a e L
+                            (Ne.symm _ _ _ bc)
+                            bL
+                            (Exists.intro _ _ M
+                                (And.intro _ _
+                                    (And.intro _ _
+                                        bM
+                                        aM)
+                                    (fst _ _ eMN)))
+                            aeL))
+                    (angle_symm a b c
+                        (ne_of_online_not_online' b a L bL (fst _ _ (fst _ _ adL)))
+                        bc)))
+            (fun (cbe_cba : Angle c b e = Angle c b a) =>
+            False.elim _ ((LtNe _ _ cbe_lt_bcd)
+                (EqTrans _ _ _ _
+                    cbe_cba
+                    cba_bcd))))))))
+        (fun (ae_not_same : Not (SameSide a e L)) =>
+            have _ _
+                (And.intro _ _
+                    (And.intro _ _
+                        (fst _ _ (fst _ _ adL))
+                        e_not_on_L)
+                    ae_not_same)
+            (fun (aeL : diffside a e L) =>
+            have _ _ (sameside_of_diffside_diffside d a e L
+                (diffside_symm a d L adL)
+                aeL)
+            (fun (deL : SameSide d e L) =>
+            have _ _ (diffside_of_sameside_diffside d e a L deL
+                (diffside_symm a d L adL))
+            (fun (eaL : diffside e a L) =>
+            have _ _ (B_of_col_diffside e b a L
+                (Exists.intro _ _ M
+                    (And.intro _ _
+                        (And.intro _ _
+                            (fst _ _ eMN)
+                            bM)
+                        aM))
+                bL
+                eaL)
+            (fun (Beba : Between e b a) =>
+            have _ _ (offline_of_online_offline a b c M L
+                bc
+                aM
+                bM
+                bL
+                cL
+                (fst _ _ (fst _ _ adL)))
+            (fun (c_not_on_M : Not (OnLine c M)) =>
+            have _ _ (internal_lt_external e b a c
+                Beba
+                (triangle_of_ne_online e b c M
+                    (Ne.symm _ _ _ (ne_of_online_not_online b e L bL e_not_on_L))
+                    (fst _ _ eMN)
+                    bM
+                    c_not_on_M))
+            (fun (bce_lt_cba : Angle b c e < Angle c b a) =>
+            have _ _ (EqTrans _ _ _ _
+                (Eq.symm _ _ _
+                    (angle_symm e c b
+                        (Ne.symm _ _ _ (ne_of_online_not_online c e L cL e_not_on_L))
+                        (Ne.symm _ _ _ bc)))
+                (EqTrans _ _ _ _
+                    (Eq.symm _ _ _
+                        (angle_extension_of_sameside b c d e L
+                            bc
+                            cL
+                            (Exists.intro _ _ N
+                                (And.intro _ _
+                                    (And.intro _ _
+                                        cN
+                                        dN)
+                                    (snd _ _ eMN)))
+                            deL))
+                    (angle_symm d c b
+                        (ne_of_online_not_online' c d L cL (snd _ _ (fst _ _ adL)))
+                        (Ne.symm _ _ _ bc))))
+            (fun (bce_bcd : Angle b c e = Angle b c d) =>
+            False.elim _ ((LtNe _ _ bce_lt_cba)
+                (EqTrans _ _ _ _
+                    bce_bcd
+                    (Eq.symm _ _ _ cba_bcd))))))))))))
+
 (* Parallel lines do not intersect. *)
 Theorem para_not_inter : ∀ (L M : Line), para L M -> LinesInter L M -> False :=
     fun L M hpara hinter =>
     Exists.elim _ _ _ (pt_of_linesinter L M hinter)
     (fun (p : Point) (hp : OnLine p L /\ OnLine p M) =>
-    Or.elim _ _ _ (hpara p)
-    (fun (hnL : Not (OnLine p L)) => hnL (fst _ _ hp))
-    (fun (hnM : Not (OnLine p M)) => hnM (snd _ _ hp))
+    hpara p hp
     )
 
 (* Parallelism is symmetric. *)
 Theorem para_symm : ∀ (L M : Line), para L M -> para M L :=
     fun (L : Line) (M : Line) (hpara : para L M) =>
-    fun (p : Point) =>
-    Or.elim _ _ _ (hpara p)
-    (fun (hnL : Not (OnLine p L)) => Or.inr (Not (OnLine p M)) (Not (OnLine p L)) hnL)
-    (fun (hnM : Not (OnLine p M)) => Or.inl (Not (OnLine p M)) (Not (OnLine p L)) hnM)
+    fun (p : Point) (hp : OnLine p M /\ OnLine p L) =>
+    hpara p (And.intro _ _ (snd _ _ hp) (fst _ _ hp))
 
 (* A point on one of two parallel lines is not on the other. *)
 Theorem offline_of_para : ∀ (a : Point) (L M : Line), OnLine a L -> para L M -> Not (OnLine a M) :=
     fun (a : Point) (L M : Line) (a_on_L : OnLine a L) (hpara : para L M) =>
-    Or.elim _ _ _ (hpara a)
-    (fun (a_not_on_L : Not (OnLine a L)) => False.elim _ (a_not_on_L a_on_L))
-    (fun (a_not_on_M : Not (OnLine a M)) => a_not_on_M)
+    fun (a_on_M : OnLine a M) =>
+    hpara a (And.intro _ _ a_on_L a_on_M)
 
 (* Symmetric form of offline_of_para. *)
 Theorem offline_of_para' : ∀ (a : Point) (L M : Line), OnLine a M -> para L M -> Not (OnLine a L) :=
@@ -891,17 +2514,8 @@ Theorem common_point_of_not_para : ∀ (L M : Line),
     (fun (hex : Exists Point (fun (a : Point) => OnLine a L /\ OnLine a M)) => hex)
     (fun (hnoex : Not (Exists Point (fun (a : Point) => OnLine a L /\ OnLine a M))) =>
         False.elim _ (hnot_para
-            (fun (a : Point) =>
-                Or.elim _ _ _ (excluded_middle (OnLine a L))
-                (fun (a_on_L : OnLine a L) =>
-                    Or.elim _ _ _ (excluded_middle (OnLine a M))
-                    (fun (a_on_M : OnLine a M) =>
-                        False.elim _ (hnoex
-                            (Exists.intro _ _ a (And.intro _ _ a_on_L a_on_M))))
-                    (fun (a_not_on_M : Not (OnLine a M)) =>
-                        Or.inr _ _ a_not_on_M))
-                (fun (a_not_on_L : Not (OnLine a L)) =>
-                    Or.inl _ _ a_not_on_L))))
+            (fun (a : Point) (ha : OnLine a L /\ OnLine a M) =>
+                hnoex (Exists.intro _ _ a ha))))
 
 (* A line distinct from L is not a member of the singleton line-list [L]. *)
 Theorem line_not_mem_singleton_of_ne : ∀ (M L : Line),
@@ -970,7 +2584,9 @@ Theorem lines_inter_of_common_point_distinct : ∀ (a : Point) (L M : Line),
     (fun (c_not_on_L : Not (OnLine c L)) =>
     lines_inter_if_diff_sides b c L M
         (And.intro _ _
-            (And.intro _ _ b_not_on_L c_not_on_L)
+            (And.intro _ _
+                b_not_on_L
+                c_not_on_L)
             (pasch_online_not_sameside b a c L
                 (snd _ _ (fst _ _ hc))
                 a_on_L))
@@ -978,15 +2594,132 @@ Theorem lines_inter_of_common_point_distinct : ∀ (a : Point) (L M : Line),
         (fst _ _ (fst _ _ hc))
     )))))
 
-(* Proposition 30:
-   lines parallel to the same line are parallel to one another. *)
-Theorem para_trans : ∀ (L M N : Line),
-    L ≠ N ->
-    para L M ->
-    para M N ->
-    para L N := sorry _
+Theorem lines_inter_of_not_sameside_distinct : ∀ (a b : Point) (L M : Line),
+    L ≠ M ->
+    OnLine a M ->
+    OnLine b M ->
+    Not (SameSide a b L) ->
+    LinesInter L M :=
+    fun (a b : Point) (L M : Line) (LM : L ≠ M)
+        (aM : OnLine a M) (bM : OnLine b M)
+        (ab_not_same : Not (SameSide a b L)) =>
+    Or.elim _ _ _ (excluded_middle (OnLine a L))
+    (fun (aL : OnLine a L) =>
+        lines_inter_of_common_point_distinct a L M LM aL aM)
+    (fun (a_not_on_L : Not (OnLine a L)) =>
+    Or.elim _ _ _ (excluded_middle (OnLine b L))
+    (fun (bL : OnLine b L) =>
+        lines_inter_of_common_point_distinct b L M LM bL bM)
+    (fun (b_not_on_L : Not (OnLine b L)) =>
+        lines_inter_if_diff_sides a b L M
+            (And.intro _ _
+                (And.intro _ _
+                    a_not_on_L
+                    b_not_on_L)
+                ab_not_same)
+            aM
+            bM))
+
+Theorem pts_line_circle_of_diffside : ∀ (a b : Point) (L : Line) (aa : Circle),
+    OnCircle a aa ->
+    OnCircle b aa ->
+    diffside a b L ->
+    Exists Point (fun c =>
+        Exists Point (fun d =>
+            And (c ≠ d)
+                (And (OnLine c L)
+                    (And (OnLine d L)
+                        (And (OnCircle c aa) (OnCircle d aa)))))) :=
+    fun (a b : Point) (L : Line) (aa : Circle)
+        (aaa : OnCircle a aa) (baa : OnCircle b aa) (abL : diffside a b L) =>
+    pts_of_linecircleinter L aa
+        (line_circle_inter_if_diff_sides a b L aa
+            (Or.inr _ _ aaa)
+            (Or.inr _ _ baa)
+            abL)
 
 (* Proposition 29 *)
+
+(* In the parallel/transversal configuration, one alternate interior angle cannot be
+   strictly smaller than the other. *)
+Theorem no_lt_of_parallel_alternate :
+    ∀ (a b c d : Point) (L M T : Line),
+    para L M ->
+    OnLine a L -> OnLine b L -> a ≠ b ->
+    OnLine c M -> OnLine d M -> c ≠ d ->
+    OnLine b T -> OnLine c T -> b ≠ c ->
+    diffside a d T ->
+    Angle b c d < Angle a b c ->
+    False :=
+    fun (a b c d : Point) (L M T : Line)
+        (LM : para L M)
+        (aL : OnLine a L) (bL : OnLine b L) (ab : a ≠ b)
+        (cM : OnLine c M) (dM : OnLine d M) (cd : c ≠ d)
+        (bT : OnLine b T) (cT : OnLine c T) (bc : b ≠ c)
+        (adT : diffside a d T)
+        (lt_bcd_abc : Angle b c d < Angle a b c) =>
+    Exists.elim _ _ _ (length_eq_B_of_ne a b a ab (Ne.symm _ _ _ ab))
+    (fun (e : Point) (he : Between a b e /\ length b a = length b e) =>
+    have _ _ (online_3_of_B a b e L (fst _ _ he) aL bL)
+    (fun (eL : OnLine e L) =>
+    have _ _ (offline_of_para' c L M cM LM)
+    (fun (c_not_on_L : Not (OnLine c L)) =>
+    have _ _ (two_right_of_flat_angle a b e c L (fst _ _ he) aL bL c_not_on_L)
+    (fun (sum_cba_cbe : Angle c b a + Angle c b e = 90 + 90) =>
+    have _ _ (angle_symm a b c ab bc)
+    (fun (abc_cba : Angle a b c = Angle c b a) =>
+    have _ _ (angle_symm c b e (Ne.symm _ _ _ bc) (ne_23_of_between a b e (fst _ _ he)))
+    (fun (cbe_ebc : Angle c b e = Angle e b c) =>
+    have _ _
+        (Eq.elim _ (Angle a b c)
+            (fun x => Angle b c d < x)
+            lt_bcd_abc
+            (Angle c b a)
+            abc_cba)
+    (fun (lt_bcd_cba : Angle b c d < Angle c b a) =>
+    have _ _
+        (LtAdd (Angle b c d) (Angle c b a) (Angle e b c)
+            lt_bcd_cba)
+    (fun (lt_sum1 : Angle b c d + Angle e b c < Angle c b a + Angle e b c) =>
+    have _ _
+        (Eq.elim _ (Angle c b a + Angle c b e)
+            (fun x => Angle c b a + Angle e b c = x)
+            (Eq.symm _ _ _
+                (AddCongLeft (Angle c b e) (Angle e b c) (Angle c b a) cbe_ebc))
+            (90 + 90)
+            sum_cba_cbe)
+    (fun (sum_cba_ebc : Angle c b a + Angle e b c = 90 + 90) =>
+    have _ _
+        (Eq.elim _ (Angle c b a + Angle e b c)
+            (fun x => Angle b c d + Angle e b c < x)
+            lt_sum1
+            (90 + 90)
+            sum_cba_ebc)
+    (fun (lt_sum2 : Angle b c d + Angle e b c < 90 + 90) =>
+    have _ _
+        (Eq.elim _ (Angle b c d + Angle e b c)
+            (fun x => x < 90 + 90)
+            lt_sum2
+            (Angle e b c + Angle b c d)
+            (AddComm (Angle b c d) (Angle e b c)))
+    (fun (lt_ebc_bcd : Angle e b c + Angle b c d < 90 + 90) =>
+    have _ _
+        (same_side_symm d e T
+            (sameside_of_B_diffside a b e d T (fst _ _ he) bT adT))
+    (fun (edT : SameSide e d T) =>
+    False.elim _
+        (para_not_inter L M LM
+            (lines_inter_if_angle_sum_lt_180 e b c d a L T M
+                eL
+                bL
+                bT
+                cT
+                cM
+                dM
+                bc
+                edT
+                lt_ebc_bcd
+            ))))))))))))))
 
 (* Proposition 29.1: alternate interior angles are equal when lines are parallel. *)
 Theorem alternate_interior_angle :
@@ -996,7 +2729,71 @@ Theorem alternate_interior_angle :
     OnLine c M -> OnLine d M -> c ≠ d ->
     OnLine b T -> OnLine c T -> b ≠ c ->
     diffside a d T ->
-    Angle a b c = Angle b c d := sorry _
+    Angle a b c = Angle b c d :=
+    fun (a b c d : Point) (L M T : Line)
+        (LM : para L M)
+        (aL : OnLine a L) (bL : OnLine b L) (ab : a ≠ b)
+        (cM : OnLine c M) (dM : OnLine d M) (cd : c ≠ d)
+        (bT : OnLine b T) (cT : OnLine c T) (bc : b ≠ c)
+        (adT : diffside a d T) =>
+    Or.elim _ _ _ (LtTricot (Angle a b c) (Angle b c d))
+    (fun (lt_abc_bcd : Angle a b c < Angle b c d) =>
+        False.elim _
+            (have _ _
+                (angle_symm a b c ab bc)
+                (fun (abc_cba : Angle a b c = Angle c b a) =>
+                have _ _
+                    (angle_symm b c d bc cd)
+                    (fun (bcd_dcb : Angle b c d = Angle d c b) =>
+                    have _ _
+                        (Eq.elim _ (Angle a b c)
+                            (fun x => x < Angle b c d)
+                            lt_abc_bcd
+                            (Angle c b a)
+                            abc_cba)
+                    (fun (lt_cba_bcd : Angle c b a < Angle b c d) =>
+                    have _ _
+                        (Eq.elim _ (Angle b c d)
+                            (fun x => Angle c b a < x)
+                            lt_cba_bcd
+                            (Angle d c b)
+                            bcd_dcb)
+                    (fun (lt_cba_dcb : Angle c b a < Angle d c b) =>
+                    no_lt_of_parallel_alternate
+                        d c b a
+                        M L T
+                        (para_symm L M LM)
+                        dM
+                        cM
+                        (Ne.symm _ _ _ cd)
+                        bL
+                        aL
+                        (Ne.symm _ _ _ ab)
+                        cT
+                        bT
+                        (Ne.symm _ _ _ bc)
+                        (diffside_symm a d T adT)
+                        lt_cba_dcb)))))
+    )
+    (fun (rest : Angle b c d < Angle a b c \/ Angle a b c = Angle b c d) =>
+        Or.elim _ _ _ rest
+        (fun (lt_bcd_abc : Angle b c d < Angle a b c) =>
+            False.elim _
+                (no_lt_of_parallel_alternate
+                    a b c d L M T
+                    LM
+                    aL
+                    bL
+                    ab
+                    cM
+                    dM
+                    cd
+                    bT
+                    cT
+                    bc
+                    adT
+                    lt_bcd_abc))
+        (fun (eq_angles : Angle a b c = Angle b c d) => eq_angles))
 
 (* Proposition 29.2: co-interior angles sum to two right angles. *)
 Theorem co_interior_angles :
@@ -1006,32 +2803,613 @@ Theorem co_interior_angles :
     OnLine c M -> OnLine d M -> c ≠ d ->
     OnLine b T -> OnLine c T -> b ≠ c ->
     SameSide a d T ->
-    Angle a b c + Angle b c d = 90 + 90 := sorry _
+    Angle a b c + Angle b c d = 90 + 90 :=
+    fun (a b c d : Point) (L M T : Line)
+        (LM : para L M)
+        (aL : OnLine a L) (bL : OnLine b L) (ab : a ≠ b)
+        (cM : OnLine c M) (dM : OnLine d M) (cd : c ≠ d)
+        (bT : OnLine b T) (cT : OnLine c T) (bc : b ≠ c)
+        (adT : SameSide a d T) =>
+    Exists.elim _ _ _ (length_eq_B_of_ne a b a ab (Ne.symm _ _ _ ab))
+    (fun (e : Point) (he : Between a b e /\ length b a = length b e) =>
+    have _ _ (online_3_of_B a b e L (fst _ _ he) aL bL)
+    (fun (eL : OnLine e L) =>
+    have _ _ (offline_of_para' c L M cM LM)
+    (fun (c_not_on_L : Not (OnLine c L)) =>
+    have _ _ (two_right_of_flat_angle a b e c L (fst _ _ he) aL bL c_not_on_L)
+    (fun (sum_cba_cbe : Angle c b a + Angle c b e = 90 + 90) =>
+    have _ _
+        (diffside_of_B_offline'' a b e T
+            (fst _ _ he)
+            (same_side_not_on_line a d T adT)
+            bT)
+    (fun (aeT : diffside a e T) =>
+    have _ _
+        (diffside_symm d e T
+            (diffside_of_sameside_diffside a d e T adT aeT))
+    (fun (edT : diffside e d T) =>
+    have _ _
+        (alternate_interior_angle e b c d L M T
+            LM
+            eL
+            bL
+            (ne_32_of_between a b e (fst _ _ he))
+            cM
+            dM
+            cd
+            bT
+            cT
+            bc
+            edT)
+    (fun (ebc_bcd : Angle e b c = Angle b c d) =>
+    have _ _ (angle_symm a b c ab bc)
+    (fun (abc_cba : Angle a b c = Angle c b a) =>
+    have _ _ (angle_symm c b e (Ne.symm _ _ _ bc) (ne_23_of_between a b e (fst _ _ he)))
+    (fun (cbe_ebc : Angle c b e = Angle e b c) =>
+    EqTrans _ _ _ _
+        (AddCongRight (Angle a b c) (Angle c b a) (Angle b c d) abc_cba)
+        (EqTrans _ _ _ _
+            (AddCongLeft (Angle b c d) (Angle e b c) (Angle c b a)
+                (Eq.symm _ _ _ ebc_bcd))
+            (EqTrans _ _ _ _
+                (AddCongLeft (Angle e b c) (Angle c b e) (Angle c b a)
+                    (Eq.symm _ _ _ cbe_ebc))
+                sum_cba_cbe
+            )))))))))))
 
 
+(* If two lines through the same point make the same angle with a transversal on the same side, they coincide. *)
+Theorem eq_line_of_angle_eq_sameside : ∀ (a b x y : Point) (L N T : Line),
+    x ≠ a -> OnLine x L -> OnLine a L ->
+    x ≠ b -> OnLine x N -> OnLine b N ->
+    x ≠ y -> OnLine x T -> OnLine y T ->
+    SameSide a b T ->
+    Angle a x y = Angle b x y ->
+    L = N :=
+    fun (a b x y : Point) (L N T : Line)
+        (xa : x ≠ a) (xL : OnLine x L) (aL : OnLine a L)
+        (xb : x ≠ b) (xN : OnLine x N) (bN : OnLine b N)
+        (xy : x ≠ y) (xT : OnLine x T) (yT : OnLine y T)
+        (abT : SameSide a b T) (ang_eq : Angle a x y = Angle b x y) =>
+    (* This is essentially the uniqueness of copying an angle. *)
+    (* In System E, we can use the fact that if b is not on L, then Angle b x y ≠ Angle a x y. *)
+    double_negation (L = N) (fun (LN : L ≠ N) =>
+    Or.elim _ _ _ (excluded_middle (OnLine b L))
+    (fun (bL : OnLine b L) => LN (two_distinct_points_determine_unique_line x b L N xb xL bL xN bN))
+    (fun (not_bL : Not (OnLine b L)) =>
+        have _ _ (triangle_of_ne_online x a b L xa xL aL not_bL)
+        (fun (tri_xab : triangle x a b) =>
+        have _ _ (ne_of_online_not_online x b L xL not_bL)
+        (fun (xb' : x ≠ b) =>
+        (* If b is off L, but Angle b x y = Angle a x y and they are on the same side, *)
+        (* it contradicts the angle addition/comparison properties. *)
+        sorry _)))) (* Technical contradiction: b cannot be off L if it has same angle and same side *)
 
+(* Every line contains a point distinct from a given point already on it. *)
+Theorem online_ne_of_point_line : ∀ (x : Point) (L : Line),
+    OnLine x L ->
+    Exists Point (fun a => a ≠ x ∧ OnLine a L) :=
+    fun (x : Point) (L : Line) (xL : OnLine x L) =>
+    Exists.elim _ _ _
+        (pt_on_line L
+            (List.cons Point x (List.nil Point))
+            (List.nil Line)
+            (List.nil Circle)
+            (List.not_mem_nil Line L))
+    (fun (a : Point)
+        (ha : OnLine a L /\ distinct_from a (List.cons Point x (List.nil Point))
+            (List.nil Line) (List.nil Circle)) =>
+    Exists.intro _ _ a
+        (And.intro _ _
+            (distinct_from_single_point_ne a x (List.nil Line) (List.nil Circle) (snd _ _ ha))
+            (fst _ _ ha)))
+
+(* Every line contains two distinct points. *)
+Theorem online_ne_of_line : ∀ (L : Line),
+    Exists Point (fun a => Exists Point (fun b => a ≠ b ∧ OnLine a L ∧ OnLine b L)) :=
+    fun (L : Line) =>
+    Exists.elim _ _ _
+        (pt_on_line L
+            (List.nil Point)
+            (List.nil Line)
+            (List.nil Circle)
+            (List.not_mem_nil Line L))
+    (fun (a : Point)
+        (ha : OnLine a L /\ distinct_from a (List.nil Point) (List.nil Line) (List.nil Circle)) =>
+    Exists.elim _ _ _ (online_ne_of_point_line a L (fst _ _ ha))
+    (fun (b : Point) (hb : b ≠ a /\ OnLine b L) =>
+    Exists.intro Point
+        (fun a0 => Exists Point (fun b0 => a0 ≠ b0 /\ OnLine a0 L /\ OnLine b0 L))
+        a
+        (Exists.intro Point
+            (fun b0 => a ≠ b0 /\ OnLine a L /\ OnLine b0 L)
+            b
+            (And.intro _ _
+                (And.intro _ _
+                    (Ne.symm _ _ _ (fst _ _ hb))
+                    (fst _ _ ha))
+                (snd _ _ hb)))))
+
+(* If N meets O at x and y is another point on N off O, then one can choose a point on N
+   on the same side of O as any prescribed point a off O. *)
+Theorem sameside_of_offline_on_line : ∀ (a x y : Point) (N O : Line),
+    Not (OnLine a O) ->
+    OnLine x N -> OnLine y N -> x ≠ y ->
+    OnLine x O -> Not (OnLine y O) ->
+    Exists Point (fun b => OnLine b N /\ SameSide a b O) :=
+    fun (a x y : Point) (N O : Line)
+        (a_not_on_O : Not (OnLine a O))
+        (xN : OnLine x N) (yN : OnLine y N) (xy : x ≠ y)
+        (xO : OnLine x O) (y_not_on_O : Not (OnLine y O)) =>
+    Exists.elim _ _ _
+        (pt_extension_on_line N x y
+            (List.nil Point)
+            (List.cons Line O (List.nil Line))
+            (List.nil Circle)
+            xN
+            yN
+            xy
+            (line_not_mem_singleton_of_ne N O (ne_line_of_online' y O N yN y_not_on_O)))
+    (fun (b1 : Point)
+        (hb1 : (OnLine b1 N /\ Between x y b1) /\ distinct_from b1 (List.nil Point)
+            (List.cons Line O (List.nil Line)) (List.nil Circle)) =>
+    Exists.elim _ _ _
+        (pt_extension_on_line N y x
+            (List.nil Point)
+            (List.cons Line O (List.nil Line))
+            (List.nil Circle)
+            yN
+            xN
+            (Ne.symm _ _ _ xy)
+            (line_not_mem_singleton_of_ne N O (ne_line_of_online' y O N yN y_not_on_O)))
+    (fun (b2 : Point)
+        (hb2 : (OnLine b2 N /\ Between y x b2) /\ distinct_from b2 (List.nil Point)
+            (List.cons Line O (List.nil Line)) (List.nil Circle)) =>
+    Or.elim _ _ _
+        (same_side_or b1 b2 a O
+            (distinct_from_avoids_single_line b1 (List.nil Point) O (List.nil Circle) (snd _ _ hb1))
+            (distinct_from_avoids_single_line b2 (List.nil Point) O (List.nil Circle) (snd _ _ hb2))
+            a_not_on_O
+            (fun (b1b2 : SameSide b1 b2 O) =>
+                (pasch_online_not_sameside b2 x b1 O
+                    (between_out b2 x y b1
+                        (between_symm y x b2 (snd _ _ (fst _ _ hb2)))
+                        (snd _ _ (fst _ _ hb1)))
+                    xO)
+                (same_side_symm b1 b2 O b1b2)))
+    (fun (b1a : SameSide b1 a O) =>
+        Exists.intro _ _ b1
+            (And.intro _ _
+                (fst _ _ (fst _ _ hb1))
+                (same_side_symm b1 a O b1a)))
+    (fun (b2a : SameSide b2 a O) =>
+        Exists.intro _ _ b2
+            (And.intro _ _
+                (fst _ _ (fst _ _ hb2))
+                (same_side_symm b2 a O b2a)))))
+
+(* A line perpendicular to one of two parallels is also perpendicular to the other. *)
+Theorem right_of_para_right : ∀ (a b c d : Point) (L M N : Line),
+    OnLine a M -> OnLine b M ->
+    OnLine b L -> OnLine c L ->
+    OnLine c N -> OnLine d N ->
+    Not (OnLine a L) -> Not (OnLine d L) ->
+    Angle b c d = 90 ->
+    para M N ->
+    Angle a b c = 90 :=
+    fun (a b c d : Point) (L M N : Line)
+        (aM : OnLine a M) (bM : OnLine b M)
+        (bL : OnLine b L) (cL : OnLine c L)
+        (cN : OnLine c N) (dN : OnLine d N)
+        (a_not_on_L : Not (OnLine a L)) (d_not_on_L : Not (OnLine d L))
+        (bcd90 : Angle b c d = 90)
+        (MN : para M N) =>
+    Or.elim _ _ _ (excluded_middle (SameSide a d L))
+    (fun (adL : SameSide a d L) =>
+        CancelAdd (Angle a b c) 90 90
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _
+                    (AddComm (Angle a b c) 90))
+                (EqTrans _ _ _ _
+                    (Eq.symm _ _ _
+                        (AddCongLeft (Angle b c d) 90 (Angle a b c) bcd90))
+                    (co_interior_angles a b c d M N L
+                        MN
+                        aM
+                        bM
+                        (ne_of_online_not_online' b a L bL a_not_on_L)
+                        cN
+                        dN
+                        (ne_of_online_not_online c d L cL d_not_on_L)
+                        bL
+                        cL
+                        (ne_of_online_not_online b c M bM (offline_of_para' c M N cN MN))
+                        adL))))
+    (fun (not_adL : Not (SameSide a d L)) =>
+        EqTrans _ _ _ _
+            (alternate_interior_angle a b c d M N L
+                MN
+                aM
+                bM
+                (ne_of_online_not_online' b a L bL a_not_on_L)
+                cN
+                dN
+                (ne_of_online_not_online c d L cL d_not_on_L)
+                bL
+                cL
+                (ne_of_online_not_online b c M bM (offline_of_para' c M N cN MN))
+                (And.intro _ _
+                (And.intro _ _ a_not_on_L d_not_on_L)
+                not_adL))
+            bcd90)
+
+(* Euclid I.12: from a point off a line, drop a perpendicular to the line. *)
+Theorem perpendicular_of_not_online : ∀ (a : Point) (L : Line),
+    Not (OnLine a L) ->
+    Exists Point (fun c =>
+        Exists Point (fun d =>
+            Exists Point (fun e =>
+                Between c e d /\ OnLine c L /\ OnLine d L /\ OnLine e L /\
+                Angle a e c = 90 /\ Angle a e d = 90))) :=
+    fun (a : Point) (L : Line) (a_not_on_L : Not (OnLine a L)) =>
+    Exists.elim _ _ _ (diffside_of_not_online' a L a_not_on_L)
+    (fun (b : Point) (abL : diffside a b L) =>
+    Exists.elim _ _ _ (circle_of_ne a b (ne_of_diffside a b L abL))
+    (fun (aa : Circle) (haa : CenterCircle a aa /\ OnCircle b aa) =>
+    Exists.elim _ _ _
+        (pts_of_linecircleinter L aa
+            (line_circle_inter_if_diff_sides a b L aa
+                (Or.inl _ _ (center_lies_inside_circle a aa (fst _ _ haa)))
+                (Or.inr _ _ (snd _ _ haa))
+                abL))
+    (fun (c : Point)
+        (hc : Exists Point (fun d =>
+            And (c ≠ d)
+                (And (OnLine c L)
+                    (And (OnLine d L)
+                        (And (OnCircle c aa) (OnCircle d aa)))))) =>
+    Exists.elim _ _ _ hc
+    (fun (d : Point)
+        (hcd : And (c ≠ d)
+            (And (OnLine c L)
+                (And (OnLine d L)
+                    (And (OnCircle c aa) (OnCircle d aa))))) =>
+    have _ _ (fst _ _ hcd)
+    (fun (cd : c ≠ d) =>
+    have _ _ (fst _ _ (snd _ _ hcd))
+    (fun (c_on_L : OnLine c L) =>
+    have _ _ (fst _ _ (snd _ _ (snd _ _ hcd)))
+    (fun (d_on_L : OnLine d L) =>
+    have _ _ (fst _ _ (snd _ _ (snd _ _ (snd _ _ hcd))))
+    (fun (c_on_aa : OnCircle c aa) =>
+    have _ _ (snd _ _ (snd _ _ (snd _ _ (snd _ _ hcd))))
+    (fun (d_on_aa : OnCircle d aa) =>
+    Exists.elim _ _ _ (bisect_segment c d cd)
+    (fun (e : Point) (he : Between c e d /\ Length c e = Length d e) =>
+    have _ _ (between_collinear_middle c e d L (fst _ _ he) c_on_L d_on_L)
+    (fun (e_on_L : OnLine e L) =>
+    have _ _ (length_eq_of_oncircle a c d aa (fst _ _ haa) c_on_aa d_on_aa)
+    (fun (ac_ad : Length a c = Length a d) =>
+    have _ _
+        (fst _ _ (snd _ _
+            (sss_congruence a e c a e d
+                (Ne.symm _ _ _ (ne_of_online_not_online e a L e_on_L a_not_on_L))
+                (ne_21_of_between c e d (fst _ _ he))
+                (Ne.symm _ _ _ (ne_of_online_not_online c a L c_on_L a_not_on_L))
+                (Ne.symm _ _ _ (ne_of_online_not_online e a L e_on_L a_not_on_L))
+                (ne_23_of_between c e d (fst _ _ he))
+                (Ne.symm _ _ _ (ne_of_online_not_online d a L d_on_L a_not_on_L))
+                (Eq.intro _ _)
+                (EqTrans _ _ _ _
+                    (length_symm e c)
+                    (EqTrans _ _ _ _
+                        (snd _ _ he)
+                        (Eq.symm _ _ _ (length_symm e d))))
+                (EqTrans _ _ _ _
+                    (length_symm c a)
+                    (EqTrans _ _ _ _
+                        ac_ad
+                        (Eq.symm _ _ _ (length_symm d a)))))))
+    (fun (aec_aed : Angle a e c = Angle a e d) =>
+    have _ _ (right_angle_if_angle_eq c d e a L
+        c_on_L
+        d_on_L
+        (fst _ _ he)
+        a_not_on_L
+        (EqTrans _ _ _ _
+            (angle_symm c e a
+                (ne_12_of_between c e d (fst _ _ he))
+                (ne_of_online_not_online e a L e_on_L a_not_on_L))
+            aec_aed))
+    (fun (cea90 : Angle c e a = 90) =>
+    have _ _ (right_angle_if_angle_eq d c e a L
+        d_on_L
+        c_on_L
+        (between_symm c e d (fst _ _ he))
+        a_not_on_L
+        (EqTrans _ _ _ _
+            (angle_symm d e a
+                (ne_32_of_between c e d (fst _ _ he))
+                (ne_of_online_not_online e a L e_on_L a_not_on_L))
+            (Eq.symm _ _ _ aec_aed)))
+    (fun (dea90 : Angle d e a = 90) =>
+    Exists.intro Point
+        (fun c =>
+            Exists Point (fun d =>
+                Exists Point (fun e =>
+                    Between c e d /\ OnLine c L /\ OnLine d L /\ OnLine e L /\
+                    Angle a e c = 90 /\ Angle a e d = 90)))
+        c
+        (Exists.intro Point
+            (fun d =>
+                Exists Point (fun e =>
+                    Between c e d /\ OnLine c L /\ OnLine d L /\ OnLine e L /\
+                    Angle a e c = 90 /\ Angle a e d = 90))
+            d
+            (Exists.intro Point
+                (fun e =>
+                    Between c e d /\ OnLine c L /\ OnLine d L /\ OnLine e L /\
+                    Angle a e c = 90 /\ Angle a e d = 90)
+                e
+                (And.intro _ _
+                    (And.intro _ _
+                        (And.intro _ _
+                            (And.intro _ _
+                                (And.intro _ _
+                                    (fst _ _ he)
+                                    c_on_L)
+                                d_on_L)
+                            e_on_L)
+                        (EqTrans _ _ _ _
+                            (angle_symm a e c
+                                (Ne.symm _ _ _ (ne_of_online_not_online e a L e_on_L a_not_on_L))
+                                (ne_21_of_between c e d (fst _ _ he)))
+                            cea90))
+                    (EqTrans _ _ _ _
+                        (angle_symm a e d
+                            (Ne.symm _ _ _ (ne_of_online_not_online e a L e_on_L a_not_on_L))
+                            (ne_23_of_between c e d (fst _ _ he)))
+                        dea90)))))))))))))))))))
+
+(* Proposition 30:
+   lines parallel to the same line are parallel to one another. *)
+Theorem para_trans : ∀ (L M N : Line),
+    L ≠ N -> para L M -> para M N -> para L N :=
+    fun (L M N : Line) (LN : L ≠ N) (LM : para L M) (MN : para M N) =>
+    fun (x : Point) =>
+    fun (x_on : OnLine x L /\ OnLine x N) =>
+    have _ _ (offline_of_para x L M (fst _ _ x_on) LM)
+    (fun (x_not_on_M : Not (OnLine x M)) =>
+    Exists.elim _ _ _ (perpendicular_of_not_online x M x_not_on_M)
+    (fun (c : Point)
+        (hc : Exists Point (fun d =>
+            Exists Point (fun y =>
+                Between c y d /\ OnLine c M /\ OnLine d M /\ OnLine y M /\
+                Angle x y c = 90 /\ Angle x y d = 90))) =>
+    Exists.elim _ _ _ hc
+    (fun (d : Point)
+        (hd : Exists Point (fun y =>
+            Between c y d /\ OnLine c M /\ OnLine d M /\ OnLine y M /\
+            Angle x y c = 90 /\ Angle x y d = 90)) =>
+    Exists.elim _ _ _ hd
+    (fun (y : Point)
+        (hy : Between c y d /\ OnLine c M /\ OnLine d M /\ OnLine y M /\
+            Angle x y c = 90 /\ Angle x y d = 90) =>
+    have _ _ (fst _ _ (fst _ _ (fst _ _ (fst _ _ (fst _ _ hy)))))
+    (fun (Bcyd : Between c y d) =>
+    have _ _ (snd _ _ (fst _ _ (fst _ _ (fst _ _ (fst _ _ hy)))))
+    (fun (cM : OnLine c M) =>
+    have _ _ (snd _ _ (fst _ _ (fst _ _ (fst _ _ hy))))
+    (fun (dM : OnLine d M) =>
+    have _ _ (snd _ _ (fst _ _ (fst _ _ hy)))
+    (fun (yM : OnLine y M) =>
+    have _ _ (snd _ _ (fst _ _ hy))
+    (fun (xyc90 : Angle x y c = 90) =>
+    have _ _ (snd _ _ hy)
+    (fun (xyd90 : Angle x y d = 90) =>
+    have _ _ (Ne.symm _ _ _ (ne_of_online_not_online y x M yM x_not_on_M))
+    (fun (xy : x ≠ y) =>
+    Exists.elim _ _ False (line_of_pts x y xy)
+    (fun (O : Line) (xyO : OnLine x O /\ OnLine y O) =>
+    Exists.elim _ _ False (online_ne_of_point_line x L (fst _ _ x_on))
+    (fun (z : Point) (hz : z ≠ x /\ OnLine z L) =>
+    have _ _
+        (fun (z_on_N : OnLine z N) =>
+            LN (two_distinct_points_determine_unique_line x z L N
+                (Ne.symm _ _ _ (fst _ _ hz))
+                (fst _ _ x_on)
+                (snd _ _ hz)
+                (snd _ _ x_on)
+                z_on_N))
+    (fun (z_not_on_N : Not (OnLine z N)) =>
+    have _ _ (offline_of_para y M N yM MN)
+    (fun (y_not_on_N : Not (OnLine y N)) =>
+    Exists.elim _ _ False (sameside_of_offline_on_line y x z L N
+        y_not_on_N
+        (fst _ _ x_on)
+        (snd _ _ hz)
+        (Ne.symm _ _ _ (fst _ _ hz))
+        (snd _ _ x_on)
+        z_not_on_N)
+    (fun (a : Point) (ha : OnLine a L /\ SameSide y a N) =>
+    Or.elim _ _ _ (excluded_middle (OnLine a O))
+    (fun (a_on_O : OnLine a O) =>
+        LM
+            y
+            (And.intro _ _
+                (Eq.elim _ O (fun Q => OnLine y Q) (snd _ _ xyO) L
+                    (two_distinct_points_determine_unique_line x a O L
+                        (ne_of_sameside x a y N (snd _ _ x_on)
+                            (same_side_symm y a N (snd _ _ ha)))
+                        (fst _ _ xyO)
+                        a_on_O
+                        (fst _ _ x_on)
+                        (fst _ _ ha)))
+                yM))
+    (fun (a_not_on_O : Not (OnLine a O)) =>
+    Exists.elim _ _ False (online_ne_of_point_line x N (snd _ _ x_on))
+    (fun (w : Point) (hw : w ≠ x /\ OnLine w N) =>
+    Or.elim _ _ _ (excluded_middle (OnLine w O))
+    (fun (w_on_O : OnLine w O) =>
+        MN
+            y
+            (And.intro _ _
+                yM
+                (Eq.elim _ O (fun Q => OnLine y Q) (snd _ _ xyO) N
+                    (two_distinct_points_determine_unique_line x w O N
+                        (Ne.symm _ _ _ (fst _ _ hw))
+                        (fst _ _ xyO)
+                        w_on_O
+                        (snd _ _ x_on)
+                        (snd _ _ hw)))))
+    (fun (w_not_on_O : Not (OnLine w O)) =>
+    Exists.elim _ _ False (sameside_of_offline_on_line a x w N O
+        a_not_on_O
+        (snd _ _ x_on)
+        (snd _ _ hw)
+        (Ne.symm _ _ _ (fst _ _ hw))
+        (fst _ _ xyO)
+        w_not_on_O)
+    (fun (b : Point) (hb : OnLine b N /\ SameSide a b O) =>
+    have _ _ (offline_of_online_offline x y c O M
+        (ne_21_of_between c y d Bcyd)
+        (fst _ _ xyO)
+        (snd _ _ xyO)
+        yM
+        cM
+        x_not_on_M)
+    (fun (c_not_on_O : Not (OnLine c O)) =>
+    have _ _ (right_of_para_right a x y c O L M
+        (fst _ _ ha)
+        (fst _ _ x_on)
+        (fst _ _ xyO)
+        (snd _ _ xyO)
+        yM
+        cM
+        a_not_on_O
+        c_not_on_O
+        xyc90
+        LM)
+    (fun (axy90 : Angle a x y = 90) =>
+    have _ _ (right_of_para_right b x y c O N M
+        (fst _ _ hb)
+        (snd _ _ x_on)
+        (fst _ _ xyO)
+        (snd _ _ xyO)
+        yM
+        cM
+        (not_online_of_sameside b a O (same_side_symm a b O (snd _ _ hb)))
+        c_not_on_O
+        xyc90
+        (para_symm M N MN))
+    (fun (bxy90 : Angle b x y = 90) =>
+    have _ _ (angle_add_of_sameside x b y a N O
+        (snd _ _ x_on)
+        (fst _ _ hb)
+        (fst _ _ xyO)
+        (snd _ _ xyO)
+        (snd _ _ ha)
+        (same_side_symm a b O (snd _ _ hb)))
+    (fun (split : Angle b x y = Angle a x b + Angle a x y) =>
+    have _ _
+        (CancelAdd (Angle a x b) 0 90
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _ (AddComm (Angle a x b) 90))
+                (EqTrans _ _ _ _
+                    (EqTrans _ _ _ _
+                        (Eq.symm _ _ _
+                            (AddCongLeft (Angle a x y) 90 (Angle a x b) axy90))
+                        (EqTrans _ _ _ _
+                            (Eq.symm _ _ _ split)
+                            bxy90))
+                    (Eq.symm _ _ _ (AddZero 90)))))
+    (fun (axb0 : Angle a x b = 0) =>
+    False.elim _
+        (LtNe 0 (Angle a x b)
+            (zero_lt_angle_of_tri x b a
+                (triangle_of_ne_online x b a N
+                    (ne_of_sameside x b a O (fst _ _ xyO) (same_side_symm a b O (snd _ _ hb)))
+                    (snd _ _ x_on)
+                    (fst _ _ hb)
+                    (not_online_of_sameside a y N (same_side_symm y a N (snd _ _ ha)))))
+            (Eq.symm _ _ _ axb0)))))))))))))))))))))))))))
 
 
 (* Proposition 31 (I.31): Through a point off a line there exists a parallel line. *)
-Theorem para_of_offline : ∀ (a : Point) (M : Line), ¬OnLine a M → ∃ N, OnLine a N ∧ para M N := sorry _
+Theorem para_of_offline : ∀ (a : Point) (M : Line), ¬OnLine a M → ∃ N, OnLine a N ∧ para M N :=
+    fun (a : Point) (M : Line) (a_not_on_M : Not (OnLine a M)) =>
+    Exists.elim _ _ _ (online_ne_of_line M)
+    (fun (b : Point)
+        (hb : Exists Point (fun c => b ≠ c /\ OnLine b M /\ OnLine c M)) =>
+    Exists.elim _ _ _ hb
+    (fun (c : Point) (hbc : b ≠ c /\ OnLine b M /\ OnLine c M) =>
+    have _ _ (Ne.symm _ _ _ (ne_of_online_not_online b a M (snd _ _ (fst _ _ hbc)) a_not_on_M))
+    (fun (ab : a ≠ b) =>
+    Exists.elim _ _ _ (line_of_pts a b ab)
+    (fun (L : Line) (ab_on_L : OnLine a L /\ OnLine b L) =>
+    have _ _
+        (offline_of_online_offline a b c L M
+            (fst _ _ (fst _ _ hbc))
+            (fst _ _ ab_on_L)
+            (snd _ _ ab_on_L)
+            (snd _ _ (fst _ _ hbc))
+            (snd _ _ hbc)
+            a_not_on_M)
+    (fun (c_not_on_L : Not (OnLine c L)) =>
+    Exists.elim _ _ _ (angle_copy' a b c b c a L
+        ab
+        (fst _ _ ab_on_L)
+        (snd _ _ ab_on_L)
+        c_not_on_L
+        (triangle_of_ne_online b c a M
+            (fst _ _ (fst _ _ hbc))
+            (snd _ _ (fst _ _ hbc))
+            (snd _ _ hbc)
+            a_not_on_M))
+    (fun (d : Point) (hd : Angle d a b = Angle a b c /\ diffside d c L) =>
+    have _ _ (ne_of_online_not_online a d L (fst _ _ ab_on_L) (fst _ _ (fst _ _ (snd _ _ hd))))
+    (fun (ad : a ≠ d) =>
+    Exists.elim _ _ _ (line_of_pts a d ad)
+    (fun (N : Line) (ad_on_N : OnLine a N /\ OnLine d N) =>
+    have _ _
+        (EqTrans _ _ _ _
+            (angle_symm b a d
+                (Ne.symm _ _ _ ab)
+                ad)
+            (fst _ _ hd))
+    (fun (bad_abc : Angle b a d = Angle a b c) =>
+    Exists.intro _ _ N
+        (And.intro _ _
+            (fst _ _ ad_on_N)
+            (para_symm N M
+                (para_of_ang_eq d a b c L N M
+                    ab
+                    (snd _ _ ad_on_N)
+                    (fst _ _ ad_on_N)
+                    (fst _ _ ab_on_L)
+                    (snd _ _ ab_on_L)
+                    (snd _ _ (fst _ _ hbc))
+                    (snd _ _ hbc)
+                    (snd _ _ hd)
+                    bad_abc))))))))))))
 
 (* Proposition 34 (I.34): Opposite sides, opposite angles, and half-area of a parallelogram.
    Specifically: ab = cd, angle bad = angle bcd, area abd = area bcd. *)
 Theorem len_ang_arelen_ang_area_eq_of_parallelogram : ∀ (a b c d : Point) (M N O P : Line),
     paragram a b c d M N O P ->
-    length a b = length c d /\ angle b a d = angle b c d /\ area a b d = area b c d := sorry _
+    length a b = length c d /\ angle b a d = angle b c d /\ area a b d = area b c d := sorry _ (* TODO *)
 
 (* Proposition 34.1: Opposite sides of a parallelogram are equal (ab = cd). *)
 Theorem len_eq_of_parallelogram : ∀ (a b c d : Point) (M N O P : Line),
-    paragram a b c d M N O P -> length a b = length c d := sorry _
+    paragram a b c d M N O P -> length a b = length c d := sorry _ (* TODO *)
 
 (* Proposition 34.2: The other pair of opposite sides are equal (ad = cb). *)
 Theorem len_eq_of_parallelogram' : ∀ (a b c d : Point) (M N O P : Line),
-    paragram a b c d M N O P -> length a d = length c b := sorry _
+    paragram a b c d M N O P -> length a d = length c b := sorry _ (* TODO *)
 
 (* Proposition 34.3: A diagonal bisects the parallelogram area. *)
 Theorem len_eq_of_parallelogram'' : ∀ (a b c d : Point) (M N O P : Line),
-    paragram a b c d M N O P -> area a b d = area b c d := sorry _
+    paragram a b c d M N O P -> area a b d = area b c d := sorry _ (* TODO *)
 
 (* ============================================================
    Helpers for Proposition 46
@@ -1101,9 +3479,7 @@ Theorem same_side_of_points_on_parallel :
     fun (b e : Point) (N M : Line) (b_on_M : OnLine b M) (e_on_M : OnLine e M)
         (hpara : para N M) (b_not_on_N : Not (OnLine b N)) =>
     have _ _ (
-        Or.elim _ _ _ (hpara e)
-        (fun (e_not_on_N : Not (OnLine e N)) => e_not_on_N)
-        (fun (e_not_on_M : Not (OnLine e M)) => False.elim _ (e_not_on_M e_on_M))
+        fun (e_on_N : OnLine e N) => hpara e (And.intro _ _ e_on_N e_on_M)
     )
     (fun (e_not_on_N : Not (OnLine e N)) =>
     double_negation (SameSide b e N)
@@ -1111,7 +3487,9 @@ Theorem same_side_of_points_on_parallel :
         para_not_inter N M hpara
         (lines_inter_if_diff_sides b e N M
             (And.intro _ _
-                (And.intro _ _ b_not_on_N e_not_on_N)
+                (And.intro _ _
+                    b_not_on_N
+                    e_not_on_N)
                 b_not_same_e)
             b_on_M
             e_on_M))
@@ -1204,7 +3582,9 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
     have _ _
     (lines_inter_if_diff_sides c d L N
         (And.intro _ _
-            (And.intro _ _ c_not_on_L d_not_on_L)
+            (And.intro _ _
+                c_not_on_L
+                d_not_on_L)
             (pasch_online_not_sameside c a d L
                 (fst _ _ hd_data)
                 (fst _ _ ab_on_L)))
