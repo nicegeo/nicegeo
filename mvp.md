@@ -224,6 +224,7 @@ Corollaries proved:
 ## Prop 46 — Constructing a square ✓
 **Milestone:** `square_of_len`
 > ✓ PROVED
+> Kernel axiom audit: `#print axioms square_of_len` does **not** list `sorry`
 
 Prop 46 local helpers:
 - `lines_inter_of_parallel_through_transversal` ✓
