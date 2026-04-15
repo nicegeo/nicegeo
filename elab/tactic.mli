@@ -24,4 +24,5 @@ module Register : sig
   val unary_ident : (string -> tactic) -> term list -> tactic
   val variadic_term : (term list -> tactic) -> term list -> tactic
   val variadic_ident : (string list -> tactic) -> term list -> tactic
+  val tactical : (tactic -> tactic) -> term list -> tactic
 end

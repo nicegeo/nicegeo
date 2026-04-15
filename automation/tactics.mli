@@ -13,8 +13,8 @@ val sorry : proof_state -> tactic_result
     or no goals remain. *)
 val exact : term -> proof_state -> tactic_result
 
-(** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
-    and opens a new subgoal for [A]. *)
+(** [apply term st] attempts to solve the current goal by applying [term], opening
+    subgoals for the remaining arguments (if any). *)
 val apply : term -> proof_state -> tactic_result
 
 (* sequences tactics *)
@@ -43,5 +43,10 @@ val split : proof_state -> tactic_result
     old goal had form [Exists A p]. The motive [p] is inferred from the goal and the type
     of the argument [a]. *)
 val exists : term -> proof_state -> tactic_result
+
+(** * Given a term whose type unifies with [Exists A p], infer [A] and [p], * and
+    introduce new hypotheses representing [a : A] and [h : p a]. * Update the proof term
+    appropriately. *)
+val choose : string * string -> term -> proof_state -> tactic_result
 
 val register : unit -> unit

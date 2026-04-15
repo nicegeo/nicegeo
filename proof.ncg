@@ -359,8 +359,11 @@ apply (Exists.elim _ _ _ (pt_of_circlesinter aa bb (circles_inter_if_on_in b a a
 intros c facts.
 apply (And.elim1 _ _ _ facts).
 intros caa cbb.
+(* hack because exact doesn't fill holes *)
 exists c.
-exact (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb)).
+apply (And.intro _ _).
+apply (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa).
+apply (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb).
 Qed.
 
 

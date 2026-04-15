@@ -28,8 +28,7 @@ let run_tactic tac st =
   | Failure msg -> Alcotest.failf "tactic failed: %s" msg
   | Success st' -> st'
 
-let to_kterm env tm =
-  Elab.Reduce.delta_reduce env tm |> Elab.Reduce.reduce env |> Elab.Convert.conv_to_kterm
+let to_kterm _env tm = Elab.Convert.conv_to_kterm tm
 
 let kernel_check env proof goal_ty =
   let proof_k = to_kterm env (replace_metas env proof) in
