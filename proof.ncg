@@ -395,12 +395,6 @@ Theorem place_segment : ∀ (a b c : Point),
     (fun (ab : a ≠ b) => place_segment_ne a b c bc ab)
     )
 
-(* ============================================================
-   sorry axiom — closes any goal; proofs using it are not valid
-   ============================================================ *)
-
-Axiom sorry : (P: Prop) -> P
-
 (* A line from a point inside a circle to a point outside must cross the circle.
    The crossing point c satisfies OnCircle c aa and lies between a and b. *)
 Theorem pt_oncircle_in_out : ∀ (a b : Point) (aa : Circle),
@@ -4430,7 +4424,13 @@ Theorem tri342_of_paragram : ∀ (a b c d : Point) (L M N O : Line),
                 cM
                 d_not_on_M))))))))))))))))))))))
 
-Theorem len_ang_arelen_ang_area_eq_of_parallelogram : ∀ (a b c d : Point) (M N O P : Line),
+	(* Proposition 34.
+	   Core idea: copy triangle dbc across the diagonal bd to a triangle xbd on the
+	   opposite side of bd, then use the parallel-side data of the parallelogram to
+	   show the copied point x must in fact coincide with a.  The copied side, angle,
+	   and area equalities then rewrite to:
+	     ab = cd,  angle bad = angle bcd,  area abd = area bcd. *)
+	Theorem len_ang_arelen_ang_area_eq_of_parallelogram : ∀ (a b c d : Point) (M N O P : Line),
     paragram a b c d M N O P ->
     length a b = length c d /\ angle b a d = angle b c d /\ area a b d = area b c d :=
     fun (a b c d : Point) (M N O P : Line)
@@ -4633,7 +4633,9 @@ Theorem len_eq_of_parallelogram : ∀ (a b c d : Point) (M N O P : Line),
     fun (a b c d : Point) (M N O P : Line) (pgram : paragram a b c d M N O P) =>
     fst _ _ (fst _ _ (len_ang_arelen_ang_area_eq_of_parallelogram a b c d M N O P pgram))
 
-Theorem paragram_rotate : ∀ (a b c d : Point) (M N O P : Line),
+	(* Cyclic relabeling of a parallelogram, used to recover the second pair of
+	   opposite-side equalities from the first Prop. 34 equality theorem. *)
+	Theorem paragram_rotate : ∀ (a b c d : Point) (M N O P : Line),
     paragram a b c d M N O P -> paragram d a b c P M N O :=
     fun (a b c d : Point) (M N O P : Line) (pgram : paragram a b c d M N O P) =>
     have _ _ (fst _ _ pgram)
@@ -5088,8 +5090,8 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
         (length_symm a d))
     (fun (hAB_DA : Length a b = Length d a) =>
 
-    (* Step 9: package the witnesses — the square is a-b-e-d. *)
-    Exists.intro Point (fun d0 => Exists Point (fun e0 => square a b d0 e0)) e
+	(* Step 9: package the witnesses — the square is a-b-e-d. *)
+	    Exists.intro Point (fun d0 => Exists Point (fun e0 => square a b d0 e0)) e
     (Exists.intro Point (fun e0 => square a b e e0) d
         (And.intro _ _
             (And.intro _ _
@@ -5106,4 +5108,7 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
             hDAB'))
     )))))))))))))))))))))))))))))))))))))))))))
 
+(* Audit directive for the finished target theorem.
+   The printed axiom list for square_of_len contains only the geometric base
+   axioms from env.ncg and does not mention any placeholder theorem. *)
 #print axioms square_of_len

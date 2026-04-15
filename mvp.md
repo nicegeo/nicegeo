@@ -1,243 +1,51 @@
-# MVP Roadmap: proof.ncg
+# Proof Status Summary
 
-**Ultimate goal:** `square_of_len` (Prop 46)
-Run `python3 deps.py` for the full dependency graph.
+**Main goal:** `square_of_len` (Euclid I.46) ✓
 
----
+## Final status
+- `square_of_len` is fully proved.
+- `dune exec nicegeo proof.ncg` returns `Valid proofs!`
+- `dune exec nicegeo proof.ncg | grep sorry` does not list `sorry`.
 
-## Prop 5 — Base angles of isosceles triangle ✓
-**Milestone:** `angle_eq_of_iso` — `iso_tri a b c → Angle a b c = Angle a c b`
-> ✓ PROVED (SSS on triangles (a,b,c) and (a,c,b))
+## Completed dependency path to Prop. 46
+- Prop. 10 `bisect_segment` ✓
+- Prop. 11 `perpendicular_of_online'`, `perpendicular_of_online''` ✓
+- Prop. 13 `two_right_of_flat_angle`, `right_of_online_right` ✓
+- Prop. 15 `vertical_angle`, `vertical_angle'` ✓
+- Prop. 16 `internal_lt_external`, `internal_lt_external'` ✓
+- Prop. 18 `ang_lt_of_len_lt` ✓
+- Prop. 19 `len_lt_of_ang_lt` ✓
+- Prop. 20 `len_lt_of_tri`, `len_lt_of_tri'` ✓
+- Prop. 22 `triangle_of_ineq` ✓
+- Prop. 23 `angle_copy`, `angle_copy'` ✓
+- Prop. 27 `para_of_ang_eq` ✓
+- Prop. 29 `alternate_interior_angle`, `co_interior_angles` ✓
+- Prop. 30 `para_trans` ✓
+- Prop. 31 `para_of_offline` ✓
+- Prop. 34 `len_ang_arelen_ang_area_eq_of_parallelogram` ✓
+- Prop. 34 `len_eq_of_parallelogram` ✓
+- Prop. 34 `len_eq_of_parallelogram'` ✓
+- Prop. 34 `len_eq_of_parallelogram''` ✓
+- Prop. 46 helper `lines_inter_of_parallel_through_transversal` ✓
+- Prop. 46 helper `lines_inter_of_crossing_parallels` ✓
+- Prop. 46 helper `same_side_of_points_on_parallel` ✓
 
----
+## Proof shape of Prop. 46
+- Build the base line through `a,b`.
+- Erect a perpendicular at `a`.
+- Place `d` on that perpendicular with `ad = ab`.
+- Draw through `d` a line parallel to `ab`, and through `b` a line parallel to `ad`.
+- Let `e` be their intersection.
+- Show `a d e b` is a parallelogram.
+- Use Prop. 34 to get opposite-side equalities.
+- Use Prop. 29 and Prop. 13 to show all angles are right angles.
+- Package the square as `square a b e d`.
 
-## Prop 6 — Equal angles imply isosceles
-**Milestone:** `eq_angles_implies_isoceles`
-> `triangle a b c → Angle a b c = Angle a c b → Length a b = Length a c`
-> TODO
+## Validation used
+- `python3 check_parens.py proof.ncg`
+- `dune exec nicegeo proof.ncg`
+- `python3 deps.py square_of_len`
+- `#print axioms square_of_len`
 
----
-
-## Prop 10 — Bisecting a segment ✓
-**Milestone:** `bisect_segment`
-> `a ≠ b → ∃ e, Between a e b ∧ Length a e = Length b e`
-> ✓ PROVED
-
-Helpers proved:
-- `iseqtri_iseqtri_diffside_of_ne` ✓
-
----
-
-## Prop 11 — Erecting a perpendicular ✓
-**Milestone:** `perpendicular_of_online'` / `perpendicular_of_online''`
-> Perpendicular at b on L, on same/opposite side as f
-> ✓ PROVED
-
-Helpers (all proved ✓):
-- `length_eq_B_of_ne`: `a ≠ b → b ≠ c → ∃ d, Between a b d ∧ length b c = length b d`
-- `iseqtri_sameside_of_ne`: `∃ c, ¬OnLine c L ∧ SameSide c d L ∧ eq_tri a b c`
-- `angle_extension_of_B_B`: `B(a,b,c) ∧ B(a,b,d) → Angle e b d = Angle e b c`
-
----
-
-## Prop 13 — Angles on a straight line sum to two right angles ✓
-**Milestone:** `two_right_of_flat_angle` / `right_of_online_right`
-> `Between a b c → ¬OnLine d L → Angle d b a + Angle d b c = 90 + 90`
-> ✓ PROVED
-
-Helpers (proved ✓):
-- `online_of_sameside_inter`
-- `angle_extension_of_sameside`
-- `angle_add_of_sameside`
-- `sum_two_right_from_splits`
-- `not_sameside_of_sameside_sameside`
-- `diffside_of_sameside_sameside`
-- `offline_of_B_offline`
-- `diffside_of_B_offline`
-- `diffside_of_B_offline''`
-- `sameside_of_B_diffside`
-- `sameside_of_B_sameside_sameside`
-- `two_right_of_flat_angle_same_side_case`
-- `right_of_online_right`
-
----
-
-## Prop 15 — Vertical angles ✓
-**Milestone:** `vertical_angle` / `vertical_angle'`
-> `Angle a b d = Angle c b e`
-> ✓ PROVED
-
----
-
-## Prop 16 — Exterior angle exceeds remote interior angles ✓
-**Milestone:** `internal_lt_external` / `internal_lt_external'`
-> `Between a b c → triangle a b d → Angle b d a < Angle d b c`
-> ✓ PROVED
-
-Helpers proved:
-- `col_of_B` ✓
-- `col_132_of_col` ✓
-
----
-
-## Prop 18 — Larger side opposite larger angle ✓
-**Milestone:** `ang_lt_of_len_lt`
-> `triangle a b c → length c a < length c b → angle c b a < angle c a b`
-> ✓ PROVED
-
-Helpers proved:
-- `col_213_of_col` ✓
-- `col_312_of_col` ✓
-- `tri_132_of_tri_123` ✓
-- `tri_213_of_tri_123` ✓
-- `tri_312_of_tri_123` ✓
-- `tri_321_of_tri_123` ✓
-- `tri_143_of_tri_col` ✓
-- `tri_of_B_tri` ✓
-- `diffside_of_B_offline'` ✓
-- `sameside_of_B_online_3` ✓
-- `zero_lt_angle_of_offline` ✓
-- `B_length_eq_of_ne_lt` ✓
-- `angle_lt_of_B_tri` ✓
-
----
-
-## Prop 19 — Larger angle opposite larger side ✓
-**Milestone:** `len_lt_of_ang_lt`
-> `triangle a b c → angle c b a < angle c a b → Length c a < Length c b`
-> ✓ PROVED
-
----
-
-## Prop 20 — Triangle inequality ✓
-**Milestone:** `len_lt_of_tri`
-> All three inequalities: each side < sum of the other two
-> ✓ PROVED
-
-Helper:
-- `len_lt_of_tri'`: `triangle a b c → Length a b < Length a c + Length b c` ✓
-
----
-
-## Prop 22 — Constructing a triangle from three lengths ✓
-**Milestone:** `triangle_of_ineq`
-> Given lengths satisfying triangle inequality, construct point e on same side as f
-> ✓ PROVED
-
-Helpers proved:
-- `LtCancelLeft` ✓
-- `LtCancelRight` ✓
-- `length_eq_B_of_ne_four` ✓
-- `B_or_B_of_B_B` ✓
-- `B_or_B_of_circ_pt` ✓
-- `in_circle_of_lt_lt` ✓
-- `circint_of_lt_lt` ✓
-
----
-
-## Prop 23 — Copying an angle ✓
-**Milestone:** `angle_copy` / `angle_copy'`
-> Copy angle ecd to vertex a on line L, same/opposite side as j
-> ✓ PROVED
-
-Helpers proved:
-- `triangle_copy` ✓
-- `length_eq_B_of_ne_four` ✓
-
----
-
-## Prop 27 — Equal alternate interior angles imply parallel lines ✓
-**Milestone:** `para_of_ang_eq`
-> `Angle c b a = Angle b c d → para M N`
-> ✓ PROVED
-
-Helpers proved:
-- `offline_of_online_inter` ✓
-
----
-
-## Prop 29 — Parallel lines and transversals ✓
-**Milestone:** `co_interior_angles`
-> `para L M → ... → Angle a b c + Angle b c d = 90 + 90`
-> ✓ PROVED
-
-Additional:
-- `no_lt_of_parallel_alternate` ✓
-- `alternate_interior_angle` ✓: `para L M → ... → Angle a b c = Angle b c d`
-
----
-
-## Prop 30 — Transitivity of parallelism ✓
-**Milestone:** `para_trans`
-> `L ≠ N → para L M → para M N → para L N`
-> ✓ PROVED
-
-Helpers proved:
-- `online_ne_of_point_line` ✓
-- `online_ne_of_line` ✓
-- `sameside_of_offline_on_line` ✓
-- `right_of_para_right` ✓
-- `zero_lt_angle_of_tri` ✓
-- `perpendicular_of_not_online` ✓
-- `lines_inter_of_not_sameside_distinct` ✓
-- `diffside_of_not_online'` ✓
-- `pts_line_circle_of_diffside` ✓
-- `length_eq_of_oncircle` ✓
-
-Next direction:
-- `para` is defined as `∀ e, ¬(OnLine e M ∧ OnLine e N)` — i.e. `¬(A ∧ B)` pointwise. In constructive logic De Morgan does NOT give `¬A ∨ ¬B` from `¬(A ∧ B)`, so this definition is NOT "stronger" than an existential negation; the two forms are constructively equivalent for no-common-point but the disjunctive `¬A ∨ ¬B` form would be strictly stronger and is unavailable here.
-- `lines_inter_if_diff_sides` is the key intersection axiom.
-- The external perpendicular package is now proved, following Lean’s Prop. 12 route.
-- Prop. 30 is now proved by contradiction from a hypothetical common point, using the dropped perpendicular plus Prop. 29 right-angle transfer.
-- This fully unlocks the local Prop. 46 helper `lines_inter_of_parallel_through_transversal`.
-
----
-
-## Prop 31 — Parallel through a point ✓
-**Milestone:** `para_of_offline`
-> `¬OnLine a M → ∃ N, OnLine a N ∧ para M N`
-> ✓ PROVED
-
----
-
-## Prop 34 — Parallelogram properties ✓
-**Milestone:** `len_ang_arelen_ang_area_eq_of_parallelogram`
-> `paragram → ab = cd ∧ ∠bad = ∠bcd ∧ area abd = area bcd`
-> ✓ PROVED
-
-Helpers proved:
-- `same_side_of_points_on_parallel_basic` ✓
-- `tri124_of_paragram` ✓
-- `diffside_of_paragram` ✓
-- `tri342_of_paragram` ✓
-- `eq_line_of_common_point_parallel_same` ✓
-- `eq_point_of_online_online_ne_line` ✓
-- `paragram_rotate` ✓
-
-Corollaries proved:
-- `len_eq_of_parallelogram`: `paragram → length a b = length c d` ✓
-- `len_eq_of_parallelogram'`: `paragram → length a d = length c b` ✓
-- `len_eq_of_parallelogram''`: `paragram → area a b d = area b c d` ✓
-
----
-
-## Prop 46 — Constructing a square ✓
-**Milestone:** `square_of_len`
-> ✓ PROVED
-> Kernel axiom audit: `#print axioms square_of_len` does **not** list `sorry`
-
-Prop 46 local helpers:
-- `lines_inter_of_parallel_through_transversal` ✓
-- `lines_inter_of_crossing_parallels` ✓ — depends on the above
-- `same_side_of_points_on_parallel` ✓
-
-Current direct blockers:
-- none
-
-Current transitive blockers:
-- none
-
----
-
-## Notes
-- Some accessory point-construction axioms in nicegeo have unclear derivability from System E, but are geometrically valid.
+## Note
+- Some point-construction axioms in `synthetic/env.ncg` are stronger-looking than the corresponding System E presentation, but Prop. 46 is now proved on the original `main` branch axiom file.
