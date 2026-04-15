@@ -85,7 +85,7 @@ let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
                ^ String.concat
                    "\n"
                    (List.map
-                      (fun g -> "  " ^ Pretty.term_to_string e g.goal_type)
+                      (fun g -> "  " ^ Pretty.term_to_string e ~lctx:g.lctx g.goal_type)
                       state.open_goals));
          })
   else state.statement
@@ -120,6 +120,15 @@ module Register = struct
 
   let unary_term (f : term -> tactic) : term list -> tactic = function
     | [ arg ] -> f arg
+    | [] ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None; lctx = None };
+               error_type =
+                 Error.InvalidTacticParameter
+                   "Expected exactly one term parameter, but got nothing";
+             })
     | terms ->
         raise
           (Error.ElabError
@@ -150,6 +159,15 @@ module Register = struct
                context = { loc = Some term.loc; decl_name = None; lctx = None };
                error_type =
                  Error.InvalidTacticParameter "Expected an identifier, but got a term";
+             })
+    | [] ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None; lctx = None };
+               error_type =
+                 Error.InvalidTacticParameter
+                   "Expected exactly one identifier parameter, but got nothing";
              })
     | terms ->
         raise
@@ -192,4 +210,35 @@ module Register = struct
         args
     in
     f idents
+
+  let tactical (f : tactic -> tactic) : term list -> tactic = function
+    | { inner = Name id; loc } :: rest ->
+        let inner_tac =
+          match Hashtbl.find_opt tactics id with
+          | Some func -> func rest
+          | None ->
+              raise
+                (Error.ElabError
+                   {
+                     context = { loc = Some loc; decl_name = None; lctx = None };
+                     error_type = Error.UnknownName { name = id };
+                   })
+        in
+        f inner_tac
+    | t :: _ ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = Some t.loc; decl_name = None; lctx = None };
+               error_type =
+                 Error.InvalidTacticParameter "Expected a tactic name, but got a term.";
+             })
+    | [] ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None; lctx = None };
+               error_type =
+                 Error.InvalidTacticParameter "Expected a tactic, but got nothing";
+             })
 end
