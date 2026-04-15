@@ -485,6 +485,8 @@ let choose (names : string * string) (e : term) (st : proof_state) : tactic_resu
       | _ -> fail "Argument must have the type [Exists A p]")
   | None -> fail "No goals remaining"
 
+(** Recursively destructs a term whose type is an And tree into all of its leaves named
+    from left to right *)
 let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
