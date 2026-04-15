@@ -95,31 +95,66 @@ let exact (tm : term) (st : proof_state) : tactic_result =
           let st = close_goal g.goal_id st in
           succeed st)
 
-(** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
-    and opens a new subgoal for [A]. *)
+(** Modifies the contents of [tbl1] to the contents of [tbl2]. Useful for restoring the
+    state of the ctx.metas table. *)
+let hashtbl_set tbl1 tbl2 =
+  if tbl1 != tbl2 then (
+    Hashtbl.clear tbl1;
+    Hashtbl.iter (fun k v -> Hashtbl.replace tbl1 k v) tbl2)
+
+(** [apply tm st] attempts to solve the current goal by applying [tm].
+
+    The tactic repeatedly tries [tm], [tm ?m1], [tm ?m1 ?m2], ... by introducing fresh
+    metavariables as arguments until the inferred type of the application unifies with the
+    goal type. On success it assigns the current goal to the application term and opens
+    one subgoal per introduced metavariable (in argument order), each under the current
+    local context.
+
+    Metavariable assignments produced by unsuccessful attempts are discarded by restoring
+    the original metavariable table before trying the next application. If no application
+    shape yields a well-typed term that unifies with the goal, the tactic fails. *)
 let apply (tm : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
-  | Some g -> (
-      let subgoal_id = gen_hole_id () in
-      let sol = mk_app tm (mk_hole subgoal_id) in
-      try
-        create_metas st.elab_ctx sol (List.map (fun h -> h.bid) g.lctx);
-        let sol_ty = infertype st.elab_ctx g.lctx sol in
-        unify st.elab_ctx sol_ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
-        (* basically check that all the holes in tm are filled *)
-        ignore (replace_metas st.elab_ctx tm);
-        match (Hashtbl.find st.elab_ctx.metas subgoal_id).ty with
-        | Some subgoal_ty ->
-            let subgoal =
-              { lctx = g.lctx; goal_type = subgoal_ty; goal_id = subgoal_id }
-            in
-            let st = { st with open_goals = st.open_goals @ [ subgoal ] } in
+  | Some g ->
+      (* Create a copy of the metas state for restoration. This is required because the 
+         tactic interface expects us to modify the passed in st.elab_ctx.metas as it does 
+         not use the returned st.elab_ctx.metas. *)
+      let metas = Hashtbl.copy st.elab_ctx.metas in
+      let lctx_bids = List.map (fun h -> h.bid) g.lctx in
+      let rec loop (sol : term) (goal_ids : int list) : tactic_result =
+        create_metas st.elab_ctx sol lctx_bids;
+        try
+          let sol_ty = infertype st.elab_ctx g.lctx sol in
+          try
+            unify st.elab_ctx sol_ty (Hashtbl.create 0) g.goal_type (Hashtbl.create 0);
+            (* unification succeeded, set the solution and open goals *)
             let st = assign_meta g.goal_id sol st in
             let st = close_goal g.goal_id st in
-            succeed st
-        | None -> fail "subgoal type could not be inferred"
-      with Elab.Error.ElabError info -> fail (Elab.Error.pp_exn st.elab_ctx info))
+            let goals =
+              List.map
+                (fun id ->
+                  {
+                    lctx = g.lctx;
+                    goal_type = (Hashtbl.find st.elab_ctx.metas id).ty |> Option.get;
+                    goal_id = id;
+                  })
+                (List.rev goal_ids)
+            in
+            Success { st with open_goals = goals @ st.open_goals }
+          with Elab.Error.ElabError _ ->
+            (* unification failed, try with another application term *)
+            (* restore metas state *)
+            hashtbl_set st.elab_ctx.metas metas;
+            let subgoal_id = gen_hole_id () in
+            loop (mk_app sol (mk_hole subgoal_id)) (subgoal_id :: goal_ids)
+        with Elab.Error.ElabError _ ->
+          (* infertype failed so term is not well-typed, probably added too many terms so we are done *)
+          (* restore metas state *)
+          hashtbl_set st.elab_ctx.metas metas;
+          Failure "application of term does not unify with the goal"
+      in
+      loop tm []
 
 let ensure_sorry_ax (st : proof_state) : unit =
   if not (Hashtbl.mem st.elab_ctx.env "sorry_ax") then (
@@ -395,7 +430,67 @@ let exists (a : term) (st : proof_state) : tactic_result =
       | None -> fail "Goal must have the form [Exists A p]")
   | None -> fail "No goals remaining"
 
+(*
+ * Infer both [A] and the motive [p] for the choose tactic, by way of unifying
+ * with the input term [e : Exists ?? ??]
+ *)
+let infer_choose_types (e : term) (g : goal) (st : proof_state) :
+    term option * term option =
+  let hole_a_typ = gen_hole_id () in
+  let hole_p = gen_hole_id () in
+  let a_typ_sort = mk_sort 1 in
+  let ctx = add_hole g hole_a_typ a_typ_sort st.elab_ctx in
+  let bid = Elab.Term.gen_binder_id () in
+  let p_hole_type = mk_arrow (Some "A") bid (mk_hole hole_a_typ) (mk_sort 0) in
+  let ctx = add_hole g hole_p p_hole_type ctx in
+  let expected =
+    mk_app (mk_app (mk_name "Exists") (mk_hole hole_a_typ)) (mk_hole hole_p)
+  in
+  let e_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx e in
+  unify ctx e_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
+  match (Hashtbl.find_opt ctx.metas hole_a_typ, Hashtbl.find_opt ctx.metas hole_p) with
+  | Some mvar1, Some mvar2 -> (mvar1.sol, mvar2.sol)
+  | _ -> failwith "internal nicegeo programming error: created hole does not exist!"
+
+(*
+ * Given a term whose type unifies with type [Exists A p], infer A and p,
+ * and introduce new hypothesis representing the first and (dependent) second 
+ * projections of the existential. Do not delete any hypotheses. Do not change
+ * the goal. Do update the proof term to represent the application of the
+ * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
+ *)
+let choose (names : string * string) (e : term) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | Some g -> (
+      (* infer A and p *)
+      match infer_choose_types e g st with
+      | Some a_typ, Some p ->
+          (* define new hypotheses *)
+          let bid_a_typ = Elab.Term.gen_binder_id () in
+          let hyp_a_typ = { name = Some (fst names); bid = bid_a_typ; ty = a_typ } in
+          let bid_h = Elab.Term.gen_binder_id () in
+          let ty = mk_app p (mk_bvar bid_a_typ) in
+          let hyp_h = { name = Some (snd names); bid = bid_h; ty } in
+          let subgoal_lctx = hyp_h :: hyp_a_typ :: g.lctx in
+          (* construct the proof term *)
+          let new_hole, st = fresh_goal st subgoal_lctx g.goal_type in
+          let proof =
+            mk_app
+              (mk_app
+                 (mk_app (mk_app (mk_app (mk_name "Exists.elim") a_typ) p) g.goal_type)
+                 e)
+              (mk_fun None bid_a_typ a_typ (mk_fun None bid_h ty new_hole))
+          in
+          (* update the proof state accordingly (and close duplicated goal) *)
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+          succeed st
+      | _ -> fail "Argument must have the type [Exists A p]")
+  | None -> fail "No goals remaining"
+
 let register () =
+  register_tactic "try" Register.(tactical try_tac);
+  register_tactic "repeat" Register.(tactical repeat);
   register_tactic "reflexivity" Register.(nullary reflexivity);
   register_tactic "exact" Register.(unary_term exact);
   register_tactic "apply" Register.(unary_term apply);
@@ -436,4 +531,36 @@ let register () =
              }));
   register_tactic "rewrite" Register.(unary_term rewrite);
   register_tactic "exists" Register.(unary_term exists);
+  (* I don't feel comfortable enough with registration yet to extend Register *)
+  register_tactic "choose" (function
+    | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
+    | trm :: _ ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = Some trm.loc; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   "Expected an identifier, but got a term";
+             })
+    | args ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                   lctx = None;
+                 };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   ("Expected exactly three parameters (two names and a term), but got "
+                   ^ string_of_int (List.length args));
+             }));
   ()
