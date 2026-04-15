@@ -298,9 +298,8 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
-(*
-  needs better comment
-*)
+(** Breaks goal of the form [A and B] into two subgoals for [A] and [B]
+    by applying [And.intro]. Fails if the current goal is not a conjunction. *)
 let split (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
