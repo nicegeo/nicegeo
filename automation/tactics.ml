@@ -333,12 +333,61 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
-(* This adds a hole of the desired type, again using a copy of the hashmap *)
-let add_hole g hole_id ty ctx =
+(** Helper function that creates a tuple (hole_id, hole_term) where the hole_term is just
+    the Hole term corresponding to the created hole ID *)
+let create_hole () : int * term =
+  let hole_id = gen_hole_id () in
+  let hole_term = mk_hole hole_id in
+  (hole_id, hole_term)
+
+(** Get the solution term for the hole `hole_id`, or return None if there is no solution
+    for the given hole (i.e. unification couldn't find a solution) *)
+let get_hole_sol (ctx : ctx) (hole_id : int) : term option =
+  match Hashtbl.find_opt ctx.metas hole_id with
+  | Some mvar -> mvar.sol
+  (* If the hole_id isn't in ctx.metas at all, then that indicates a bug since
+  the user should have added the given hole ID into the context when they created
+  the hole *)
+  | None -> failwith "internal nicegeo programming error: created hole does not exist!"
+
+(** Create a new context by adding each hole that appears in `expected_term` to the
+    existing context `ctx` if it hasn't been added already.
+
+    This function doesn't modify `ctx` itself, instead returning the new context, in
+    addition to the list of hole IDs for all of the created holes *)
+let ctx_with_new_holes (g : goal) (ctx : ctx) (expected_term : term) : ctx =
+  (* We only need to copy ctx.metas since create_metas doesn't modify
+  anything else in the context *)
   let metas = Hashtbl.copy ctx.metas in
-  let ctx_bids = List.map (fun h -> h.bid) g.lctx in
-  Hashtbl.replace metas hole_id { ty = Some ty; context = ctx_bids; sol = None };
-  { ctx with metas }
+  let new_ctx = { ctx with metas } in
+  (* g.lctx includes a list of local variables (represented as binder IDs) that
+  are in scope when the goal term would be used (e.g. the variables x and y in
+  `fun x => fun y => <hole for g>`)
+
+  In general, the goal type is allowed to depend on any variables that are in
+  scope when it's used, and using those binder IDs here ensures that all holes
+  created are allowed to reference said variables.
+   *)
+  let outer_local_var_bids = List.map (fun h -> h.bid) g.lctx in
+  create_metas new_ctx expected_term outer_local_var_bids;
+  new_ctx
+
+(** Use unification to both check if a given term `t` matches a certain expected format,
+    where the expected format is specified as a term with holes for places where arbitrary
+    values are allowed. Specifically, The expected format is specified by `expected_term`,
+    which should use new holes created by the user (e.g. using `create_hole`) for the
+    subterms that need to get inferred in the expected term.
+
+    This function returns a new context that contains the result of unification (instead
+    of modifying the provided context) *)
+let match_term_and_solve_holes (g : goal) (ctx : ctx) (t : term) (expected_term : term) :
+    ctx =
+  (* expected_term has holes added by the user to specify what they want to infer,
+  so make sure those holes are added to the new context *)
+  let ctx = ctx_with_new_holes g ctx expected_term in
+  unify ctx t (Hashtbl.create 0) expected_term (Hashtbl.create 0);
+
+  ctx
 
 (* 
   This infers the motive p of the existential type when constructing an Exists.intro.
@@ -346,17 +395,12 @@ let add_hole g hole_id ty ctx =
   It then calls unification with a fresh hole for p, to unify the goal with the type
   Exists A ?p, where ?p : A -> Prop. If successful, it returns Some p, otherwise None.
 *)
-let infer_motive (exists_type : term) (g : goal) ctx : term option =
-  let goal_type = g.goal_type in
-  let hole_id = gen_hole_id () in
-  let bid = Elab.Term.gen_binder_id () in
-  let hole_type = mk_arrow (Some "A") bid exists_type (mk_sort 0) in
-  let ctx = add_hole g hole_id hole_type ctx in
-  let expected_goal = mk_app (mk_app (mk_name "Exists") exists_type) (mk_hole hole_id) in
-  unify ctx goal_type (Hashtbl.create 0) expected_goal (Hashtbl.create 0);
-  match Hashtbl.find_opt ctx.metas hole_id with
-  | Some mvar -> mvar.sol
-  | None -> failwith "internal nicegeo programming error: created hole does not exist!"
+let infer_motive (exists_type : term) (g : goal) (ctx : ctx) : term option =
+  let motive_hole_id, motive_hole = create_hole () in
+
+  let expected_term = mk_app_multiarg (mk_name "Exists") [ exists_type; motive_hole ] in
+  let ctx = match_term_and_solve_holes g ctx g.goal_type expected_term in
+  get_hole_sol ctx motive_hole_id
 
 (*
  * This implements the exists tactic, which takes term a as an argument, and constructs
@@ -377,15 +421,68 @@ let exists (a : term) (st : proof_state) : tactic_result =
           let new_hole, st = fresh_goal st g.lctx new_goal_ty in
           (* construct the proof term *)
           let proof =
-            mk_app
-              (mk_app (mk_app (mk_app (mk_name "Exists.intro") exists_type) p) a)
-              new_hole
+            mk_app_multiarg (mk_name "Exists.intro") [ exists_type; p; a; new_hole ]
           in
           (* update the proof state accordingly *)
           let st = assign_meta g.goal_id proof st in
           let st = close_goal g.goal_id st in
           succeed st
       | None -> fail "Goal must have the form [Exists A p]")
+  | None -> fail "No goals remaining"
+
+(*
+ * Infer both [A] and the motive [p] for the choose tactic, by way of unifying
+ * with the input term [e : Exists ?? ??]
+ *)
+let infer_choose_types (e : term) (g : goal) (st : proof_state) :
+    term option * term option =
+  let hole_a_typ = gen_hole_id () in
+  let hole_p = gen_hole_id () in
+
+  let expected =
+    mk_app (mk_app (mk_name "Exists") (mk_hole hole_a_typ)) (mk_hole hole_p)
+  in
+  let ctx = ctx_with_new_holes g st.elab_ctx expected in
+  let e_typ = Elab.Typecheck.infertype ctx g.lctx e in
+  unify ctx e_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
+  match (Hashtbl.find_opt ctx.metas hole_a_typ, Hashtbl.find_opt ctx.metas hole_p) with
+  | Some mvar1, Some mvar2 -> (mvar1.sol, mvar2.sol)
+  | _ -> failwith "internal nicegeo programming error: created hole does not exist!"
+
+(*
+ * Given a term whose type unifies with type [Exists A p], infer A and p,
+ * and introduce new hypothesis representing the first and (dependent) second 
+ * projections of the existential. Do not delete any hypotheses. Do not change
+ * the goal. Do update the proof term to represent the application of the
+ * eliminator [Exists.elim A p b e (fun (a : A) (h : p a) => ??)].
+ *)
+let choose (names : string * string) (e : term) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | Some g -> (
+      (* infer A and p *)
+      match infer_choose_types e g st with
+      | Some a_typ, Some p ->
+          (* define new hypotheses *)
+          let bid_a_typ = Elab.Term.gen_binder_id () in
+          let hyp_a_typ = { name = Some (fst names); bid = bid_a_typ; ty = a_typ } in
+          let bid_h = Elab.Term.gen_binder_id () in
+          let ty = mk_app p (mk_bvar bid_a_typ) in
+          let hyp_h = { name = Some (snd names); bid = bid_h; ty } in
+          let subgoal_lctx = hyp_h :: hyp_a_typ :: g.lctx in
+          (* construct the proof term *)
+          let new_hole, st = fresh_goal st subgoal_lctx g.goal_type in
+          let proof =
+            mk_app
+              (mk_app
+                 (mk_app (mk_app (mk_app (mk_name "Exists.elim") a_typ) p) g.goal_type)
+                 e)
+              (mk_fun None bid_a_typ a_typ (mk_fun None bid_h ty new_hole))
+          in
+          (* update the proof state accordingly (and close duplicated goal) *)
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+          succeed st
+      | _ -> fail "Argument must have the type [Exists A p]")
   | None -> fail "No goals remaining"
 
 let register () =
@@ -431,4 +528,36 @@ let register () =
              }));
   register_tactic "rewrite" Register.(unary_term rewrite);
   register_tactic "exists" Register.(unary_term exists);
+  (* I don't feel comfortable enough with registration yet to extend Register *)
+  register_tactic "choose" (function
+    | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
+    | trm :: _ ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = Some trm.loc; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   "Expected an identifier, but got a term";
+             })
+    | args ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                   lctx = None;
+                 };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   ("Expected exactly three parameters (two names and a term), but got "
+                   ^ string_of_int (List.length args));
+             }));
   ()
