@@ -4238,21 +4238,507 @@ Theorem para_of_offline : ∀ (a : Point) (M : Line), ¬OnLine a M → ∃ N, On
 
 (* Proposition 34 (I.34): Opposite sides, opposite angles, and half-area of a parallelogram.
    Specifically: ab = cd, angle bad = angle bcd, area abd = area bcd. *)
+Theorem same_side_of_points_on_parallel_basic :
+    ∀ (b e : Point) (N M : Line),
+    OnLine b M -> OnLine e M ->
+    para N M ->
+    Not (OnLine b N) ->
+    SameSide b e N :=
+    fun (b e : Point) (N M : Line) (b_on_M : OnLine b M) (e_on_M : OnLine e M)
+        (hpara : para N M) (b_not_on_N : Not (OnLine b N)) =>
+    have _ _ (
+        fun (e_on_N : OnLine e N) => hpara e (And.intro _ _ e_on_N e_on_M)
+    )
+    (fun (e_not_on_N : Not (OnLine e N)) =>
+    double_negation (SameSide b e N)
+    (fun (b_not_same_e : Not (SameSide b e N)) =>
+        para_not_inter N M hpara
+        (lines_inter_if_diff_sides b e N M
+            (And.intro _ _
+                (And.intro _ _
+                    b_not_on_N
+                    e_not_on_N)
+                b_not_same_e)
+            b_on_M
+            e_on_M))
+    )
+
+Theorem tri124_of_paragram : ∀ (a b c d : Point) (L M N O : Line),
+    paragram a b c d L M N O -> triangle a b d :=
+    fun (a b c d : Point) (L M N O : Line)
+        (pgram : paragram a b c d L M N O) =>
+    have _ _ (fst _ _ pgram)
+    (fun pLN =>
+    have _ _ (snd _ _ pgram)
+    (fun (MO : para M O) =>
+    have _ _ (fst _ _ pLN)
+    (fun pAO =>
+    have _ _ (snd _ _ pLN)
+    (fun (LN : para L N) =>
+    have _ _ (fst _ _ pAO)
+    (fun pDO =>
+    have _ _ (snd _ _ pAO)
+    (fun (aO : OnLine a O) =>
+    have _ _ (fst _ _ pDO)
+    (fun pDN =>
+    have _ _ (snd _ _ pDO)
+    (fun (dO : OnLine d O) =>
+    have _ _ (fst _ _ pDN)
+    (fun pCN =>
+    have _ _ (snd _ _ pDN)
+    (fun (dN : OnLine d N) =>
+    have _ _ (fst _ _ pCN)
+    (fun pCM =>
+    have _ _ (snd _ _ pCN)
+    (fun (_cN : OnLine c N) =>
+    have _ _ (fst _ _ pCM)
+    (fun pBM =>
+    have _ _ (snd _ _ pCM)
+    (fun (_cM : OnLine c M) =>
+    have _ _ (fst _ _ pBM)
+    (fun pAB =>
+    have _ _ (snd _ _ pBM)
+    (fun (bM : OnLine b M) =>
+    have _ _ (fst _ _ pAB)
+    (fun (aL : OnLine a L) =>
+    have _ _ (snd _ _ pAB)
+    (fun (bL : OnLine b L) =>
+    have _ _ (offline_of_para' d L N dN LN)
+    (fun (d_not_on_L : Not (OnLine d L)) =>
+    have _ _ (offline_of_para b M O bM MO)
+    (fun (b_not_on_O : Not (OnLine b O)) =>
+    triangle_of_ne_online a b d L
+        (ne_of_online_not_online a b O aO b_not_on_O)
+        aL
+        bL
+        d_not_on_L))))))))))))))))))))
+
+Theorem diffside_of_paragram : ∀ (a b c d : Point) (L M N O T : Line),
+    OnLine b T -> OnLine d T ->
+    paragram a b c d L M N O -> diffside a c T :=
+    fun (a b c d : Point) (L M N O T : Line)
+        (bT : OnLine b T) (dT : OnLine d T)
+        (pgram : paragram a b c d L M N O) =>
+    have _ _ (fst _ _ pgram)
+    (fun pLN =>
+    have _ _ (snd _ _ pgram)
+    (fun (MO : para M O) =>
+    have _ _ (fst _ _ pLN)
+    (fun pAO =>
+    have _ _ (snd _ _ pLN)
+    (fun (LN : para L N) =>
+    have _ _ (fst _ _ pAO)
+    (fun pDO =>
+    have _ _ (snd _ _ pAO)
+    (fun (aO : OnLine a O) =>
+    have _ _ (fst _ _ pDO)
+    (fun pDN =>
+    have _ _ (snd _ _ pDO)
+    (fun (dO : OnLine d O) =>
+    have _ _ (fst _ _ pDN)
+    (fun pCN =>
+    have _ _ (snd _ _ pDN)
+    (fun (dN : OnLine d N) =>
+    have _ _ (fst _ _ pCN)
+    (fun pCM =>
+    have _ _ (snd _ _ pCN)
+    (fun (cN : OnLine c N) =>
+    have _ _ (fst _ _ pCM)
+    (fun pBM =>
+    have _ _ (snd _ _ pCM)
+    (fun (cM : OnLine c M) =>
+    have _ _ (fst _ _ pBM)
+    (fun pAB =>
+    have _ _ (snd _ _ pBM)
+    (fun (bM : OnLine b M) =>
+    have _ _ (fst _ _ pAB)
+    (fun (aL : OnLine a L) =>
+    have _ _ (snd _ _ pAB)
+    (fun (bL : OnLine b L) =>
+    have _ _ (same_side_of_points_on_parallel_basic c d L N
+        cN
+        dN
+        LN
+        (offline_of_para' c L N cN LN))
+    (fun (cdL : SameSide c d L) =>
+    have _ _ (same_side_of_points_on_parallel_basic a d M O
+        aO
+        dO
+        MO
+        (offline_of_para' a M O aO MO))
+    (fun (adM : SameSide a d M) =>
+    diffside_of_sameside_sameside b a d c L T M
+        bL
+        bT
+        bM
+        aL
+        dT
+        cM
+        cdL
+        adM))))))))))))))))))))
+
+Theorem eq_line_of_common_point_parallel_same : ∀ (a : Point) (L M N : Line),
+    OnLine a L -> OnLine a M ->
+    para L N -> para M N ->
+    L = M :=
+    fun (a : Point) (L M N : Line)
+        (aL : OnLine a L) (aM : OnLine a M)
+        (LN : para L N) (MN : para M N) =>
+    Or.elim _ _ _ (excluded_middle (L = M))
+        (fun (LM : L = M) => LM)
+        (fun (LM : L ≠ M) =>
+            False.elim _
+                (offline_of_para a L M aL
+                    (para_trans L N M LM LN (para_symm M N MN))
+                    aM))
+
+Theorem eq_point_of_online_online_ne_line : ∀ (a b : Point) (L M : Line),
+    OnLine a L -> OnLine b L ->
+    OnLine a M -> OnLine b M ->
+    L ≠ M ->
+    a = b :=
+    fun (a b : Point) (L M : Line)
+        (aL : OnLine a L) (bL : OnLine b L)
+        (aM : OnLine a M) (bM : OnLine b M)
+        (LM : L ≠ M) =>
+    Or.elim _ _ _ (excluded_middle (a = b))
+        (fun (ab_eq : a = b) => ab_eq)
+        (fun (ab : a ≠ b) =>
+            False.elim _ (LM (two_distinct_points_determine_unique_line a b L M ab aL bL aM bM)))
+
+Theorem tri342_of_paragram : ∀ (a b c d : Point) (L M N O : Line),
+    paragram a b c d L M N O -> triangle d b c :=
+    fun (a b c d : Point) (L M N O : Line)
+        (pgram : paragram a b c d L M N O) =>
+    have _ _ (fst _ _ pgram)
+    (fun pLN =>
+    have _ _ (snd _ _ pgram)
+    (fun (MO : para M O) =>
+    have _ _ (fst _ _ pLN)
+    (fun pAO =>
+    have _ _ (snd _ _ pLN)
+    (fun (LN : para L N) =>
+    have _ _ (fst _ _ pAO)
+    (fun pDO =>
+    have _ _ (snd _ _ pAO)
+    (fun (aO : OnLine a O) =>
+    have _ _ (fst _ _ pDO)
+    (fun pDN =>
+    have _ _ (snd _ _ pDO)
+    (fun (dO : OnLine d O) =>
+    have _ _ (fst _ _ pDN)
+    (fun pCN =>
+    have _ _ (snd _ _ pDN)
+    (fun (_dN : OnLine d N) =>
+    have _ _ (fst _ _ pCN)
+    (fun pCM =>
+    have _ _ (snd _ _ pCN)
+    (fun (cN : OnLine c N) =>
+    have _ _ (fst _ _ pCM)
+    (fun pBM =>
+    have _ _ (snd _ _ pCM)
+    (fun (cM : OnLine c M) =>
+    have _ _ (fst _ _ pBM)
+    (fun pAB =>
+    have _ _ (snd _ _ pBM)
+    (fun (bM : OnLine b M) =>
+    have _ _ (fst _ _ pAB)
+    (fun (aL : OnLine a L) =>
+    have _ _ (snd _ _ pAB)
+    (fun (bL : OnLine b L) =>
+    have _ _ (offline_of_para' c L N
+        cN
+        LN)
+    (fun (c_not_on_L : Not (OnLine c L)) =>
+    have _ _ (offline_of_para d O M dO (para_symm M O MO))
+    (fun (d_not_on_M : Not (OnLine d M)) =>
+    swap_12_triangle b d c
+        (swap_23_triangle b c d
+            (triangle_of_ne_online b c d M
+                (ne_of_online_not_online b c L bL c_not_on_L)
+                bM
+                cM
+                d_not_on_M))))))))))))))))))))))
+
 Theorem len_ang_arelen_ang_area_eq_of_parallelogram : ∀ (a b c d : Point) (M N O P : Line),
     paragram a b c d M N O P ->
-    length a b = length c d /\ angle b a d = angle b c d /\ area a b d = area b c d := sorry _ (* TODO *)
+    length a b = length c d /\ angle b a d = angle b c d /\ area a b d = area b c d :=
+    fun (a b c d : Point) (M N O P : Line)
+        (pgram : paragram a b c d M N O P) =>
+    have _ _ (fst _ _ pgram)
+    (fun pMO =>
+    have _ _ (snd _ _ pgram)
+    (fun (NP : para N P) =>
+    have _ _ (fst _ _ pMO)
+    (fun pAP =>
+    have _ _ (snd _ _ pMO)
+    (fun (MO : para M O) =>
+    have _ _ (fst _ _ pAP)
+    (fun pDP =>
+    have _ _ (snd _ _ pAP)
+    (fun (aP : OnLine a P) =>
+    have _ _ (fst _ _ pDP)
+    (fun pDO =>
+    have _ _ (snd _ _ pDP)
+    (fun (dP : OnLine d P) =>
+    have _ _ (fst _ _ pDO)
+    (fun pCO =>
+    have _ _ (snd _ _ pDO)
+    (fun (dO : OnLine d O) =>
+    have _ _ (fst _ _ pCO)
+    (fun pCN =>
+    have _ _ (snd _ _ pCO)
+    (fun (cO : OnLine c O) =>
+    have _ _ (fst _ _ pCN)
+    (fun pBN =>
+    have _ _ (snd _ _ pCN)
+    (fun (cN : OnLine c N) =>
+    have _ _ (fst _ _ pBN)
+    (fun pAB =>
+    have _ _ (snd _ _ pBN)
+    (fun (bN : OnLine b N) =>
+    have _ _ (fst _ _ pAB)
+    (fun (aM : OnLine a M) =>
+    have _ _ (snd _ _ pAB)
+    (fun (bM : OnLine b M) =>
+    have _ _ (tri124_of_paragram a b c d M N O P pgram)
+    (fun (tri_abd : triangle a b d) =>
+    have _ _ (tri342_of_paragram a b c d M N O P pgram)
+    (fun (tri_dbc : triangle d b c) =>
+    have _ _ (ne_23_of_triangle a b d tri_abd)
+    (fun (bd : b ≠ d) =>
+    Exists.elim _ _ _ (line_of_pts b d bd)
+    (fun (T : Line) (bd_on_T : OnLine b T /\ OnLine d T) =>
+    have _ _ (diffside_of_paragram a b c d M N O P T
+        (fst _ _ bd_on_T)
+        (snd _ _ bd_on_T)
+        pgram)
+    (fun (acT : diffside a c T) =>
+    Exists.elim _ _ _ (triangle_copy b d a d b c T
+        tri_dbc
+        (fst _ _ bd_on_T)
+        (snd _ _ bd_on_T)
+        (fst _ _ (fst _ _ acT))
+        (length_symm b d))
+    (fun (x : Point) (hx : Length b x = Length d c /\ Length d x = Length b c /\ SameSide x a T) =>
+    have _ _
+        (length_pts_ne d c b x
+            (Eq.symm _ _ _ (fst _ _ (fst _ _ hx)))
+            (ne_13_of_triangle d b c tri_dbc))
+    (fun (bx : b ≠ x) =>
+    have _ _
+        (length_pts_ne b c d x
+            (Eq.symm _ _ _ (snd _ _ (fst _ _ hx)))
+            (ne_23_of_triangle d b c tri_dbc))
+    (fun (dx : d ≠ x) =>
+    Exists.elim _ _ _ (line_of_pts b x bx)
+    (fun (R : Line) (bx_on_R : OnLine b R /\ OnLine x R) =>
+    Exists.elim _ _ _ (line_of_pts d x dx)
+    (fun (S : Line) (dx_on_S : OnLine d S /\ OnLine x S) =>
+    have _ _
+        (diffside_of_sameside_diffside a x c T
+            (same_side_symm x a T (snd _ _ hx))
+            acT)
+    (fun (xcT : diffside x c T) =>
+    have _ _
+        (sss_congruence x b d c d b
+            (Ne.symm _ _ _ bx)
+            bd
+            (Ne.symm _ _ _ dx)
+            (Ne.symm _ _ _ (ne_13_of_triangle d b c tri_dbc))
+            (Ne.symm _ _ _ bd)
+            (Ne.symm _ _ _ (ne_23_of_triangle d b c tri_dbc))
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _ (length_symm b x))
+                (EqTrans _ _ _ _
+                    (fst _ _ (fst _ _ hx))
+                    (length_symm d c)))
+            (length_symm b d)
+            (snd _ _ (fst _ _ hx)))
+    (fun xbd_cdb_all =>
+    have _ _
+        (EqTrans _ _ _ _
+            (Eq.symm _ _ _
+                (angle_symm x b d
+                    (Ne.symm _ _ _ bx)
+                    bd))
+            (EqTrans _ _ _ _
+                (fst _ _ (snd _ _ xbd_cdb_all))
+                (angle_symm c d b
+                    (Ne.symm _ _ _ (ne_13_of_triangle d b c tri_dbc))
+                    (Ne.symm _ _ _ bd))))
+    (fun (dbx_bdc : Angle d b x = Angle b d c) =>
+    have _ _
+        (para_of_ang_eq x b d c T R O
+            bd
+            (snd _ _ bx_on_R)
+            (fst _ _ bx_on_R)
+            (fst _ _ bd_on_T)
+            (snd _ _ bd_on_T)
+            dO
+            cO
+            xcT
+            dbx_bdc)
+    (fun (RO : para R O) =>
+    have _ _
+        (para_of_ang_eq x d b c T S N
+            (Ne.symm _ _ _ bd)
+            (snd _ _ dx_on_S)
+            (fst _ _ dx_on_S)
+            (snd _ _ bd_on_T)
+            (fst _ _ bd_on_T)
+            bN
+            cN
+            xcT
+            (fst _ _ (snd _ _ (snd _ _ xbd_cdb_all))))
+    (fun (SN : para S N) =>
+    have _ _
+        (eq_line_of_common_point_parallel_same b R M O
+            (fst _ _ bx_on_R)
+            bM
+            RO
+            MO)
+    (fun (RM : R = M) =>
+    have _ _
+        (eq_line_of_common_point_parallel_same d S P N
+            (fst _ _ dx_on_S)
+            dP
+            SN
+            (para_symm N P NP))
+    (fun (SP : S = P) =>
+    have _ _
+        (Eq.elim _ R (fun Q => OnLine x Q) (snd _ _ bx_on_R) M RM)
+    (fun (xM : OnLine x M) =>
+    have _ _
+        (Eq.elim _ S (fun Q => OnLine x Q) (snd _ _ dx_on_S) P SP)
+    (fun (xP : OnLine x P) =>
+    have _ _
+        (offline_of_para d O M dO (para_symm M O MO))
+    (fun (d_not_on_M : Not (OnLine d M)) =>
+    have _ _
+        (eq_point_of_online_online_ne_line x a M P
+            xM
+            aM
+            xP
+            aP
+            (ne_line_of_online d M P dP d_not_on_M))
+    (fun (xa : x = a) =>
+    have _ _
+        (EqTrans _ _ _ _
+            (length_symm a b)
+            (EqTrans _ _ _ _
+                (Eq.elim _ x (fun u => Length b u = Length d c)
+                    (fst _ _ (fst _ _ hx))
+                    a
+                    xa)
+                (length_symm d c)))
+    (fun (ab_cd : length a b = length c d) =>
+    have _ _
+            (EqTrans _ _ _ _
+                (Eq.symm _ _ _ (angle_symm d a b
+                    (Ne.symm _ _ _ (ne_13_of_triangle a b d tri_abd))
+                    (ne_12_of_triangle a b d tri_abd)))
+                (Eq.elim _ x (fun u => Angle d u b = Angle b c d)
+                    (snd _ _ (snd _ _ (snd _ _ xbd_cdb_all)))
+                    a
+                xa))
+    (fun (bad_bcd : angle b a d = angle b c d) =>
+    have _ _
+        (EqTrans _ _ _ _
+            (Eq.elim _ x (fun u => Area u b d = Area c d b)
+                (fst _ _ xbd_cdb_all)
+                a
+                xa)
+            (fst _ _ (area_perm c d b)))
+    (fun (abd_bcd : area a b d = area b c d) =>
+    And.intro _ _
+        (And.intro _ _
+            ab_cd
+            bad_bcd)
+        abd_bcd))))))))))))))))))))))))))))))))))))))))))
 
 (* Proposition 34.1: Opposite sides of a parallelogram are equal (ab = cd). *)
 Theorem len_eq_of_parallelogram : ∀ (a b c d : Point) (M N O P : Line),
-    paragram a b c d M N O P -> length a b = length c d := sorry _ (* TODO *)
+    paragram a b c d M N O P -> length a b = length c d :=
+    fun (a b c d : Point) (M N O P : Line) (pgram : paragram a b c d M N O P) =>
+    fst _ _ (fst _ _ (len_ang_arelen_ang_area_eq_of_parallelogram a b c d M N O P pgram))
+
+Theorem paragram_rotate : ∀ (a b c d : Point) (M N O P : Line),
+    paragram a b c d M N O P -> paragram d a b c P M N O :=
+    fun (a b c d : Point) (M N O P : Line) (pgram : paragram a b c d M N O P) =>
+    have _ _ (fst _ _ pgram)
+    (fun pMO =>
+    have _ _ (snd _ _ pgram)
+    (fun (NP : para N P) =>
+    have _ _ (fst _ _ pMO)
+    (fun pAP =>
+    have _ _ (snd _ _ pMO)
+    (fun (MO : para M O) =>
+    have _ _ (fst _ _ pAP)
+    (fun pDP =>
+    have _ _ (snd _ _ pAP)
+    (fun (aP : OnLine a P) =>
+    have _ _ (fst _ _ pDP)
+    (fun pDO =>
+    have _ _ (snd _ _ pDP)
+    (fun (dP : OnLine d P) =>
+    have _ _ (fst _ _ pDO)
+    (fun pCO =>
+    have _ _ (snd _ _ pDO)
+    (fun (dO : OnLine d O) =>
+    have _ _ (fst _ _ pCO)
+    (fun pCN =>
+    have _ _ (snd _ _ pCO)
+    (fun (cO : OnLine c O) =>
+    have _ _ (fst _ _ pCN)
+    (fun pBN =>
+    have _ _ (snd _ _ pCN)
+    (fun (cN : OnLine c N) =>
+    have _ _ (fst _ _ pBN)
+    (fun pAB =>
+    have _ _ (snd _ _ pBN)
+    (fun (bN : OnLine b N) =>
+    have _ _ (fst _ _ pAB)
+    (fun (aM : OnLine a M) =>
+    have _ _ (snd _ _ pAB)
+    (fun (bM : OnLine b M) =>
+    And.intro _ _
+        (And.intro _ _
+            (And.intro _ _
+                (And.intro _ _
+                    (And.intro _ _
+                        (And.intro _ _
+                            (And.intro _ _
+                                (And.intro _ _
+                                    (And.intro _ _
+                                        dP
+                                        aP)
+                                    aM)
+                                bM)
+                            bN)
+                        cN)
+                    cO)
+                dO)
+            (para_symm N P NP))
+        MO))))))))))))))))))
 
 (* Proposition 34.2: The other pair of opposite sides are equal (ad = cb). *)
 Theorem len_eq_of_parallelogram' : ∀ (a b c d : Point) (M N O P : Line),
-    paragram a b c d M N O P -> length a d = length c b := sorry _ (* TODO *)
+    paragram a b c d M N O P -> length a d = length c b :=
+    fun (a b c d : Point) (M N O P : Line) (pgram : paragram a b c d M N O P) =>
+    have _ _ (paragram_rotate a b c d M N O P pgram)
+    (fun (pgram_rot : paragram d a b c P M N O) =>
+    EqTrans _ _ _ _
+        (length_symm a d)
+        (EqTrans _ _ _ _
+            (len_eq_of_parallelogram d a b c P M N O pgram_rot)
+            (length_symm b c)))
 
 (* Proposition 34.3: A diagonal bisects the parallelogram area. *)
 Theorem len_eq_of_parallelogram'' : ∀ (a b c d : Point) (M N O P : Line),
-    paragram a b c d M N O P -> area a b d = area b c d := sorry _ (* TODO *)
+    paragram a b c d M N O P -> area a b d = area b c d :=
+    fun (a b c d : Point) (M N O P : Line) (pgram : paragram a b c d M N O P) =>
+    snd _ _ (len_ang_arelen_ang_area_eq_of_parallelogram a b c d M N O P pgram)
 
 (* ============================================================
    Helpers for Proposition 46

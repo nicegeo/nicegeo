@@ -200,20 +200,30 @@ Next direction:
 
 ---
 
-## Prop 34 — Parallelogram properties
+## Prop 34 — Parallelogram properties ✓
 **Milestone:** `len_ang_arelen_ang_area_eq_of_parallelogram`
 > `paragram → ab = cd ∧ ∠bad = ∠bcd ∧ area abd = area bcd`
-> TODO
+> ✓ PROVED
 
-Corollaries (all TODO):
-- `len_eq_of_parallelogram`: `paragram → length a b = length c d`
-- `len_eq_of_parallelogram'`: `paragram → length a d = length c b`
-- `len_eq_of_parallelogram''`: `paragram → area a b d = area b c d`
+Helpers proved:
+- `same_side_of_points_on_parallel_basic` ✓
+- `tri124_of_paragram` ✓
+- `diffside_of_paragram` ✓
+- `tri342_of_paragram` ✓
+- `eq_line_of_common_point_parallel_same` ✓
+- `eq_point_of_online_online_ne_line` ✓
+- `paragram_rotate` ✓
+
+Corollaries proved:
+- `len_eq_of_parallelogram`: `paragram → length a b = length c d` ✓
+- `len_eq_of_parallelogram'`: `paragram → length a d = length c b` ✓
+- `len_eq_of_parallelogram''`: `paragram → area a b d = area b c d` ✓
 
 ---
 
-## Prop 46 — Constructing a square
-**Milestone:** `square_of_len` — proof written; blocked by Props 29–34 TODOs above
+## Prop 46 — Constructing a square ✓
+**Milestone:** `square_of_len`
+> ✓ PROVED
 
 Prop 46 local helpers:
 - `lines_inter_of_parallel_through_transversal` ✓
@@ -221,14 +231,10 @@ Prop 46 local helpers:
 - `same_side_of_points_on_parallel` ✓
 
 Current direct blockers:
-- `len_ang_arelen_ang_area_eq_of_parallelogram`
-- `len_eq_of_parallelogram`
-- `len_eq_of_parallelogram'`
+- none
 
 Current transitive blockers:
-- `len_ang_arelen_ang_area_eq_of_parallelogram`
-- `len_eq_of_parallelogram`
-- `len_eq_of_parallelogram'`
+- none
 
 ---
 
