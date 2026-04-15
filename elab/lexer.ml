@@ -55,8 +55,10 @@ let token lexbuf =
     | "Definition" -> DEFINITION
     | "Import" -> IMPORT
     | ":=" -> DEFEQ
-    | "->" | Utf8 "→" -> ARROW
-    | "<->" | Utf8 "↔" -> IFF
+    | "->" -> ARROW
+    | "→" -> ARROW
+    | "<->" -> IFF
+    | "↔" -> IFF
     | "=>" -> MAPSTO
     | ":" -> COLON
     | "(" -> LPAREN
@@ -65,14 +67,17 @@ let token lexbuf =
     | "Prop" -> PROP
     | "_" -> UNDERSCORE
     | "=" -> EQUALS
-    | Utf8 "≠" -> NOT_EQUALS
+    | "≠" -> NOT_EQUALS
     | "<" -> LESS_THAN
     | "+" -> PLUS
-    | "\\/" | Utf8 "∨" -> OR
-    | "/\\" | Utf8 "∧" -> AND
-    | "~" | Utf8 "¬" -> NOT
-    | Utf8 "∃" -> EXISTS
-    | Utf8 "∀" -> FORALL
+    | "\\/" -> OR
+    | "∨" -> OR
+    | "/\\" -> AND
+    | "∧" -> AND
+    | "~" -> NOT
+    | "¬" -> NOT
+    | "∃" -> EXISTS
+    | "∀" -> FORALL
     | "," -> COMMA
     | "#print" -> PRINT_DIRECTIVE
     | "#infer" -> INFER_DIRECTIVE

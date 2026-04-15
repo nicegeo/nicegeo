@@ -13,8 +13,10 @@ let suite =
           let src =
             "Theorem t : (A: Type) -> A -> A\nProof.\nintros A a.\nexact a.\nQed."
           in
-          let lexbuf = Lexing.from_string src in
-          let stmts = Parser.main Lexer.token lexbuf in
+          let lexbuf = Sedlexing.Utf8.from_string src in
+          Sedlexing.set_filename lexbuf "virtual.ncg";
+          let parse = MenhirLib.Convert.Simplified.traditional2revised Parser.main in
+          let stmts = parse (Sedlexing.with_tokenizer Lexer.token lexbuf) in
           let decl =
             match stmts with
             | [ Statement.Declaration d ] -> d

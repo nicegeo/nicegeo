@@ -35,6 +35,8 @@ export interface ProofStateAtResponse {
       atCursor: boolean;
     }[];
     tacticsApplied?: number;
+    /** Pretty-printed open goals (same order as the prover stack; goal 1 is focused). */
+    openGoals?: string[];
   };
 }
 

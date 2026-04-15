@@ -33,6 +33,8 @@ export interface ProofStateAtPayload {
       atCursor: boolean;
     }[];
     tacticsApplied?: number;
+    /** All open goals, same order as kernel; index 0 is the focused goal. */
+    openGoals?: string[];
   };
 }
 
@@ -126,7 +128,20 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
         )
       : "";
 
-  const goal = section("Goal", `<p class="goal">⊢ ${escapeHtml(goalFriendly)}</p>`);
+  const openGoals = ps.openGoals ?? [];
+  const otherOpenGoals = openGoals.length > 1 ? openGoals.slice(1) : [];
+  const otherGoalsBlock =
+    otherOpenGoals.length > 0
+      ? section(
+          `Other open goals (${otherOpenGoals.length})`,
+          `<p class="muted" style="font-size:12px;margin:0 0 8px">Numbering matches the prover stack (goal 1 is above).</p><ol class="goal-stack secondary" start="2">${otherOpenGoals
+            .map((g) => `<li class="goal-line"><span class="turnstile">⊢</span> ${escapeHtml(g)}</li>`)
+            .join("")}</ol>`,
+        )
+      : "";
+
+  const goalTitle = openGoals.length > 1 ? "Goal (focused)" : "Goal";
+  const goal = section(goalTitle, `<p class="goal">⊢ ${escapeHtml(goalFriendly)}</p>`);
   const head = section(
     "Goal parameters",
     listItems(ps.headContext.map((c) => ({ label: c.name, value: c.type }))),
@@ -134,7 +149,7 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
 
   const term = section(
     "Term context (at cursor)",
-    listItems(ps.termContext.map((c) => ({ label: c.name, value: c.type }))),
+    `<p class="muted" style="font-size:12px;margin:0 0 8px">Binders along the path into a <code>Def</code>/<code>Qed</code> proof term, or into a tactic argument you are editing.</p>${listItems(ps.termContext.map((c) => ({ label: c.name, value: c.type })))}`,
   );
 
   const envList = ps.environment ?? [];
@@ -188,15 +203,24 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
           .map((s, i) => {
             const args = s.args.length > 0 ? ` ${s.args.join(" ")}` : "";
             const isExecuted = i < applied;
+            const afterPretty = s.goalsAfter.map((g) => renderFriendlyTerm(g, ps.hyps));
             const after =
-              s.goalsAfter.length > 0
-                ? s.goalsAfter.map((g) => renderFriendlyTerm(g, ps.hyps)).join(" | ")
-                : "(solved)";
+              s.goalsAfter.length === 0
+                ? "(solved)"
+                : afterPretty.length === 1
+                  ? afterPretty[0]
+                  : `<ol class="tactic-subgoals">${afterPretty
+                      .map((g) => `<li class="goal">⊢ ${escapeHtml(g)}</li>`)
+                      .join("")}</ol>`;
             const cursorTag = s.atCursor ? ` <span class="cursor-pill">cursor</span>` : "";
             const stateClass = isExecuted ? "tactic-executed" : "tactic-remaining";
             const stateText = isExecuted ? "executed" : "remaining";
             const detail = isExecuted
-              ? `<div class="tactic-after"><span class="muted">after:</span> ${escapeHtml(after)}</div>`
+              ? `<div class="tactic-after"><span class="muted">after:</span> ${
+                  typeof after === "string" && after.startsWith("<ol")
+                    ? after
+                    : escapeHtml(after)
+                }</div>`
               : `<div class="tactic-after muted">after: (pending)</div>`;
             return `<li class="tactic-item ${stateClass}"><div><span class="name">[${s.index}] ${escapeHtml(s.name)}${escapeHtml(args)}</span>${cursorTag}</div><div class="tactic-meta"><span class="muted">status:</span> ${escapeHtml(s.status)} <span class="tactic-state">${stateText}</span></div>${detail}</li>`;
           })
@@ -207,6 +231,12 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
     h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 8px; color: var(--vscode-descriptionForeground); }
     .block:first-child h2 { margin-top: 0; }
     .goal { font-family: var(--vscode-editor-font-family); font-size: 13px; color: var(--vscode-terminal-ansiGreen); }
+    .goal-stack { margin: 8px 0 0; padding-left: 22px; }
+    .goal-stack.secondary { margin-top: 4px; }
+    .goal-line { margin: 6px 0; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--vscode-panel-border); font-family: var(--vscode-editor-font-family); font-size: 12px; color: var(--vscode-terminal-ansiGreen); }
+    .turnstile { margin-right: 6px; opacity: 0.85; }
+    .tactic-subgoals { margin: 6px 0 0; padding-left: 20px; }
+    .tactic-subgoals li { color: var(--vscode-terminal-ansiGreen); }
     .goal-hyps li { color: var(--vscode-terminal-ansiYellow); }
     .goal-hyps .name { color: var(--vscode-terminal-ansiYellow); }
     .name { font-weight: 600; }
@@ -238,6 +268,7 @@ export function buildProofStateHtml(data: ProofStateAtPayload): string {
     ${hyps}
     ${goal}
     ${reduced}
+    ${otherGoalsBlock}
     ${term}
     ${tacticBlock}
   </body></html>`;
