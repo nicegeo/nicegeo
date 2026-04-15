@@ -1,3 +1,7 @@
+(* This file proves that squares exist, and that we can construct squares on any segment.
+Many of these definitions and theorem/lemma statements and proofs were taken/inspired from 
+an existing System E Lean formalization at https://github.com/ah1112/synthetic_euclid_4/ *)
+
 (* ============================================================
    Measure shorthands
    ============================================================ *)
@@ -5112,3 +5116,16 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
    The printed axiom list for square_of_len contains only the geometric base
    axioms from env.ncg and does not mention any placeholder theorem. *)
 #print axioms square_of_len
+
+Theorem square_exists : ∃ (a b c d : Point), square a b c d :=
+    Exists.elim _ _ _ (pt_exists (List.nil _) (List.nil _) (List.nil _)) 
+    (fun (a : Point) _ha =>
+
+    Exists.elim _ _ _ (pt_exists (List.cons _ a (List.nil _)) (List.nil _) (List.nil _))
+    (fun (b : Point) hb =>
+    
+    have _ _ (distinct_from_single_point_ne _ _ _ _ hb)
+    (fun (ba : b ≠ a) =>
+    Exists.intro _ _ b (Exists.intro _ (fun x => ∃ c d, square b x c d) a (square_of_len b a ba))
+    )))
+
