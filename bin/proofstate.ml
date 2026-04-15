@@ -193,6 +193,7 @@ let pp_goal_type (e : Types.ctx) (g : Proofstate.goal) : string =
 
 let snapshot_tactic_steps (e : Types.ctx) (goal_ty_tm : Term.term)
     (tacs : Statement.tactic list) (line : int) (col : int) : tactic_step_item list =
+  let e = {e with metas = Hashtbl.copy e.metas} in
   let init_state = Proofstate.init_state ~elab_ctx:e goal_ty_tm in
   let rec loop idx (st : Proofstate.proof_state) acc (remaining : Statement.tactic list) =
     match remaining with
@@ -368,8 +369,8 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           let metas = snapshot_metas st.elab_ctx in
           let gty = g.goal_type in
           let gty_red = Reduce.reduce st.elab_ctx gty in
-          let goal_type = Pretty.term_to_string st.elab_ctx gty in
-          let goal_type_reduced = Pretty.term_to_string st.elab_ctx gty_red in
+          let goal_type = Pretty.term_to_string st.elab_ctx ~lctx:g.lctx gty in
+          let goal_type_reduced = Pretty.term_to_string st.elab_ctx ~lctx:g.lctx gty_red in
           let head_context =
             extract_head_binders st.elab_ctx gty_red
             |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
@@ -379,7 +380,7 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
             |> List.map (fun (h : Types.lctx_entry) ->
                    ( Option.value ~default:"_" h.name,
                      h.bid,
-                     Proofstate.pp_term st.elab_ctx h.ty ))
+                     Pretty.term_to_string st.elab_ctx ~lctx:g.lctx h.ty ))
           in
           Some
             {
@@ -458,7 +459,7 @@ let print_snapshot_text (snap : proofstate_snapshot) : unit =
   | _ ->
       List.iter
         (fun (name, bid, ty) -> Printf.printf "  %s [%d] : %s\n" name bid ty)
-        snap.hyps);
+        (List.rev snap.hyps));
   Printf.printf "\nTactic progress:\n";
   (match snap.tactic_steps with
   | [] -> Printf.printf "  (none)\n"
@@ -502,6 +503,7 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
   in
   let hyps_items =
     snap.hyps
+    |> List.rev
     |> List.map (fun (name, bid, ty) ->
            Printf.sprintf
              "{\"name\":\"%s\",\"bid\":%d,\"type\":\"%s\"}"
