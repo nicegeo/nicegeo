@@ -67,22 +67,26 @@ type normterm =
     Bvar bid1 in the term originally referred to Bvar bid2. *)
 type rw_graph = (int, int) Hashtbl.t
 
-(** [whnf_beta e tm] computes the weak head normal form of `tm` with respect to the
-    context `e`, recursing into known metavariable solutions. *)
-let rec whnf_beta (e : ctx) (tm : term) : term =
+(** [whnf e tm] computes the weak head normal form of `tm` with respect to the context
+    `e`, recursing into known metavariable solutions. *)
+let rec whnf (e : ctx) (tm : term) : term =
   match tm.inner with
+  | Name name -> (
+      match Hashtbl.find_opt e.env name with
+      | Some { data = Def (_, body, false); _ } -> whnf e body
+      | _ -> tm)
   | App (f, arg) -> (
-      let fn = whnf_beta e f in
+      let fn = whnf e f in
       match fn.inner with
-      | Fun (_, bid, _, body) -> whnf_beta e (Reduce.subst e body (Bvar bid) arg.inner)
+      | Fun (_, bid, _, body) -> whnf e (Reduce.subst e body (Bvar bid) arg.inner)
       | _ -> { inner = App (fn, arg); loc = tm.loc })
   | Hole m -> (
       match Hashtbl.find_opt e.metas m with
-      | Some { sol = Some tm_sol; _ } -> whnf_beta e tm_sol
+      | Some { sol = Some tm_sol; _ } -> whnf e tm_sol
       | _ -> tm)
   | _ -> tm
 
-(** converts a term to a [normterm]. tm must already be in whnf (call whnf_beta) *)
+(** converts a term to a [normterm]. tm must already be in whnf (call whnf) *)
 let rec to_norm (e : ctx) (tm : term) : normterm =
   match tm.inner with
   | Fun (arg, bid, ty_arg, body) -> Fun (arg, bid, ty_arg, body)
@@ -209,8 +213,8 @@ let rec unsubst_metavars (e : ctx) (tm : term) (pat : int) (replacement : int) :
     holes assuming that [t1 = t2]. "make t1 and t2 definitionally equal" *)
 let rec unify ?(depth = 0) (e : ctx) (t1 : term) (g1 : rw_graph) (t2 : term)
     (g2 : rw_graph) : unit =
-  let t1 = whnf_beta e t1 in
-  let t2 = whnf_beta e t2 in
+  let t1 = whnf e t1 in
+  let t2 = whnf e t2 in
   (* print_endline (String.make depth ' ' ^ "unifying " ^ Pretty.term_to_string e t1 ^ " and " ^ Pretty.term_to_string e t2); *)
   let nt1 = to_norm e t1 in
   let nt2 = to_norm e t2 in
@@ -308,7 +312,7 @@ let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : te
   | Fun (arg, bid, ty_arg, body) -> (
       (* special case: checking type of fun. the algorithm would still work if this was together with
         the remaining cases, but it would solve less cases, as this is a common case. *)
-      let ty_whnf = whnf_beta e ty in
+      let ty_whnf = whnf e ty in
       let ty_norm = to_norm e ty_whnf in
       match ty_norm with
       | Arrow (_, bid_ex, ty_arg_ex, ty_ret_ex) ->
@@ -387,7 +391,7 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
         | _ -> raise_at tm (Some lctx) Error.CannotInferHole)
     | Name name -> (
         match Hashtbl.find_opt e.env name with
-        | Some entry -> uniquify_bids (Reduce.delta_reduce e entry.ty)
+        | Some entry -> uniquify_bids entry.ty
         | None -> raise_at tm (Some lctx) (Error.UnknownName { name }))
     | Fun (arg, bid, ty_arg, body) ->
         check_is_type ~depth:(depth + 1) e lctx ty_arg;
@@ -397,18 +401,11 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
         let ty_body = infertype ~depth:(depth + 1) e new_lctx body in
         { inner = Arrow (arg, new_bid, ty_arg, ty_body); loc = tm.loc }
     | Arrow (arg, bid, ty_arg, ty_ret) ->
-        let ty_arg_ty = whnf_beta e (infertype ~depth:(depth + 1) e lctx ty_arg) in
-        let arg_sort =
-          match ty_arg_ty.inner with
-          | Sort n -> n
-          | _ ->
-              raise_at
-                ty_arg
-                (Some lctx)
-                (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty })
-        in
+        (* Call check_is_type on ty_arg to fill any holes we can in the argument type, 
+           not failing if it's a hole (as in the case of ∀ a, ...) *)
+        check_is_type ~depth:(depth + 1) e lctx ty_arg;
         let new_lctx = { bid; name = arg; ty = ty_arg } :: lctx in
-        let ty_ret_ty = whnf_beta e (infertype ~depth:(depth + 1) e new_lctx ty_ret) in
+        let ty_ret_ty = whnf e (infertype ~depth:(depth + 1) e new_lctx ty_ret) in
         let ret_sort =
           match ty_ret_ty.inner with
           | Sort n -> n
@@ -418,9 +415,19 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
                 (Some new_lctx)
                 (Error.TypeExpected { not_type = ty_ret; not_type_infer = ty_ret_ty })
         in
+        let ty_arg_ty = whnf e (infertype ~depth:(depth + 1) e lctx ty_arg) in
+        let arg_sort =
+          match ty_arg_ty.inner with
+          | Sort n -> n
+          | _ ->
+              raise_at
+                ty_arg
+                (Some lctx)
+                (Error.TypeExpected { not_type = ty_arg; not_type_infer = ty_arg_ty })
+        in
         { inner = Sort (if ret_sort = 0 then 0 else max arg_sort ret_sort); loc = tm.loc }
     | App (f, arg) -> (
-        let f_type = whnf_beta e (infertype ~depth:(depth + 1) e lctx f) in
+        let f_type = whnf e (infertype ~depth:(depth + 1) e lctx f) in
         match f_type.inner with
         | Arrow (_, bid, ty_arg, ty_ret) ->
             checktype ~depth:(depth + 1) e lctx arg ty_arg;
@@ -449,7 +456,7 @@ and check_is_type ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : unit =
   | Hole _ -> ()
   | _ -> (
       let inferred_ty = infertype ~depth:(depth + 1) e lctx tm in
-      let inferred_ty_whnf = whnf_beta e inferred_ty in
+      let inferred_ty_whnf = whnf e inferred_ty in
       match inferred_ty_whnf.inner with
       | Sort _ -> ()
       | _ ->
@@ -516,19 +523,14 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | _ -> []
 
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
-  let ty_delta = Option.map (Reduce.delta_reduce e) ty in
   create_metas e tm [];
-  let tm_delta = Reduce.delta_reduce e tm in
-  (match ty_delta with
-  | Some ty -> checktype e [] tm_delta ty
-  | None -> ignore (infertype e [] tm_delta));
+  (match ty with Some ty -> checktype e [] tm ty | None -> ignore (infertype e [] tm));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
   (* Re-typecheck term to validate meta solutions *)
-  let tm_filled_delta = Reduce.delta_reduce e tm_filled in
-  (match ty_delta with
-  | Some ty -> checktype e [] tm_filled_delta ty
-  | None -> ignore (infertype e [] tm_filled_delta));
+  (match ty with
+  | Some ty -> checktype e [] tm_filled ty
+  | None -> ignore (infertype e [] tm_filled));
   let tm_reduced = Reduce.reduce e tm_filled in
   tm_reduced
 
@@ -549,7 +551,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
       | Theorem body ->
           let proof =
             match body with
-            | Proof script -> replace_metas e (Tactic.run e script d.ty)
+            | Proof script -> replace_metas e (Tactic.run e script ty_filled)
             | DefEq proof -> proof
           in
           let proof_filled = elaborate e proof (Some ty_filled) in
