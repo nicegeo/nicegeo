@@ -67,17 +67,17 @@ let pos_col (p : Lexing.position) : int = p.pos_cnum - p.pos_bol + 1
 let pos_lex_lt (line_a : int) (col_a : int) (line_b : int) (col_b : int) : bool =
   line_a < line_b || (line_a = line_b && col_a < col_b)
 
-let tac_ends_before_or_at_cursor (tac : Statement.tactic) (line : int) (col : int) : bool =
+let tac_ends_before_or_at_cursor (tac : Statement.tactic) (line : int) (col : int) : bool
+    =
   let e = tac.loc.end_ in
-  pos_lex_lt e.pos_lnum (pos_col e) line col
-  || (e.pos_lnum = line && pos_col e = col)
+  pos_lex_lt e.pos_lnum (pos_col e) line col || (e.pos_lnum = line && pos_col e = col)
 
 let cursor_strictly_after_range_end (r : Term.range) (line : int) (col : int) : bool =
   let e = r.end_ in
   pos_lex_lt e.pos_lnum (pos_col e) line col
 
-let tactics_prefix_from_tactics_only (tacs : Statement.tactic list) (line : int) (col : int) :
-    int =
+let tactics_prefix_from_tactics_only (tacs : Statement.tactic list) (line : int)
+    (col : int) : int =
   let rec go n = function
     | [] -> n
     | tac :: rest ->
@@ -114,7 +114,8 @@ let range_contains (r : Term.range) (line : int) (col : int) : bool =
   else if line = e_line then col <= e_col
   else true
 
-(** Cursor on [Qed] or after it runs the full script; otherwise count tactics fully before cursor. *)
+(** Cursor on [Qed] or after it runs the full script; otherwise count tactics fully before
+    cursor. *)
 let tactics_prefix_count (ps : Statement.proof_script) (line : int) (col : int) : int =
   let n = List.length ps.tactics in
   if
@@ -227,10 +228,10 @@ let snapshot_tactic_steps (e : Types.ctx) (goal_ty_tm : Term.term)
   in
   loop 1 init_state [] tacs
 
-(** Binders along the path to the cursor inside [tm], for pretty-printing with [elab_ctx] and
-    [lctx] (hypotheses + inner binders). *)
-let binder_path_at_cursor (elab_ctx : Types.ctx) (base_lctx : Types.local_ctx) (tm : Term.term)
-    (line : int) (col : int) : (string * string) list =
+(** Binders along the path to the cursor inside [tm], for pretty-printing with [elab_ctx]
+    and [lctx] (hypotheses + inner binders). *)
+let binder_path_at_cursor (elab_ctx : Types.ctx) (base_lctx : Types.local_ctx)
+    (tm : Term.term) (line : int) (col : int) : (string * string) list =
   let rec go acc lctx (t : Term.term) : (string * string) list =
     if not (range_contains t.loc line col) then acc
     else
@@ -257,29 +258,20 @@ let binder_path_at_cursor (elab_ctx : Types.ctx) (base_lctx : Types.local_ctx) (
 
 let tactic_arg_binder_path (st : Proofstate.proof_state) (elab_ctx : Types.ctx)
     (ps : Statement.proof_script) (line : int) (col : int) : context_item list =
-  let base_lctx =
-    match Proofstate.current_goal st with
-    | None -> []
-    | Some g -> g.lctx
-  in
+  let base_lctx = match Proofstate.current_goal st with None -> [] | Some g -> g.lctx in
   let try_arg (raw : Term.term) : (string * string) list =
     if not (range_contains raw.loc line col) then []
     else binder_path_at_cursor elab_ctx base_lctx raw line col
   in
   let rec first_some f = function
     | [] -> None
-    | x :: xs -> (
-        match f x with
-        | [] -> first_some f xs
-        | ys -> Some ys)
+    | x :: xs -> ( match f x with [] -> first_some f xs | ys -> Some ys)
   in
   let rec scan (l : Statement.tactic list) : (string * string) list =
     match l with
     | [] -> []
     | (tac : Statement.tactic) :: rest -> (
-        match first_some try_arg tac.args with
-        | Some xs -> xs
-        | None -> scan rest)
+        match first_some try_arg tac.args with Some xs -> xs | None -> scan rest)
   in
   scan ps.tactics |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
 
@@ -294,7 +286,8 @@ let term_context_at_cursor (env_before_decl : Types.ctx) (goal_ty_tm : Term.term
       else
         binder_path_at_cursor elab_ctx [] proof_tm line col
         |> List.map (fun (n, ty_str) -> { name = n; ty = ty_str })
-  | Statement.Theorem (Statement.Proof ps) -> tactic_arg_binder_path st elab_ctx ps line col
+  | Statement.Theorem (Statement.Proof ps) ->
+      tactic_arg_binder_path st elab_ctx ps line col
   | Statement.Axiom -> []
 
 let snapshot_proofstate (filename : string) (line : int) (col : int) :
@@ -430,12 +423,8 @@ let print_snapshot_text (snap : proofstate_snapshot) : unit =
   if snap.goal_type <> snap.goal_type_reduced then
     Printf.printf "Goal (β-reduced):\n  ⊢ %s\n" snap.goal_type_reduced;
   if List.length snap.open_goal_types > 1 then (
-    Printf.printf
-      "\nAll open goals (%d):\n"
-      (List.length snap.open_goal_types);
-    List.iteri
-      (fun i g -> Printf.printf "  [%d] ⊢ %s\n" (i + 1) g)
-      snap.open_goal_types;
+    Printf.printf "\nAll open goals (%d):\n" (List.length snap.open_goal_types);
+    List.iteri (fun i g -> Printf.printf "  [%d] ⊢ %s\n" (i + 1) g) snap.open_goal_types;
     Printf.printf "\n");
   pp_ctx "Term context (variables in scope at cursor)" snap.term_context;
   Printf.printf "Global environment (%d names):\n" (List.length snap.environment);

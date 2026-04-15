@@ -16,7 +16,8 @@ type proof_script = {
 
 type theorem_body =
   | Proof of proof_script
-      (** Proof script tactics plus the location of [Qed] (declaration range ends there). *)
+      (** Proof script tactics plus the location of [Qed] (declaration range ends there).
+      *)
   | DefEq of term  (** [DefEq(term)] represents defining a theorem by a term. *)
 
 (** The body of a declaration: either a proof or definition body or an axiom. *)
