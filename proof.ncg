@@ -803,10 +803,6 @@ Theorem angle_eq_of_iso : ∀ a b c, iso_tri a b c → Angle a b c = Angle a c b
    Proposition 6 (I.6): Equal base angles imply isoceles
    ============================================================ *)
 
-(* If two angles of a triangle are equal, the opposite sides are equal. *)
-Theorem eq_angles_implies_isoceles : ∀ (a b c : Point),
-    triangle a b c -> Angle a b c = Angle a c b -> Length a b = Length a c := sorry _ (* TODO *)
-
 
 (* ============================================================
    Proposition 8 (I.8): SSS congruence (taken as axiom sss_congruence)
@@ -3701,32 +3697,6 @@ Theorem co_interior_angles :
             )))))))))))
 
 
-(* If two lines through the same point make the same angle with a transversal on the same side, they coincide. *)
-Theorem eq_line_of_angle_eq_sameside : ∀ (a b x y : Point) (L N T : Line),
-    x ≠ a -> OnLine x L -> OnLine a L ->
-    x ≠ b -> OnLine x N -> OnLine b N ->
-    x ≠ y -> OnLine x T -> OnLine y T ->
-    SameSide a b T ->
-    Angle a x y = Angle b x y ->
-    L = N :=
-    fun (a b x y : Point) (L N T : Line)
-        (xa : x ≠ a) (xL : OnLine x L) (aL : OnLine a L)
-        (xb : x ≠ b) (xN : OnLine x N) (bN : OnLine b N)
-        (xy : x ≠ y) (xT : OnLine x T) (yT : OnLine y T)
-        (abT : SameSide a b T) (ang_eq : Angle a x y = Angle b x y) =>
-    (* This is essentially the uniqueness of copying an angle. *)
-    (* In System E, we can use the fact that if b is not on L, then Angle b x y ≠ Angle a x y. *)
-    double_negation (L = N) (fun (LN : L ≠ N) =>
-    Or.elim _ _ _ (excluded_middle (OnLine b L))
-    (fun (bL : OnLine b L) => LN (two_distinct_points_determine_unique_line x b L N xb xL bL xN bN))
-    (fun (not_bL : Not (OnLine b L)) =>
-        have _ _ (triangle_of_ne_online x a b L xa xL aL not_bL)
-        (fun (tri_xab : triangle x a b) =>
-        have _ _ (ne_of_online_not_online x b L xL not_bL)
-        (fun (xb' : x ≠ b) =>
-        (* If b is off L, but Angle b x y = Angle a x y and they are on the same side, *)
-        (* it contradicts the angle addition/comparison properties. *)
-        sorry _)))) (* Technical contradiction: b cannot be off L if it has same angle and same side *)
 
 (* Every line contains a point distinct from a given point already on it. *)
 Theorem online_ne_of_point_line : ∀ (x : Point) (L : Line),
@@ -5135,3 +5105,5 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
                 hEDA)
             hDAB'))
     )))))))))))))))))))))))))))))))))))))))))))
+
+#print axioms square_of_len
