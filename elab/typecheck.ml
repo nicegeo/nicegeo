@@ -55,9 +55,9 @@ type normterm =
   | Arrow of string option * int * term * term
   | VarSpine of term * term list
       (** (variable, args) where variable is a variable of some kind (either a name or
-          bound variable), and that variable is applied to all
-          arguments in `args` from first to last (so this represents the expressions
-          `variable arg0 arg1 ... argN`) *)
+          bound variable), and that variable is applied to all arguments in `args` from
+          first to last (so this represents the expressions `variable arg0 arg1 ... argN`)
+      *)
   | MetaSpine of term * term list
       (** (hole, args) that represents the expression `hole arg0 arg1 ... argN` where
           `hole` is a hole that we need to solve for and args are arbitrary terms *)
@@ -126,10 +126,9 @@ let rec last (lst : 'a list) : 'a =
 
 (** checks if [tm] is a valid solution pattern for the metavariable [m] by making sure all
     Bvars in [tm] are either bound in the solution itself or originally part of the hole's
-    own context. [sol_bids] keeps track of the bound bids in the
-    solution. and also that the hole does not refer to itself. *)
-let rec valid_pattern (e : ctx) (m : int) (tm : term)
-    (sol_bids : int list) : bool =
+    own context. [sol_bids] keeps track of the bound bids in the solution. and also that
+    the hole does not refer to itself. *)
+let rec valid_pattern (e : ctx) (m : int) (tm : term) (sol_bids : int list) : bool =
   match tm.inner with
   | Bvar bid ->
       (* either bound in the solution itself or part of the hole's own context *)
@@ -140,13 +139,10 @@ let rec valid_pattern (e : ctx) (m : int) (tm : term)
       || (Hashtbl.find e.metas m).context
          |> List.exists (fun context_bid -> bid = context_bid)
   | Fun (_, bid, ty_arg, body) ->
-      valid_pattern e m ty_arg sol_bids
-      && valid_pattern e m body (bid :: sol_bids)
+      valid_pattern e m ty_arg sol_bids && valid_pattern e m body (bid :: sol_bids)
   | Arrow (_, bid, ty_arg, ty_ret) ->
-      valid_pattern e m ty_arg sol_bids
-      && valid_pattern e m ty_ret (bid :: sol_bids)
-  | App (f, arg) ->
-      valid_pattern e m f sol_bids && valid_pattern e m arg sol_bids
+      valid_pattern e m ty_arg sol_bids && valid_pattern e m ty_ret (bid :: sol_bids)
+  | App (f, arg) -> valid_pattern e m f sol_bids && valid_pattern e m arg sol_bids
   | Hole n -> (
       if n = m then false
       else
@@ -156,8 +152,7 @@ let rec valid_pattern (e : ctx) (m : int) (tm : term)
   | Sort _ | Name _ -> true
 
 (** tries to solve metavariable [m args] = [tm] *)
-let rec pattern_match_meta (e : ctx) (m : int) (args : term list)
-    (tm : term) : unit =
+let rec pattern_match_meta (e : ctx) (m : int) (args : term list) (tm : term) : unit =
   (* print_endline ("pattern matching meta " ^ string_of_int m ^ " with args " ^ String.concat " " (List.map (Pretty.term_to_string e) args) ^ " against term " ^ Pretty.term_to_string e tm); *)
   if List.length args > 0 then
     (* in reality we don't really allow length of args > 0, that would be an instance of true higher-order unification. *)
@@ -173,13 +168,13 @@ let rec pattern_match_meta (e : ctx) (m : int) (args : term list)
   else Hashtbl.replace e.metas m { (Hashtbl.find e.metas m) with sol = Some tm }
 
 (** Takes in two terms [t1] and [t2] (both defined in the same context [e]) and solves for
-    holes assuming that [t1 = t2]. "make t1 and t2 definitionally equal". g mapping x to y 
+    holes assuming that [t1 = t2]. "make t1 and t2 definitionally equal". g mapping x to y
     means any Bvar x in t1 corresponds to Bvar y in t2 *)
-let rec unify ?(depth = 0) (e : ctx) ?(lctx : local_ctx = []) (t1 : term) (g : rw_graph) (t2 : term) (g_dual : rw_graph) : unit =
+let rec unify ?(depth = 0) (e : ctx) ?(lctx : local_ctx = []) (t1 : term) (g : rw_graph)
+    (t2 : term) (g_dual : rw_graph) : unit =
   let t1 = whnf e t1 in
   let t2 = whnf e t2 in
   (* print_endline (String.make depth ' ' ^ "unifying " ^ Pretty.term_to_string e ~lctx t1 ^ " and " ^ Pretty.term_to_string e ~lctx t2); *)
-  ignore (lctx);
   let nt1 = to_norm e t1 in
   let nt2 = to_norm e t2 in
   (* t1 and t2 should be closed under the current e *)
@@ -205,19 +200,18 @@ let rec unify ?(depth = 0) (e : ctx) ?(lctx : local_ctx = []) (t1 : term) (g : r
           (fun arg1 arg2 -> unify ~depth:(depth + 1) e ~lctx arg1 g arg2 g_dual)
           args1
           args2)
-  | MetaSpine ({ inner = Hole m; _ }, args), _ -> (
-        let t2_in_t1_domain = Hashtbl.fold (fun k v acc ->
-          Reduce.subst e acc (Bvar k) (Bvar v)
-        ) g_dual t2 in
-        pattern_match_meta e m args t2_in_t1_domain
-      )
-  | _, MetaSpine ({ inner = Hole m; _ }, args) -> (
-        let t1_in_t2_domain = Hashtbl.fold (fun k v acc ->
-          Reduce.subst e acc (Bvar k) (Bvar v)
-        ) g t1 in
-    pattern_match_meta e m args t1_in_t2_domain
-    )
-  | VarSpine ({ inner = Name n; _ }, args1), VarSpine ({ inner = Name n'; _ }, args2) when n = n' ->
+  | MetaSpine ({ inner = Hole m; _ }, args), _ ->
+      let t2_in_t1_domain =
+        Hashtbl.fold (fun k v acc -> Reduce.subst e acc (Bvar k) (Bvar v)) g_dual t2
+      in
+      pattern_match_meta e m args t2_in_t1_domain
+  | _, MetaSpine ({ inner = Hole m; _ }, args) ->
+      let t1_in_t2_domain =
+        Hashtbl.fold (fun k v acc -> Reduce.subst e acc (Bvar k) (Bvar v)) g t1
+      in
+      pattern_match_meta e m args t1_in_t2_domain
+  | VarSpine ({ inner = Name n; _ }, args1), VarSpine ({ inner = Name n'; _ }, args2)
+    when n = n' ->
       if List.length args1 <> List.length args2 then
         raise_at t1 None (Error.UnificationFailure { left = t1; right = t2 })
       else
@@ -225,14 +219,15 @@ let rec unify ?(depth = 0) (e : ctx) ?(lctx : local_ctx = []) (t1 : term) (g : r
           (fun arg1 arg2 -> unify ~depth:(depth + 1) e ~lctx arg1 g arg2 g_dual)
           args1
           args2
-  | VarSpine ({ inner = Bvar bid1; _ }, args1), VarSpine ({ inner = Bvar bid2; _ }, args2) ->
+  | VarSpine ({ inner = Bvar bid1; _ }, args1), VarSpine ({ inner = Bvar bid2; _ }, args2)
+    ->
       if List.length args1 <> List.length args2 then
         raise_at t1 None (Error.UnificationFailure { left = t1; right = t2 })
       else
         let bid1_rw = Option.value ~default:bid1 (Hashtbl.find_opt g bid1) in
-        if bid1_rw <> bid2 then (
+        if bid1_rw <> bid2 then
           raise_at t1 (Some lctx) (Error.UnificationFailure { left = t1; right = t2 })
-        ) else
+        else
           List.iter2
             (fun arg1 arg2 -> unify ~depth:(depth + 1) e ~lctx arg1 g arg2 g_dual)
             args1
@@ -281,7 +276,14 @@ let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : te
       | Some { ty = ty1; context; sol } -> (
           match ty1 with
           | Some ty1 ->
-              unify ~depth:(depth + 1) e ~lctx ty (Hashtbl.create 0) ty1 (Hashtbl.create 0)
+              unify
+                ~depth:(depth + 1)
+                e
+                ~lctx
+                ty
+                (Hashtbl.create 0)
+                ty1
+                (Hashtbl.create 0)
           | None -> Hashtbl.replace e.metas m { ty = Some ty; context; sol })
       | None ->
           raise_at
@@ -345,21 +347,34 @@ let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : te
   | App (f, arg) -> (
       (* checktype of app: infer f as (x : A) -> B, unify B[x/arg] with goal first, then checktype arg *)
       let f_type = whnf e (infertype ~depth:(depth + 1) e lctx f) in
-      (match f_type.inner with
-      | Arrow (_, bid, ty_arg, ty_ret) ->(
-          let ty_ret_subst = Reduce.subst e ty_ret (Bvar bid) arg.inner in
-          (try unify ~depth:(depth + 1) e ~lctx ty_ret_subst (Hashtbl.create 0) ty (Hashtbl.create 0)
-          with Error.ElabError { error_type = UnificationFailure _; _ } ->
-            raise_at
-              tm
-              (Some lctx)
-              (Error.TypeMismatch { term = tm; inferred_type = ty_ret_subst; expected_type = ty })));
-          checktype ~depth:(depth + 1) e lctx arg ty_arg;
-      | _ -> raise_at tm (Some lctx) (Error.FunctionExpected { not_func = f; not_func_type = f_type; arg }));
-  )
+      match f_type.inner with
+      | Arrow (_, bid, ty_arg, ty_ret) ->
+          (let ty_ret_subst = Reduce.subst e ty_ret (Bvar bid) arg.inner in
+           try
+             unify
+               ~depth:(depth + 1)
+               e
+               ~lctx
+               ty_ret_subst
+               (Hashtbl.create 0)
+               ty
+               (Hashtbl.create 0)
+           with Error.ElabError { error_type = UnificationFailure _; _ } ->
+             raise_at
+               tm
+               (Some lctx)
+               (Error.TypeMismatch
+                  { term = tm; inferred_type = ty_ret_subst; expected_type = ty }));
+          checktype ~depth:(depth + 1) e lctx arg ty_arg
+      | _ ->
+          raise_at
+            tm
+            (Some lctx)
+            (Error.FunctionExpected { not_func = f; not_func_type = f_type; arg }))
   | Name _ | Arrow _ | Sort _ | Bvar _ -> (
       let infer_ty = infertype ~depth:(depth + 1) e lctx tm in
-      try unify ~depth:(depth + 1) e ~lctx infer_ty (Hashtbl.create 0) ty (Hashtbl.create 0)
+      try
+        unify ~depth:(depth + 1) e ~lctx infer_ty (Hashtbl.create 0) ty (Hashtbl.create 0)
       with Error.ElabError { error_type = UnificationFailure _; _ } ->
         raise_at
           tm
