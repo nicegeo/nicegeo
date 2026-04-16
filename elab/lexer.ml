@@ -41,14 +41,6 @@ let ident_end = [%sedlex.regexp?
 
 let ident = [%sedlex.regexp? ident_start | ident_start, Star ident_continue, ident_end]
 let string_char = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '.' | '/']
-let sym_arrow = [%sedlex.regexp? 0x2192]
-let sym_iff = [%sedlex.regexp? 0x2194]
-let sym_neq = [%sedlex.regexp? 0x2260]
-let sym_or = [%sedlex.regexp? 0x2228]
-let sym_and = [%sedlex.regexp? 0x2227]
-let sym_not = [%sedlex.regexp? 0x00AC]
-let sym_exists = [%sedlex.regexp? 0x2203]
-let sym_forall = [%sedlex.regexp? 0x2200]
 
 let token lexbuf =
   let rec token lexbuf =
@@ -63,10 +55,8 @@ let token lexbuf =
     | "Definition" -> DEFINITION
     | "Import" -> IMPORT
     | ":=" -> DEFEQ
-    | "->" -> ARROW
-    | sym_arrow -> ARROW
-    | "<->" -> IFF
-    | sym_iff -> IFF
+    | "->" | Utf8 "→" -> ARROW
+    | "<->" | Utf8 "↔" -> IFF
     | "=>" -> MAPSTO
     | ":" -> COLON
     | "(" -> LPAREN
@@ -75,17 +65,14 @@ let token lexbuf =
     | "Prop" -> PROP
     | "_" -> UNDERSCORE
     | "=" -> EQUALS
-    | sym_neq -> NOT_EQUALS
+    | Utf8 "≠" -> NOT_EQUALS
     | "<" -> LESS_THAN
     | "+" -> PLUS
-    | "\\/" -> OR
-    | sym_or -> OR
-    | "/\\" -> AND
-    | sym_and -> AND
-    | "~" -> NOT
-    | sym_not -> NOT
-    | sym_exists -> EXISTS
-    | sym_forall -> FORALL
+    | "\\/" | Utf8 "∨" -> OR
+    | "/\\" | Utf8 "∧" -> AND
+    | "~" | Utf8 "¬" -> NOT
+    | Utf8 "∃" -> EXISTS
+    | Utf8 "∀" -> FORALL
     | "," -> COMMA
     | "#print" -> PRINT_DIRECTIVE
     | "#infer" -> INFER_DIRECTIVE
