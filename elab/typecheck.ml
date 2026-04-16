@@ -134,9 +134,8 @@ let rec valid_pattern (e : ctx) (m : int) (tm : term)
   | Bvar bid ->
       (* either bound in the solution itself or part of the hole's own context *)
       (* print_endline ("checking if bound variable " ^ string_of_int bid ^ " is valid in solution for ?m" ^ string_of_int m);
-      print_endline ("current context: " ^ String.concat ", " (List.map string_of_int ctx));
-      print_endline ("current hole context: " ^ String.concat ", " (List.map string_of_int (Hashtbl.find e.metas m).context));
-      print_endline ("original bid of " ^ string_of_int bid ^ " is " ^ string_of_int (original_bid graph bid)); *)
+      print_endline ("current context: " ^ String.concat ", " (List.map string_of_int sol_bids));
+      print_endline ("current hole context: " ^ String.concat ", " (List.map string_of_int (Hashtbl.find e.metas m).context)); *)
       List.exists (fun sol_bid -> sol_bid = bid) sol_bids
       || (Hashtbl.find e.metas m).context
          |> List.exists (fun context_bid -> bid = context_bid)
@@ -159,11 +158,6 @@ let rec valid_pattern (e : ctx) (m : int) (tm : term)
 (** tries to solve metavariable [m args] = [tm] *)
 let rec pattern_match_meta (e : ctx) (m : int) (args : term list)
     (tm : term) : unit =
-  if m = 20449 then
-    print_endline
-      ("pattern matching meta " ^ string_of_int m ^ " with args "
-      ^ String.concat " " (List.map (Pretty.term_to_string e) args)
-      ^ " against term " ^ Pretty.term_to_string e tm);
   (* print_endline ("pattern matching meta " ^ string_of_int m ^ " with args " ^ String.concat " " (List.map (Pretty.term_to_string e) args) ^ " against term " ^ Pretty.term_to_string e tm); *)
   if List.length args > 0 then
     (* in reality we don't really allow length of args > 0, that would be an instance of true higher-order unification. *)
@@ -177,34 +171,6 @@ let rec pattern_match_meta (e : ctx) (m : int) (args : term list)
     print_endline "invalid solution for meta";
     ())
   else Hashtbl.replace e.metas m { (Hashtbl.find e.metas m) with sol = Some tm }
-
-(** recursively replaces [Bvar pat] with [Bvar replacement] in metavar solutions that
-    appear in tm *)
-let rec unsubst_metavars (e : ctx) (tm : term) (pat : int) (replacement : int) : term =
-  match tm.inner with
-  | Bvar bid -> if bid = pat then { inner = Bvar replacement; loc = tm.loc } else tm
-  | Fun (x, bid, ty, body) ->
-      let ty_subst = unsubst_metavars e ty pat replacement in
-      let body_subst = unsubst_metavars e body pat replacement in
-      { inner = Fun (x, bid, ty_subst, body_subst); loc = tm.loc }
-  | Arrow (x, bid, ty_arg, ty_ret) ->
-      let ty_arg_subst = unsubst_metavars e ty_arg pat replacement in
-      let ty_ret_subst = unsubst_metavars e ty_ret pat replacement in
-      { inner = Arrow (x, bid, ty_arg_subst, ty_ret_subst); loc = tm.loc }
-  | App (f, arg) ->
-      let f_subst = unsubst_metavars e f pat replacement in
-      let arg_subst = unsubst_metavars e arg pat replacement in
-      { inner = App (f_subst, arg_subst); loc = tm.loc }
-  | Hole m -> (
-      match Hashtbl.find_opt e.metas m with
-      | Some { sol = Some tm_sol; ty; context } ->
-          Hashtbl.replace
-            e.metas
-            m
-            { sol = Some (unsubst_metavars e tm_sol pat replacement); ty; context };
-          tm
-      | _ -> tm)
-  | _ -> tm
 
 (** Takes in two terms [t1] and [t2] (both defined in the same context [e]) and solves for
     holes assuming that [t1 = t2]. "make t1 and t2 definitionally equal". g mapping x to y 
@@ -236,7 +202,7 @@ let rec unify ?(depth = 0) (e : ctx) ?(lctx : local_ctx = []) (t1 : term) (g : r
              m1
              { (Hashtbl.find e.metas m1) with sol = Some { inner = Hole m2; loc = l2 } });
         List.iter2
-          (fun arg1 arg2 -> unify ~depth:(depth + 1) e arg1 g arg2 g_dual)
+          (fun arg1 arg2 -> unify ~depth:(depth + 1) e ~lctx arg1 g arg2 g_dual)
           args1
           args2)
   | MetaSpine ({ inner = Hole m; _ }, args), _ -> (
@@ -256,7 +222,7 @@ let rec unify ?(depth = 0) (e : ctx) ?(lctx : local_ctx = []) (t1 : term) (g : r
         raise_at t1 None (Error.UnificationFailure { left = t1; right = t2 })
       else
         List.iter2
-          (fun arg1 arg2 -> unify ~depth:(depth + 1) e arg1 g arg2 g_dual)
+          (fun arg1 arg2 -> unify ~depth:(depth + 1) e ~lctx arg1 g arg2 g_dual)
           args1
           args2
   | VarSpine ({ inner = Bvar bid1; _ }, args1), VarSpine ({ inner = Bvar bid2; _ }, args2) ->
@@ -265,34 +231,33 @@ let rec unify ?(depth = 0) (e : ctx) ?(lctx : local_ctx = []) (t1 : term) (g : r
       else
         let bid1_rw = Option.value ~default:bid1 (Hashtbl.find_opt g bid1) in
         if bid1_rw <> bid2 then (
-          raise_at t1 None (Error.UnificationFailure { left = t1; right = t2 })
+          raise_at t1 (Some lctx) (Error.UnificationFailure { left = t1; right = t2 })
         ) else
           List.iter2
-            (fun arg1 arg2 -> unify ~depth:(depth + 1) e arg1 g arg2 g_dual)
+            (fun arg1 arg2 -> unify ~depth:(depth + 1) e ~lctx arg1 g arg2 g_dual)
             args1
             args2
   | Arrow (_, bid1, ty_arg1, ty_ret1), Arrow (_, bid2, ty_arg2, ty_ret2) ->
-      unify ~depth:(depth + 1) e ty_arg1 g ty_arg2 g_dual;
+      unify ~depth:(depth + 1) e ~lctx ty_arg1 g ty_arg2 g_dual;
       if bid1 <> bid2 then (
-        (* make them equal *)
+        (* record the mapping *)
         Hashtbl.replace g bid1 bid2;
         Hashtbl.replace g_dual bid2 bid1);
-      unify ~depth:(depth + 1) e ty_ret1 g ty_ret2 g_dual;
+      unify ~depth:(depth + 1) e ~lctx ty_ret1 g ty_ret2 g_dual;
       if bid1 <> bid2 then (
-        (* unsubst? *)
+        (* remove mapping *)
         Hashtbl.remove g bid1;
         Hashtbl.remove g_dual bid2)
   | Fun (_, bid1, ty_arg1, body1), Fun (_, bid2, ty_arg2, body2) ->
       (* todo: eta i think here? *)
-      unify ~depth:(depth + 1) e ty_arg1 g ty_arg2 g_dual;
+      unify ~depth:(depth + 1) e ~lctx ty_arg1 g ty_arg2 g_dual;
       if bid1 <> bid2 then (
-        (* make them equal *)
+        (* record the mapping *)
         Hashtbl.replace g bid1 bid2;
         Hashtbl.replace g_dual bid2 bid1);
-      unify ~depth:(depth + 1) e body1 g body2 g_dual;
+      unify ~depth:(depth + 1) e ~lctx body1 g body2 g_dual;
       if bid1 <> bid2 then (
-        (* unsubst *)
-        ignore (unsubst_metavars e body1 bid2 bid1);
+        (* remove mapping *)
         Hashtbl.remove g bid1;
         Hashtbl.remove g_dual bid2)
   | Sort n1, Sort n2 when n1 = n2 -> ()
@@ -316,7 +281,7 @@ let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : te
       | Some { ty = ty1; context; sol } -> (
           match ty1 with
           | Some ty1 ->
-              unify ~depth:(depth + 1) e ty (Hashtbl.create 0) ty1 (Hashtbl.create 0)
+              unify ~depth:(depth + 1) e ~lctx ty (Hashtbl.create 0) ty1 (Hashtbl.create 0)
           | None -> Hashtbl.replace e.metas m { ty = Some ty; context; sol })
       | None ->
           raise_at
@@ -337,6 +302,7 @@ let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : te
              unify
                ~depth:(depth + 1)
                e
+               ~lctx
                ty_arg
                (Hashtbl.create 0)
                ty_arg_ex
@@ -382,7 +348,7 @@ let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : te
       (match f_type.inner with
       | Arrow (_, bid, ty_arg, ty_ret) ->(
           let ty_ret_subst = Reduce.subst e ty_ret (Bvar bid) arg.inner in
-          (try unify ~depth:(depth + 1) e ty_ret_subst (Hashtbl.create 0) ty (Hashtbl.create 0)
+          (try unify ~depth:(depth + 1) e ~lctx ty_ret_subst (Hashtbl.create 0) ty (Hashtbl.create 0)
           with Error.ElabError { error_type = UnificationFailure _; _ } ->
             raise_at
               tm
@@ -424,11 +390,9 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
         | None -> raise_at tm (Some lctx) (Error.UnknownName { name }))
     | Fun (arg, bid, ty_arg, body) ->
         check_is_type ~depth:(depth + 1) e lctx ty_arg;
-        let new_bid = gen_binder_id () in
-        let body = Reduce.subst e body (Bvar bid) (Bvar new_bid) in
-        let new_lctx = { bid = new_bid; name = arg; ty = ty_arg } :: lctx in
+        let new_lctx = { bid; name = arg; ty = ty_arg } :: lctx in
         let ty_body = infertype ~depth:(depth + 1) e new_lctx body in
-        { inner = Arrow (arg, new_bid, ty_arg, ty_body); loc = tm.loc }
+        { inner = Arrow (arg, bid, ty_arg, ty_body); loc = tm.loc }
     | Arrow (arg, bid, ty_arg, ty_ret) ->
         (* Call check_is_type on ty_arg to fill any holes we can in the argument type, 
            not failing if it's a hole (as in the case of ∀ a, ...) *)
