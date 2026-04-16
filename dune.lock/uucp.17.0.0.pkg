@@ -1,0 +1,25 @@
+(version 17.0.0)
+
+(build
+ (all_platforms
+  ((action
+    (run
+     ocaml
+     pkg/pkg.ml
+     build
+     --dev-pkg
+     %{pkg-self:dev}
+     --with-uunf
+     %{pkg:uunf:installed}
+     --with-cmdliner
+     %{pkg:cmdliner:installed})))))
+
+(depends
+ (all_platforms
+  (ocaml ocamlfind ocamlbuild topkg cmdliner)))
+
+(source
+ (fetch
+  (url https://erratique.ch/software/uucp/releases/uucp-17.0.0.tbz)
+  (checksum
+   sha512=c2b5c883c2ed1ee8e7bc9102339dfbca5940e68cd2af59a10abc827fb64c91ad03f85cfc12d4c79605c10e9b3a90743267af8b069143fefeeff6658ec8ed843f)))
