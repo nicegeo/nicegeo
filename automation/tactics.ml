@@ -565,6 +565,12 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
                 fail "destruct_ands: too many names provided for destructuring"
               else
                 let goal_lctx = List.rev and_lctx @ g.lctx in
+                (* remove tm from context if it's a bvar *)
+                let goal_lctx =
+                  match tm.inner with
+                  | Bvar bid -> List.filter (fun h -> h.bid <> bid) goal_lctx
+                  | _ -> goal_lctx
+                in
                 let st = assign_meta g.goal_id proof st in
                 let st = close_goal g.goal_id st in
                 let new_goal =
