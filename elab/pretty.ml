@@ -122,7 +122,7 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
       | Arrow (x, bid, ty, ret) -> (
           match x with
           | None ->
-              let ty_s = term_to_string_helper e lctx ty prec_app in
+              let ty_s = term_to_string_helper e lctx ty prec_disjunction in
               let ret_s = term_to_string_helper e lctx ret prec_term in
               ty_s ^ " → " ^ ret_s
           | Some name ->
