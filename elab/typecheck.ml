@@ -551,7 +551,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
       | Theorem body ->
           let proof =
             match body with
-            | Proof script -> replace_metas e (Tactic.run e script ty_filled)
+            | Proof script -> replace_metas e (Tactic.run e script.tactics ty_filled)
             | DefEq proof -> proof
           in
           let proof_filled = elaborate e proof (Some ty_filled) in
