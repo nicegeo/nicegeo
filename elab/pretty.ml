@@ -121,9 +121,9 @@ let decl_to_string (e : ctx) (d : Statement.declaration) =
   | Axiom -> "Axiom " ^ d.name ^ " : " ^ term_to_string e d.ty
   | Theorem (DefEq term) ->
       "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e term
-  | Theorem (Proof proof) ->
+  | Theorem (Proof ps) ->
       "Theorem " ^ d.name ^ " : " ^ term_to_string e d.ty ^ "\nProof.\n"
-      ^ String.concat "\n" (List.map (tactic_to_string e []) proof)
+      ^ String.concat "\n" (List.map (tactic_to_string e []) ps.tactics)
       ^ "\nQed."
   | Def body ->
       "Def " ^ d.name ^ " : " ^ term_to_string e d.ty ^ " := " ^ term_to_string e body

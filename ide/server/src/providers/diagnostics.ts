@@ -58,6 +58,24 @@ function findRepoRoot(startFilePath: string): string | null {
   }
 }
 
+function toolMissingMessage(tool: string, cwd: string): string {
+  if (tool === "dune") {
+    return [
+      "Could not start `dune` (not found in PATH).",
+      "Install OCaml tooling and dune, then reopen VS Code from a shell where opam is active.",
+      `Working directory: ${cwd}`,
+    ].join("\n");
+  }
+  if (tool === "opam") {
+    return [
+      "Could not start `opam` (not found in PATH).",
+      "Install opam, then run `opam install . --deps-only` in the project.",
+      `Working directory: ${cwd}`,
+    ].join("\n");
+  }
+  return `Could not start '${tool}' (not found in PATH).`;
+}
+
 function normalizeFsPath(p: string): string {
   return path.normalize(p);
 }
@@ -173,20 +191,40 @@ export class DiagnosticsService {
     const filePath = fileURLToPath(doc.uri);
     const repoRoot = findRepoRoot(filePath);
     const cwd = repoRoot ?? workspaceRoot ?? process.cwd();
-    this.status.checking(doc.uri, `dune exec nicegeo -- ${filePath}`);
+    this.status.checking(doc.uri, `nicegeo check: ${filePath}`);
 
     const result = await new Promise<{ seq: number; exitCode: number | null; output: string }>((resolve) => {
-      const child = spawn("dune", ["exec", "nicegeo", "--", filePath], { cwd });
-      const chunks: Buffer[] = [];
-      const onData = (b: Buffer) => chunks.push(b);
-      child.stdout.on("data", onData);
-      child.stderr.on("data", onData);
-      const current = this.running.get(key);
-      if (current) current.child = child;
-      child.on("close", (exitCode) =>
-        resolve({ seq, exitCode, output: Buffer.concat(chunks).toString("utf8") }),
-      );
-      child.on("error", (err) => resolve({ seq, exitCode: 1, output: String(err?.message ?? err) }));
+      const attempts: Array<{ cmd: string; args: string[] }> = [
+        { cmd: "dune", args: ["exec", "nicegeo", "--", filePath] },
+        { cmd: "opam", args: ["exec", "--", "dune", "exec", "nicegeo", "--", filePath] },
+      ];
+
+      const runAttempt = (idx: number) => {
+        const attempt = attempts[idx];
+        const child = spawn(attempt.cmd, attempt.args, { cwd });
+        const chunks: Buffer[] = [];
+        const onData = (b: Buffer) => chunks.push(b);
+        child.stdout.on("data", onData);
+        child.stderr.on("data", onData);
+        const current = this.running.get(key);
+        if (current) current.child = child;
+        child.on("close", (exitCode) =>
+          resolve({ seq, exitCode, output: Buffer.concat(chunks).toString("utf8") }),
+        );
+        child.on("error", (err: NodeJS.ErrnoException) => {
+          if (err?.code === "ENOENT" && idx + 1 < attempts.length) {
+            runAttempt(idx + 1);
+            return;
+          }
+          if (err?.code === "ENOENT") {
+            resolve({ seq, exitCode: 1, output: toolMissingMessage(attempt.cmd, cwd) });
+            return;
+          }
+          resolve({ seq, exitCode: 1, output: String(err?.message ?? err) });
+        });
+      };
+
+      runAttempt(0);
     });
 
     const latest = this.running.get(key);
