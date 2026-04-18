@@ -22,15 +22,16 @@ import:
 
 declaration:
   | AXIOM name = IDENT COLON ty = term { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Axiom} }
-  | THEOREM name = IDENT COLON ty = term PROOF proof = list(tactic) QED
-    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem (Proof proof)} }
+  | THEOREM name = IDENT COLON ty = term PROOF proof = list(tactic) _qed = QED
+    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem (Proof { tactics = proof; qed_loc={ Term.start = $startpos(_qed); Term.end_ = $endpos(_qed) } })} }
   | THEOREM name = IDENT COLON ty = term DEFEQ proof = term
     { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem (DefEq proof)} }
   | DEFINITION name = IDENT COLON ty = term DEFEQ body = term
     { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Def body} }
 
 tactic:
-  | name = IDENT args = list(atomic_term) PERIOD { Statement.{name; args; loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }} }
+  | name = IDENT args = list(atomic_term) PERIOD
+    { Statement.{name; args; loc={ Term.start = $startpos(name); Term.end_ = $endpos }} }
 
 directive:
   (* print all axioms used in proposition: #print axioms prop1 *)

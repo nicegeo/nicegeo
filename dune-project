@@ -23,8 +23,8 @@
  (description "A longer description")
  (depends
   ocaml
-  sedlex
-  (ocamlformat :with-test)
+  (sedlex (= "3.7"))
+  (ocamlformat (and (= "0.27.0") :with-test))
   (alcotest :with-test)
   (ppx_expect :with-test)
   (odoc :with-doc))
