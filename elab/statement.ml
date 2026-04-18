@@ -6,8 +6,13 @@ type tactic = {
   loc : range;
 }
 
+type proof_script = {
+  tactics : tactic list;
+  qed_loc : range;  (** Span of the closing [Qed] token. *)
+}
+
 type theorem_body =
-  | Proof of tactic list
+  | Proof of proof_script
   | DefEq of term
 
 type decl_type =

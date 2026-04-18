@@ -333,6 +333,30 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
                (pp_term st.elab_ctx lhs)
                (pp_term st.elab_ctx g.goal_type)))
 
+(** Breaks goal of the form [A and B] into two subgoals for [A] and [B] by applying
+    [And.intro]. Fails if the current goal is not a conjunction. *)
+let split (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g -> (
+      let ty = beta_nf st.elab_ctx g.goal_type in
+      match ty.inner with
+      | App ({ inner = App ({ inner = Name "And"; _ }, a); _ }, b) ->
+          let hole_a, st = fresh_goal st g.lctx a in
+          let hole_b, st = fresh_goal st g.lctx b in
+          let proof =
+            mk_app (mk_app (mk_app (mk_app (mk_name "And.intro") a) b) hole_a) hole_b
+          in
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+
+          succeed st
+      | _ ->
+          fail
+            (Printf.sprintf
+               "split: goal '%s' is not a conjunction."
+               (pp_term st.elab_ctx ty)))
+
 (** Helper function that creates a tuple (hole_id, hole_term) where the hole_term is just
     the Hole term corresponding to the created hole ID *)
 let create_hole () : int * term =
@@ -345,9 +369,6 @@ let create_hole () : int * term =
 let get_hole_sol (ctx : ctx) (hole_id : int) : term option =
   match Hashtbl.find_opt ctx.metas hole_id with
   | Some mvar -> mvar.sol
-  (* If the hole_id isn't in ctx.metas at all, then that indicates a bug since
-  the user should have added the given hole ID into the context when they created
-  the hole *)
   | None -> failwith "internal nicegeo programming error: created hole does not exist!"
 
 (** Create a new context by adding each hole that appears in `expected_term` to the
@@ -356,8 +377,6 @@ let get_hole_sol (ctx : ctx) (hole_id : int) : term option =
     This function doesn't modify `ctx` itself, instead returning the new context, in
     addition to the list of hole IDs for all of the created holes *)
 let ctx_with_new_holes (g : goal) (ctx : ctx) (expected_term : term) : ctx =
-  (* We only need to copy ctx.metas since create_metas doesn't modify
-  anything else in the context *)
   let metas = Hashtbl.copy ctx.metas in
   let new_ctx = { ctx with metas } in
   (* g.lctx includes a list of local variables (represented as binder IDs) that
@@ -389,7 +408,7 @@ let match_term_and_solve_holes (g : goal) (ctx : ctx) (t : term) (expected_term 
 
   ctx
 
-(* 
+(*
   This infers the motive p of the existential type when constructing an Exists.intro.
   It uses the type A to construct the expected type, leaving in a hole for the motive.
   It then calls unification with a fresh hole for p, to unify the goal with the type
@@ -565,6 +584,7 @@ let register () =
   register_tactic "sorry" Register.(nullary sorry);
   register_tactic "intro" Register.(unary_ident intro);
   register_tactic "intros" Register.(variadic_ident intros);
+  register_tactic "split" Register.(nullary split);
   (* There's a clever design somewhere that lets me write this with some combinators, but for time's sake this one gets hard-coded for now. *)
   register_tactic "have" (function
     | [ { inner = Name name; _ }; ty ] -> have name ty
