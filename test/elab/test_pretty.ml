@@ -191,6 +191,20 @@ let test_notation_prec () =
     ~expected:"(¬P ↔ Q) → Q ↔ a + b < c"
     ~actual:(term_to_string e t);
 
+  let t = Elab.Interface.parse_term "¬P ∨ Q ∧ R" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Notations pretty-print with precedence matching parser (2)"
+    ~expected:"¬P ∨ Q ∧ R"
+    ~actual:(term_to_string e t);
+  
+  let t = Elab.Interface.parse_term "f P (¬Q) R" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Function application with negation"
+    ~expected:"f P (¬Q) R"
+    ~actual:(term_to_string e t);
+
   ()
 
 let suite =
