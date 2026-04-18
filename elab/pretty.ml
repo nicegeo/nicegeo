@@ -40,14 +40,46 @@ let bvar_to_string (lctx : local_ctx) (idx : int) : string =
 
 (* Precedence levels for terms for parentheses, corresponding to term rules in the parser. 
   Lower means tighter binding. *)
-let prec_term = 20
-let prec_app = 10
+let prec_term = 6
+let prec_disjunction = 5
+let prec_conjunction = 4
+let prec_prop = 3
+let prec_sum = 2
+let prec_app = 1
 let prec_atomic = 0
+
+(* decomposes an App into its function and arguments if the function is a Name *)
+let rec get_pattern (t : term) : (string * term list) option =
+  match t.inner with
+  | App (f, arg) -> (
+      match get_pattern f with
+      | Some (name, args) -> Some (name, args @ [ arg ])
+      | None -> None)
+  | Name name -> Some (name, [])
+  | _ -> None
 
 let rec get_prec (e : ctx) (t : term) : int =
   match t.inner with
   | Name _ | Bvar _ | Sort 0 | Sort 1 -> prec_atomic
-  | Sort _ | App _ -> prec_app
+  | Sort _ -> prec_app
+  | App _ -> (
+      match get_pattern t with
+      | Some (name, args) -> (
+          match (name, List.length args) with
+          | "Iff", 2 -> prec_term
+          | "Exists", 2 -> (
+              match List.nth args 1 with
+              | { inner = Fun _; _ } -> prec_term
+              | _ -> prec_app)
+          | "Or", 2 -> prec_disjunction
+          | "And", 2 -> prec_conjunction
+          | "Not", 1 -> prec_prop
+          | "Lt", 2 -> prec_prop
+          | "Eq", 3 -> prec_prop
+          | "Ne", 3 -> prec_prop
+          | "Add", 2 -> prec_sum
+          | _ -> prec_app)
+      | _ -> prec_app)
   | Fun _ | Arrow _ -> prec_term
   | Hole m -> (
       match Hashtbl.find_opt e.metas m with
@@ -92,17 +124,65 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
           | None ->
               let ty_s = term_to_string_helper e lctx ty prec_app in
               let ret_s = term_to_string_helper e lctx ret prec_term in
-              ty_s ^ " -> " ^ ret_s
+              ty_s ^ " → " ^ ret_s
           | Some name ->
               let ty_s = term_to_string_helper e lctx ty prec_term in
               let new_lctx = { bid; name = Some name; ty } :: lctx in
               let ret_s = term_to_string_helper e new_lctx ret prec_term in
               "(" ^ name (* "[" ^ string_of_int bid ^ "]" ^ *) ^ " : "
-              ^ ty_s ^ ") -> " ^ ret_s)
-      | App (f, arg) ->
-          term_to_string_helper e lctx f prec_app
-          ^ " "
-          ^ term_to_string_helper e lctx arg prec_atomic
+              ^ ty_s ^ ") → " ^ ret_s)
+      | App (f, arg) -> (
+          let default =
+            term_to_string_helper e lctx f prec_app
+            ^ " "
+            ^ term_to_string_helper e lctx arg prec_atomic
+          in
+          match get_pattern t with
+          | Some (name, args) -> (
+              match (name, args) with
+              | "Iff", [ a; b ] ->
+                  term_to_string_helper e lctx a prec_disjunction
+                  ^ " ↔ "
+                  ^ term_to_string_helper e lctx b prec_disjunction
+              | "Exists", [ _; b ] -> (
+                  match b.inner with
+                  | Fun (name, bid, arg_ty, body) ->
+                      let name =
+                        match name with Some n -> n | None -> "x" ^ string_of_int bid
+                      in
+                      let body_lctx = { name = Some name; bid; ty = arg_ty } :: lctx in
+                      "∃ (" ^ name ^ " : "
+                      ^ term_to_string_helper e lctx arg_ty prec_term
+                      ^ "), "
+                      ^ term_to_string_helper e body_lctx body prec_term
+                  | _ -> default)
+              | "Or", [ a; b ] ->
+                  term_to_string_helper e lctx a prec_disjunction
+                  ^ " ∨ "
+                  ^ term_to_string_helper e lctx b prec_conjunction
+              | "And", [ a; b ] ->
+                  term_to_string_helper e lctx a prec_conjunction
+                  ^ " ∧ "
+                  ^ term_to_string_helper e lctx b prec_prop
+              | "Not", [ a ] -> "¬" ^ term_to_string_helper e lctx a prec_prop
+              | "Lt", [ a; b ] ->
+                  term_to_string_helper e lctx a prec_sum
+                  ^ " < "
+                  ^ term_to_string_helper e lctx b prec_sum
+              | "Eq", [ _; a; b ] ->
+                  term_to_string_helper e lctx a prec_sum
+                  ^ " = "
+                  ^ term_to_string_helper e lctx b prec_sum
+              | "Ne", [ _; a; b ] ->
+                  term_to_string_helper e lctx a prec_sum
+                  ^ " ≠ "
+                  ^ term_to_string_helper e lctx b prec_sum
+              | "Add", [ a; b ] ->
+                  term_to_string_helper e lctx a prec_sum
+                  ^ " + "
+                  ^ term_to_string_helper e lctx b prec_app
+              | _ -> default)
+          | _ -> default)
   in
   term_to_string_helper e lctx t prec_term
 
