@@ -24,7 +24,8 @@
  (depends
   ocaml
   (sedlex (= "3.7"))
-  (ocamlformat (and (= "0.27.0") :with-test))
+  (yojson (= "3.0.0"))
+  (ocamlformat (and (= "0.28.1") :with-test))
   (alcotest :with-test)
   (ppx_expect :with-test)
   (odoc :with-doc))
