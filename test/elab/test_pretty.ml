@@ -197,7 +197,7 @@ let test_notation_prec () =
     ~msg:"Notations pretty-print with precedence matching parser (2)"
     ~expected:"¬P ∨ Q ∧ R"
     ~actual:(term_to_string e t);
-  
+
   let t = Elab.Interface.parse_term "f P (¬Q) R" in
   Alcotest.check'
     Alcotest.string
