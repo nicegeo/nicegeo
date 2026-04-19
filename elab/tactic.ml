@@ -9,6 +9,11 @@ type tactic = proof_state -> tactic_result
 
 let tactics : (string, term list -> tactic) Hashtbl.t = Hashtbl.create 8
 
+type tactic_step_outcome =
+  | Tactic_step_ok of proof_state
+  | Tactic_step_unknown
+  | Tactic_step_failed of string
+
 let bind_tactic_args (st : Proofstate.proof_state) (args : term list) : term list =
   let goal = List.hd st.open_goals in
   let open Types in
@@ -23,29 +28,42 @@ let bind_tactic_args (st : Proofstate.proof_state) (args : term list) : term lis
         arg)
     args
 
+let apply_tactic_step (st : proof_state) (tac : Statement.tactic) : tactic_step_outcome =
+  match Hashtbl.find_opt tactics tac.name with
+  | None -> Tactic_step_unknown
+  | Some func -> (
+      let bound_args = bind_tactic_args st tac.args in
+      match func bound_args st with
+      | Success new_st -> Tactic_step_ok new_st
+      | Failure msg -> Tactic_step_failed msg)
+
+let apply_first_k_tactics (init : proof_state) (tacs : Statement.tactic list) (k : int) :
+    proof_state =
+  let rec go st n = function
+    | _ when n <= 0 -> st
+    | [] -> st
+    | tac :: rest -> (
+        match apply_tactic_step st tac with
+        | Tactic_step_ok new_st -> go new_st (n - 1) rest
+        | Tactic_step_unknown | Tactic_step_failed _ -> st)
+  in
+  go init k tacs
+
 let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
   let init_state = Proofstate.init_state ~elab_ctx:e goal in
   let state =
     List.fold_left
       (fun st (tac : Statement.tactic) ->
-        let func_opt = Hashtbl.find_opt tactics tac.name in
-        match func_opt with
-        | Some func -> (
-            (* bind names to Bvars based on the first goal's lctx. probably we actually
-            want every tactic to do it themselves rather than hardcoding it here, but this
-            is fine for now *)
-            let bound_args = bind_tactic_args st tac.args in
-            let result = func bound_args st in
-            match result with
-            | Success new_st -> new_st
-            | Failure msg ->
-                raise
-                  (Error.ElabError
-                     {
-                       context = { loc = Some tac.loc; decl_name = None; lctx = None };
-                       error_type = Error.TacticFailure msg;
-                     }))
-        | None ->
+        match apply_tactic_step st tac with
+        | Tactic_step_ok new_st -> new_st
+        | Tactic_step_failed msg ->
+            raise
+              (Error.ElabError
+                 {
+                   context = { loc = Some tac.loc; decl_name = None; lctx = None };
+                   error_type = Error.TacticFailure msg;
+                 })
+        | Tactic_step_unknown ->
             raise
               (Error.ElabError
                  {
@@ -67,7 +85,7 @@ let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
                ^ String.concat
                    "\n"
                    (List.map
-                      (fun g -> "  " ^ Pretty.term_to_string e g.goal_type)
+                      (fun g -> "  " ^ Pretty.term_to_string e ~lctx:g.lctx g.goal_type)
                       state.open_goals));
          })
   else state.statement
@@ -102,6 +120,15 @@ module Register = struct
 
   let unary_term (f : term -> tactic) : term list -> tactic = function
     | [ arg ] -> f arg
+    | [] ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None; lctx = None };
+               error_type =
+                 Error.InvalidTacticParameter
+                   "Expected exactly one term parameter, but got nothing";
+             })
     | terms ->
         raise
           (Error.ElabError
@@ -132,6 +159,15 @@ module Register = struct
                context = { loc = Some term.loc; decl_name = None; lctx = None };
                error_type =
                  Error.InvalidTacticParameter "Expected an identifier, but got a term";
+             })
+    | [] ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None; lctx = None };
+               error_type =
+                 Error.InvalidTacticParameter
+                   "Expected exactly one identifier parameter, but got nothing";
              })
     | terms ->
         raise
@@ -174,4 +210,35 @@ module Register = struct
         args
     in
     f idents
+
+  let tactical (f : tactic -> tactic) : term list -> tactic = function
+    | { inner = Name id; loc } :: rest ->
+        let inner_tac =
+          match Hashtbl.find_opt tactics id with
+          | Some func -> func rest
+          | None ->
+              raise
+                (Error.ElabError
+                   {
+                     context = { loc = Some loc; decl_name = None; lctx = None };
+                     error_type = Error.UnknownName { name = id };
+                   })
+        in
+        f inner_tac
+    | t :: _ ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = Some t.loc; decl_name = None; lctx = None };
+               error_type =
+                 Error.InvalidTacticParameter "Expected a tactic name, but got a term.";
+             })
+    | [] ->
+        raise
+          (Error.ElabError
+             {
+               context = { loc = None; decl_name = None; lctx = None };
+               error_type =
+                 Error.InvalidTacticParameter "Expected a tactic, but got nothing";
+             })
 end

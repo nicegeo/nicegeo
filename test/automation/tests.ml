@@ -12,4 +12,8 @@ let () =
       Test_tactic_rw.suite;
       Test_tactic_exists.suite;
       Test_tactic_construct_or.suite;
+      Test_proofstate_prefix.suite;
+      Test_tactic_split.suite;
+      Test_tactic_utils.suite;
+      Test_tactic_choose.suite;
     ]

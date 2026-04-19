@@ -13,8 +13,8 @@ val sorry : proof_state -> tactic_result
     or no goals remain. *)
 val exact : term -> proof_state -> tactic_result
 
-(** [apply term st] if [term]'s type is [A -> B] and [B] matches the goal, closes the goal
-    and opens a new subgoal for [A]. *)
+(** [apply term st] attempts to solve the current goal by applying [term], opening
+    subgoals for the remaining arguments (if any). *)
 val apply : term -> proof_state -> tactic_result
 
 (* sequences tactics *)
@@ -34,9 +34,19 @@ val intros : string list -> tactic
     occurrences of [lhs] are replaced with [rhs] *)
 val rewrite : term -> proof_state -> tactic_result
 
+(** [split st] decomposes a goal of the form [And A B] into two subgoals [A] and [B],
+    using [And.intro] as the proof skeleton. Fails if the goal is not a conjunction.
+    (Normalizes, but does not do unification) *)
+val split : proof_state -> tactic_result
+
 (** [exists a] takes in a term [a] of type [A], and constructs a new goal [p a], where the
     old goal had form [Exists A p]. The motive [p] is inferred from the goal and the type
     of the argument [a]. *)
 val exists : term -> proof_state -> tactic_result
+
+(** * Given a term whose type unifies with [Exists A p], infer [A] and [p], * and
+    introduce new hypotheses representing [a : A] and [h : p a]. * Update the proof term
+    appropriately. *)
+val choose : string * string -> term -> proof_state -> tactic_result
 
 val register : unit -> unit

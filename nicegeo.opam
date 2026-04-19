@@ -12,7 +12,8 @@ bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "dune" {>= "3.17"}
   "ocaml"
-  "ocamlformat" {with-test}
+  "sedlex" {= "3.7"}
+  "ocamlformat" {= "0.27.0" & with-test}
   "alcotest" {with-test}
   "ppx_expect" {with-test}
   "odoc" {with-doc}
