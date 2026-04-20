@@ -61,7 +61,10 @@ let parse_args (args : string list) : (bool * string * int * int) option =
       with Failure _ -> None)
   | _ -> None
 
-let json_escape (s : string) : string = String.escaped s
+let json_escape (s : string) : string =
+  let s = Yojson.to_string (`String s) in
+  String.sub s 1 (String.length s - 2)
+
 let pos_col (p : Lexing.position) : int = p.pos_cnum - p.pos_bol + 1
 
 let pos_lex_lt (line_a : int) (col_a : int) (line_b : int) (col_b : int) : bool =
