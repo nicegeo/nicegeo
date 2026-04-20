@@ -1,0 +1,19 @@
+(version 0.28.1)
+
+(build
+ (all_platforms
+  ((action
+    (progn
+     (when %{pkg-self:dev} (run dune subst))
+     (run dune build -p %{pkg-self:name} -j %{jobs} @install))))))
+
+(depends
+ (all_platforms
+  (ocaml cmdliner csexp dune ocamlformat-lib re)))
+
+(source
+ (fetch
+  (url
+   https://github.com/ocaml-ppx/ocamlformat/releases/download/0.28.1/ocamlformat-0.28.1.tbz)
+  (checksum
+   sha256=70bda037d0bed961ed91bdb5198b2eeef542444750a8b015d80ccb94b3ff41fb)))
