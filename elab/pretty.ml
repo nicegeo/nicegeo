@@ -132,7 +132,7 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
               "(" ^ name (* "[" ^ string_of_int bid ^ "]" ^ *) ^ " : "
               ^ ty_s ^ ") → " ^ ret_s)
       | App (f, arg) -> (
-          let default =
+          let default () =
             term_to_string_helper e lctx f prec_app
             ^ " "
             ^ term_to_string_helper e lctx arg prec_atomic
@@ -155,7 +155,7 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
                       ^ term_to_string_helper e lctx arg_ty prec_term
                       ^ "), "
                       ^ term_to_string_helper e body_lctx body prec_term
-                  | _ -> default)
+                  | _ -> default ())
               | "Or", [ a; b ] ->
                   term_to_string_helper e lctx a prec_disjunction
                   ^ " ∨ "
@@ -181,8 +181,8 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
                   term_to_string_helper e lctx a prec_sum
                   ^ " + "
                   ^ term_to_string_helper e lctx b prec_app
-              | _ -> default)
-          | _ -> default)
+              | _ -> default ())
+          | _ -> default ())
   in
   term_to_string_helper e lctx t prec_term
 
