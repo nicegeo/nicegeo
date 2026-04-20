@@ -436,7 +436,7 @@ let exists (a : term) (st : proof_state) : tactic_result =
       match infer_motive exists_type g st.elab_ctx with
       | Some p ->
           (* update the goal to (p a) *)
-          let new_goal_ty = mk_app p a in
+          let new_goal_ty = whnf st.elab_ctx (mk_app p a) in
           let new_hole, st = fresh_goal st g.lctx new_goal_ty in
           (* construct the proof term *)
           let proof =
@@ -448,6 +448,46 @@ let exists (a : term) (st : proof_state) : tactic_result =
           succeed st
       | None -> fail "Goal must have the form [Exists A p]")
   | None -> fail "No goals remaining"
+
+(** Infer the values of A and B such that the goal type for `g` is `Or A B`, or return
+    None if values of A and B can't be found *)
+let infer_or_type (g : goal) (st : proof_state) : (term * term) option =
+  let ctx = st.elab_ctx in
+  (* Create holes for both arguments to `Or` (which are both Props representing the type) *)
+  let left_hole_id, left_hole = create_hole () in
+  let right_hole_id, right_hole = create_hole () in
+
+  let expected_or_type = mk_app_multiarg (mk_name "Or") [ left_hole; right_hole ] in
+  let ctx = match_term_and_solve_holes g ctx g.goal_type expected_or_type in
+  match (get_hole_sol ctx left_hole_id, get_hole_sol ctx right_hole_id) with
+  | Some left_type, Some right_type -> Some (left_type, right_type)
+  | _ -> None
+
+(** Constructor tactic for Or that behaves like `right` (i.e. turns the right side of the
+    Or into the goal) if the argument `use_right` is true, and behaves like `left` if not
+*)
+let constructor_or_tactic (use_right : bool) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> fail "No goals remaining"
+  | Some g -> (
+      match infer_or_type g st with
+      | None -> fail "Goal must be of the form [Or A B]"
+      | Some (left_type, right_type) ->
+          let new_goal_type = if use_right then right_type else left_type in
+          let new_goal_hole, st = fresh_goal st g.lctx new_goal_type in
+
+          let constructor_name = if use_right then "Or.inr" else "Or.inl" in
+          let curr_goal_proof =
+            mk_app_multiarg
+              (mk_name constructor_name)
+              [ left_type; right_type; new_goal_hole ]
+          in
+          let st = assign_meta g.goal_id curr_goal_proof st in
+          let st = close_goal g.goal_id st in
+          succeed st)
+
+let left = constructor_or_tactic false
+let right = constructor_or_tactic true
 
 (*
  * Infer both [A] and the motive [p] for the choose tactic, by way of unifying
@@ -461,8 +501,9 @@ let infer_choose_types (e : term) (g : goal) (st : proof_state) :
   let expected =
     mk_app (mk_app (mk_name "Exists") (mk_hole hole_a_typ)) (mk_hole hole_p)
   in
+  create_metas st.elab_ctx e (List.map (fun h -> h.bid) g.lctx);
+  let e_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx e in
   let ctx = ctx_with_new_holes g st.elab_ctx expected in
-  let e_typ = Elab.Typecheck.infertype ctx g.lctx e in
   unify ctx e_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
   match (Hashtbl.find_opt ctx.metas hole_a_typ, Hashtbl.find_opt ctx.metas hole_p) with
   | Some mvar1, Some mvar2 -> (mvar1.sol, mvar2.sol)
@@ -485,7 +526,7 @@ let choose (names : string * string) (e : term) (st : proof_state) : tactic_resu
           let bid_a_typ = Elab.Term.gen_binder_id () in
           let hyp_a_typ = { name = Some (fst names); bid = bid_a_typ; ty = a_typ } in
           let bid_h = Elab.Term.gen_binder_id () in
-          let ty = mk_app p (mk_bvar bid_a_typ) in
+          let ty = whnf st.elab_ctx (mk_app p (mk_bvar bid_a_typ)) in
           let hyp_h = { name = Some (snd names); bid = bid_h; ty } in
           let subgoal_lctx = hyp_h :: hyp_a_typ :: g.lctx in
           (* construct the proof term *)
@@ -590,6 +631,8 @@ let register () =
   register_tactic "sorry" Register.(nullary sorry);
   register_tactic "intro" Register.(unary_ident intro);
   register_tactic "intros" Register.(variadic_ident intros);
+  register_tactic "left" Register.(nullary left);
+  register_tactic "right" Register.(nullary right);
   register_tactic "split" Register.(nullary split);
   (* There's a clever design somewhere that lets me write this with some combinators, but for time's sake this one gets hard-coded for now. *)
   register_tactic "have" (function
