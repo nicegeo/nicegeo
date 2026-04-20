@@ -59,8 +59,8 @@ let test_choose_global () =
   Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
   let goal = List.hd st.open_goals in
   let got = pp_term env (Elab.Reduce.reduce env goal.goal_type) in
-  let exp = "Exists A (fun (a : A) => True)" in
-  Alcotest.(check string) "new goal is still (Exists A (fun (a : A) => True))" exp got;
+  let exp = "∃ (a : A), True" in
+  Alcotest.(check string) "new goal is still (∃ (a : A), True))" exp got;
   (* check for the newly added hypotheses *)
   match goal.lctx with
   | [ ha; a ] ->
@@ -112,7 +112,7 @@ let test_choose_local () =
       Alcotest.(check string) "first new hypothesis has type A" a_typ exp;
       let exp = "B" in
       Alcotest.(check string) "second new hypothesis has type B" exp h;
-      let exp = "Exists A (fun (a : A) => B)" in
+      let exp = "∃ (a : A), B" in
       Alcotest.(check string)
         "old hypothesis still has the right type"
         exp
