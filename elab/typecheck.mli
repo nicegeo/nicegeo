@@ -42,6 +42,7 @@ val replace_metas : Types.ctx -> term -> term
 val unify :
   ?depth:int ->
   Types.ctx ->
+  ?lctx:Types.local_ctx ->
   term ->
   (int, int) Hashtbl.t ->
   term ->
