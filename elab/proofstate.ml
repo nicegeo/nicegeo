@@ -38,7 +38,7 @@ let fresh_goal (st : proof_state) (lctx : local_ctx) (ty : term) : term * proof_
     id
     { ty = Some ty; context = hole_context; sol = None };
   let g = { lctx; goal_type = ty; goal_id = id } in
-  (hole, { st with open_goals = st.open_goals @ [ g ] })
+  (hole, { st with open_goals = g :: st.open_goals })
 
 let close_goal (id : int) (st : proof_state) : proof_state =
   { st with open_goals = List.filter (fun g -> g.goal_id <> id) st.open_goals }
