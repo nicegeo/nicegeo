@@ -2,6 +2,11 @@
 
 This is a short guide for using the NiceGeo IDE extension.
 
+## 0) Install required dependency
+
+- Install all project dependencies in your active opam switch:
+  - `opam install --deps-only --with-test .`
+
 ## 1) Install the extension from `.vsix`
 
 - In VS Code, open the Command Palette.
