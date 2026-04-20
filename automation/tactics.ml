@@ -452,27 +452,16 @@ let exists (a : term) (st : proof_state) : tactic_result =
 (** Infer the values of A and B such that the goal type for `g` is `Or A B`, or return
     None if values of A and B can't be found *)
 let infer_or_type (g : goal) (st : proof_state) : (term * term) option =
+  let ctx = st.elab_ctx in
   (* Create holes for both arguments to `Or` (which are both Props representing the type) *)
-  let create_expected_or_type hole_ids =
-    let left_hole, right_hole =
-      match hole_ids with
-      | [ left_hole_id; right_hole_id ] -> (mk_hole left_hole_id, mk_hole right_hole_id)
-      | _ -> failwith "Internal error: Incorrect list size"
-    in
-    mk_app_multiarg (mk_name "Or") [ left_hole; right_hole ]
-  in
-  let or_args =
-    match_term_and_solve_holes
-      g
-      st.elab_ctx
-      [ mk_name "Prop"; mk_name "Prop" ]
-      g.goal_type
-      create_expected_or_type
-  in
-  match or_args with
-  | None -> None
-  | Some [ left_type; right_type ] -> Some (left_type, right_type)
-  | _ -> failwith "Internal error: incorrect list length"
+  let left_hole_id, left_hole = create_hole () in
+  let right_hole_id, right_hole = create_hole () in
+
+  let expected_or_type = mk_app_multiarg (mk_name "Or") [ left_hole; right_hole ] in
+  let ctx = match_term_and_solve_holes g ctx g.goal_type expected_or_type in
+  match (get_hole_sol ctx left_hole_id, get_hole_sol ctx right_hole_id) with
+  | Some left_type, Some right_type -> Some (left_type, right_type)
+  | _ -> None
 
 let left (st : proof_state) : tactic_result =
   match current_goal st with
@@ -489,6 +478,7 @@ let left (st : proof_state) : tactic_result =
           let st = assign_meta g.goal_id curr_goal_proof st in
           let st = close_goal g.goal_id st in
           succeed st)
+
 (*
  * Infer both [A] and the motive [p] for the choose tactic, by way of unifying
  * with the input term [e : Exists ?? ??]
