@@ -3,15 +3,8 @@
 
 open Elab.Pretty
 
-let () = Printf.printf "=== Elaborator term pretty-printing ===\n\n"
 let e = Elab.Interface.create ()
 let l = Elab.Term.dummy_range
-
-(* Example 1: Elaborator terms have names already *)
-let () =
-  let t = Util.(nfun "A" 1 (sort 1) (nfun "B" 2 (sort 0) (bvar 2))) in
-  Printf.printf "Elab term (A : Type) -> (B : Prop) -> B:\n";
-  Printf.printf "  %s\n\n" (term_to_string e t)
 
 let test_lam_flattening () =
   Alcotest.check'
@@ -42,7 +35,7 @@ let test_elab_arrow_no_name () =
   Alcotest.check'
     Alcotest.string
     ~msg:"arrow pretty-prints sorts"
-    ~expected:"Type -> Prop"
+    ~expected:"Type → Prop"
     ~actual:(term_to_string e t)
 
 let test_arrow_assoc () =
@@ -50,14 +43,14 @@ let test_arrow_assoc () =
   Alcotest.check'
     Alcotest.string
     ~msg:"arrow pretty-prints right-associative"
-    ~expected:"Prop -> Prop -> Prop"
+    ~expected:"Prop → Prop → Prop"
     ~actual:(term_to_string e t);
 
   let t = Util.(uarrow 1 (uarrow 2 (sort 0) (sort 0)) (sort 0)) in
   Alcotest.check'
     Alcotest.string
     ~msg:"arrow pretty-prints right-associative even when left-arg is arrow"
-    ~expected:"(Prop -> Prop) -> Prop"
+    ~expected:"(Prop → Prop) → Prop"
     ~actual:(term_to_string e t);
 
   ()
@@ -101,6 +94,119 @@ let test_lam_app () =
     ~actual:(term_to_string e t);
   ()
 
+let test_notation () =
+  let t = Util.(app (name "Not") (name "P")) in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Not pretty-prints with ¬ notation"
+    ~expected:"¬P"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "Exists A (fun (a : A) => B)" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Exists pretty-prints with ∃ notation"
+    ~expected:"∃ (a : A), B"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "Iff P Q" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Iff pretty-prints with ↔ notation"
+    ~expected:"P ↔ Q"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "Or P Q" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Or pretty-prints with ∨ notation"
+    ~expected:"P ∨ Q"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "And P Q" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"And pretty-prints with ∧ notation"
+    ~expected:"P ∧ Q"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "Lt x y" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Lt pretty-prints with < notation"
+    ~expected:"x < y"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "Eq A x y" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Eq pretty-prints with = notation"
+    ~expected:"x = y"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "Eq A" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Partially applied Eq pretty-prints without = notation"
+    ~expected:"Eq A"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "Ne A x y" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Ne pretty-prints with ≠ notation"
+    ~expected:"x ≠ y"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "Add x y" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Add pretty-prints with + notation"
+    ~expected:"x + y"
+    ~actual:(term_to_string e t);
+
+  ()
+
+let test_notation_prec () =
+  let t =
+    Util.(
+      app
+        (app
+           (app (name "Eq") (name "Measure"))
+           (app (app (name "Add") (name "x")) (name "y")))
+        (app (app (name "Add") (name "z")) (name "w")))
+  in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Notations pretty-print with correct precedence"
+    ~expected:"x + y = z + w"
+    ~actual:(term_to_string e t);
+
+  (* this is a pretty confusing expression, perhaps we shouldn't allow A → B ↔ C in the language *)
+  (* but i'm not sure how to change that (currently it's parsed as `A → (B ↔ C)`) *)
+  let t = Elab.Interface.parse_term "(¬P ↔ Q) → Q ↔ a + b < c" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Notations pretty-print with precedence matching parser"
+    ~expected:"(¬P ↔ Q) → Q ↔ a + b < c"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "¬P ∨ Q ∧ R" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Notations pretty-print with precedence matching parser (2)"
+    ~expected:"¬P ∨ Q ∧ R"
+    ~actual:(term_to_string e t);
+
+  let t = Elab.Interface.parse_term "f P (¬Q) R" in
+  Alcotest.check'
+    Alcotest.string
+    ~msg:"Function application with negation"
+    ~expected:"f P (¬Q) R"
+    ~actual:(term_to_string e t);
+
+  ()
+
 let suite =
   let open Alcotest in
   ( "Pretty-printing",
@@ -111,4 +217,6 @@ let suite =
       test_case "Arrow right-associative" `Quick test_arrow_assoc;
       test_case "Application left-associative" `Quick test_app_parens;
       test_case "Lambda application" `Quick test_lam_app;
+      test_case "Notation" `Quick test_notation;
+      test_case "Notation precedence" `Quick test_notation_prec;
     ] )
