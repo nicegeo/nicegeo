@@ -57,7 +57,7 @@ let check_terms_equal (msg : string) (env : Elab.Types.ctx) (actual_term : Elab.
   let exp = pp_term env actual_term in
   Alcotest.(check string) msg exp got
 
-(* Check that single usage of `exists` creates the correct new goal type. *)
+(* Check that single usage of `left` creates the correct new goal type. *)
 let test_left_simple () =
   let env, _ = make_env () in
   let goal_ty = elab env "Or A B" in
@@ -74,8 +74,24 @@ let test_left_simple () =
     true
     (kernel_check env st.statement goal_ty)
 
-(* Check that `exists` can infer the motive properly referencing something in the local
-   context *)
+(* Check that single usage of `right` creates the correct new goal type. *)
+let test_right_simple () =
+  let env, _ = make_env () in
+  let goal_ty = elab env "Or A B" in
+  let st = init_state ~elab_ctx:env goal_ty in
+  let st = run_tactic right st in
+  Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
+  check_terms_equal "new goal is B" env (List.hd st.open_goals).goal_type (elab env "B");
+
+  let st = run_tactic (exact (elab env "b")) st in
+  Alcotest.(check int) "no remaining goals" 0 (List.length st.open_goals);
+
+  Alcotest.(check bool)
+    "kernel accepts proof"
+    true
+    (kernel_check env st.statement goal_ty)
+
+(* Check that `left` can infer the type arguments when they're dependent on the local context *)
 let test_left_types_from_bvars () =
   let env, _ = make_env () in
   let goal_ty = elab env "(x : Prop) -> (y: Prop) -> Or x y" in
@@ -114,6 +130,7 @@ let suite =
   ( "Tactic.construct_or",
     [
       test_case "left simple" `Quick test_left_simple;
+      test_case "right simple" `Quick test_right_simple;
       test_case "left handles types using local context" `Quick test_left_types_from_bvars;
       test_case
         "left definitionally equal to `Or A B`"

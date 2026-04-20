@@ -463,21 +463,31 @@ let infer_or_type (g : goal) (st : proof_state) : (term * term) option =
   | Some left_type, Some right_type -> Some (left_type, right_type)
   | _ -> None
 
-let left (st : proof_state) : tactic_result =
+(** Constructor tactic for Or that behaves like `right` (i.e. turns the right side of the
+    Or into the goal) if the argument `use_right` is true, and behaves like `left` if not
+*)
+let constructor_or_tactic (use_right : bool) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining"
   | Some g -> (
       match infer_or_type g st with
       | None -> fail "Goal must be of the form [Or A B]"
       | Some (left_type, right_type) ->
-          let new_goal_hole, st = fresh_goal st g.lctx left_type in
+          let new_goal_type = if use_right then right_type else left_type in
+          let new_goal_hole, st = fresh_goal st g.lctx new_goal_type in
 
+          let constructor_name = if use_right then "Or.inr" else "Or.inl" in
           let curr_goal_proof =
-            mk_app_multiarg (mk_name "Or.inl") [ left_type; right_type; new_goal_hole ]
+            mk_app_multiarg
+              (mk_name constructor_name)
+              [ left_type; right_type; new_goal_hole ]
           in
           let st = assign_meta g.goal_id curr_goal_proof st in
           let st = close_goal g.goal_id st in
           succeed st)
+
+let left = constructor_or_tactic false
+let right = constructor_or_tactic true
 
 (*
  * Infer both [A] and the motive [p] for the choose tactic, by way of unifying
@@ -544,6 +554,7 @@ let register () =
   register_tactic "intro" Register.(unary_ident intro);
   register_tactic "intros" Register.(variadic_ident intros);
   register_tactic "left" Register.(nullary left);
+  register_tactic "right" Register.(nullary right);
   register_tactic "split" Register.(nullary split);
   (* There's a clever design somewhere that lets me write this with some combinators, but for time's sake this one gets hard-coded for now. *)
   register_tactic "have" (function

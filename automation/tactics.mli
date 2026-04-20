@@ -53,4 +53,8 @@ val choose : string * string -> term -> proof_state -> tactic_result
     goal type to A, creating a proof term using [Or.inl] *)
 val left : proof_state -> tactic_result
 
+(** The [right] tactic checks that the goal is of the form Or A B, and then changes the
+    goal type to B, creating a proof term using [Or.inr] *)
+val right : proof_state -> tactic_result
+
 val register : unit -> unit
