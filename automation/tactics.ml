@@ -501,8 +501,9 @@ let infer_choose_types (e : term) (g : goal) (st : proof_state) :
   let expected =
     mk_app (mk_app (mk_name "Exists") (mk_hole hole_a_typ)) (mk_hole hole_p)
   in
+  create_metas st.elab_ctx e (List.map (fun h -> h.bid) g.lctx);
+  let e_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx e in
   let ctx = ctx_with_new_holes g st.elab_ctx expected in
-  let e_typ = Elab.Typecheck.infertype ctx g.lctx e in
   unify ctx e_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
   match (Hashtbl.find_opt ctx.metas hole_a_typ, Hashtbl.find_opt ctx.metas hole_p) with
   | Some mvar1, Some mvar2 -> (mvar1.sol, mvar2.sol)
