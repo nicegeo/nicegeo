@@ -22,11 +22,12 @@
  (synopsis "A short synopsis")
  (description "A longer description")
  (depends
-  ocaml
+  (ocaml (= "5.4.1"))
   (sedlex (= "3.7"))
-  (ocamlformat (and (= "0.27.0") :with-test))
-  (alcotest :with-test)
-  (ppx_expect :with-test)
+  (yojson (= "3.0.0"))
+  (ocamlformat (and (= "0.28.1") :with-test))
+  (alcotest (and (= "1.9.1") :with-test))
+  (ppx_expect (and (= "v0.17.3") :with-test))
   (odoc :with-doc))
  (tags
   ("add topics" "to describe" your project)))

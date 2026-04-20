@@ -209,11 +209,14 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> Failure "have: no goals remaining"
   | Some g ->
-      let bid = Elab.Term.gen_binder_id () in
-      let cont_ty = mk_arrow (Some name) bid ty g.goal_type in
+      create_metas st.elab_ctx ty (List.map (fun h -> h.bid) g.lctx);
+      ignore (infertype st.elab_ctx g.lctx ty);
       let proof_id = fresh_id () in
       let cont_id = fresh_id () in
+      let fun_bid = gen_binder_id () in
       let ctx_bids = List.map (fun h -> h.bid) g.lctx in
+      let cont_ctx = { name = Some name; bid = fun_bid; ty } :: g.lctx in
+      let cont_ctx_bids = List.map (fun h -> h.bid) cont_ctx in
       Hashtbl.replace
         st.elab_ctx.metas
         proof_id
@@ -221,13 +224,13 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
       Hashtbl.replace
         st.elab_ctx.metas
         cont_id
-        { ty = Some cont_ty; context = ctx_bids; sol = None };
+        { ty = Some g.goal_type; context = cont_ctx_bids; sol = None };
       let proof_hole = mk_hole proof_id in
       let cont_hole = mk_hole cont_id in
-      let app_term = mk_app cont_hole proof_hole in
-      let st_assigned = assign_meta g.goal_id app_term st in
+      let proof = mk_app (mk_fun (Some name) fun_bid ty cont_hole) proof_hole in
+      let st_assigned = assign_meta g.goal_id proof st in
       let proof_goal = { lctx = g.lctx; goal_type = ty; goal_id = proof_id } in
-      let cont_goal = { lctx = g.lctx; goal_type = cont_ty; goal_id = cont_id } in
+      let cont_goal = { lctx = cont_ctx; goal_type = g.goal_type; goal_id = cont_id } in
       let remaining_goals = List.tl st_assigned.open_goals in
 
       Success { st_assigned with open_goals = proof_goal :: cont_goal :: remaining_goals }
@@ -302,12 +305,13 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
   | Some g -> (
+      create_metas st.elab_ctx t (List.map (fun h -> h.bid) g.lctx);
       let t_ty = beta_nf st.elab_ctx (infertype st.elab_ctx g.lctx t) in
       let eq_ty, lhs, rhs = destruct_eq st.elab_ctx t_ty in
       let motives = get_rewrite_motives st.elab_ctx g.goal_type eq_ty lhs in
       match motives with
       | p :: _ ->
-          let new_goal_ty = mk_app p rhs in
+          let new_goal_ty = whnf st.elab_ctx (mk_app p rhs) in
           let new_hole, st = fresh_goal st g.lctx new_goal_ty in
           (* Eq.symm A lhs rhs t *)
           let sym =
@@ -342,8 +346,8 @@ let split (st : proof_state) : tactic_result =
       let ty = beta_nf st.elab_ctx g.goal_type in
       match ty.inner with
       | App ({ inner = App ({ inner = Name "And"; _ }, a); _ }, b) ->
-          let hole_a, st = fresh_goal st g.lctx a in
           let hole_b, st = fresh_goal st g.lctx b in
+          let hole_a, st = fresh_goal st g.lctx a in
           let proof =
             mk_app (mk_app (mk_app (mk_app (mk_name "And.intro") a) b) hole_a) hole_b
           in

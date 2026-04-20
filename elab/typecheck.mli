@@ -19,7 +19,7 @@ val process_decl : Types.ctx -> Statement.declaration -> unit
 val elaborate : Types.ctx -> term -> term option -> term
 
 (** [whnf e tm] computes the weak head normal form of `tm` with respect to the context
-    `e`, recursing into known metavariable solutions. *)
+    `e`, recursing into known metavariable solutions and definitions. *)
 val whnf : Types.ctx -> term -> term
 
 (** [infertype ctx lctx tm] returns the inferred type of term [tm] in context [ctx].
@@ -38,6 +38,7 @@ val replace_metas : Types.ctx -> term -> term
 val unify :
   ?depth:int ->
   Types.ctx ->
+  ?lctx:Types.local_ctx ->
   term ->
   (int, int) Hashtbl.t ->
   term ->

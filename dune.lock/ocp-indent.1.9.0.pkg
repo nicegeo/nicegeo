@@ -1,0 +1,15 @@
+(version 1.9.0)
+
+(build
+ (all_platforms ((action (run dune build -p %{pkg-self:name} -j %{jobs})))))
+
+(depends
+ (all_platforms
+  (ocaml dune cmdliner ocamlfind)))
+
+(source
+ (fetch
+  (url
+   https://github.com/OCamlPro/ocp-indent/releases/download/1.9.0/ocp-indent-1.9.0.tbz)
+  (checksum
+   sha256=da4ff552f9fc230d7c07f64a8ef89295907bf8d3c581132f05dcf0dd87a172b3)))
