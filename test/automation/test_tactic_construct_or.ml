@@ -20,13 +20,23 @@ let make_env () =
     let stmts = parse (Sedlexing.with_tokenizer Elab.Lexer.token lexbuf) in
     List.iter (Elab.Interface.process_statement env) stmts
   in
-  process "Axiom A : Type";
+  (* Elab.Interface.process_statement adds the processed statements to the
+  provided environment, so these adds the declared values to the environment *)
+  process "Axiom A : Prop";
+  process "Axiom B : Prop";
   process "Axiom a : A";
+  process "Axiom b : B";
   (env, process)
 
-let elab env s = Elab.Typecheck.elaborate env (Elab.Interface.parse_term s) None
+let elab (env : Elab.Types.ctx) s =
+  (* The elaborate function clears all metavariables from env.metas (since it assumes
+  that the metas hash tables is empty to start with), which causes the solutions
+  for the holes for previous (solved) goals to disappear, so copy metas here *)
+  let metas = Hashtbl.copy env.metas in
+  let env = { env with metas } in
+  Elab.Typecheck.elaborate env (Elab.Interface.parse_term s) None
 
-let run_tactic tac st =
+let run_tactic tac (st : proof_state) =
   match tac st with
   | Failure msg -> Alcotest.failf "tactic failed: %s" msg
   | Success st' -> st'
@@ -41,16 +51,30 @@ let kernel_check env proof goal_ty =
     true
   with Kernel.Exceptions.TypeError _ -> false
 
+let check_terms_equal (msg : string) (env : Elab.Types.ctx) (actual_term : Elab.Term.term)
+    (expected_term : Elab.Term.term) : unit =
+  let got = pp_term env (Elab.Reduce.reduce env expected_term) in
+  let exp = pp_term env actual_term in
+  Alcotest.(check string) msg exp got
+
+(* TODO: test something where unification has to use something from context (especially if it needs to use variable introduced by inner
+  function) *)
 (* Check that single usage of `exists` creates the correct new goal type. *)
-let test_exists_simple () =
+let test_left_simple () =
   let env, _ = make_env () in
-  let goal_ty = elab env "Exists A (fun (a : A) => True)" in
+  let goal_ty = elab env "Or A B" in
   let st = init_state ~elab_ctx:env goal_ty in
-  let st = run_tactic (exists (elab env "a")) st in
+  let st = run_tactic left st in
   Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
-  let got = pp_term env (Elab.Reduce.reduce env (List.hd st.open_goals).goal_type) in
-  let exp = pp_term env (elab env "True") in
-  Alcotest.(check string) "new goal is True" exp got
+  check_terms_equal "new goal is A" env (List.hd st.open_goals).goal_type (elab env "A");
+
+  let st = run_tactic (exact (elab env "a")) st in
+  Alcotest.(check int) "no remaining goals" 0 (List.length st.open_goals);
+
+  Alcotest.(check bool)
+    "kernel accepts proof"
+    true
+    (kernel_check env st.statement goal_ty)
 
 (* Check that `exists` can infer the motive properly referencing something in the local
    context *)
@@ -122,10 +146,4 @@ let test_exists_kernel_check () =
 
 let suite =
   let open Alcotest in
-  ( "Tactic.construct_or",
-    [
-      test_case "exists simple" `Quick test_exists_simple;
-      test_case "exists unifies with local context" `Quick test_exists_lctx;
-      test_case "exists unification test 2" `Quick test_exists_unify;
-      test_case "exists kernel check" `Quick test_exists_kernel_check;
-    ] )
+  ("Tactic.construct_or", [ test_case "left simple" `Quick test_left_simple ])
