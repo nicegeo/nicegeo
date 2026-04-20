@@ -4,9 +4,8 @@ This is a short guide for using the NiceGeo IDE extension.
 
 ## 0) Install required dependency
 
-- NiceGeo relies on `sedlex` in your active opam switch.
-- Install it with:
-  - `opam install sedlex`
+- Install all project dependencies in your active opam switch:
+  - `opam install --deps-only --with-test .`
 
 ## 1) Install the extension from `.vsix`
 
