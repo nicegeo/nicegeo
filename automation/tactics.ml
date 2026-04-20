@@ -439,7 +439,7 @@ let exists (a : term) (st : proof_state) : tactic_result =
       match infer_motive exists_type g st.elab_ctx with
       | Some p ->
           (* update the goal to (p a) *)
-          let new_goal_ty = mk_app p a in
+          let new_goal_ty = whnf st.elab_ctx (mk_app p a) in
           let new_hole, st = fresh_goal st g.lctx new_goal_ty in
           (* construct the proof term *)
           let proof =
@@ -529,7 +529,7 @@ let choose (names : string * string) (e : term) (st : proof_state) : tactic_resu
           let bid_a_typ = Elab.Term.gen_binder_id () in
           let hyp_a_typ = { name = Some (fst names); bid = bid_a_typ; ty = a_typ } in
           let bid_h = Elab.Term.gen_binder_id () in
-          let ty = mk_app p (mk_bvar bid_a_typ) in
+          let ty = whnf st.elab_ctx (mk_app p (mk_bvar bid_a_typ)) in
           let hyp_h = { name = Some (snd names); bid = bid_h; ty } in
           let subgoal_lctx = hyp_h :: hyp_a_typ :: g.lctx in
           (* construct the proof term *)
