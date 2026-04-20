@@ -305,12 +305,13 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
   | Some g -> (
+      create_metas st.elab_ctx t (List.map (fun h -> h.bid) g.lctx);
       let t_ty = beta_nf st.elab_ctx (infertype st.elab_ctx g.lctx t) in
       let eq_ty, lhs, rhs = destruct_eq st.elab_ctx t_ty in
       let motives = get_rewrite_motives st.elab_ctx g.goal_type eq_ty lhs in
       match motives with
       | p :: _ ->
-          let new_goal_ty = mk_app p rhs in
+          let new_goal_ty = whnf st.elab_ctx (mk_app p rhs) in
           let new_hole, st = fresh_goal st g.lctx new_goal_ty in
           (* Eq.symm A lhs rhs t *)
           let sym =
