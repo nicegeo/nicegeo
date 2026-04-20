@@ -88,11 +88,12 @@ let test_rewrite_fill_holes () =
   let env, _ = make_env () in
   let goal_ty = elab env "∀ (P: A → Prop), P a -> P b" in
   let st = init_state ~elab_ctx:env goal_ty in
-  let st = run_tactic (intros ["P"; "Pa"]) st in
+  let st = run_tactic (intros [ "P"; "Pa" ]) st in
   let st = run_tactic (rewrite (Elab.Interface.parse_term "Eq.symm _ _ _ a_eq_b")) st in
   let open Elab.Types in
-  let pa_bid = match List.hd st.open_goals with
-    | { lctx = [pa; _] ; _ } -> pa.bid
+  let pa_bid =
+    match List.hd st.open_goals with
+    | { lctx = [ pa; _ ]; _ } -> pa.bid
     | _ -> Alcotest.fail "unexpected goal context"
   in
   let st = run_tactic (exact (mk_bvar pa_bid)) st in
