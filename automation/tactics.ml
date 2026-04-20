@@ -346,8 +346,8 @@ let split (st : proof_state) : tactic_result =
       let ty = beta_nf st.elab_ctx g.goal_type in
       match ty.inner with
       | App ({ inner = App ({ inner = Name "And"; _ }, a); _ }, b) ->
-          let hole_a, st = fresh_goal st g.lctx a in
           let hole_b, st = fresh_goal st g.lctx b in
+          let hole_a, st = fresh_goal st g.lctx a in
           let proof =
             mk_app (mk_app (mk_app (mk_app (mk_name "And.intro") a) b) hole_a) hole_b
           in
