@@ -1,0 +1,34 @@
+
+(* destruct_and tests *)
+
+Theorem test1 : ∀ (A B C D E : Prop), A ∧ B ∧ C ∧ D ∧ E → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+Theorem test2 : ∀ (A B C D E : Prop), A ∧ (B ∧ (C ∧ (D ∧ E))) → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+Theorem test3 : ∀ (A B C D E : Prop), (A ∧ B) ∧ (C ∧ (D ∧ E)) → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+(* showing definition unfolding behavior *)
+Definition OutCircle : Point → Circle → Prop := fun a α => ¬OnCircle a α ∧ ¬InCircle a α
+
+Theorem test4 : ∀ a α, a = a ∧ OutCircle a α ∧ α = α → ¬InCircle a α 
+Proof.
+intros a α h.
+destruct_ands h a_rfl outcircle α_rfl.
+destruct_ands outcircle noton notin.
+exact notin.
+Qed.
