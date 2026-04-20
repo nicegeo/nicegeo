@@ -4,13 +4,14 @@ let () =
   let env = Elab.Interface.create () in
   (try Elab.Interface.process_file env "env.ncg"
    with Elab.Error.ElabError info ->
-     print_endline ("Internal error while processing env.ncg: " ^ Elab.Error.pp_exn env info);
+     print_endline
+       ("Internal error while processing env.ncg: " ^ Elab.Error.pp_exn env info);
      exit 255);
   (try Elab.Interface.process_file env "tests.ncg"
    with Elab.Error.ElabError info ->
      print_endline ("Error processing tests.ncg:\n" ^ Elab.Error.pp_exn env info);
      exit 255);
-  
+
   let open Alcotest in
   run
     "automation"
