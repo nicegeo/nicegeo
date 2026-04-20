@@ -2,7 +2,7 @@ open Elab.Proofstate
 open Elab.Tactic
 open Automation.Tactics
 
-let path_to_env = "../../../../synthetic/env.ncg"
+let path_to_env = "env.ncg"
 
 (*
   Create the starting environment that we use in the tests.

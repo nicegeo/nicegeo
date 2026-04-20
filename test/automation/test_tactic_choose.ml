@@ -10,7 +10,7 @@ open Automation.Tactics
  * this tactic out to the library team for use.
  *)
 
-let path_to_env = "../../../../synthetic/env.ncg"
+let path_to_env = "env.ncg"
 
 (*
   Create the starting environment that we use in the tests.

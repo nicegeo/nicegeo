@@ -1,13 +1,12 @@
 open Elab
 
-let path_to_env = "../../../../synthetic/env.ncg"
+let path_to_env = "env.ncg"
 
 let suite =
   let open Alcotest in
   ( "proofstate_prefix",
     [
       test_case "cursor before tactic end keeps initial goal" `Quick (fun () ->
-          Automation.Tactics.register ();
           let env = Interface.create () in
           Interface.process_file env path_to_env;
           let src =
