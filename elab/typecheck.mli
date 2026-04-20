@@ -18,6 +18,10 @@ val process_decl : Types.ctx -> Statement.declaration -> unit
     [Error.ElabError]. *)
 val elaborate : Types.ctx -> term -> term option -> term
 
+(** [whnf e tm] computes the weak head normal form of `tm` with respect to the context
+    `e`, recursing into known metavariable solutions and definitions. *)
+val whnf : Types.ctx -> term -> term
+
 (** [infertype ctx lctx tm] returns the inferred type of term [tm] in context [ctx].
     Refers to [ctx] for environment entries and [lctx] for bound variables. All holes in
     [tm] must have a relevant entry in [env.metas]. *)
@@ -26,10 +30,6 @@ val infertype : ?depth:int -> Types.ctx -> Types.local_ctx -> term -> term
 (** [create_metas ctx tm ids] initializes the [ctx.metas] table with the hole ids present
     in [tm]. [ids] is the initial list of bids in scope. *)
 val create_metas : Types.ctx -> term -> int list -> unit
-
-(** [whnf e tm] computes the weak head normal form of `tm` with respect to the context
-    `e`, recursing into known metavariable solutions and definitions. *)
-val whnf : Types.ctx -> term -> term
 
 (** [replace_metas ctx tm] replaces the metavariables in [tm] with their solved instances.
 *)
