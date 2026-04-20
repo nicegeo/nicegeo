@@ -1305,7 +1305,7 @@ Theorem perpendicular_of_online : ∀ (a b c f : Point) (L : Line),
     (fun (eL : ¬OnLine e L) (efL : SameSide e f L) (eqtri : eq_tri a d e) =>
 
     (* e is not equal to any point on L, since eL says e is off L. *)
-    have _ _ (fun (p: Point) (pL : OnLine p L) => fun (ep : e = p) => eL (Eq.elim _ p (fun x => OnLine x L) pL e (Eq.symm _ _ p ep)))
+    have _ _ (fun (p: Point) (pL : OnLine p L) => fun (ep : e = p) => eL (Eq.elim _ _ (fun x => OnLine x L) pL _ (Eq.symm _ _ _ ep)))
     (fun (on_L_not_e : (p : Point) -> OnLine p L -> e ≠ p) =>
 
     (* SSS: triangles eba and ebd are congruent because eb = eb, ba = bd, ea = ed. *)
@@ -5095,8 +5095,8 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
     (fun (hAB_DA : Length a b = Length d a) =>
 
 	(* Step 9: package the witnesses — the square is a-b-e-d. *)
-	    Exists.intro Point (fun d0 => Exists Point (fun e0 => square a b d0 e0)) e
-    (Exists.intro Point (fun e0 => square a b e e0) d
+    Exists.intro _ _ e
+    (Exists.intro _ _ d
         (And.intro _ _
             (And.intro _ _
                 (And.intro _ _
