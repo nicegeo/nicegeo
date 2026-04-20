@@ -57,8 +57,6 @@ let check_terms_equal (msg : string) (env : Elab.Types.ctx) (actual_term : Elab.
   let exp = pp_term env actual_term in
   Alcotest.(check string) msg exp got
 
-(* TODO: test something where unification has to use something from context (especially if it needs to use variable introduced by inner
-  function) *)
 (* Check that single usage of `exists` creates the correct new goal type. *)
 let test_left_simple () =
   let env, _ = make_env () in
@@ -78,17 +76,13 @@ let test_left_simple () =
 
 (* Check that `exists` can infer the motive properly referencing something in the local
    context *)
-let test_exists_lctx () =
+let test_left_types_from_bvars () =
   let env, _ = make_env () in
-  let goal_ty = elab env "(b : A) -> Exists A (fun (c : A) => b = c)" in
+  let goal_ty = elab env "(x : Prop) -> (y: Prop) -> Or x y" in
   let st = init_state ~elab_ctx:env goal_ty in
-  let st = run_tactic (intro "b") st in
-  let bid =
-    match (List.hd st.open_goals).lctx with
-    | [ { name = Some "b"; bid; _ } ] -> bid
-    | _ -> Alcotest.fail "expected one hypothesis named b in local context"
-  in
-  let st = run_tactic (exists (mk_bvar bid)) st in
+  let st = run_tactic (intro "C") st in
+  let st = run_tactic (intro "D") st in
+  let st = run_tactic left st in
   Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
   let got =
     Elab.Pretty.term_to_string
@@ -96,54 +90,33 @@ let test_exists_lctx () =
       ~lctx:(List.hd st.open_goals).lctx
       (Elab.Reduce.reduce env (List.hd st.open_goals).goal_type)
   in
-  let exp = "Eq A b b" in
-  Alcotest.(check string) "new goal is b = b" exp got;
-  (* close the goal and typecheck because we can *)
-  let st = run_tactic reflexivity st in
+  let exp = "C" in
+  Alcotest.(check string) "new goal is C" exp got
+
+(** Make sure left tactic handles the case where goal type isn't exactly `Or A B` but is
+    definitionally equal to it *)
+let test_definitionally_equal_to_or () =
+  let env, _ = make_env () in
+  let goal_ty = elab env "(fun (x: Prop) => Or x B) A" in
+  let st = init_state ~elab_ctx:env goal_ty in
+  let st = run_tactic left st in
+  Alcotest.(check int) "one remaining goal" 1 (List.length st.open_goals);
+  let st = run_tactic (exact (elab env "a")) st in
   Alcotest.(check int) "no remaining goals" 0 (List.length st.open_goals);
   Alcotest.(check bool)
     "kernel accepts proof"
     true
     (kernel_check env st.statement goal_ty);
   ()
-
-let test_exists_unify () =
-  let open Elab.Types in
-  let env, _ = make_env () in
-  let goal_ty =
-    elab
-      env
-      "(B : Type) -> (Q : B -> Prop) -> (b : B) -> (hb : Q b) -> (fun P => Exists B P) Q"
-  in
-  let st = init_state ~elab_ctx:env goal_ty in
-  let st = run_tactic (intros [ "B"; "Q"; "b"; "hb" ]) st in
-  let b_entry = List.find (fun h -> h.name = Some "b") (List.hd st.open_goals).lctx in
-  let st = run_tactic (exists (mk_bvar b_entry.bid)) st in
-  let hb_entry = List.find (fun h -> h.name = Some "hb") (List.hd st.open_goals).lctx in
-  let st = run_tactic (exact (mk_bvar hb_entry.bid)) st in
-  Alcotest.(check int) "no remaining goals" 0 (List.length st.open_goals);
-  Alcotest.(check bool)
-    "kernel accepts proof"
-    true
-    (kernel_check env st.statement goal_ty);
-  ()
-
-(*
-  Checks that using `exists` and then closing a trivial goal produces
-  a proof term that the kernel accepts.
-*)
-let test_exists_kernel_check () =
-  let env, _ = make_env () in
-  let goal_ty = elab env "Exists A (fun (a : A) => True)" in
-  let st = init_state ~elab_ctx:env goal_ty in
-  let st = run_tactic (exists (elab env "a")) st in
-  let st = run_tactic (exact (mk_name "True.intro")) st in
-  Alcotest.(check bool) "no remaining goals" true (is_complete st);
-  Alcotest.(check bool)
-    "kernel accepts proof"
-    true
-    (kernel_check env st.statement goal_ty)
 
 let suite =
   let open Alcotest in
-  ("Tactic.construct_or", [ test_case "left simple" `Quick test_left_simple ])
+  ( "Tactic.construct_or",
+    [
+      test_case "left simple" `Quick test_left_simple;
+      test_case "left handles types using local context" `Quick test_left_types_from_bvars;
+      test_case
+        "left definitionally equal to `Or A B`"
+        `Quick
+        test_definitionally_equal_to_or;
+    ] )
