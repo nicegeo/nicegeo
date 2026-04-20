@@ -385,9 +385,9 @@ let snapshot_proofstate (filename : string) (line : int) (col : int) :
           let hyps =
             g.lctx
             |> List.map (fun (h : Types.lctx_entry) ->
-                   ( Option.value ~default:"_" h.name,
-                     h.bid,
-                     Pretty.term_to_string st.elab_ctx ~lctx:g.lctx h.ty ))
+                ( Option.value ~default:"_" h.name,
+                  h.bid,
+                  Pretty.term_to_string st.elab_ctx ~lctx:g.lctx h.ty ))
           in
           Some
             {
@@ -501,21 +501,21 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
   let ctx_items (xs : context_item list) : string =
     xs
     |> List.map (fun { name; ty } ->
-           Printf.sprintf
-             "{\"name\":\"%s\",\"type\":\"%s\"}"
-             (json_escape name)
-             (json_escape ty))
+        Printf.sprintf
+          "{\"name\":\"%s\",\"type\":\"%s\"}"
+          (json_escape name)
+          (json_escape ty))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
   let hyps_items =
     snap.hyps |> List.rev
     |> List.map (fun (name, bid, ty) ->
-           Printf.sprintf
-             "{\"name\":\"%s\",\"bid\":%d,\"type\":\"%s\"}"
-             (json_escape name)
-             bid
-             (json_escape ty))
+        Printf.sprintf
+          "{\"name\":\"%s\",\"bid\":%d,\"type\":\"%s\"}"
+          (json_escape name)
+          bid
+          (json_escape ty))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
@@ -533,38 +533,38 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
   let env_items =
     snap.environment
     |> List.map (fun e ->
-           Printf.sprintf
-             "{\"name\":\"%s\",\"kind\":\"%s\",\"type\":\"%s\"}"
-             (json_escape e.env_name)
-             (json_escape e.env_kind)
-             (json_escape e.env_ty))
+        Printf.sprintf
+          "{\"name\":\"%s\",\"kind\":\"%s\",\"type\":\"%s\"}"
+          (json_escape e.env_name)
+          (json_escape e.env_kind)
+          (json_escape e.env_ty))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
   let meta_items =
     snap.metas
     |> List.map (fun m ->
-           Printf.sprintf
-             "{\"id\":%d,\"type\":%s,\"solution\":%s,\"context\":%s}"
-             m.meta_id
-             (json_opt_string m.meta_ty)
-             (json_opt_string m.meta_sol)
-             (json_int_list m.meta_context))
+        Printf.sprintf
+          "{\"id\":%d,\"type\":%s,\"solution\":%s,\"context\":%s}"
+          m.meta_id
+          (json_opt_string m.meta_ty)
+          (json_opt_string m.meta_sol)
+          (json_int_list m.meta_context))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
   let tactic_items =
     snap.tactic_steps
     |> List.map (fun s ->
-           Printf.sprintf
-             "{\"index\":%d,\"name\":\"%s\",\"args\":%s,\"goalBefore\":%s,\"goalsAfter\":%s,\"status\":\"%s\",\"atCursor\":%s}"
-             s.step_index
-             (json_escape s.step_name)
-             (json_string_list s.step_args)
-             (json_opt_string s.step_goal_before)
-             (json_string_list s.step_goals_after)
-             (json_escape s.step_status)
-             (if s.step_at_cursor then "true" else "false"))
+        Printf.sprintf
+          "{\"index\":%d,\"name\":\"%s\",\"args\":%s,\"goalBefore\":%s,\"goalsAfter\":%s,\"status\":\"%s\",\"atCursor\":%s}"
+          s.step_index
+          (json_escape s.step_name)
+          (json_string_list s.step_args)
+          (json_opt_string s.step_goal_before)
+          (json_string_list s.step_goals_after)
+          (json_escape s.step_status)
+          (if s.step_at_cursor then "true" else "false"))
     |> String.concat ","
     |> fun s -> "[" ^ s ^ "]"
   in
