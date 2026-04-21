@@ -284,7 +284,8 @@ Proof.
         rewrite bdba.
         rewrite (length_symm b a).
         rewrite abad.
-        exact (length_symm _ _).
+        (* exact (length_symm _ _). *)
+        search_solve.
     have aβ (InCircle a β).
         have sum (Length d b + Length b e = Length d e). exact (between_add_lengths d b e Bdbe).
         apply (Or.elim _ _ _ (ZeroLeast (Length b e))).
@@ -295,12 +296,15 @@ Proof.
                 rewrite (Eq.symm _ _ _ (ZeroAdd (Length d a))).
                 rewrite (Eq.symm _ _ _ dbda).
                 apply (LtAdd _ _ _). (* wow apply is so smart *)
-                exact lbe.
+                assumption.
             exact (in_circle_if_lt_radius d e a β dβ eβ ineq).
+            (* search_solve. *) (* not good enough to know to use d and e just from InCircle a β *)
 
             intro lbe.
             apply (False.elim _).
-            exact (ne_23_of_between d b e Bdbe (eq_if_len_zero b e (Eq.symm _ _ _ lbe))).
+            have lbe1 (Length b e = 0). search_solve.
+            have be (b = e). search_solve.
+            exact (ne_23_of_between d b e Bdbe be).
     choose f hf (pt_oncircle_of_inside_ne _ _ _ da aβ).
     destruct_ands hf Bdaf fβ.
     exists f.
@@ -310,6 +314,7 @@ Proof.
     rewrite (Eq.symm _ _ _ dbda).
     rewrite (between_add_lengths _ _ _ Bdbe).
     apply (eq_radius_if_on_circle _ _ _ _ dβ eβ fβ).
+    (* search_solve. *)
 Qed.
 
 

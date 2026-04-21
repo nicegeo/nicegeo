@@ -35,6 +35,18 @@ val create_metas : Types.ctx -> term -> int list -> unit
 *)
 val replace_metas : Types.ctx -> term -> term
 
+(** [unify ctx ?lctx t1 tbl1 t2 tbl2] attempts to unify terms [t1] and [t2] (trying to
+    make them definitionally equal by solving metavariables in each). Metavariable
+    solutions are stored by mutating [ctx.metas]. Pass empty hashtables for [tbl1] and
+    [tbl2]. If [t1] and [t2] do not contain any holes (after [unify] returns and after
+    recursively replacing their solutions), [unify] returns successfully (i.e. does not
+    raise ElabError) if and only if [t1] and [t2] are definitionally equal. Otherwise, if
+    [t1] or [t2] contain holes after [unify] returns successfully, [unify] was unable to
+    determine whether [t1] and [t2] could be made definitionally equal (e.g. because it
+    would require higher order unification). If [unify] raises an error in any case, then
+    [t1] and [t2] cannot be made definitionally equal. [?lctx] does not affect the
+    functionality of the unification, but it will be passed to raised errors for better
+    error messages. *)
 val unify :
   ?depth:int ->
   Types.ctx ->
