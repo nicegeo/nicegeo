@@ -11,3 +11,49 @@
 (* ============================================================
    Circles
    ============================================================ *)
+
+Theorem center_not_on_circle :
+    (o : Point) -> (aa : Circle) ->
+    CenterCircle o aa -> OnCircle o aa -> False
+Proof.
+  intros o aa h_center h_on.
+  apply (inside_implies_not_on_circle o aa).
+  apply (center_lies_inside_circle o aa).
+  exact h_center.
+  exact h_on.
+Qed.
+
+Theorem center_ne_pt_on_circle :
+   (o : Point) -> (p : Point) -> (aa : Circle) ->
+   CenterCircle o aa -> OnCircle p aa -> Eq Point o p -> False
+Proof.
+   intros o p aa h_center h_on h_eq.
+   apply (center_not_on_circle o aa h_center).
+   rewrite h_eq.
+   exact h_on. 
+Qed.
+
+Theorem radius_nonzero :
+    (o : Point) -> (p : Point) -> (aa : Circle) ->
+    CenterCircle o aa -> OnCircle p aa ->
+    Eq Measure (Length o p) Zero -> False
+Proof.
+  intros o p aa h_center h_on h_zero.
+  apply (center_ne_pt_on_circle o p aa h_center h_on).
+  apply (eq_if_len_zero o p).
+  exact h_zero.
+Qed.
+
+Theorem chord_interior :
+    (a : Point) -> (b : Point) -> (c : Point) -> (aa : Circle) ->
+    OnCircle a aa -> OnCircle b aa -> Between a c b ->
+    InCircle c aa
+Proof.
+   intros a b c aa h_a h_b h_bet.
+   apply (circle_convex a b c aa).
+   right.
+   exact h_a.
+   right.
+   exact h_b.
+   exact h_bet. 
+Qed.
