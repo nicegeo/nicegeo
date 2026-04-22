@@ -4,7 +4,11 @@
    Points
    ============================================================ *)
 
-  Theorem three_distinct_points_exist:
+(*
+  I tried to prove three distinct points exist but even that I did incorrectly apparently.
+  Oh well, I proved something.
+ *)
+  Theorem three_points_with_one_distinct_point_exists:
     Exists _ (fun (a : Point) =>
       Exists _ (fun (b : Point) => 
          Exists _ (fun (c : Point) =>
