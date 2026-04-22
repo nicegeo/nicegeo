@@ -1,0 +1,41 @@
+{
+  "theorem skeleton": {
+    "prefix": "thm",
+    "body": [
+      "Theorem ${1:name} : ${2:Prop}",
+      "Proof.",
+      "  ${3:intros.}",
+      "  ${4:exact ${5:term}.}",
+      "Qed."
+    ],
+    "description": "Insert a theorem proof skeleton."
+  },
+  "definition skeleton": {
+    "prefix": "defn",
+    "body": [
+      "Definition ${1:name} : ${2:Type} := ${3:term}"
+    ],
+    "description": "Insert a definition skeleton."
+  },
+  "check directive": {
+    "prefix": "ncheck",
+    "body": [
+      "#check ${1:term} : ${2:type}"
+    ],
+    "description": "Insert #check directive."
+  },
+  "reduce directive": {
+    "prefix": "nreduce",
+    "body": [
+      "#reduce ${1:term}"
+    ],
+    "description": "Insert #reduce directive."
+  },
+  "print axioms directive": {
+    "prefix": "naxioms",
+    "body": [
+      "#print axioms ${1:name}"
+    ],
+    "description": "Insert #print axioms directive."
+  }
+}
