@@ -3,7 +3,20 @@
 (* ============================================================
    Points
    ============================================================ *)
-   
+
+  Theorem three_distinct_points_exist:
+    Exists _ (fun (a : Point) =>
+      Exists _ (fun (b : Point) => 
+         Exists _ (fun (c : Point) =>
+           distinct_from c (List.cons _ a (List.cons _ b (List.nil _))) (List.nil _) (List.nil _))))
+  Proof.
+    choose a ha (pt_exists (List.nil _) (List.nil _) (List.nil _)).
+    exists a.
+    choose b hb (pt_exists (List.nil _) (List.nil _) (List.nil _)).
+    exists b.
+    exact (pt_exists _ _ _).
+  Qed.
+
 (* ============================================================
    Lines
    ============================================================ *)
