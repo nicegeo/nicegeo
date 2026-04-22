@@ -95,6 +95,9 @@ let register_tactic (name : string) (tac : term list -> tactic) : unit =
     failwith (Printf.sprintf "Tactic '%s' is already registered." name)
   else Hashtbl.replace tactics name tac
 
+let registered_tactic_names () : string list =
+  Hashtbl.fold (fun name _ acc -> name :: acc) tactics [] |> List.sort String.compare
+
 module Register = struct
   let nullary (f : tactic) : term list -> tactic = function
     | [] -> f

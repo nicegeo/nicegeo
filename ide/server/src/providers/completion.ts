@@ -6,6 +6,7 @@ import {
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { runProofStateAt } from "./proofstate";
+import { getRegisteredTactics } from "./tactics";
 
 type CompletionData = {
   source: "keyword" | "directive" | "operator" | "tactic" | "local" | "env" | "meta";
@@ -34,28 +35,23 @@ const DIRECTIVES = [
 ];
 
 const OPERATORS = ["->", "<->", "=>", ":=", "/\\", "\\/", "~", "=", "!="];
-
-const TACTICS: Array<{ label: string; detail: string; snippet: string }> = [
-  { label: "reflexivity", detail: "No-arg tactic", snippet: "reflexivity." },
-  { label: "sorry", detail: "No-arg tactic", snippet: "sorry." },
-  { label: "left", detail: "No-arg tactic", snippet: "left." },
-  { label: "right", detail: "No-arg tactic", snippet: "right." },
-  { label: "split", detail: "No-arg tactic", snippet: "split." },
-  { label: "exact", detail: "Unary term tactic", snippet: "exact ${1:term}." },
-  { label: "apply", detail: "Unary term tactic", snippet: "apply ${1:term}." },
-  { label: "rewrite", detail: "Unary term tactic", snippet: "rewrite ${1:eqProof}." },
-  { label: "exists", detail: "Unary term tactic", snippet: "exists ${1:witness}." },
-  { label: "intro", detail: "Unary identifier tactic", snippet: "intro ${1:name}." },
-  { label: "intros", detail: "Variadic identifier tactic", snippet: "intros ${1:names}." },
-  { label: "try", detail: "Tactical wrapper", snippet: "try ${1:tactic}." },
-  { label: "repeat", detail: "Tactical wrapper", snippet: "repeat ${1:tactic}." },
-  { label: "have", detail: "Custom tactic: have <name> <type>", snippet: "have ${1:name} ${2:type}." },
-  {
-    label: "choose",
-    detail: "Custom tactic: choose <name1> <name2> <term>",
-    snippet: "choose ${1:name1} ${2:name2} ${3:term}.",
-  },
-];
+const TACTIC_SNIPPETS: Record<string, string> = {
+  reflexivity: "reflexivity.",
+  sorry: "sorry.",
+  left: "left.",
+  right: "right.",
+  split: "split.",
+  exact: "exact ${1:term}.",
+  apply: "apply ${1:term}.",
+  rewrite: "rewrite ${1:eqProof}.",
+  exists: "exists ${1:witness}.",
+  intro: "intro ${1:name}.",
+  intros: "intros ${1:names}.",
+  try: "try ${1:tactic}.",
+  repeat: "repeat ${1:tactic}.",
+  have: "have ${1:name} ${2:type}.",
+  choose: "choose ${1:name1} ${2:name2} ${3:term}.",
+};
 
 const MAX_ITEMS = 120;
 const CACHE_TTL_MS = 400;
@@ -224,17 +220,19 @@ export async function provideCompletionItems(
 
   // Level 4: tactic names (proof scripting).
   if (ctx.inProof && ctx.atLineStart && !ctx.onlyDirectives) {
-    for (const t of TACTICS) {
+    const tactics = await getRegisteredTactics(doc.uri, workspaceRoot);
+    for (const tacticName of tactics) {
+      const snippet = TACTIC_SNIPPETS[tacticName] ?? `${tacticName} \${1:arg}.`;
       addUnique(
         items,
         {
-          label: t.label,
+          label: tacticName,
           kind: CompletionItemKind.Function,
-          detail: t.detail,
+          detail: "Registered NiceGeo tactic",
           sortText: "00",
-          insertText: t.snippet,
+          insertText: snippet,
           insertTextFormat: InsertTextFormat.Snippet,
-          data: mkData({ source: "tactic", kindText: t.detail }),
+          data: mkData({ source: "tactic", kindText: "registered tactic" }),
         },
         seen,
       );
