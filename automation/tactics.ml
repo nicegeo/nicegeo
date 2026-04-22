@@ -209,11 +209,14 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> Failure "have: no goals remaining"
   | Some g ->
-      let bid = Elab.Term.gen_binder_id () in
-      let cont_ty = mk_arrow (Some name) bid ty g.goal_type in
+      create_metas st.elab_ctx ty (List.map (fun h -> h.bid) g.lctx);
+      ignore (infertype st.elab_ctx g.lctx ty);
       let proof_id = fresh_id () in
       let cont_id = fresh_id () in
+      let fun_bid = gen_binder_id () in
       let ctx_bids = List.map (fun h -> h.bid) g.lctx in
+      let cont_ctx = { name = Some name; bid = fun_bid; ty } :: g.lctx in
+      let cont_ctx_bids = List.map (fun h -> h.bid) cont_ctx in
       Hashtbl.replace
         st.elab_ctx.metas
         proof_id
@@ -221,13 +224,13 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
       Hashtbl.replace
         st.elab_ctx.metas
         cont_id
-        { ty = Some cont_ty; context = ctx_bids; sol = None };
+        { ty = Some g.goal_type; context = cont_ctx_bids; sol = None };
       let proof_hole = mk_hole proof_id in
       let cont_hole = mk_hole cont_id in
-      let app_term = mk_app cont_hole proof_hole in
-      let st_assigned = assign_meta g.goal_id app_term st in
+      let proof = mk_app (mk_fun (Some name) fun_bid ty cont_hole) proof_hole in
+      let st_assigned = assign_meta g.goal_id proof st in
       let proof_goal = { lctx = g.lctx; goal_type = ty; goal_id = proof_id } in
-      let cont_goal = { lctx = g.lctx; goal_type = cont_ty; goal_id = cont_id } in
+      let cont_goal = { lctx = cont_ctx; goal_type = g.goal_type; goal_id = cont_id } in
       let remaining_goals = List.tl st_assigned.open_goals in
 
       Success { st_assigned with open_goals = proof_goal :: cont_goal :: remaining_goals }
@@ -302,12 +305,13 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> fail "No goals remaining."
   | Some g -> (
+      create_metas st.elab_ctx t (List.map (fun h -> h.bid) g.lctx);
       let t_ty = beta_nf st.elab_ctx (infertype st.elab_ctx g.lctx t) in
       let eq_ty, lhs, rhs = destruct_eq st.elab_ctx t_ty in
       let motives = get_rewrite_motives st.elab_ctx g.goal_type eq_ty lhs in
       match motives with
       | p :: _ ->
-          let new_goal_ty = mk_app p rhs in
+          let new_goal_ty = whnf st.elab_ctx (mk_app p rhs) in
           let new_hole, st = fresh_goal st g.lctx new_goal_ty in
           (* Eq.symm A lhs rhs t *)
           let sym =
@@ -342,8 +346,8 @@ let split (st : proof_state) : tactic_result =
       let ty = beta_nf st.elab_ctx g.goal_type in
       match ty.inner with
       | App ({ inner = App ({ inner = Name "And"; _ }, a); _ }, b) ->
-          let hole_a, st = fresh_goal st g.lctx a in
           let hole_b, st = fresh_goal st g.lctx b in
+          let hole_a, st = fresh_goal st g.lctx a in
           let proof =
             mk_app (mk_app (mk_app (mk_app (mk_name "And.intro") a) b) hole_a) hole_b
           in
@@ -545,6 +549,83 @@ let choose (names : string * string) (e : term) (st : proof_state) : tactic_resu
       | _ -> fail "Argument must have the type [Exists A p]")
   | None -> fail "No goals remaining"
 
+(** Recursively destructs a term whose type is an And tree into all of its leaves named
+    from left to right *)
+let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g -> (
+      create_metas st.elab_ctx tm (List.map (fun h -> h.bid) g.lctx);
+      let tm_ty = infertype st.elab_ctx g.lctx tm in
+
+      (* returns name if leaf, remaining names, reversed final lctx, proof *)
+      let rec destruct tm ty names lctx proof :
+          string option * string list * local_ctx * term =
+        match ty.inner with
+        | App ({ inner = App ({ inner = Name "And"; _ }, a); _ }, b) ->
+            (* And.elim a_ty b_ty goal_ty (fun a b => proof) tm *)
+            let a_bid, b_bid = (gen_binder_id (), gen_binder_id ()) in
+            let b_name, names, lctx, proof =
+              destruct (mk_bvar b_bid) b names lctx proof
+            in
+            let a_name, names, lctx, proof =
+              destruct (mk_bvar a_bid) a names lctx proof
+            in
+            let proof =
+              mk_app
+                (mk_app
+                   (mk_app (mk_app (mk_app (mk_name "And.elim") a) b) g.goal_type)
+                   (mk_fun a_name a_bid a (mk_fun b_name b_bid b proof)))
+                tm
+            in
+            (None, names, lctx, proof)
+        | _ -> (
+            match tm.inner with
+            | Bvar bid ->
+                if names = [] then
+                  failwith "destruct_ands: not enough names provided for destructuring"
+                else
+                  ( Some (List.hd names),
+                    List.tl names,
+                    { name = Some (List.hd names); bid; ty } :: lctx,
+                    proof )
+            | _ ->
+                failwith
+                  "destruct_ands: unreachable; expected to hit leaf node when we hit a \
+                   non-And type")
+      in
+
+      (* head reduce type once to unfold definitions like eqtri *)
+      let tm_ty = Elab.Typecheck.whnf st.elab_ctx tm_ty in
+      (* check tm_ty is And *)
+      match tm_ty.inner with
+      | App ({ inner = App ({ inner = Name "And"; _ }, _); _ }, _) -> (
+          let new_goal_id = gen_hole_id () in
+          match
+            try Ok (destruct tm tm_ty (List.rev names) [] (mk_hole new_goal_id))
+            with Failure msg -> Error msg
+          with
+          | Ok (_, remaining_names, and_lctx, proof) ->
+              if remaining_names <> [] then
+                fail "destruct_ands: too many names provided for destructuring"
+              else
+                let goal_lctx = List.rev and_lctx @ g.lctx in
+                (* remove tm from context if it's a bvar *)
+                let goal_lctx =
+                  match tm.inner with
+                  | Bvar bid -> List.filter (fun h -> h.bid <> bid) goal_lctx
+                  | _ -> goal_lctx
+                in
+                let st = assign_meta g.goal_id proof st in
+                let st = close_goal g.goal_id st in
+                let new_goal =
+                  { lctx = goal_lctx; goal_type = g.goal_type; goal_id = new_goal_id }
+                in
+                let st = { st with open_goals = new_goal :: st.open_goals } in
+                succeed st
+          | Error msg -> fail msg)
+      | _ -> fail "destruct_ands: expected a term of type And A B")
+
 let register () =
   register_tactic "try" Register.(tactical try_tac);
   register_tactic "repeat" Register.(tactical repeat);
@@ -622,5 +703,32 @@ let register () =
                  Elab.Error.InvalidTacticParameter
                    ("Expected exactly three parameters (two names and a term), but got "
                    ^ string_of_int (List.length args));
+             }));
+  register_tactic "destruct_ands" (function
+    | tm :: names ->
+        let names =
+          List.map
+            (function
+              | { inner = Name id; _ } -> id
+              | term ->
+                  raise
+                    (Elab.Error.ElabError
+                       {
+                         context = { loc = Some term.loc; decl_name = None; lctx = None };
+                         error_type =
+                           Elab.Error.InvalidTacticParameter
+                             "Expected an identifier, but got a term";
+                       }))
+            names
+        in
+        destruct_ands tm names
+    | [] ->
+        (* uhh we don't have access to tactic location here *)
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = None; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter "Expected at least one parameter";
              }));
   ()

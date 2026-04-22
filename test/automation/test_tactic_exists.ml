@@ -10,7 +10,7 @@ open Automation.Tactics
  * this tactic out to the library team for use.
  *)
 
-let path_to_env = "../../../../synthetic/env.ncg"
+let path_to_env = "env.ncg"
 
 (*
   Create the starting environment that we use in the tests.
@@ -77,7 +77,7 @@ let test_exists_lctx () =
       ~lctx:(List.hd st.open_goals).lctx
       (Elab.Reduce.reduce env (List.hd st.open_goals).goal_type)
   in
-  let exp = "Eq A b b" in
+  let exp = "b = b" in
   Alcotest.(check string) "new goal is b = b" exp got;
   (* close the goal and typecheck because we can *)
   let st = run_tactic reflexivity st in

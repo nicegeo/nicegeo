@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/nicegeo/nicegeo.git"
   },
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "nicegeo",
   "engines": {
     "vscode": "^1.80.0"

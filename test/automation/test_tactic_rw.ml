@@ -2,7 +2,7 @@ open Elab.Proofstate
 open Elab.Tactic
 open Automation.Tactics
 
-let path_to_env = "../../../../synthetic/env.ncg"
+let path_to_env = "env.ncg"
 
 (*
   Create the starting environment that we use in the tests.
@@ -84,6 +84,25 @@ let test_rewrite_kernel_check () =
     true
     (kernel_check env st.statement goal_ty)
 
+let test_rewrite_fill_holes () =
+  let env, _ = make_env () in
+  let goal_ty = elab env "∀ (P: A → Prop), P a -> P b" in
+  let st = init_state ~elab_ctx:env goal_ty in
+  let st = run_tactic (intros [ "P"; "Pa" ]) st in
+  let st = run_tactic (rewrite (Elab.Interface.parse_term "Eq.symm _ _ _ a_eq_b")) st in
+  let open Elab.Types in
+  let pa_bid =
+    match List.hd st.open_goals with
+    | { lctx = [ pa; _ ]; _ } -> pa.bid
+    | _ -> Alcotest.fail "unexpected goal context"
+  in
+  let st = run_tactic (exact (mk_bvar pa_bid)) st in
+  Alcotest.(check bool) "no remaining goals" true (is_complete st);
+  Alcotest.(check bool)
+    "kernel accepts proof"
+    true
+    (kernel_check env st.statement goal_ty)
+
 let suite =
   let open Alcotest in
   ( "Tactic.rewrite",
@@ -91,4 +110,5 @@ let suite =
       test_case "rewrite simple" `Quick test_rewrite_simple;
       test_case "rewrite no match" `Quick test_rewrite_no_match;
       test_case "rewrite kernel check" `Quick test_rewrite_kernel_check;
+      test_case "rewrite fill holes" `Quick test_rewrite_fill_holes;
     ] )
