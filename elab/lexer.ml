@@ -83,6 +83,7 @@ let token lexbuf =
         let s = Sedlexing.Utf8.lexeme lexbuf in
         let len = String.length s in
         STRING_LITERAL (String.sub s 1 (len - 2))
+    | "Admitted." -> ADMITTED
     | ident -> IDENT (Sedlexing.Utf8.lexeme lexbuf)
     | "Proof." -> PROOF
     | "Qed." -> QED

@@ -1,5 +1,5 @@
 %token <string> IDENT STRING_LITERAL
-%token FUN ARROW IFF MAPSTO COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE PROOF QED PERIOD
+%token FUN ARROW IFF MAPSTO COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE PROOF QED ADMITTED PERIOD
 %token THEOREM AXIOM DEFINITION DEFEQ IMPORT EQUALS NOT_EQUALS LESS_THAN PLUS NOT OR AND EXISTS FORALL COMMA
 %token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE OPAQUE_DIRECTIVE
 %start <Statement.statement list> main
@@ -23,7 +23,9 @@ import:
 declaration:
   | AXIOM name = IDENT COLON ty = term { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Axiom} }
   | THEOREM name = IDENT COLON ty = term PROOF proof = list(tactic) _qed = QED
-    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem (Proof { tactics = proof; qed_loc={ Term.start = $startpos(_qed); Term.end_ = $endpos(_qed) } })} }
+    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem (Proof { tactics = proof; qed_loc={ Term.start = $startpos(_qed); Term.end_ = $endpos(_qed) }; admitted=false })} }
+  | THEOREM name = IDENT COLON ty = term PROOF proof = list(tactic) _adm = ADMITTED
+    { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem (Proof { tactics = proof; qed_loc={ Term.start = $startpos(_adm); Term.end_ = $endpos(_adm) }; admitted=true })} }
   | THEOREM name = IDENT COLON ty = term DEFEQ proof = term
     { Statement.{name=name; name_loc={ Term.start = $startpos(name); Term.end_ = $endpos(name) }; ty; kind=Theorem (DefEq proof)} }
   | DEFINITION name = IDENT COLON ty = term DEFEQ body = term
