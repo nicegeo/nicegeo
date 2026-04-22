@@ -26,5 +26,23 @@
       "(",
       ")"
     ]
+  ],
+  "indentationRules": {
+    "increaseIndentPattern": "^\\s*Proof\\.$",
+    "decreaseIndentPattern": "^\\s*Qed\\.$"
+  },
+  "onEnterRules": [
+    {
+      "beforeText": "^\\s*Proof\\.$",
+      "action": {
+        "indent": "indent"
+      }
+    },
+    {
+      "beforeText": "^\\s*Qed\\.$",
+      "action": {
+        "indent": "outdent"
+      }
+    }
   ]
 }
