@@ -96,7 +96,7 @@ let rec flatten_list (e : ctx) (lctx : local_ctx) (t : term) : term list * term 
       (head :: elems, last)
   | _ -> ([], Some t)
 
-and term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
+let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
   let rec term_to_string_helper (e : ctx) (lctx : local_ctx) (t : term) (level : int) :
       string =
     if level < get_prec e t then "(" ^ term_to_string_helper e lctx t prec_term ^ ")"
