@@ -6,7 +6,8 @@ import { Diagnostic, DiagnosticSeverity, Range } from "vscode-languageserver/nod
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 export type DiagnosticsTriggerMode = "onSave" | "onType" | "both";
-export interface NiceGeoSettings { trigger: DiagnosticsTriggerMode; debounceMs: number }
+export type NiceGeoExecutionMode = "dune" | "installedBinary";
+export interface NiceGeoSettings { trigger: DiagnosticsTriggerMode; debounceMs: number; executionMode: NiceGeoExecutionMode }
 export interface StatusReporter {
   checking: (uri: string, detail: string) => void;
   ok: (uri: string) => void;
@@ -176,12 +177,12 @@ export class DiagnosticsService {
     const existing = this.timers.get(key);
     if (existing) clearTimeout(existing);
 
-    const run = () => void this.runNow(doc, workspaceRoot);
+    const run = () => void this.runNow(doc, settings, workspaceRoot);
     if (debounce > 0) this.timers.set(key, setTimeout(run, debounce));
     else run();
   }
 
-  async runNow(doc: TextDocument, workspaceRoot?: string) {
+  async runNow(doc: TextDocument, settings: NiceGeoSettings, workspaceRoot?: string) {
     const key = doc.uri;
     const prev = this.running.get(key);
     const seq = (prev?.seq ?? 0) + 1;
@@ -194,10 +195,13 @@ export class DiagnosticsService {
     this.status.checking(doc.uri, `nicegeo check: ${filePath}`);
 
     const result = await new Promise<{ seq: number; exitCode: number | null; output: string }>((resolve) => {
-      const attempts: Array<{ cmd: string; args: string[] }> = [
-        { cmd: "dune", args: ["exec", "nicegeo", "--", filePath] },
-        { cmd: "opam", args: ["exec", "--", "dune", "exec", "nicegeo", "--", filePath] },
-      ];
+      const attempts: Array<{ cmd: string; args: string[] }> =
+        settings.executionMode === "installedBinary"
+          ? [{ cmd: "nicegeo", args: [filePath] }]
+          : [
+              { cmd: "dune", args: ["exec", "nicegeo", "--", filePath] },
+              { cmd: "opam", args: ["exec", "--", "dune", "exec", "nicegeo", "--", filePath] },
+            ];
 
       const runAttempt = (idx: number) => {
         const attempt = attempts[idx];

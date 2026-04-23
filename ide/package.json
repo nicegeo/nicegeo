@@ -123,6 +123,15 @@
           "maximum": 10000,
           "description": "Debounce delay in milliseconds for on-type diagnostics."
         },
+        "nicegeo.execution.mode": {
+          "type": "string",
+          "default": "dune",
+          "enum": [
+            "dune",
+            "installedBinary"
+          ],
+          "description": "How nicegeo commands are launched. Use dune to run in the project, or installedBinary to run the nicegeo binaries from PATH."
+        },
         "nicegeo.proofState.followCursor": {
           "type": "boolean",
           "default": true,
