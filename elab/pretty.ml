@@ -193,14 +193,14 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
                   ^ term_to_string_helper e lctx b prec_app
               | "List.nil", [ _ ] -> "[]"
               | "List.cons", [ _; _; _ ] -> (
-                  let list, rest = flatten_list e lctx t in
+                  let tm_list, rest = flatten_list e lctx t in
                   let elems_str =
                     "["
                     ^ String.concat
                         ", "
                         (List.map
                            (fun x -> term_to_string_helper e lctx x prec_term)
-                           list)
+                           tm_list)
                     ^ "]"
                   in
                   (* this notation doesn't exist, but [a,b]@L is still much nicer than 

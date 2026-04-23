@@ -201,7 +201,7 @@ atomic_term:
 term_list:
   | { [] }
   | t = term { [t] }
-  | ts = term_list COMMA t = term { ts @ [t] }
+  | t = term COMMA ts = term_list { t :: ts }
 
 idlist:
   | x = IDENT { [x] }
