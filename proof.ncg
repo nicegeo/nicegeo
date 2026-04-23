@@ -110,6 +110,29 @@ Theorem snd : (A: Prop) -> (B: Prop) -> A /\ B -> B :=
 Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
     fun M P p f => f p
 
+(** Distinctness helpers *)
+Theorem distinct_ne_head : ∀ a b ps ls cs, distinct_from a (List.cons _ b ps) ls cs → a ≠ b
+Proof.
+intros a b ps ls cs h ab.
+destruct_ands (distinct_from.elim _ _ _ _ h) hps _hls _hcs.
+have amem _.
+exact (snd _ _ (List.mem_cons _ _ _ ps) (Or.inl _ _ ab)).
+exact (hps amem).
+Qed.
+
+Theorem distinct_tail : ∀ a b ps ls cs, distinct_from a (List.cons _ b ps) ls cs → distinct_from a ps ls cs
+Proof.
+intros a b ps ls cs h.
+destruct_ands (distinct_from.elim _ _ _ _ h) hps hls hcs.
+apply (distinct_from.intro _ _ _ _).
+intro mem.
+have amem _.
+exact (snd _ _ (List.mem_cons _ _ b _) (Or.inr _ _ mem)).
+exact (hps amem).
+exact hls.
+exact hcs.
+Qed.
+
 (* A point c lies on a circle iff its distance to the center equals the radius:
    Length a c = Length a b ↔ OnCircle c d, given a is the center and b is on d. *)
 Theorem on_circle_iff_length_eq : ∀ (a b c : Point) (d : Circle),
