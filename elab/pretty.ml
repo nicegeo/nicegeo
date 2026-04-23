@@ -195,19 +195,20 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
               | "List.cons", [ _; _; _ ] -> (
                   let tm_list, rest = flatten_list e lctx t in
                   let elems_str =
-                    "["
-                    ^ String.concat
-                        ", "
-                        (List.map
-                           (fun x -> term_to_string_helper e lctx x prec_term)
-                           tm_list)
-                    ^ "]"
+                    String.concat
+                      ", "
+                      (List.map
+                         (fun x -> term_to_string_helper e lctx x prec_term)
+                         tm_list)
                   in
-                  (* this notation doesn't exist, but [a,b]@L is still much nicer than 
-                     List.cons Blah a (List.cons Blah b L) *)
+                  (* this notation doesn't exist, but [a, b, ...L] is still much nicer
+                     than List.cons Blah a (List.cons Blah b L) *)
                   match rest with
-                  | Some r -> elems_str ^ "@" ^ term_to_string_helper e lctx r prec_atomic
-                  | None -> elems_str)
+                  | Some r ->
+                      "[" ^ elems_str ^ ", ..."
+                      ^ term_to_string_helper e lctx r prec_atomic
+                      ^ "]"
+                  | None -> "[" ^ elems_str ^ "]")
               | _ -> default ())
           | _ -> default ())
   in
