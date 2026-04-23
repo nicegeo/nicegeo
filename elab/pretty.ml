@@ -91,7 +91,9 @@ let rec get_prec (e : ctx) (t : term) : int =
 let rec flatten_list (e : ctx) (lctx : local_ctx) (t : term) : term list * term option =
   match get_pattern t with
   | Some ("List.nil", [ _ ]) -> ([], None)
-  | Some ("List.cons", [ _; head; tail ]) -> let elems, last = flatten_list e lctx tail in (head :: elems, last)
+  | Some ("List.cons", [ _; head; tail ]) ->
+      let elems, last = flatten_list e lctx tail in
+      (head :: elems, last)
   | _ -> ([], Some t)
 
 and term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
@@ -190,10 +192,20 @@ and term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
                   ^ " + "
                   ^ term_to_string_helper e lctx b prec_app
               | "List.nil", [ _ ] -> "[]"
-              | "List.cons", [ _; _; _ ] ->
+              | "List.cons", [ _; _; _ ] -> (
                   let list, rest = flatten_list e lctx t in
-                  let elems_str = "[" ^ String.concat ", " (List.map (fun x -> term_to_string_helper e lctx x prec_term) list) ^ "]" in
-                  (match rest with
+                  let elems_str =
+                    "["
+                    ^ String.concat
+                        ", "
+                        (List.map
+                           (fun x -> term_to_string_helper e lctx x prec_term)
+                           list)
+                    ^ "]"
+                  in
+                  (* this notation doesn't exist, but [a,b]@L is still much nicer than 
+                     List.cons Blah a (List.cons Blah b L) *)
+                  match rest with
                   | Some r -> elems_str ^ "@" ^ term_to_string_helper e lctx r prec_atomic
                   | None -> elems_str)
               | _ -> default ())
