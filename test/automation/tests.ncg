@@ -1,4 +1,16 @@
 
+(* have tests *)
+
+(* have with unspecified type inferred from proof *)
+Theorem havetest : ∀ (A B C : Prop), A ∧ B ∧ C → C ∧ B ∧ A
+Proof.
+intros A B C h.
+destruct_ands h a b c.
+have cb _.
+	exact (And.intro _ _ c b).
+exact (And.intro _ _ cb a).
+Qed.
+
 (* destruct_and tests *)
 
 Theorem test1 : ∀ (A B C D E : Prop), A ∧ B ∧ C ∧ D ∧ E → D 
