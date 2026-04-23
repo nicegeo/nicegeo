@@ -211,7 +211,7 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
   | Some g ->
       create_metas st.elab_ctx ty (List.map (fun h -> h.bid) g.lctx);
       (* fill holes if not itself a hole *)
-      (match ty.inner with 
+      (match ty.inner with
       | Hole _ -> ()
       | _ -> ignore (infertype st.elab_ctx g.lctx ty));
       let proof_id = fresh_id () in
