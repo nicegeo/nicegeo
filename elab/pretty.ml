@@ -194,7 +194,8 @@ and term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
                   let list, rest = flatten_list e lctx t in
                   let elems_str = "[" ^ String.concat ", " (List.map (fun x -> term_to_string_helper e lctx x prec_term) list) ^ "]" in
                   (match rest with
-                  | Some r -> elems_str ^ " @ " ^ term_to_string_helper e lctx r prec_app
+                  | Some r -> elems_str ^ "@" ^ term_to_string_helper e lctx r prec_atomic
+                  | None -> elems_str)
               | _ -> default ())
           | _ -> default ())
   in
