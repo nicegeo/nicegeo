@@ -78,6 +78,8 @@ let rec get_prec (e : ctx) (t : term) : int =
           | "Eq", 3 -> prec_prop
           | "Ne", 3 -> prec_prop
           | "Add", 2 -> prec_sum
+          | "List.nil", 1 -> prec_atomic
+          | "List.cons", 3 -> prec_atomic
           | _ -> prec_app)
       | _ -> prec_app)
   | Fun _ | Arrow _ -> prec_term
@@ -86,7 +88,13 @@ let rec get_prec (e : ctx) (t : term) : int =
       | Some { sol = Some tm_sol; _ } -> get_prec e tm_sol
       | _ -> prec_atomic)
 
-let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
+let rec flatten_list (e : ctx) (lctx : local_ctx) (t : term) : term list * term option =
+  match get_pattern t with
+  | Some ("List.nil", [ _ ]) -> ([], None)
+  | Some ("List.cons", [ _; head; tail ]) -> let elems, last = flatten_list e lctx tail in (head :: elems, last)
+  | _ -> ([], Some t)
+
+and term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
   let rec term_to_string_helper (e : ctx) (lctx : local_ctx) (t : term) (level : int) :
       string =
     if level < get_prec e t then "(" ^ term_to_string_helper e lctx t prec_term ^ ")"
@@ -181,6 +189,12 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
                   term_to_string_helper e lctx a prec_sum
                   ^ " + "
                   ^ term_to_string_helper e lctx b prec_app
+              | "List.nil", [ _ ] -> "[]"
+              | "List.cons", [ _; _; _ ] ->
+                  let list, rest = flatten_list e lctx t in
+                  let elems_str = "[" ^ String.concat ", " (List.map (fun x -> term_to_string_helper e lctx x prec_term) list) ^ "]" in
+                  (match rest with
+                  | Some r -> elems_str ^ " @ " ^ term_to_string_helper e lctx r prec_app
               | _ -> default ())
           | _ -> default ())
   in
