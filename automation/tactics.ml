@@ -210,7 +210,10 @@ let have (name : string) (ty : term) (st : proof_state) : tactic_result =
   | None -> Failure "have: no goals remaining"
   | Some g ->
       create_metas st.elab_ctx ty (List.map (fun h -> h.bid) g.lctx);
-      ignore (infertype st.elab_ctx g.lctx ty);
+      (* fill holes if not itself a hole *)
+      (match ty.inner with 
+      | Hole _ -> ()
+      | _ -> ignore (infertype st.elab_ctx g.lctx ty));
       let proof_id = fresh_id () in
       let cont_id = fresh_id () in
       let fun_bid = gen_binder_id () in
