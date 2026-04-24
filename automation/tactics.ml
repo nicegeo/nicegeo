@@ -734,4 +734,5 @@ let register () =
                error_type =
                  Elab.Error.InvalidTacticParameter "Expected at least one parameter";
              }));
+  register_tactic "measure_norm" Register.(nullary Measure_norm.measure_norm);
   ()

@@ -26,6 +26,10 @@ rewrite (Eq.symm _ _ _ (AddAssoc a c b)).
 reflexivity.
 Qed.
 
+Theorem AddCongLeft : ∀ (x y z : Measure), x = y -> z + x = z + y :=
+    fun x y z h =>
+    Eq.elim _ x (fun t => z + x = z + t) (Eq.intro _ _) y h
+
 (* have tests *)
 
 (* have with unspecified type inferred from proof *)
@@ -80,4 +84,21 @@ choose d hd (pt_exists [a, b, c] [] []).
 destruct_ands (distinct_from.elim _ _ _ _ hd) d_not_mem _h2 _h3.
 exists d.
 exact d_not_mem.
+Qed.
+
+(* measure_norm tests *)
+
+(* it's beautiful *)
+Theorem test5 : ∀ (a b c d : Measure), a + b + a + c + d + b = d + (b + b) + (a + (c + a))
+Proof.
+intros a b c d.
+measure_norm.
+reflexivity.
+Qed.
+
+Theorem test6 : ∀ (a b : Point), Zero + Length a b = Length b a + Zero
+Proof.
+intros a b.
+measure_norm.
+reflexivity.
 Qed.

@@ -27,6 +27,15 @@ ok what does lexicographic order on a b c look like (which are points)
 need an order on points, which are:
 - bvar id
 hm. thats easy.
+
+uhhhhh ok actually angle complicates things
+we don't permute angle arbitrarily, only angle a b c = angle c b a
+so normal form is just where a ≤ c
+length and area just sorted
+ok cool
+ok also unless we change the axiom we can only get angle a b c = angle c b a if we also have proofs of a ≠ b and a ≠ c
+we can keep a "database" of all the ≠ conditions we have for all angles
+thats for later
 *)
 
 type summand =
@@ -174,7 +183,32 @@ let congr (m : measure) (i : int) (new_summands : summand list) (proof : Simpter
     original = m.original;
     proof = congr_proof;
   }
-  
+
+(** rewrites the i-th summand of m as new_summand, where proof is a proof of
+    m.summands[i] = new_summand *)
+let rewrite_i (m : measure) (i : int) (new_summand : summand) (proof : Simpterm.term) : measure =
+  let open Simpterm in
+  let a_list = (List.take i m.summands) in
+  let new_sublist = a_list @ [new_summand] in
+  let bigproof = if i = 0 then proof
+  else
+    apps (Name "AddCongLeft") [summand_to_term (List.nth m.summands i); summand_to_term new_summand; summands_to_term a_list; proof] in
+  congr m (i + 1) new_sublist bigproof
+
+let normalize_summand (m : measure) (i : int) : measure =
+  let open Simpterm in
+  match List.nth m.summands i with
+  | Length (a, b) when a > b ->
+      rewrite_i m i (Length (b, a)) (apps (Name "length_symm") [ Bvar a; Bvar b ])
+      (* todo: handle other summand types *)
+  | _ -> m
+
+let normalize_summands (m : measure) : measure =
+  List.fold_left
+    (fun m i -> normalize_summand m i)
+    m
+    (List.init (List.length m.summands) (fun i -> i))
+
 (** swaps summand i and i+1 in a measure updating the proof. i and i+1 must be valid indices *)
 let swap_adjacent (m : measure) (i : int) : measure =
   let open Simpterm in
@@ -198,4 +232,7 @@ let sort (m : measure) : measure =
       bubblesort m (current + 1) target
   in
   bubblesort m 0 (List.length m.summands - 1)
+
+let normalize_measure (m : measure) : measure =
+  m |> normalize_summands |> sort
 
