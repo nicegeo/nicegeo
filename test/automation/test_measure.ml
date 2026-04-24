@@ -70,8 +70,8 @@ let test_summand_order () =
 
 let suite =
   let open Alcotest in
-    ( "measure",
-      [
-        test_case "to_summand basic" `Quick test_to_summand_basic;
-        test_case "summand order" `Quick test_summand_order;
-      ] );
+  ( "measure",
+    [
+      test_case "to_summand basic" `Quick test_to_summand_basic;
+      test_case "summand order" `Quick test_summand_order;
+    ] )

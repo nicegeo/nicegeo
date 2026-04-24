@@ -38,48 +38,28 @@ type summand =
   | Bvar of int
 
 let to_summand (tm : Elab.Term.term) : summand option =
-  let open Elab.Term in
-  match tm.inner with
+  let open Simpterm in
+  match to_simpterm tm with
   | Name "Zero" -> Some Zero
   | Name "RightAngle" -> Some RightAngle
-  | App
-      ( { inner = App ({ inner = Name "Length"; _ }, { inner = Bvar a; _ }); _ },
-        { inner = Bvar b; _ } ) ->
-      Some (Length (a, b))
-  | App
-      ( {
-          inner =
-            App
-              ( { inner = App ({ inner = Name "Angle"; _ }, { inner = Bvar a; _ }); _ },
-                { inner = Bvar b; _ } );
-          _;
-        },
-        { inner = Bvar c; _ } ) ->
-      Some (Angle (a, b, c))
-  | App
-      ( {
-          inner =
-            App
-              ( { inner = App ({ inner = Name "Area"; _ }, { inner = Bvar a; _ }); _ },
-                { inner = Bvar b; _ } );
-          _;
-        },
-        { inner = Bvar c; _ } ) ->
-      Some (Area (a, b, c))
+  | App (App (Name "Length", Bvar a), Bvar b) -> Some (Length (a, b))
+  | App (App (App (Name "Angle", Bvar a), Bvar b), Bvar c) -> Some (Angle (a, b, c))
+  | App (App (App (Name "Area", Bvar a), Bvar b), Bvar c) -> Some (Area (a, b, c))
   | Bvar id -> Some (Bvar id)
   | _ -> None
 
 let summand_to_term (s : summand) : Elab.Term.term =
-  let open Elab.Proofstate in
-  match s with
-  | Zero -> mk_name "Zero"
-  | RightAngle -> mk_name "RightAngle"
-  | Length (a, b) -> mk_app (mk_app (mk_name "Length") (mk_bvar a)) (mk_bvar b)
-  | Angle (a, b, c) ->
-      mk_app (mk_app (mk_app (mk_name "Angle") (mk_bvar a)) (mk_bvar b)) (mk_bvar c)
-  | Area (a, b, c) ->
-      mk_app (mk_app (mk_app (mk_name "Area") (mk_bvar a)) (mk_bvar b)) (mk_bvar c)
-  | Bvar id -> mk_bvar id
+  let open Simpterm in
+  let res =
+    match s with
+    | Zero -> Name "Zero"
+    | RightAngle -> Name "RightAngle"
+    | Length (a, b) -> App (App (Name "Length", Bvar a), Bvar b)
+    | Angle (a, b, c) -> App (App (App (Name "Angle", Bvar a), Bvar b), Bvar c)
+    | Area (a, b, c) -> App (App (App (Name "Area", Bvar a), Bvar b), Bvar c)
+    | Bvar id -> Bvar id
+  in
+  from_simpterm res
 
 let order (s : summand) : int * int * int * int =
   match s with
