@@ -1,16 +1,23 @@
-open Automation.Measure
+open Automation
+open Measure
 
-let sctx = Elab.Interface.create ()
+let env = Elab.Interface.create ()
 
 let summand : summand Alcotest.testable =
   Alcotest.testable
     (fun fmt t ->
-      Format.fprintf fmt "%s" (Elab.Pretty.term_to_string sctx (summand_to_term t)))
+      Format.fprintf fmt "%s" (Elab.Pretty.term_to_string env (summand_to_term t)))
+    (fun t1 t2 -> t1 = t2)
+
+let simpterm : Simpterm.term Alcotest.testable =
+  Alcotest.testable
+    (fun fmt t ->
+      Format.fprintf fmt "%s" (Elab.Pretty.term_to_string env (Simpterm.from_simpterm t)))
     (fun t1 t2 -> t1 = t2)
 
 let test_to_summand_basic () =
-  let open Elab.Proofstate in
   (* mk_[termkind] helpers *)
+  let open Elab.Proofstate in
   let t = mk_app (mk_app (mk_name "Length") (mk_bvar 1)) (mk_bvar 2) in
   let expected = Length (1, 2) in
   Alcotest.(check (option summand)) "length _1 _2" (to_summand t) (Some expected);
@@ -68,10 +75,54 @@ let test_summand_order () =
   let sorted_summands = List.sort (fun s1 s2 -> compare (order s1) (order s2)) summands in
   Alcotest.(check (list summand)) "summands are sorted by order" sorted_summands summands
 
+(** Check that the kernel accepts [proof] as having type [goal_ty]. *)
+let kernel_check env proof goal_ty =
+  let open Elab.Typecheck in
+  let proof_k = Elab.Convert.conv_to_kterm (replace_metas env proof) in
+  let ty_k = Elab.Convert.conv_to_kterm (replace_metas env goal_ty) in
+  try
+    Kernel.Interface.add_theorem env.kenv "test" ty_k proof_k;
+    Hashtbl.remove env.kenv.types "test";
+    true
+  with Kernel.Exceptions.TypeError _ -> false
+
+let test_to_measure () =
+  (try Elab.Interface.process_file env "env.ncg"
+    with Elab.Error.ElabError info ->
+      print_endline
+        ("Internal error while processing env.ncg: " ^ Elab.Error.pp_exn env info);
+      exit 255);
+  (try Elab.Interface.process_file env "tests.ncg"
+    with Elab.Error.ElabError info ->
+      print_endline ("Error processing tests.ncg:\n" ^ Elab.Error.pp_exn env info);
+      exit 255);
+  
+  let open Simpterm in
+  let add t1 t2 = App (App (Name "Add", t1), t2) in
+  let ( ++ ) = add in
+  let tm = Bvar 1 ++ (Bvar 2 ++ Bvar 3) ++ (Bvar 4 ++ ((Bvar 5 ++ Bvar 6) ++ (Bvar 7 ++ (Bvar 8 ++ Bvar 9)))) in
+  let tm_normal_exp = Bvar 1 ++ Bvar 2 ++ Bvar 3 ++ Bvar 4 ++ Bvar 5 ++ Bvar 6 ++ Bvar 7 ++ Bvar 8 ++ Bvar 9 in
+  let m = to_measure (from_simpterm tm) in
+  let m = match m with Some m -> m | None -> Alcotest.fail "to_measure failed" in
+  let tm_normal_got = to_simpterm (measure_to_term m) in
+  Alcotest.(check simpterm) "measure_to_term . to_measure = id" tm_normal_exp tm_normal_got;
+  Alcotest.(check simpterm) "original is unchanged" tm m.original;
+
+  (* check the proof type (in elab) *)
+  let open Elab.Types in
+  let lctx = List.init 9 (fun i -> { bid = i + 1; name = Some ("x" ^ string_of_int (i + 1)); ty = Elab.Proofstate.mk_name "Measure" }) in
+  print_endline ("proof: " ^ Elab.Pretty.term_to_string env (from_simpterm m.proof));
+  let proof_ty = Elab.Typecheck.infertype env lctx (Simpterm.from_simpterm m.proof) in
+  let expected_proof_ty = from_simpterm (apps (Name "Eq") [ Name "Measure"; tm_normal_got; tm ]) in
+  Elab.Typecheck.unify env ~lctx proof_ty (Hashtbl.create 0) expected_proof_ty (Hashtbl.create 0);
+
+  ()
+
 let suite =
   let open Alcotest in
   ( "measure",
     [
       test_case "to_summand basic" `Quick test_to_summand_basic;
       test_case "summand order" `Quick test_summand_order;
+      test_case "to_measure" `Quick test_to_measure;
     ] )

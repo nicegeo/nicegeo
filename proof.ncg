@@ -197,6 +197,13 @@ Theorem AddCongLeft : ∀ (x y z : Measure), x = y -> z + x = z + y :=
     fun x y z h =>
     Eq.elim _ x (fun t => z + x = z + t) (Eq.intro _ _) y h
 
+Theorem AddLeftRewrite : ∀ (a a1 b c : Measure), a + b = c → a1 = a → a1 + b = c
+Proof.
+intros a a1 b c abc a1a.
+rewrite a1a.
+exact abc.
+Qed.
+
 
 (* Extending any ray from inside a circle: given b inside aa and a ≠ b,
    there exists c on aa with b between a and c. *)

@@ -1,3 +1,20 @@
+(* theorems used by automation *)
+
+(* rewrite *)
+Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> a = b -> b = a :=
+    fun (A: Type) (a b : A) (eq_ab : a = b) =>
+        Eq.elim A a (fun (x : A) => x = a) (Eq.intro A a) b eq_ab
+
+Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> a = b -> b = c -> a = c :=
+    fun T a b c h1 h2 =>
+    Eq.elim T b (fun x => a = x) h1 c h2
+(* measure *)
+Theorem AddLeftRewrite : ∀ (a a1 b c : Measure), a + b = c → a1 = a → a1 + b = c
+Proof.
+intros a a1 b c abc a1a.
+rewrite a1a.
+exact abc.
+Qed.
 
 (* have tests *)
 

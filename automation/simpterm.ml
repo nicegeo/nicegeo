@@ -42,3 +42,6 @@ let rec from_simpterm (st : term) : Elab.Term.term =
   | App (f, arg) ->
       { inner = App (from_simpterm f, from_simpterm arg); loc = Elab.Term.dummy_range }
   | Sort n -> { inner = Sort n; loc = Elab.Term.dummy_range }
+
+let apps (f : term) (args : term list) : term =
+  List.fold_left (fun acc arg -> App (acc, arg)) f args
