@@ -49,18 +49,15 @@ let to_summand (tm : Elab.Term.term) : summand option =
   | Bvar id -> Some (Bvar id)
   | _ -> None
 
-let summand_to_term (s : summand) : Elab.Term.term =
+let summand_to_term (s : summand) : Simpterm.term =
   let open Simpterm in
-  let res =
-    match s with
-    | Zero -> Name "Zero"
-    | RightAngle -> Name "RightAngle"
-    | Length (a, b) -> App (App (Name "Length", Bvar a), Bvar b)
-    | Angle (a, b, c) -> App (App (App (Name "Angle", Bvar a), Bvar b), Bvar c)
-    | Area (a, b, c) -> App (App (App (Name "Area", Bvar a), Bvar b), Bvar c)
-    | Bvar id -> Bvar id
-  in
-  from_simpterm res
+  match s with
+  | Zero -> Name "Zero"
+  | RightAngle -> Name "RightAngle"
+  | Length (a, b) -> App (App (Name "Length", Bvar a), Bvar b)
+  | Angle (a, b, c) -> App (App (App (Name "Angle", Bvar a), Bvar b), Bvar c)
+  | Area (a, b, c) -> App (App (App (Name "Area", Bvar a), Bvar b), Bvar c)
+  | Bvar id -> Bvar id
 
 let order (s : summand) : int * int * int * int =
   match s with
@@ -72,24 +69,24 @@ let order (s : summand) : int * int * int * int =
   | Bvar id -> (5, id, 0, 0)
 
 (** A measure is a sum of summands once the additions have been left-associated. proof is
-    the proof that measure_to_term this = original. *)
+    the proof that summands_to_term summands = original. *)
 type measure = {
   summands : summand list;
   original : Simpterm.term;
   proof : Simpterm.term;
 }
 
-let measure_to_term (m : measure) : Elab.Term.term =
+let summands_to_term (summands : summand list) : Simpterm.term =
   let open Simpterm in
   (* wildy inefficient but oh well *)
-  let summand_terms = List.map (fun x -> to_simpterm (summand_to_term x)) m.summands in
-  let res =
-    match summand_terms with
-    | [] -> Name "Zero"
-    | [ t ] -> t
-    | t :: ts -> List.fold_left (fun acc t -> App (App (Name "Add", acc), t)) t ts
-  in
-  from_simpterm res
+  let summand_terms = List.map (fun x -> summand_to_term x) summands in
+  match summand_terms with
+  | [] -> Name "Zero"
+  | [ t ] -> t
+  | t :: ts -> List.fold_left (fun acc t -> App (App (Name "Add", acc), t)) t ts
+
+let measure_to_term (m : measure) : Elab.Term.term =
+  Simpterm.from_simpterm (summands_to_term m.summands)
 
 (** returns proof of t = t *)
 let refl (t : Simpterm.term) : Simpterm.term =
@@ -126,13 +123,12 @@ let to_measure (tm : Elab.Term.term) : measure option =
         (* proof : t1 + t2 = tm *)
         (* proof1 : t1_normal = t1 *)
         (* need to return proof that t1_normal + t2 = tm *)
-        (App (App (Name "Add", t1_normal), t2), apps (Name "AddLeftRewrite") [ t1; t1_normal; t2; tm; proof; proof1 ])
+        ( App (App (Name "Add", t1_normal), t2),
+          apps (Name "AddLeftRewrite") [ t1; t1_normal; t2; tm; proof; proof1 ] )
     | t, proof -> (t, proof)
   in
 
   let tm_normal, proof = assoc_normal tm in
-
-  print_endline ("tm_normal: " ^ Elab.Pretty.term_to_string (Elab.Interface.create ()) (from_simpterm tm_normal));
 
   let rec get_summands (tm : term) : summand list option =
     match tm with
@@ -145,3 +141,61 @@ let to_measure (tm : Elab.Term.term) : measure option =
   in
 
   Option.map (fun summands -> { summands; original = tm; proof }) (get_summands tm_normal)
+
+(** rewrites the first i summands of m as new_summands, where proof is a proof of
+    m.summands[0..=i-1] = new_summands *)
+let congr (m : measure) (i : int) (new_summands : summand list) (proof : Simpterm.term) :
+    measure =
+  let open Simpterm in
+  let new_summands_term = summands_to_term new_summands in
+  let old_summands_term = summands_to_term (List.take i m.summands) in
+  let bid = Elab.Term.gen_binder_id () in
+  let motive_sum =
+    List.fold_left
+      (fun acc s -> App (App (Name "Add", acc), summand_to_term s))
+      (Bvar bid)
+      (List.drop i m.summands)
+  in
+
+  let motive =
+    Fun
+      ( None,
+        bid,
+        Name "Measure",
+        App (App (App (Name "Eq", Name "Measure"), motive_sum), m.original) )
+  in
+  let congr_proof =
+    apps
+      (Name "Eq.elim")
+      [ Name "Measure"; old_summands_term; motive; m.proof; new_summands_term; proof ]
+  in
+  {
+    summands = new_summands @ List.drop i m.summands;
+    original = m.original;
+    proof = congr_proof;
+  }
+  
+(** swaps summand i and i+1 in a measure updating the proof. i and i+1 must be valid indices *)
+let swap_adjacent (m : measure) (i : int) : measure =
+  let open Simpterm in
+  let a_list = (List.take i m.summands) in
+  let new_sublist = a_list @ [List.nth m.summands (i + 1); List.nth m.summands i] in
+  let proof = if i = 0 then
+    apps (Name "AddComm") [summand_to_term (List.nth m.summands i); summand_to_term (List.nth m.summands (i + 1))]
+  else
+    apps (Name "AddRightComm") [summands_to_term a_list; summand_to_term (List.nth m.summands i); summand_to_term (List.nth m.summands (i + 1))]
+  in
+  congr m (i + 2) new_sublist proof
+
+let sort (m : measure) : measure =
+  let rec bubblesort (m : measure) (current : int) (target : int) : measure =
+    if current = target then (
+      if target = 0 then m
+      else bubblesort m 0 (target - 1)
+    ) else if order (List.nth m.summands current) > order (List.nth m.summands (current + 1)) then
+      bubblesort (swap_adjacent m current) (current + 1) target
+    else
+      bubblesort m (current + 1) target
+  in
+  bubblesort m 0 (List.length m.summands - 1)
+

@@ -8,12 +8,22 @@ Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> a = b -> b = a :=
 Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> a = b -> b = c -> a = c :=
     fun T a b c h1 h2 =>
     Eq.elim T b (fun x => a = x) h1 c h2
+
 (* measure *)
 Theorem AddLeftRewrite : ∀ (a a1 b c : Measure), a + b = c → a1 = a → a1 + b = c
 Proof.
 intros a a1 b c abc a1a.
 rewrite a1a.
 exact abc.
+Qed.
+
+Theorem AddRightComm : ∀ (a b c : Measure), a + b + c = a + c + b
+Proof.
+intros a b c.
+rewrite (AddAssoc a b c).
+rewrite (AddComm b c).
+rewrite (Eq.symm _ _ _ (AddAssoc a c b)).
+reflexivity.
 Qed.
 
 (* have tests *)
