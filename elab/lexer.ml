@@ -61,6 +61,8 @@ let token lexbuf =
     | ":" -> COLON
     | "(" -> LPAREN
     | ")" -> RPAREN
+    | "[" -> LBRACKET
+    | "]" -> RBRACKET
     | "Type" -> TYPE
     | "Prop" -> PROP
     | "_" -> UNDERSCORE

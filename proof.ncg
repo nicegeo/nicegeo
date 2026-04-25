@@ -362,13 +362,13 @@ Theorem point_eq_em : ∀ (a b : Point), a = b ∨ a ≠ b :=
 
 (* If a point is chosen distinct from the singleton line-list [L], then it is not on L. *)
 Theorem distinct_from_single_line_not_on : ∀ (p : Point) (L : Line),
-    distinct_from p (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle) ->
+    distinct_from p [] [L] [] ->
     Not (OnLine p L) :=
     fun (p : Point) (L : Line)
-        (hp : distinct_from p (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
+        (hp : distinct_from p [] [L] []) =>
     fst _ _
-        ((fst _ _ (List.forall_cons Line (fun (M : Line) => Not (OnLine p M)) L (List.nil Line)))
-        (snd _ _ (fst _ _ (distinct_from.elim p (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle) hp))))
+        ((fst _ _ (List.forall_cons Line (fun (M : Line) => Not (OnLine p M)) L []))
+        (snd _ _ (fst _ _ (distinct_from.elim p [] [L] [] hp))))
 
 (* Proposition 2: To place a straight line equal to a given straight line with one end at a given point. *)
 Theorem place_segment : ∀ (a b c : Point),
@@ -502,11 +502,11 @@ Theorem ne_12_of_triangle : ∀ (a b c : Point), triangle a b c → a ≠ b :=
     tri (
     Or.elim _ _ _ (point_eq_em a c)
     (fun (hac : a = c) =>
-        Exists.elim _ _ _ (pt_exists (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle))
-        (fun (d : Point) (hd : distinct_from d (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle)) =>
+        Exists.elim _ _ _ (pt_exists [a] [] [])
+        (fun (d : Point) (hd : distinct_from d [a] [] []) =>
         have _ _ (fun (da : d = a) =>
-            (fst _ _ (fst _ _ (distinct_from.elim d (List.cons Point a (List.nil Point)) (List.nil Line) (List.nil Circle) hd)))
-            ((snd _ _ (List.mem_cons Point d a (List.nil Point))) (Or.inl _ _ da)))
+            (fst _ _ (fst _ _ (distinct_from.elim _ _ _ _ hd)))
+            ((snd _ _ (List.mem_cons Point d a [])) (Or.inl _ _ da)))
         (fun (da : d ≠ a) =>
         Exists.elim _ _ _ (line_of_pts d a da)
         (fun (L : Line) (hL : OnLine d L /\ OnLine a L) =>
@@ -681,12 +681,12 @@ Theorem diffside_of_not_online' : ∀ (a : Point) (L : Line),
     fun (a : Point) (L : Line) (a_not_on_L : Not (OnLine a L)) =>
     Exists.elim _ _ _
         (pt_oppositeside_of_not_online L a
-            (List.nil Point)
-            (List.nil Line)
-            (List.nil Circle)
+            []
+            []
+            []
             a_not_on_L)
     (fun (b : Point)
-        (hb : (Not (OnLine b L) /\ Not (SameSide b a L)) /\ distinct_from b (List.nil Point) (List.nil Line) (List.nil Circle)) =>
+        (hb : (Not (OnLine b L) /\ Not (SameSide b a L)) /\ distinct_from b [] [] []) =>
     Exists.intro _ _ b
         (And.intro _ _
             (And.intro _ _
@@ -999,12 +999,9 @@ Theorem iseqtri_iseqtri_diffside_of_ne : ∀ (a b : Point),
     Exists.elim _ _ _ (line_of_pts a b ab)
     (fun (L : Line) (abL : OnLine a L /\ OnLine b L) =>
     Exists.elim _ _ _
-        (pt_exists
-            (List.nil Point)
-            (List.cons Line L (List.nil Line))
-            (List.nil Circle))
+        (pt_exists [] [L] [])
     (fun (f : Point)
-        (hf : distinct_from f (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
+        (hf : distinct_from f [] [L] []) =>
     have _ _ (distinct_from_single_line_not_on f L hf)
     (fun (f_not_on_L : Not (OnLine f L)) =>
     Exists.elim _ _ _ (iseqtri_sameside_of_ne a b f L ab (fst _ _ abL) (snd _ _ abL) f_not_on_L)
@@ -1349,9 +1346,9 @@ Theorem perpendicular_of_online' : ∀ (a b c f : Point) (L : Line),
     fun a b c f L ab aL bL fL =>
     Exists.elim _ _ _
       (pt_extension_on_line L a b
-        (List.nil Point)
-        (List.nil Line)
-        (List.nil Circle)
+        []
+        []
+        []
         aL
         bL
         ab
@@ -1383,9 +1380,9 @@ Theorem perpendicular_of_online'' : ∀ (a b c f : Point) (L : Line),
     fun a b c f L ab aL bL fL =>
     Exists.elim _ _ _
       (pt_oppositeside_of_not_online L f
-        (List.nil Point)
-        (List.nil Line)
-        (List.nil Circle)
+        []
+        []
+        []
         fL)
     (fun g hg =>
     Exists.elim _ _ _
@@ -3357,33 +3354,33 @@ Theorem common_point_of_not_para : ∀ (L M : Line),
 (* A line distinct from L is not a member of the singleton line-list [L]. *)
 Theorem line_not_mem_singleton_of_ne : ∀ (M L : Line),
     M ≠ L ->
-    Not (List.mem Line M (List.cons Line L (List.nil Line))) :=
+    Not (List.mem Line M [L]) :=
     fun (M L : Line) (ML : M ≠ L) =>
-    fun (mem_ML : List.mem Line M (List.cons Line L (List.nil Line))) =>
-    Or.elim _ _ _ (fst _ _ (List.mem_cons Line M L (List.nil Line)) mem_ML)
+    fun (mem_ML : List.mem Line M [L]) =>
+    Or.elim _ _ _ (fst _ _ (List.mem_cons Line M L []) mem_ML)
     (fun (eq_ML : M = L) => ML eq_ML)
-    (fun (mem_nil : List.mem Line M (List.nil Line)) => List.not_mem_nil Line M mem_nil)
+    (fun (mem_nil : List.mem Line M []) => List.not_mem_nil Line M mem_nil)
 
 (* If a point is chosen distinct from the singleton point-list [a], then it is not equal to a. *)
 Theorem distinct_from_single_point_ne : ∀ (p a : Point) (l_list : List Line) (c_list : List Circle),
-    distinct_from p (List.cons Point a (List.nil Point)) l_list c_list ->
+    distinct_from p [a] l_list c_list ->
     p ≠ a :=
     fun (p a : Point) (l_list : List Line) (c_list : List Circle)
-        (hp : distinct_from p (List.cons Point a (List.nil Point)) l_list c_list) =>
+        (hp : distinct_from p [a] l_list c_list) =>
     fun (pa : p = a) =>
-    (fst _ _ (fst _ _ (distinct_from.elim p (List.cons Point a (List.nil Point)) l_list c_list hp)))
-    ((snd _ _ (List.mem_cons Point p a (List.nil Point)))
+    (fst _ _ (fst _ _ (distinct_from.elim _ _ _ _ hp)))
+    ((snd _ _ (List.mem_cons Point p a []))
         (Or.inl _ _ pa))
 
 (* If a point is chosen to avoid the singleton line-list [L], then it is not on L. *)
 Theorem distinct_from_avoids_single_line : ∀ (p : Point) (p_list : List Point) (L : Line) (c_list : List Circle),
-    distinct_from p p_list (List.cons Line L (List.nil Line)) c_list ->
+    distinct_from p p_list [L] c_list ->
     Not (OnLine p L) :=
     fun (p : Point) (p_list : List Point) (L : Line) (c_list : List Circle)
-        (hp : distinct_from p p_list (List.cons Line L (List.nil Line)) c_list) =>
+        (hp : distinct_from p p_list [L] c_list) =>
     fst _ _
-        ((fst _ _ (List.forall_cons Line (fun (M : Line) => Not (OnLine p M)) L (List.nil Line)))
-        (snd _ _ (fst _ _ (distinct_from.elim p p_list (List.cons Line L (List.nil Line)) c_list hp))))
+        ((fst _ _ (List.forall_cons Line (fun (M : Line) => Not (OnLine p M)) L []))
+        (snd _ _ (fst _ _ (distinct_from.elim _ _ _ _ hp))))
 
 (* Distinct lines with a common point satisfy LinesInter. *)
 Theorem lines_inter_of_common_point_distinct : ∀ (a : Point) (L M : Line),
@@ -3393,31 +3390,23 @@ Theorem lines_inter_of_common_point_distinct : ∀ (a : Point) (L M : Line),
     LinesInter L M :=
     fun (a : Point) (L M : Line) (LM : L ≠ M) (a_on_L : OnLine a L) (a_on_M : OnLine a M) =>
     Exists.elim _ _ _
-        (pt_on_line M
-            (List.cons Point a (List.nil Point))
-            (List.cons Line L (List.nil Line))
-            (List.nil Circle)
+        (pt_on_line M [a] [L] []
             (line_not_mem_singleton_of_ne M L (Ne.symm _ _ _ LM)))
     (fun (b : Point)
-        (hb : OnLine b M /\ distinct_from b (List.cons Point a (List.nil Point))
-            (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
-    have _ _ (distinct_from_single_point_ne b a (List.cons Line L (List.nil Line)) (List.nil Circle) (snd _ _ hb))
+        (hb : OnLine b M /\ distinct_from b [a] [L] []) =>
+    have _ _ (distinct_from_single_point_ne b a [L] [] (snd _ _ hb))
     (fun (ba : b ≠ a) =>
-    have _ _ (distinct_from_avoids_single_line b (List.cons Point a (List.nil Point)) L (List.nil Circle) (snd _ _ hb))
+    have _ _ (distinct_from_avoids_single_line b [a] L [] (snd _ _ hb))
     (fun (b_not_on_L : Not (OnLine b L)) =>
     Exists.elim _ _ _
-        (pt_extension_on_line M b a
-            (List.nil Point)
-            (List.cons Line L (List.nil Line))
-            (List.nil Circle)
+        (pt_extension_on_line M b a [] [L] []
             (fst _ _ hb)
             a_on_M
             ba
             (line_not_mem_singleton_of_ne M L (Ne.symm _ _ _ LM)))
     (fun (c : Point)
-        (hc : (OnLine c M /\ Between b a c) /\ distinct_from c (List.nil Point)
-            (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
-    have _ _ (distinct_from_avoids_single_line c (List.nil Point) L (List.nil Circle) (snd _ _ hc))
+        (hc : (OnLine c M /\ Between b a c) /\ distinct_from c [] [L] []) =>
+    have _ _ (distinct_from_avoids_single_line c [] L [] (snd _ _ hc))
     (fun (c_not_on_L : Not (OnLine c L)) =>
     lines_inter_if_diff_sides b c L M
         (And.intro _ _
@@ -3702,17 +3691,13 @@ Theorem online_ne_of_point_line : ∀ (x : Point) (L : Line),
     Exists Point (fun a => a ≠ x ∧ OnLine a L) :=
     fun (x : Point) (L : Line) (xL : OnLine x L) =>
     Exists.elim _ _ _
-        (pt_on_line L
-            (List.cons Point x (List.nil Point))
-            (List.nil Line)
-            (List.nil Circle)
+        (pt_on_line L [x] [] []
             (List.not_mem_nil Line L))
     (fun (a : Point)
-        (ha : OnLine a L /\ distinct_from a (List.cons Point x (List.nil Point))
-            (List.nil Line) (List.nil Circle)) =>
+        (ha : OnLine a L /\ distinct_from a [x] [] []) =>
     Exists.intro _ _ a
         (And.intro _ _
-            (distinct_from_single_point_ne a x (List.nil Line) (List.nil Circle) (snd _ _ ha))
+            (distinct_from_single_point_ne a x [] [] (snd _ _ ha))
             (fst _ _ ha)))
 
 (* Every line contains two distinct points. *)
@@ -3720,13 +3705,10 @@ Theorem online_ne_of_line : ∀ (L : Line),
     Exists Point (fun a => Exists Point (fun b => a ≠ b ∧ OnLine a L ∧ OnLine b L)) :=
     fun (L : Line) =>
     Exists.elim _ _ _
-        (pt_on_line L
-            (List.nil Point)
-            (List.nil Line)
-            (List.nil Circle)
+        (pt_on_line L [] [] []
             (List.not_mem_nil Line L))
     (fun (a : Point)
-        (ha : OnLine a L /\ distinct_from a (List.nil Point) (List.nil Line) (List.nil Circle)) =>
+        (ha : OnLine a L /\ distinct_from a [] [] []) =>
     Exists.elim _ _ _ (online_ne_of_point_line a L (fst _ _ ha))
     (fun (b : Point) (hb : b ≠ a /\ OnLine b L) =>
     Exists.intro Point
@@ -3754,32 +3736,32 @@ Theorem sameside_of_offline_on_line : ∀ (a x y : Point) (N O : Line),
         (xO : OnLine x O) (y_not_on_O : Not (OnLine y O)) =>
     Exists.elim _ _ _
         (pt_extension_on_line N x y
-            (List.nil Point)
-            (List.cons Line O (List.nil Line))
-            (List.nil Circle)
+            []
+            [O]
+            []
             xN
             yN
             xy
             (line_not_mem_singleton_of_ne N O (ne_line_of_online' y O N yN y_not_on_O)))
     (fun (b1 : Point)
-        (hb1 : (OnLine b1 N /\ Between x y b1) /\ distinct_from b1 (List.nil Point)
-            (List.cons Line O (List.nil Line)) (List.nil Circle)) =>
+        (hb1 : (OnLine b1 N /\ Between x y b1) /\ distinct_from b1 []
+            [O] []) =>
     Exists.elim _ _ _
         (pt_extension_on_line N y x
-            (List.nil Point)
-            (List.cons Line O (List.nil Line))
-            (List.nil Circle)
+            []
+            [O]
+            []
             yN
             xN
             (Ne.symm _ _ _ xy)
             (line_not_mem_singleton_of_ne N O (ne_line_of_online' y O N yN y_not_on_O)))
     (fun (b2 : Point)
-        (hb2 : (OnLine b2 N /\ Between y x b2) /\ distinct_from b2 (List.nil Point)
-            (List.cons Line O (List.nil Line)) (List.nil Circle)) =>
+        (hb2 : (OnLine b2 N /\ Between y x b2) /\ distinct_from b2 []
+            [O] []) =>
     Or.elim _ _ _
         (same_side_or b1 b2 a O
-            (distinct_from_avoids_single_line b1 (List.nil Point) O (List.nil Circle) (snd _ _ hb1))
-            (distinct_from_avoids_single_line b2 (List.nil Point) O (List.nil Circle) (snd _ _ hb2))
+            (distinct_from_avoids_single_line b1 [] O [] (snd _ _ hb1))
+            (distinct_from_avoids_single_line b2 [] O [] (snd _ _ hb2))
             a_not_on_O
             (fun (b1b2 : SameSide b1 b2 O) =>
                 (pasch_online_not_sameside b2 x b1 O
@@ -4826,8 +4808,8 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
 
     (* f is only an auxiliary point chosen fresh from the objects mentioned so far,
        in particular so that f is not on L and can be used to pick a side of L. *)
-    Exists.elim _ _ _ (pt_exists (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle))
-    (fun (f : Point) (hf : distinct_from f (List.nil Point) (List.cons Line L (List.nil Line)) (List.nil Circle)) =>
+    Exists.elim _ _ _ (pt_exists [] [L] [])
+    (fun (f : Point) (hf : distinct_from f [] [L] []) =>
 
     have _ _ (distinct_from_single_line_not_on f L hf)
     (fun (f_not_on_L : Not (OnLine f L)) =>
@@ -5118,10 +5100,10 @@ Theorem square_of_len : ∀ (a b : Point), a ≠ b ->
 #print axioms square_of_len
 
 Theorem square_exists : ∃ (a b c d : Point), square a b c d :=
-    Exists.elim _ _ _ (pt_exists (List.nil _) (List.nil _) (List.nil _)) 
+    Exists.elim _ _ _ (pt_exists [] [] []) 
     (fun (a : Point) _ha =>
 
-    Exists.elim _ _ _ (pt_exists (List.cons _ a (List.nil _)) (List.nil _) (List.nil _))
+    Exists.elim _ _ _ (pt_exists [a] [] [])
     (fun (b : Point) hb =>
     
     have _ _ (distinct_from_single_point_ne _ _ _ _ hb)

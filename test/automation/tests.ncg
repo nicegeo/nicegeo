@@ -53,3 +53,13 @@ destruct_ands h a_rfl outcircle α_rfl.
 destruct_ands outcircle noton notin.
 exact notin.
 Qed.
+
+(* this isn't really an automation test but *)
+Theorem list_test : ∀ (a b c : Point), ∃ d, ¬List.mem _ d [a, b, c]
+Proof.
+intros a b c.
+choose d hd (pt_exists [a, b, c] [] []).
+destruct_ands (distinct_from.elim _ _ _ _ hd) d_not_mem _h2 _h3.
+exists d.
+exact d_not_mem.
+Qed.
