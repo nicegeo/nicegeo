@@ -54,3 +54,35 @@ destruct_ands (distinct_from.elim _ _ _ _ hd) d_not_mem _h2 _h3.
 exists d.
 exact d_not_mem.
 Qed.
+
+(* cases *)
+
+Theorem Or.symm : ∀ (A B : Prop), A ∨ B → B ∨ A
+Proof.
+intros A B or.
+cases or a b.
+right.
+exact a.
+left.
+exact b.
+Qed.
+
+Theorem Or.symm1 : ∀ (A B : Prop), A ∨ B → B ∨ A
+Proof.
+intros A B or.
+cases or h.
+right.
+exact h.
+left.
+exact h.
+Qed.
+
+Theorem em : ∀ (P: Prop), P ∨ ¬P
+Proof.
+intro P.
+cases (excluded_middle P) h.
+left.
+exact h.
+right.
+exact h.
+Qed.
