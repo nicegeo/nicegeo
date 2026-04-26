@@ -12,10 +12,13 @@
     <script nonce="{{nonce}}" type="module" src="{{scriptUri}}"></script>
   </head>
   <body>
-    <main class="container">
-      <h1>NiceGeo Visual Editor</h1>
-      <p id="statusText">Loading…</p>
-      <vscode-button id="pingButton">Ping Extension</vscode-button>
+    <main class="app">
+      <header>
+        <div id="toolbar" role="toolbar" aria-label="Drawing tools"></div>
+      </header>
+      <section class="canvasShell" aria-label="Coordinate plane">
+        <canvas id="planeCanvas"></canvas>
+      </section>
     </main>
   </body>
 </html>

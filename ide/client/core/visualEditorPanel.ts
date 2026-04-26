@@ -2,8 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 
-type VisualEditorMessage = { type: "ready" } | { type: "ping" };
-
 export class VisualEditorPanel {
   private static panel: vscode.WebviewPanel | undefined;
 
@@ -30,21 +28,6 @@ export class VisualEditorPanel {
 
     panel.onDidDispose(() => {
       VisualEditorPanel.panel = undefined;
-    });
-
-    panel.webview.onDidReceiveMessage((msg: VisualEditorMessage) => {
-      if (msg.type === "ready") {
-        void panel.webview.postMessage({
-          type: "set-status",
-          text: "Visual editor connected.",
-        });
-      }
-      if (msg.type === "ping") {
-        void panel.webview.postMessage({
-          type: "set-status",
-          text: "Ping received by extension.",
-        });
-      }
     });
 
     VisualEditorPanel.panel = panel;
