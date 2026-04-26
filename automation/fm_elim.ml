@@ -1,5 +1,8 @@
+open Measure
+
 (** decides (in)equalities on Measures using Fourier–Motzkin elimination (at least that's
     the goal) *)
+
 
 (** produces a proof of type ∀ (a b : Measure), n * a < n * b → a < b where n * a denotes
     a + a + ... + a (n times) *)
@@ -74,3 +77,14 @@ Qed.
   *)
   App (Name "sorry", proof_ty)
 
+type relation =
+  | Lt
+  | Le
+  | Eq
+
+type constrain = {
+  lhs : measure;
+  rhs : measure;
+  r : relation;
+  proof : Simpterm.term; (* proof of lhs (R) rhs *)
+}
