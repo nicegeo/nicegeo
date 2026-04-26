@@ -1,0 +1,27 @@
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+#statusText {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+}

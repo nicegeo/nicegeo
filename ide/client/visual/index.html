@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src {{cspSource}} data:; style-src {{cspSource}}; script-src {{cspSource}} 'nonce-{{nonce}}'; font-src {{cspSource}};"
+    />
+    <title>NiceGeo Visual Editor</title>
+    <link rel="stylesheet" href="{{styleUri}}" />
+    <script nonce="{{nonce}}" type="module" src="{{scriptUri}}"></script>
+  </head>
+  <body>
+    <main class="container">
+      <h1>NiceGeo Visual Editor</h1>
+      <p id="statusText">Loading…</p>
+      <vscode-button id="pingButton">Ping Extension</vscode-button>
+    </main>
+  </body>
+</html>

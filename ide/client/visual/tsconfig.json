@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "module": "ES2022",
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [
+      "vscode-webview"
+    ]
+  },
+  "include": [
+    "index.ts"
+  ]
+}
