@@ -1,3 +1,5 @@
+Import "euclib/euclib.ncg"
+
 (* This file includes some simple proofs about points, lines, and circles to kick off visual proof design  *)
 
 (* ============================================================
@@ -7,19 +9,71 @@
 (*
   I tried to prove three distinct points exist but even that I did incorrectly apparently.
   Oh well, I proved something.
- *)
-  Theorem three_points_with_one_distinct_point_exists:
-    Exists _ (fun (a : Point) =>
-      Exists _ (fun (b : Point) => 
-         Exists _ (fun (c : Point) =>
-           distinct_from c (List.cons _ a (List.cons _ b (List.nil _))) (List.nil _) (List.nil _))))
-  Proof.
-    choose a ha (pt_exists (List.nil _) (List.nil _) (List.nil _)).
-    exists a.
-    choose b hb (pt_exists (List.nil _) (List.nil _) (List.nil _)).
-    exists b.
-    exact (pt_exists _ _ _).
-  Qed.
+*)
+Theorem three_points_with_one_distinct_point_exists:
+  Exists _ (fun (a : Point) =>
+    Exists _ (fun (b : Point) => 
+        Exists _ (fun (c : Point) =>
+          distinct_from c (List.cons _ a (List.cons _ b (List.nil _))) (List.nil _) (List.nil _))))
+Proof.
+  choose a ha (pt_exists (List.nil _) (List.nil _) (List.nil _)).
+  exists a.
+  choose b hb (pt_exists (List.nil _) (List.nil _) (List.nil _)).
+  exists b.
+  exact (pt_exists _ _ _).
+Qed.
+
+Theorem distinct_from_pt_neq : ∀ (a b : Point) (points : List Point) (lines : List Line) (circles : List Circle),
+  (List.mem _ b points) -> distinct_from a points lines circles -> a ≠ b
+Proof.
+  intros a b points lines circles h_mem h_distinct.
+  destruct_ands (distinct_from.elim _ _ _ _ h_distinct) h_point h_line h_circle.
+  intro h_eq.
+  apply h_point.
+  rewrite h_eq.
+  exact h_mem.
+Qed.
+
+Theorem list_mem_head : ∀ (A : Type) (a : A) (list : List A), List.mem _ a (List.cons _ a list)
+Proof.
+  intros A a list.
+  destruct_ands (List.mem_cons _ a a list) h_left h_right.
+  apply h_right.
+  left.
+  reflexivity.
+Qed.
+
+Theorem list_mem_snd : ∀ (A : Type) (a irrelevant : A), List.mem _ a [irrelevant, a]
+Proof.
+  intros A a irrelevant.
+  destruct_ands (List.mem_cons _ a irrelevant [a]) h_left h_right.
+  apply h_right.
+  right.
+  exact (list_mem_head _ a []).
+Qed.
+
+Theorem three_points_distinct : ∃ (a b c : Point), a ≠ b ∧ b ≠ c ∧ a ≠ c
+Proof.
+  choose a ha (pt_exists [] [] []).
+  choose b hb (pt_exists [a] [] []).
+  have h1 (b ≠ a).
+  exact (distinct_from_pt_neq b a [a] [] [] (list_mem_head _ a _) hb).
+  choose c hc (pt_exists [a, b] [] []).
+  have h2 (c ≠ a).
+  exact (distinct_from_pt_neq c a [a, b] [] [] (list_mem_head _ a _) hc).
+  have h3 (c ≠ b).
+  exact (distinct_from_pt_neq c b [a, b] [] [] (list_mem_snd _ b _) hc).
+  exists a.
+  exists b.
+  exists c.
+  split. split.
+  apply (Ne.symm _ _ _).
+  exact h1.
+  apply (Ne.symm _ _ _).
+  exact h3.
+  apply (Ne.symm _ _ _).
+  exact h2.
+Qed.
 
 (* ============================================================
    Lines
