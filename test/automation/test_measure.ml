@@ -75,7 +75,7 @@ let test_summand_order () =
   let summands =
     [ zero; rightangle; l1; l2; l3; ang1; ang2; ang3; ang4; area1; area2; b1; b2 ]
   in
-  let sorted_summands = List.sort (fun s1 s2 -> compare (order s1) (order s2)) summands in
+  let sorted_summands = List.sort compare summands in
   Alcotest.(check (list summand)) "summands are sorted by order" sorted_summands summands
 
 (** Check that the kernel accepts [proof] as having type [goal_ty]. *)
@@ -110,7 +110,7 @@ let test_to_measure () =
   let tm_normal_exp =
     Bvar 1 ++ Bvar 2 ++ Bvar 3 ++ Bvar 4 ++ Bvar 5 ++ Bvar 6 ++ Bvar 7 ++ Bvar 8 ++ Bvar 9
   in
-  let m = to_measure (from_simpterm tm) in
+  let m = to_measure tm in
   let m = match m with Some m -> m | None -> Alcotest.fail "to_measure failed" in
   let tm_normal_got = to_simpterm (measure_to_term m) in
   Alcotest.(check simpterm)
@@ -157,7 +157,7 @@ let test_sort () =
   let tm_normal_exp =
     Bvar 1 ++ Bvar 2 ++ Bvar 3 ++ Bvar 4 ++ Bvar 5 ++ Bvar 6 ++ Bvar 7
   in
-  let m = to_measure (from_simpterm tm) in
+  let m = to_measure tm in
   let m = match m with Some m -> m | None -> Alcotest.fail "to_measure failed" in
   let m = sort m in
   let tm_normal_got = to_simpterm (measure_to_term m) in

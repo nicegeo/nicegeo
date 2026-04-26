@@ -38,10 +38,11 @@ we can keep a "database" of all the ≠ conditions we have for all angles
 thats for later
 *)
 
+(** identified and ordered by default OCaml lexicographic ordering *)
 type summand =
   | Zero
   | RightAngle
-  | Length of (int * int)
+  | Length of int * int
   | Angle of int * int * int
   | Area of int * int * int
   | Bvar of int
@@ -68,21 +69,12 @@ let summand_to_term (s : summand) : Simpterm.term =
   | Area (a, b, c) -> App (App (App (Name "Area", Bvar a), Bvar b), Bvar c)
   | Bvar id -> Bvar id
 
-let order (s : summand) : int * int * int * int =
-  match s with
-  | Zero -> (0, 0, 0, 0)
-  | RightAngle -> (1, 0, 0, 0)
-  | Length (a, b) -> (2, a, b, 0)
-  | Angle (a, b, c) -> (3, a, b, c)
-  | Area (a, b, c) -> (4, a, b, c)
-  | Bvar id -> (5, id, 0, 0)
-
 (** A measure is a sum of summands once the additions have been left-associated. proof is
     the proof that summands_to_term summands = original. *)
 type measure = {
   summands : summand list;
   original : Simpterm.term;
-  proof : Simpterm.term;
+  proof : Simpterm.term;  (** the proof that summands_to_term summands = original *)
 }
 
 let summands_to_term (summands : summand list) : Simpterm.term =
@@ -94,6 +86,12 @@ let summands_to_term (summands : summand list) : Simpterm.term =
   | [ t ] -> t
   | t :: ts -> List.fold_left (fun acc t -> App (App (Name "Add", acc), t)) t ts
 
+let proof_symm (m : measure) : Simpterm.term =
+  let open Simpterm in
+  apps
+    (Name "EqSymm")
+    [ Name "Measure"; summands_to_term m.summands; m.original; m.proof ]
+
 let measure_to_term (m : measure) : Elab.Term.term =
   Simpterm.from_simpterm (summands_to_term m.summands)
 
@@ -101,9 +99,8 @@ let measure_to_term (m : measure) : Elab.Term.term =
 let refl (t : Simpterm.term) : Simpterm.term =
   App (App (Name "Eq.intro", Name "Measure"), t)
 
-let to_measure (tm : Elab.Term.term) : measure option =
+let to_measure (tm : Simpterm.term) : measure option =
   let open Simpterm in
-  let tm = to_simpterm tm in
   (* ill call "right-normal form" when it's Add(something, something that isn't add) *)
   (* returns the right normal form and the proof it equals the argument *)
   let rec right_normal (tm : term) : term * term =
@@ -150,6 +147,10 @@ let to_measure (tm : Elab.Term.term) : measure option =
   in
 
   Option.map (fun summands -> { summands; original = tm; proof }) (get_summands tm_normal)
+
+let measure_of_summands (summands : summand list) : measure =
+  let tm = summands_to_term summands in
+  { summands; original = tm; proof = refl tm }
 
 (** rewrites the first i summands of m as new_summands, where proof is a proof of
     m.summands[0..=i-1] = new_summands *)
@@ -247,11 +248,32 @@ let swap_adjacent (m : measure) (i : int) : measure =
 let sort (m : measure) : measure =
   let rec bubblesort (m : measure) (current : int) (target : int) : measure =
     if current = target then if target = 0 then m else bubblesort m 0 (target - 1)
-    else if
-      order (List.nth m.summands current) > order (List.nth m.summands (current + 1))
-    then bubblesort (swap_adjacent m current) (current + 1) target
+    else if List.nth m.summands current > List.nth m.summands (current + 1) then
+      bubblesort (swap_adjacent m current) (current + 1) target
     else bubblesort m (current + 1) target
   in
   bubblesort m 0 (List.length m.summands - 1)
 
 let normalize_measure (m : measure) : measure = m |> normalize_summands |> sort
+
+(** returns a proof of t1 = t2 if they are definitionally equal after sorting *)
+let sorted_rfl (t1 : summand list) (t2 : summand list) : Simpterm.term =
+  let open Simpterm in
+  let m1 = sort (measure_of_summands t1) in
+  let m2 = sort (measure_of_summands t2) in
+  (* sanity check *)
+  if m1.summands = m2.summands then
+    let tnorm = summands_to_term m1.summands in
+    (* m1.proof : tnorm = t1 *)
+    (* m2.proof : tnorm = t2 *)
+    apps
+      (Name "EqTrans")
+      [
+        Name "Measure";
+        summands_to_term t1;
+        tnorm;
+        summands_to_term t2;
+        proof_symm m1;
+        m2.proof;
+      ]
+  else failwith "sorted_rfl: summand lists are not equal after sorting"

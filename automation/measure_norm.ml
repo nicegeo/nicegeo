@@ -25,7 +25,7 @@ let measure_norm (st : proof_state) : tactic_result =
         let ty = infertype st.elab_ctx g.lctx tm in
         match ty.inner with
         | Name "Measure" -> (
-            match to_measure tm with
+            match to_measure (Simpterm.to_simpterm tm) with
             | Some m ->
                 let goal_id = (List.hd st.open_goals).goal_id in
                 let m_normal = normalize_measure m in
