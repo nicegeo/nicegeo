@@ -56,6 +56,18 @@ have h2 (b + c < b + d).
 exact (LtTrans _ _ _ h1 h2).
 Qed.
 
+Theorem lt_mul_5 : ∀ (a b : Measure), a < b → a + a + a + a + a < b + b + b + b + b :=
+	fun a b h =>
+	add_lt_add (a+a+a+a) (b+b+b+b) a b (
+	add_lt_add (a+a+a) (b+b+b) a b (
+	add_lt_add (a+a) (b+b) a b (
+	add_lt_add (a) (b) a b (
+	h
+	) h
+	) h
+	) h
+	) h
+
 Theorem cancel_five : ∀ (a b : Measure), a + a + a + a + a < b + b + b + b + b → a < b
 Proof.
 intros a b h.
@@ -164,10 +176,27 @@ let cancel_ij (c : constrain) (i : int) (j : int) : constrain =
   let rhs_rewritten = new_rhs @ [ common ] in
   let c = rewrite_rhs c rhs_rewritten (sorted_rfl c.rhs rhs_rewritten) in
 
-  let proof = match c.r with
-  | Eq -> apps (Name "AddCancel") [ summands_to_term new_lhs; summands_to_term new_rhs; summand_to_term common; c.proof ] 
-  | Lt -> apps (Name "LtCancelRight") [ summands_to_term new_lhs; summands_to_term new_rhs; summand_to_term common; c.proof ]
-  | Le -> failwith "not implemented"
+  let proof =
+    match c.r with
+    | Eq ->
+        apps
+          (Name "AddCancel")
+          [
+            summands_to_term new_lhs;
+            summands_to_term new_rhs;
+            summand_to_term common;
+            c.proof;
+          ]
+    | Lt ->
+        apps
+          (Name "LtCancelRight")
+          [
+            summands_to_term new_lhs;
+            summands_to_term new_rhs;
+            summand_to_term common;
+            c.proof;
+          ]
+    | Le -> failwith "not implemented"
   in
 
   let c = { lhs = new_lhs; rhs = new_rhs; r = c.r; proof } in
@@ -226,3 +255,52 @@ let create_constrain (ty : term) (proof : term) : constrain option =
                   (proof_symm rhs_norm)
               in
               Some { r; lhs = lhs_norm.summands; rhs = rhs_norm.summands; proof })))
+
+let coefficient (summands : summand list) (s : summand) : int =
+  List.fold_left
+    (fun acc summand ->
+      if summand = s then acc + 1
+      else acc)
+    0
+    summands
+
+(* euclidean algorithm for gcd *)
+let rec gcd a b =
+  if b = 0 then abs a
+  else gcd b (a mod b)
+
+(* lcm using gcd *)
+let lcm a b =
+  if a = 0 || b = 0 then 0
+  else abs (a * b) / gcd a b
+
+let mult (c : constrain) (n : int) : constrain =
+  let mult_summands summands =
+    List.concat (List.init n (fun _ -> summands))
+  in
+  {
+    r = c.r;
+    lhs = mult_summands c.lhs;
+    rhs = mult_summands c.rhs;
+    proof = App (Name "sorry", constrain_ty c); (* TODO: implement proof *)
+  }
+
+(** returns a new constrain list without atom by rewriting all other constrains using the equality cs[i]
+    LHS of cs[i] must contain atom, atom must not be Zero, all constrains must be simplified *)
+let elim_eq (cs : constrain list) (i : int) (atom : summand) : constrain list =
+  let eq = List.nth cs i in
+  let coef_eq = coefficient eq.lhs atom in
+  if eq.r <> Eq then failwith "elim_eq: cs[i] is not an equality" else (
+    List.map (fun c ->
+        if List.exists (fun s -> s = atom) c.lhs then (
+            (* match coefficients by multiplying up to lcm *)
+            let coef_c = coefficient c.lhs atom in
+            let common_coef = lcm coef_eq coef_c in
+            let eq_mult = mult eq (common_coef / coef_eq) in
+            let c_mult = mult c (common_coef / coef_c) in
+
+        ) else if List.exists (fun s -> s = atom) c.rhs then (
+
+        ) else c)
+    ) (List.take i cs @ List.drop (i + 1) cs)
+  )

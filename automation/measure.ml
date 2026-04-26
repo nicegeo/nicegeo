@@ -99,6 +99,7 @@ let measure_to_term (m : measure) : Elab.Term.term =
 let refl (t : Simpterm.term) : Simpterm.term =
   App (App (Name "Eq.intro", Name "Measure"), t)
 
+(** tm should not have holes and should be fully beta and delta reduced *)
 let to_measure (tm : Simpterm.term) : measure option =
   let open Simpterm in
   (* ill call "right-normal form" when it's Add(something, something that isn't add) *)

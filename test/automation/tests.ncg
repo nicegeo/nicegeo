@@ -1,4 +1,4 @@
-(* theorems used by automation *)
+(* theorems used by automation (todo: move these to a prelude/stdlib) *)
 
 (* rewrite *)
 Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> a = b -> b = a :=
@@ -162,3 +162,37 @@ intros a b c d e f h.
 simp_constrain h1 h.
 exact h1.
 Qed.
+
+Theorem LtAddLeft : ∀ (a b c : Measure), a < b → c + a < c + b
+Proof.
+intros a b c ab.
+rewrite (AddComm c a).
+rewrite (AddComm c b).
+exact (LtAdd _ _ _ ab).
+Qed.
+
+Theorem add_lt_add : ∀ (a b c d : Measure), a < b → c < d → a + c < b + d
+Proof.
+intros a b c d ab cd.
+have h1 (a + c < b + c).
+    apply (LtAdd _ _ _).
+    exact ab.
+have h2 (b + c < b + d).
+    apply (LtAddLeft _ _ _).
+    exact cd.
+exact (LtTrans _ _ _ h1 h2).
+Qed.
+
+Axiom sorry : (P: Prop) → P
+
+Theorem lt_mul_5 : ∀ (a b : Measure), a < b → a + a + a + a + a < b + b + b + b + b :=
+	fun a b h =>
+	add_lt_add (a+a+a+a) (b+b+b+b) a b (
+	add_lt_add (a+a+a) (b+b+b) a b (
+	add_lt_add (a+a) (b+b) a b (
+	add_lt_add (a) (b) a b (
+	h
+	) h
+	) h
+	) h
+	) h

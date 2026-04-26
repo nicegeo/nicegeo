@@ -44,8 +44,8 @@ let test_to_constrain_basic () =
   Alcotest.(check (list summand)) "lhs is correct" [ Bvar 1; Bvar 4 ] c.lhs;
   Alcotest.(check (list summand)) "rhs is correct" [ Bvar 2; Bvar 3; Bvar 4 ] c.rhs;
   let lctx =
-    Elab.Types.{bid = 5; name = None; ty = from_simpterm tm } :: 
-    List.init 4 (fun i ->
+    Elab.Types.{ bid = 5; name = None; ty = from_simpterm tm }
+    :: List.init 4 (fun i ->
         Elab.Types.
           {
             bid = i + 1;
@@ -54,32 +54,42 @@ let test_to_constrain_basic () =
           })
   in
   print_endline ("proof: " ^ Elab.Pretty.term_to_string env (from_simpterm c.proof));
-  let proof_ty = check (fun () -> Elab.Typecheck.infertype env lctx (from_simpterm c.proof)) in
+  let proof_ty =
+    check (fun () -> Elab.Typecheck.infertype env lctx (from_simpterm c.proof))
+  in
   print_endline ("proof type: " ^ Elab.Pretty.term_to_string env proof_ty);
-  let expected_proof_ty = from_simpterm (apps (Name "Eq") [ Name "Measure"; Bvar 1 ++ Bvar 4; Bvar 2 ++ Bvar 3 ++ Bvar 4 ]) in
-  check (fun () -> Elab.Typecheck.unify
-    env
-    ~lctx
-    proof_ty
-    (Hashtbl.create 0)
-    expected_proof_ty
-    (Hashtbl.create 0));
+  let expected_proof_ty =
+    from_simpterm
+      (apps (Name "Eq") [ Name "Measure"; Bvar 1 ++ Bvar 4; Bvar 2 ++ Bvar 3 ++ Bvar 4 ])
+  in
+  check (fun () ->
+      Elab.Typecheck.unify
+        env
+        ~lctx
+        proof_ty
+        (Hashtbl.create 0)
+        expected_proof_ty
+        (Hashtbl.create 0));
 
   let c = simp_constrain c in
   Alcotest.(check (list summand)) "lhs is simplified" [ Bvar 1 ] c.lhs;
   Alcotest.(check (list summand)) "rhs is simplified" [ Bvar 2; Bvar 3 ] c.rhs;
   print_endline ("proof: " ^ Elab.Pretty.term_to_string env (from_simpterm c.proof));
-  let proof_ty = check (fun () -> Elab.Typecheck.infertype env lctx (from_simpterm c.proof)) in
+  let proof_ty =
+    check (fun () -> Elab.Typecheck.infertype env lctx (from_simpterm c.proof))
+  in
   print_endline ("proof type: " ^ Elab.Pretty.term_to_string env proof_ty);
-  let expected_proof_ty = from_simpterm (apps (Name "Eq") [ Name "Measure"; Bvar 1; Bvar 2 ++ Bvar 3]) in
-  check (fun () -> Elab.Typecheck.unify
-    env
-    ~lctx
-    proof_ty
-    (Hashtbl.create 0)
-    expected_proof_ty
-    (Hashtbl.create 0));
-
+  let expected_proof_ty =
+    from_simpterm (apps (Name "Eq") [ Name "Measure"; Bvar 1; Bvar 2 ++ Bvar 3 ])
+  in
+  check (fun () ->
+      Elab.Typecheck.unify
+        env
+        ~lctx
+        proof_ty
+        (Hashtbl.create 0)
+        expected_proof_ty
+        (Hashtbl.create 0));
 
   ()
 
