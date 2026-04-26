@@ -78,17 +78,6 @@ let test_summand_order () =
   let sorted_summands = List.sort compare summands in
   Alcotest.(check (list summand)) "summands are sorted by order" sorted_summands summands
 
-(** Check that the kernel accepts [proof] as having type [goal_ty]. *)
-let kernel_check env proof goal_ty =
-  let open Elab.Typecheck in
-  let proof_k = Elab.Convert.conv_to_kterm (replace_metas env proof) in
-  let ty_k = Elab.Convert.conv_to_kterm (replace_metas env goal_ty) in
-  try
-    Kernel.Interface.add_theorem env.kenv "test" ty_k proof_k;
-    Hashtbl.remove env.kenv.types "test";
-    true
-  with Kernel.Exceptions.TypeError _ -> false
-
 let test_to_measure () =
   (try Elab.Interface.process_file env "env.ncg"
    with Elab.Error.ElabError info ->

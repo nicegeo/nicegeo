@@ -95,6 +95,9 @@ type constrain = {
 let relation_to_term (r : relation) : term =
   match r with Lt -> Name "Lt" | Le -> Name "Le" | Eq -> App (Name "Eq", Name "Measure")
 
+let constrain_ty (c : constrain) : term =
+  App (App (relation_to_term c.r, summands_to_term c.lhs), summands_to_term c.rhs)
+
 (** tm should be of type rel lhs rhs. proof should be type lhs = new_lhs. returns a proof
     of type rel new_lhs rhs *)
 let rewrite_lhs_proof (tm : term) (rel : term) (lhs : term) (rhs : term)
@@ -152,6 +155,24 @@ let sort_sides (c : constrain) : constrain =
   let new_rhs = sort (measure_of_summands c.rhs) in
   rewrite_rhs c new_rhs.summands (proof_symm new_rhs)
 
+let cancel_ij (c : constrain) (i : int) (j : int) : constrain =
+  let common = List.nth c.lhs i in
+  let new_lhs = List.take i c.lhs @ List.drop (i + 1) c.lhs in
+  let lhs_rewritten = new_lhs @ [ common ] in
+  let c = rewrite_lhs c lhs_rewritten (sorted_rfl c.lhs lhs_rewritten) in
+  let new_rhs = List.take j c.rhs @ List.drop (j + 1) c.rhs in
+  let rhs_rewritten = new_rhs @ [ common ] in
+  let c = rewrite_rhs c rhs_rewritten (sorted_rfl c.rhs rhs_rewritten) in
+
+  let proof = match c.r with
+  | Eq -> apps (Name "AddCancel") [ summands_to_term new_lhs; summands_to_term new_rhs; summand_to_term common; c.proof ] 
+  | Lt -> apps (Name "LtCancelRight") [ summands_to_term new_lhs; summands_to_term new_rhs; summand_to_term common; c.proof ]
+  | Le -> failwith "not implemented"
+  in
+
+  let c = { lhs = new_lhs; rhs = new_rhs; r = c.r; proof } in
+  c
+
 (** simplifies a constrain so that there's no like terms on both sides *)
 let simp_constrain (c : constrain) : constrain =
   let c = sort_sides c in
@@ -159,12 +180,7 @@ let simp_constrain (c : constrain) : constrain =
   let rec find_common (c : constrain) (i : int) (j : int) : constrain =
     if i >= List.length c.lhs || j >= List.length c.rhs then c
     else if List.nth c.lhs i = List.nth c.rhs j then
-      let new_lhs = List.take i c.lhs @ List.drop (i + 1) c.lhs in
-      let lhs_rewritten = new_lhs @ [ List.nth c.lhs i ] in
-      let c = rewrite_lhs c lhs_rewritten (sorted_rfl c.lhs lhs_rewritten) in
-      let new_rhs = List.take j c.rhs @ List.drop (j + 1) c.rhs in
-      let rhs_rewritten = new_rhs @ [ List.nth c.rhs j ] in
-      let c = rewrite_rhs c rhs_rewritten (sorted_rfl c.rhs rhs_rewritten) in
+      let c = cancel_ij c i j in
       find_common c i j
     else if List.nth c.lhs i < List.nth c.rhs j then find_common c (i + 1) j
     else find_common c i (j + 1)
@@ -204,7 +220,7 @@ let create_constrain (ty : term) (proof : term) : constrain option =
                 rewrite_rhs_proof
                   proof
                   (relation_to_term r)
-                  lhs
+                  (summands_to_term lhs_norm.summands)
                   rhs
                   rhs_norm.summands
                   (proof_symm rhs_norm)

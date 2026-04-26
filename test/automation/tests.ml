@@ -30,4 +30,5 @@ let () =
       Test_tactic_utils.suite;
       Test_tactic_choose.suite;
       Test_measure.suite;
+      Test_fm_elim.suite;
     ]

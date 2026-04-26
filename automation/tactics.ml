@@ -629,6 +629,29 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
           | Error msg -> fail msg)
       | _ -> fail "destruct_ands: expected a term of type And A B")
 
+
+let simp_constrain (tm : term) (name : string) (st : proof_state) : tactic_result =
+  let open Fm_elim in
+  match current_goal st with
+  | None -> Failure "no goals"
+  | Some g -> (
+      match tm.inner with 
+      | Bvar _ -> (
+          let tm_ty = infertype st.elab_ctx g.lctx tm in
+          let constrain = create_constrain (Simpterm.to_simpterm tm_ty) (Simpterm.to_simpterm tm) in
+          match constrain with
+          | Some c -> (
+              let c_simp = simp_constrain c in
+              let proof = Simpterm.from_simpterm c_simp.proof in
+              (have name (Simpterm.from_simpterm (constrain_ty c_simp)) >> exact proof) st
+          )
+          | None -> Failure "simp_constrain: hypothesis type is not a constrain"
+      )
+      | _ -> (
+        Failure "simp_constrain: expected a hypothesis"
+      )
+  )
+
 let register () =
   register_tactic "try" Register.(tactical try_tac);
   register_tactic "repeat" Register.(tactical repeat);
@@ -735,4 +758,35 @@ let register () =
                  Elab.Error.InvalidTacticParameter "Expected at least one parameter";
              }));
   register_tactic "measure_norm" Register.(nullary Measure_norm.measure_norm);
+  register_tactic "simp_constrain" (function
+    | [ { inner = Name name; _ }; ty ] -> simp_constrain ty name
+    | ty :: _ ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = Some ty.loc; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   "Expected an identifier, but got a term";
+             })
+    | args ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                   lctx = None;
+                 };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   ("Expected exactly two parameters (name and type), but got "
+                   ^ string_of_int (List.length args));
+             }));
   ()

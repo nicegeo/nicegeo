@@ -89,7 +89,7 @@ let summands_to_term (summands : summand list) : Simpterm.term =
 let proof_symm (m : measure) : Simpterm.term =
   let open Simpterm in
   apps
-    (Name "EqSymm")
+    (Name "Eq.symm")
     [ Name "Measure"; summands_to_term m.summands; m.original; m.proof ]
 
 let measure_to_term (m : measure) : Elab.Term.term =

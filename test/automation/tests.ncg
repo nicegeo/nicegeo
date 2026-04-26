@@ -30,6 +30,56 @@ Theorem AddCongLeft : ∀ (x y z : Measure), x = y -> z + x = z + y :=
     fun x y z h =>
     Eq.elim _ x (fun t => z + x = z + t) (Eq.intro _ _) y h
 
+Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
+    fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
+        LtAntisymm b b
+            (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
+            (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
+
+Theorem AddCancel : ∀ (x y z : Measure), x + z = y + z -> x = y :=
+    fun x y z h =>
+    Or.elim _ _ _ (LtTricot x y)
+    (fun (xly : x < y) =>
+        False.elim _ (LtNe _ _ (LtAdd x y z xly) h))
+    (fun rest =>
+    Or.elim _ _ _ rest
+    (fun (ylx: y < x) =>
+        False.elim _ (LtNe _ _ (LtAdd y x z ylx) (Eq.symm _ _ _ h)))
+    (fun (eqxy : x = y) => eqxy))
+
+Theorem LtCancelLeft : ∀ (x y z : Measure), z + x < z + y -> x < y :=
+    fun (x y z : Measure) (h : z + x < z + y) =>
+    Or.elim _ _ _ (LtTricot x y)
+        (fun (x_lt_y : x < y) => x_lt_y)
+        (fun (rest : y < x \/ x = y) =>
+        Or.elim _ _ _ rest
+            (fun (y_lt_x : y < x) =>
+                False.elim _ (LtAntisymm _ _ h
+                    (Eq.elim _ _ (fun t => t < z + x)
+                        (Eq.elim _ _ (fun t => y + z < t)
+                            (LtAdd y x z y_lt_x)
+                            _
+                            (AddComm x z))
+                        _
+                        (AddComm y z))))
+            (fun (x_eq_y : x = y) =>
+                False.elim _ (LtIrrefl (z + y)
+                    (Eq.elim _ _ (fun t => t < z + y)
+                        h
+                        _
+                        (AddCongLeft x y z x_eq_y)))))
+
+Theorem LtCancelRight : ∀ (x y z : Measure), x + z < y + z -> x < y :=
+    fun (x y z : Measure) (h : x + z < y + z) =>
+    LtCancelLeft x y z
+        (Eq.elim _ _ (fun t => t < z + y)
+            (Eq.elim _ _ (fun t => x + z < t)
+                h
+                _
+                (AddComm y z))
+            _
+            (AddComm x z))
+
 (* have tests *)
 
 (* have with unspecified type inferred from proof *)
@@ -101,4 +151,14 @@ Proof.
 intros a b.
 measure_norm.
 reflexivity.
+Qed.
+
+(* simp_constrain tests *)
+
+(* sooooo beautiful you can't tell me this isn't amazing *)
+Theorem test7 : ∀ (a b c d e f : Measure), a + (b + a + c) + (d + b) + e < d + (b + b + f) + (a + (c + a)) → e < f
+Proof.
+intros a b c d e f h.
+simp_constrain h1 h.
+exact h1.
 Qed.
