@@ -184,15 +184,25 @@ let congr (m : measure) (i : int) (new_summands : summand list) (proof : Simpter
     proof = congr_proof;
   }
 
-(** rewrites the i-th summand of m as new_summand, where proof is a proof of
-    m.summands[i] = new_summand *)
-let rewrite_i (m : measure) (i : int) (new_summand : summand) (proof : Simpterm.term) : measure =
+(** rewrites the i-th summand of m as new_summand, where proof is a proof of m.summands[i]
+    = new_summand *)
+let rewrite_i (m : measure) (i : int) (new_summand : summand) (proof : Simpterm.term) :
+    measure =
   let open Simpterm in
-  let a_list = (List.take i m.summands) in
-  let new_sublist = a_list @ [new_summand] in
-  let bigproof = if i = 0 then proof
-  else
-    apps (Name "AddCongLeft") [summand_to_term (List.nth m.summands i); summand_to_term new_summand; summands_to_term a_list; proof] in
+  let a_list = List.take i m.summands in
+  let new_sublist = a_list @ [ new_summand ] in
+  let bigproof =
+    if i = 0 then proof
+    else
+      apps
+        (Name "AddCongLeft")
+        [
+          summand_to_term (List.nth m.summands i);
+          summand_to_term new_summand;
+          summands_to_term a_list;
+          proof;
+        ]
+  in
   congr m (i + 1) new_sublist bigproof
 
 let normalize_summand (m : measure) (i : int) : measure =
@@ -209,30 +219,39 @@ let normalize_summands (m : measure) : measure =
     m
     (List.init (List.length m.summands) (fun i -> i))
 
-(** swaps summand i and i+1 in a measure updating the proof. i and i+1 must be valid indices *)
+(** swaps summand i and i+1 in a measure updating the proof. i and i+1 must be valid
+    indices *)
 let swap_adjacent (m : measure) (i : int) : measure =
   let open Simpterm in
-  let a_list = (List.take i m.summands) in
-  let new_sublist = a_list @ [List.nth m.summands (i + 1); List.nth m.summands i] in
-  let proof = if i = 0 then
-    apps (Name "AddComm") [summand_to_term (List.nth m.summands i); summand_to_term (List.nth m.summands (i + 1))]
-  else
-    apps (Name "AddRightComm") [summands_to_term a_list; summand_to_term (List.nth m.summands i); summand_to_term (List.nth m.summands (i + 1))]
+  let a_list = List.take i m.summands in
+  let new_sublist = a_list @ [ List.nth m.summands (i + 1); List.nth m.summands i ] in
+  let proof =
+    if i = 0 then
+      apps
+        (Name "AddComm")
+        [
+          summand_to_term (List.nth m.summands i);
+          summand_to_term (List.nth m.summands (i + 1));
+        ]
+    else
+      apps
+        (Name "AddRightComm")
+        [
+          summands_to_term a_list;
+          summand_to_term (List.nth m.summands i);
+          summand_to_term (List.nth m.summands (i + 1));
+        ]
   in
   congr m (i + 2) new_sublist proof
 
 let sort (m : measure) : measure =
   let rec bubblesort (m : measure) (current : int) (target : int) : measure =
-    if current = target then (
-      if target = 0 then m
-      else bubblesort m 0 (target - 1)
-    ) else if order (List.nth m.summands current) > order (List.nth m.summands (current + 1)) then
-      bubblesort (swap_adjacent m current) (current + 1) target
-    else
-      bubblesort m (current + 1) target
+    if current = target then if target = 0 then m else bubblesort m 0 (target - 1)
+    else if
+      order (List.nth m.summands current) > order (List.nth m.summands (current + 1))
+    then bubblesort (swap_adjacent m current) (current + 1) target
+    else bubblesort m (current + 1) target
   in
   bubblesort m 0 (List.length m.summands - 1)
 
-let normalize_measure (m : measure) : measure =
-  m |> normalize_summands |> sort
-
+let normalize_measure (m : measure) : measure = m |> normalize_summands |> sort

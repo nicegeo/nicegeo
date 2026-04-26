@@ -110,6 +110,50 @@ Theorem snd : (A: Prop) -> (B: Prop) -> A /\ B -> B :=
 Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
     fun M P p f => f p
 
+
+Axiom sorry : (P: Prop) → P
+
+Theorem LtAddLeft : ∀ (a b c : Measure), a < b → c + a < c + b
+Proof.
+intros a b c ab.
+rewrite (AddComm c a).
+rewrite (AddComm c b).
+exact (LtAdd _ _ _ ab).
+Qed.
+
+Theorem add_lt_add : ∀ (a b c d : Measure), a < b → c < d → a + c < b + d
+Proof.
+intros a b c d ab cd.
+have h1 (a + c < b + c).
+    apply (LtAdd _ _ _).
+    exact ab.
+have h2 (b + c < b + d).
+    apply (LtAddLeft _ _ _).
+    exact cd.
+exact (LtTrans _ _ _ h1 h2).
+Qed.
+
+Theorem cancel_five : ∀ (a b : Measure), a + a + a + a + a < b + b + b + b + b → a < b
+Proof.
+intros a b h.
+cases (LtTricot a b) hab.
+exact hab.
+
+cases hab hab1.
+apply (False.elim _).
+have hab2 _. exact (add_lt_add _ _ _ _ hab1 hab1).
+have hab3 _. exact (add_lt_add _ _ _ _ hab2 hab1).
+have hab4 _. exact (add_lt_add _ _ _ _ hab3 hab1).
+have hab5 _. exact (add_lt_add _ _ _ _ hab4 hab1).
+exact (LtAntisymm _ _ hab5 h).
+
+apply (False.elim _).
+apply (LtNe _ _ h).
+rewrite hab1.
+reflexivity.
+Qed.
+
+
 (* A point c lies on a circle iff its distance to the center equals the radius:
    Length a c = Length a b ↔ OnCircle c d, given a is the center and b is on d. *)
 Theorem on_circle_iff_length_eq : ∀ (a b c : Point) (d : Circle),

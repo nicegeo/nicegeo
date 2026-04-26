@@ -6,7 +6,10 @@ let env = Elab.Interface.create ()
 let summand : summand Alcotest.testable =
   Alcotest.testable
     (fun fmt t ->
-      Format.fprintf fmt "%s" (Elab.Pretty.term_to_string env (Simpterm.from_simpterm (summand_to_term t))))
+      Format.fprintf
+        fmt
+        "%s"
+        (Elab.Pretty.term_to_string env (Simpterm.from_simpterm (summand_to_term t))))
     (fun t1 t2 -> t1 = t2)
 
 let simpterm : Simpterm.term Alcotest.testable =
@@ -150,7 +153,7 @@ let test_sort () =
   let open Simpterm in
   let add t1 t2 = App (App (Name "Add", t1), t2) in
   let ( ++ ) = add in
-  let tm = Bvar 6 ++ Bvar 3 ++ ((Bvar 4 ++ (Bvar 7 ++ Bvar 5)) ++ Bvar 1) ++ Bvar 2 in
+  let tm = Bvar 6 ++ Bvar 3 ++ (Bvar 4 ++ (Bvar 7 ++ Bvar 5) ++ Bvar 1) ++ Bvar 2 in
   let tm_normal_exp =
     Bvar 1 ++ Bvar 2 ++ Bvar 3 ++ Bvar 4 ++ Bvar 5 ++ Bvar 6 ++ Bvar 7
   in
@@ -171,7 +174,9 @@ let test_sort () =
         })
   in
   print_endline ("proof: " ^ Elab.Pretty.term_to_string env (from_simpterm m.proof));
-  let proof_ty = check (fun () -> Elab.Typecheck.infertype env lctx (Simpterm.from_simpterm m.proof)) in
+  let proof_ty =
+    check (fun () -> Elab.Typecheck.infertype env lctx (Simpterm.from_simpterm m.proof))
+  in
   let expected_proof_ty =
     from_simpterm (apps (Name "Eq") [ Name "Measure"; tm_normal_got; tm ])
   in
@@ -183,7 +188,6 @@ let test_sort () =
     expected_proof_ty
     (Hashtbl.create 0);
   ()
-
 
 let suite =
   let open Alcotest in
