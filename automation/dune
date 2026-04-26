@@ -1,4 +1,5 @@
 (library
  (name automation)
  (public_name nicegeo.automation)
- (libraries kernel elab))
+ (modules tactics smt)
+ (libraries kernel elab z3))

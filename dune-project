@@ -24,6 +24,7 @@
  (depends
   (ocaml (= "5.4.1"))
   (sedlex (= "3.7"))
+  (z3 (= "4.15.2"))
   (yojson (= "3.0.0"))
   (ocamlformat (and (= "0.28.1") :with-test))
   (alcotest (and (= "1.9.1") :with-test))
