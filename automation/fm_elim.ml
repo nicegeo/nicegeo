@@ -66,7 +66,6 @@ let eq_mul (n : int) : term =
   let hbid = Elab.Term.gen_binder_id () in
 
   let na = times n (Bvar abid) in
-  let nb = times n (Bvar bbid) in
 
   let motive_bid = Elab.Term.gen_binder_id () in
   (* n*a = n*x *)
@@ -89,7 +88,7 @@ let eq_mul (n : int) : term =
               App (App (App (Name "Eq", Name "Measure"), Bvar abid), Bvar bbid),
               apps
                 (Name "Eq.elim")
-                [ Name "Measure"; Bvar abid; motive; refl na; nb; Bvar hbid ] ) ) )
+                [ Name "Measure"; Bvar abid; motive; refl na; Bvar bbid; Bvar hbid ] ) ) )
 
 (** produces a proof of type ∀ (a b : Measure), n * a < n * b → a < b where n * a denotes
     a + a + ... + a (n times) *)
@@ -385,7 +384,7 @@ let match_sides_to_cancel (c1 : constrain) (c1right : bool) (c2 : constrain)
   let final_c1 = add_both_sides c1_mult c1_diff in
   let final_c2 = add_both_sides c2_mult c2_diff in
 
-  (final_c1, final_c2)
+  (sort_sides final_c1, sort_sides final_c2)
 
 (** returns a new constrain list without atom by rewriting all other constrains using the
     equality cs[i]. cs[i] must contain atom, atom must not be Zero, all constrains must be
