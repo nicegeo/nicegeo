@@ -629,16 +629,47 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
           | Error msg -> fail msg)
       | _ -> fail "destruct_ands: expected a term of type And A B")
 
-(** The [distinct_points] tactic takes a [distinct_from] proof as an argument, and from
+(* Infer the type of the distinct_from hypothesis for any of the distinct tactics *)
+let infer_distinct (h : term) (g : goal) (st : proof_state) :
+    term option * term option * term option * term option =
+  let pt = gen_hole_id () in
+  let pts = gen_hole_id () in
+  let ls = gen_hole_id () in
+  let cs = gen_hole_id () in
+  let expected =
+    mk_app_multiarg
+      (mk_name "distinct_from")
+      [ mk_hole pt; mk_hole pts; mk_hole ls; mk_hole cs ]
+  in
+  create_metas st.elab_ctx h (List.map (fun h -> h.bid) g.lctx);
+  let h_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx h in
+  let ctx = ctx_with_new_holes g st.elab_ctx expected in
+  unify ctx h_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
+  match
+    ( Hashtbl.find_opt ctx.metas pt,
+      Hashtbl.find_opt ctx.metas pts,
+      Hashtbl.find_opt ctx.metas ls,
+      Hashtbl.find_opt ctx.metas cs )
+  with
+  | Some mvar1, Some mvar2, Some mvar3, Some mvar4 ->
+      (mvar1.sol, mvar2.sol, mvar3.sol, mvar4.sol)
+  | _ -> failwith "internal nicegeo programming error: created hole does not exist!"
+
+(* The [distinct_points] tactic takes a [distinct_from] proof as an argument, and from
     it proves an inequality between points and adds it to the hypotheses, asking
     for the [List.mem] proof obligation for now (future versions will probably
     try to prove this automatically when possible). *)
 let distinct_points (name : string) (h : term) (st : proof_state) =
-  
-  ignore name;
-  ignore h;
-  ignore st;
-  fail "not yet implemented"
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g ->
+      let pt, pts, ls, cs = infer_distinct h g st in
+      ignore pt;
+      ignore pts;
+      ignore ls;
+      ignore cs;
+      ignore name;
+      fail "not yet implemented"
 
 let register () =
   register_tactic "try" Register.(tactical try_tac);
