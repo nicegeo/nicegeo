@@ -92,10 +92,11 @@ let refl (t : Simpterm.term) : Simpterm.term =
 
 let proof_symm (m : measure) : Simpterm.term =
   let open Simpterm in
-  if summands_to_term m.summands = m.original then refl m.original else
-  apps
-    (Name "Eq.symm")
-    [ Name "Measure"; summands_to_term m.summands; m.original; m.proof ]
+  if summands_to_term m.summands = m.original then refl m.original
+  else
+    apps
+      (Name "Eq.symm")
+      [ Name "Measure"; summands_to_term m.summands; m.original; m.proof ]
 
 let measure_to_term (m : measure) : Elab.Term.term =
   Simpterm.from_simpterm (summands_to_term m.summands)

@@ -167,11 +167,9 @@ let rewrite_lhs_proof (tm : term) (rel : term) (lhs : term) (rhs : term)
   let new_lhs_tm = summands_to_term new_lhs in
   if new_lhs_tm = lhs then tm
   else
-  let bid = Elab.Term.gen_binder_id () in
-  let motive = Fun (None, bid, Name "Measure", App (App (rel, Bvar bid), rhs)) in
-  apps
-    (Name "Eq.elim")
-    [ Name "Measure"; lhs; motive; tm; new_lhs_tm; proof ]
+    let bid = Elab.Term.gen_binder_id () in
+    let motive = Fun (None, bid, Name "Measure", App (App (rel, Bvar bid), rhs)) in
+    apps (Name "Eq.elim") [ Name "Measure"; lhs; motive; tm; new_lhs_tm; proof ]
 
 (** proof should be type c.lhs = new_lhs *)
 let rewrite_lhs (c : constrain) (new_lhs : summand list) (proof : term) : constrain =
@@ -195,11 +193,9 @@ let rewrite_rhs_proof (tm : term) (rel : term) (lhs : term) (rhs : term)
   let new_rhs_tm = summands_to_term new_rhs in
   if new_rhs_tm = rhs then tm
   else
-  let bid = Elab.Term.gen_binder_id () in
-  let motive = Fun (None, bid, Name "Measure", App (App (rel, lhs), Bvar bid)) in
-  apps
-    (Name "Eq.elim")
-    [ Name "Measure"; rhs; motive; tm; new_rhs_tm; proof ]
+    let bid = Elab.Term.gen_binder_id () in
+    let motive = Fun (None, bid, Name "Measure", App (App (rel, lhs), Bvar bid)) in
+    apps (Name "Eq.elim") [ Name "Measure"; rhs; motive; tm; new_rhs_tm; proof ]
 
 (** proof should be type c.rhs = new_rhs *)
 let rewrite_rhs (c : constrain) (new_rhs : summand list) (proof : term) : constrain =
@@ -368,18 +364,19 @@ let lcm a b = if a = 0 || b = 0 then 0 else abs (a * b) / gcd a b
 (** multiplies a constrain by a scalar (so a < b becomes n * a < n * b up to
     normalization) *)
 let mult_constrain (c : constrain) (n : int) : constrain =
-  if n = 1 then c else
-  let lhs_tm = summands_to_term c.lhs in
-  let rhs_tm = summands_to_term c.rhs in
-  let nlhs = times n lhs_tm in
-  let nrhs = times n rhs_tm in
-  let proof =
-    match c.r with
-    | Eq -> apps (eq_mul n) [ lhs_tm; rhs_tm; c.proof ]
-    | Lt -> apps (lt_mul n) [ lhs_tm; rhs_tm; c.proof ]
-    | Le -> apps (le_mul n) [ lhs_tm; rhs_tm; c.proof ]
-  in
-  create_constrain (App (App (relation_to_term c.r, nlhs), nrhs)) proof |> Option.get
+  if n = 1 then c
+  else
+    let lhs_tm = summands_to_term c.lhs in
+    let rhs_tm = summands_to_term c.rhs in
+    let nlhs = times n lhs_tm in
+    let nrhs = times n rhs_tm in
+    let proof =
+      match c.r with
+      | Eq -> apps (eq_mul n) [ lhs_tm; rhs_tm; c.proof ]
+      | Lt -> apps (lt_mul n) [ lhs_tm; rhs_tm; c.proof ]
+      | Le -> apps (le_mul n) [ lhs_tm; rhs_tm; c.proof ]
+    in
+    create_constrain (App (App (relation_to_term c.r, nlhs), nrhs)) proof |> Option.get
 
 (** returns (a, b) such that s1 + a = s2 + b. may return empty lists *)
 let level_sums (s1 : summand list) (s2 : summand list) : summand list * summand list =

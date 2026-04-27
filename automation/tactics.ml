@@ -735,7 +735,7 @@ let rec metric (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> Failure "No goals remaining."
   | Some g -> (
-      (* special-case a=b by splitting on a < b and b < a *)
+      (* special-case goal a=b by splitting on a < b and b < a *)
       match destruct_measure_eq st g with
       | Some (a, b) -> (
           let st = run_tactic st (apply (mk_app (mk_app (mk_name "EqByContra") a) b)) in
@@ -768,12 +768,12 @@ let rec metric (st : proof_state) : tactic_result =
           match try_prove_false st.elab_ctx (List.hd st.open_goals).lctx cs with
           | Some proof ->
               let proof = Simpterm.from_simpterm proof in
-              print_endline
+              (* print_endline
                 ("proof: "
                 ^ Elab.Pretty.term_to_string
                     st.elab_ctx
                     ~lctx:(List.hd st.open_goals).lctx
-                    proof);
+                    proof); *)
               exact proof st
           | None -> Failure "metric: failed to find a contradiction in the context"))
 
