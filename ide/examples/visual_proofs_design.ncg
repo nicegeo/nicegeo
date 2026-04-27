@@ -43,13 +43,14 @@ Proof.
   reflexivity.
 Qed.
 
-Theorem list_mem_snd : ∀ (A : Type) (a irrelevant : A), List.mem _ a [irrelevant, a]
+Theorem list_mem_tail : ∀ (A : Type) (a : A) (b : A) (tl : List A),
+  List.mem _ a tl -> List.mem _ a (List.cons _ b tl)
 Proof.
-  intros A a irrelevant.
-  destruct_ands (List.mem_cons _ a irrelevant [a]) h_left h_right.
+  intros A a b tl H.
+  destruct_ands (List.mem_cons _ a b tl) h_left h_right.
   apply h_right.
   right.
-  exact (list_mem_head _ a []).
+  exact H.
 Qed.
 
 Theorem three_points_distinct : ∃ (a b c : Point), a ≠ b ∧ b ≠ c ∧ a ≠ c
@@ -62,7 +63,9 @@ Proof.
   have h2 (c ≠ a).
   exact (distinct_from_pt_neq c a [a, b] [] [] (list_mem_head _ a _) hc).
   have h3 (c ≠ b).
-  exact (distinct_from_pt_neq c b [a, b] [] [] (list_mem_snd _ b _) hc).
+  apply (distinct_from_pt_neq c b [a, b] [] []).
+    apply (list_mem_tail Point b _ [b]). apply (list_mem_head _ b _).
+    apply hc.
   exists a.
   exists b.
   exists c.
