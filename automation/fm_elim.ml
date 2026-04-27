@@ -4,18 +4,100 @@ open Measure
 (** decides (in)equalities on Measures using Fourier–Motzkin elimination (at least that's
     the goal) *)
 
+let times (n : int) (m : term) : term =
+  List.fold_left
+    (fun acc _ -> App (App (Name "Add", acc), m))
+    m
+    (List.init (n - 1) Fun.id)
+
+(** produces a proof of type ∀ (a b : Measure), a < b → n * a < n * b where n * a denotes
+    a + a + ... + a (n times) *)
+let lt_mul (n : int) : term =
+  let abid = Elab.Term.gen_binder_id () in
+  let bbid = Elab.Term.gen_binder_id () in
+  let hbid = Elab.Term.gen_binder_id () in
+
+  let na = times n (Bvar abid) in
+  let nb = times n (Bvar bbid) in
+  let _proof_ty =
+    Arrow
+      ( Some "a",
+        abid,
+        Name "Measure",
+        Arrow
+          ( Some "b",
+            bbid,
+            Name "Measure",
+            Arrow
+              ( None,
+                hbid,
+                App (App (Name "Lt", Bvar abid), Bvar bbid),
+                App (App (Name "Lt", na), nb) ) ) )
+  in
+
+  (* creates a proof of n * a < n * b *)
+  let rec build_proof (n : int) : term =
+    if n = 1 then Bvar hbid
+    else
+      let smaller_proof = build_proof (n - 1) in
+      let an1 = times (n - 1) (Bvar abid) in
+      let bn1 = times (n - 1) (Bvar bbid) in
+      apps
+        (Name "add_lt_add")
+        [ an1; bn1; Bvar abid; Bvar bbid; smaller_proof; Bvar hbid ]
+  in
+
+  Fun
+    ( Some "a",
+      abid,
+      Name "Measure",
+      Fun
+        ( Some "b",
+          bbid,
+          Name "Measure",
+          Fun (None, hbid, App (App (Name "Lt", Bvar abid), Bvar bbid), build_proof n) )
+    )
+
+(** produces a proof of type ∀ (a b : Measure), a = b → n * a = n * b where n * a denotes
+    a + a + ... + a (n times) *)
+let eq_mul (n : int) : term =
+  let abid = Elab.Term.gen_binder_id () in
+  let bbid = Elab.Term.gen_binder_id () in
+  let hbid = Elab.Term.gen_binder_id () in
+
+  let na = times n (Bvar abid) in
+  let nb = times n (Bvar bbid) in
+
+  let motive_bid = Elab.Term.gen_binder_id () in
+  (* n*a = n*x *)
+  let motive_body =
+    App (App (App (Name "Eq", Name "Measure"), na), times n (Bvar motive_bid))
+  in
+  let motive = Fun (None, motive_bid, Name "Measure", motive_body) in
+
+  Fun
+    ( Some "a",
+      abid,
+      Name "Measure",
+      Fun
+        ( Some "b",
+          bbid,
+          Name "Measure",
+          Fun
+            ( None,
+              hbid,
+              App (App (App (Name "Eq", Name "Measure"), Bvar abid), Bvar bbid),
+              apps
+                (Name "Eq.elim")
+                [ Name "Measure"; Bvar abid; motive; refl na; nb; Bvar hbid ] ) ) )
+
 (** produces a proof of type ∀ (a b : Measure), n * a < n * b → a < b where n * a denotes
     a + a + ... + a (n times) *)
 let lt_cancel_mul (n : int) : term =
   let abid = Elab.Term.gen_binder_id () in
   let bbid = Elab.Term.gen_binder_id () in
   let hbid = Elab.Term.gen_binder_id () in
-  let times (n : int) (m : term) : term =
-    List.fold_left
-      (fun acc _ -> App (App (Name "Add", acc), m))
-      m
-      (List.init (n - 1) Fun.id)
-  in
+
   let na = times n (Bvar abid) in
   let nb = times n (Bvar bbid) in
   let proof_ty =
@@ -35,38 +117,6 @@ let lt_cancel_mul (n : int) : term =
   in
   (* TODO: Implement the actual proof *)
   (* tactic proof for n=5:
-  
-Theorem LtAddLeft : ∀ (a b c : Measure), a < b → c + a < c + b
-Proof.
-intros a b c ab.
-rewrite (AddComm c a).
-rewrite (AddComm c b).
-exact (LtAdd _ _ _ ab).
-Qed.
-
-Theorem add_lt_add : ∀ (a b c d : Measure), a < b → c < d → a + c < b + d
-Proof.
-intros a b c d ab cd.
-have h1 (a + c < b + c).
-    apply (LtAdd _ _ _).
-    exact ab.
-have h2 (b + c < b + d).
-    apply (LtAddLeft _ _ _).
-    exact cd.
-exact (LtTrans _ _ _ h1 h2).
-Qed.
-
-Theorem lt_mul_5 : ∀ (a b : Measure), a < b → a + a + a + a + a < b + b + b + b + b :=
-	fun a b h =>
-	add_lt_add (a+a+a+a) (b+b+b+b) a b (
-	add_lt_add (a+a+a) (b+b+b) a b (
-	add_lt_add (a+a) (b+b) a b (
-	add_lt_add (a) (b) a b (
-	h
-	) h
-	) h
-	) h
-	) h
 
 Theorem cancel_five : ∀ (a b : Measure), a + a + a + a + a < b + b + b + b + b → a < b
 Proof.
@@ -216,6 +266,26 @@ let simp_constrain (c : constrain) : constrain =
   in
   find_common c 0 0
 
+let add_one_both_sides (c : constrain) (s : summand) : constrain =
+  let new_lhs = c.lhs @ [ s ] in
+  let new_rhs = c.rhs @ [ s ] in
+  let proof =
+    match c.r with
+    | Eq ->
+        apps
+          (Name "AddCongRight")
+          [ summands_to_term c.lhs; summands_to_term c.rhs; summand_to_term s; c.proof ]
+    | Lt ->
+        apps
+          (Name "LtAdd")
+          [ summands_to_term c.lhs; summands_to_term c.rhs; summand_to_term s; c.proof ]
+    | Le -> failwith "not implemented"
+  in
+  { lhs = new_lhs; rhs = new_rhs; r = c.r; proof }
+
+let add_both_sides (c : constrain) (ss : summand list) : constrain =
+  List.fold_left add_one_both_sides c ss
+
 let destruct_relation_ty (tm : term) : (relation * term * term) option =
   match tm with
   | App (App (rel, lhs), rhs) -> (
@@ -257,50 +327,99 @@ let create_constrain (ty : term) (proof : term) : constrain option =
               Some { r; lhs = lhs_norm.summands; rhs = rhs_norm.summands; proof })))
 
 let coefficient (summands : summand list) (s : summand) : int =
-  List.fold_left
-    (fun acc summand ->
-      if summand = s then acc + 1
-      else acc)
-    0
-    summands
+  List.fold_left (fun acc summand -> if summand = s then acc + 1 else acc) 0 summands
 
 (* euclidean algorithm for gcd *)
-let rec gcd a b =
-  if b = 0 then abs a
-  else gcd b (a mod b)
+let rec gcd a b = if b = 0 then abs a else gcd b (a mod b)
 
 (* lcm using gcd *)
-let lcm a b =
-  if a = 0 || b = 0 then 0
-  else abs (a * b) / gcd a b
+let lcm a b = if a = 0 || b = 0 then 0 else abs (a * b) / gcd a b
 
-let mult (c : constrain) (n : int) : constrain =
-  let mult_summands summands =
-    List.concat (List.init n (fun _ -> summands))
+(** multiplies a constrain by a scalar (so a < b becomes n * a < n * b up to
+    normalization) *)
+let mult_constrain (c : constrain) (n : int) : constrain =
+  let lhs_tm = summands_to_term c.lhs in
+  let rhs_tm = summands_to_term c.rhs in
+  let nlhs = times n lhs_tm in
+  let nrhs = times n rhs_tm in
+  let proof =
+    match c.r with
+    | Eq -> apps (eq_mul n) [ lhs_tm; rhs_tm; c.proof ]
+    | Lt -> apps (lt_mul n) [ lhs_tm; rhs_tm; c.proof ]
+    | Le -> failwith "mult_constrain Le not implemented"
   in
-  {
-    r = c.r;
-    lhs = mult_summands c.lhs;
-    rhs = mult_summands c.rhs;
-    proof = App (Name "sorry", constrain_ty c); (* TODO: implement proof *)
-  }
+  create_constrain (App (App (relation_to_term c.r, nlhs), nrhs)) proof |> Option.get
 
-(** returns a new constrain list without atom by rewriting all other constrains using the equality cs[i]
-    LHS of cs[i] must contain atom, atom must not be Zero, all constrains must be simplified *)
+(** returns (a, b) such that s1 + a = s2 + b *)
+let level_sums (s1 : summand list) (s2 : summand list) : summand list * summand list =
+  let rec go s1 s2 =
+    match s1 with
+    | [] -> (s2, [])
+    | s :: s1' -> (
+        match List.find_index (fun x -> x = s) s2 with
+        | None ->
+            let a, b = go s1' s2 in
+            (a, s :: b)
+        | Some idx ->
+            let s2' = List.take idx s2 @ List.drop (idx + 1) s2 in
+            go s1' s2')
+  in
+  go s1 s2
+
+(** returns (c1', c2') where c1'.c1right = c2'.c2right and the other sides do not contain
+    atom by multiplying c1 and c2 to match their coefficients of atom and adding the
+    missing terms from the other side. precondition: c1 and c2 are simplified, c1.c1right
+    and c2.c2right are the sides to match that contain atom *)
+let match_sides_to_cancel (c1 : constrain) (c1right : bool) (c2 : constrain)
+    (c2right : bool) (atom : summand) : constrain * constrain =
+  let side c right = if right then c.rhs else c.lhs in
+  (* match coefficients by multiplying up to lcm *)
+  let coef_c1 = coefficient (side c1 c1right) atom in
+  let coef_c2 = coefficient (side c2 c2right) atom in
+  let common_coef = lcm coef_c1 coef_c2 in
+  let c1_mult = mult_constrain c1 (common_coef / coef_c1) in
+  let c2_mult = mult_constrain c2 (common_coef / coef_c2) in
+
+  (* find union of the middle terms *)
+  let c1_diff, c2_diff = level_sums (side c1_mult c1right) (side c2_mult c2right) in
+  let final_c1 = add_both_sides c1_mult c1_diff in
+  let final_c2 = add_both_sides c2_mult c2_diff in
+
+  (final_c1, final_c2)
+
+(** returns a new constrain list without atom by rewriting all other constrains using the
+    equality cs[i]. cs[i] must contain atom, atom must not be Zero, all constrains must be
+    simplified *)
 let elim_eq (cs : constrain list) (i : int) (atom : summand) : constrain list =
   let eq = List.nth cs i in
-  let coef_eq = coefficient eq.lhs atom in
-  if eq.r <> Eq then failwith "elim_eq: cs[i] is not an equality" else (
-    List.map (fun c ->
-        if List.exists (fun s -> s = atom) c.lhs then (
-            (* match coefficients by multiplying up to lcm *)
-            let coef_c = coefficient c.lhs atom in
-            let common_coef = lcm coef_eq coef_c in
-            let eq_mult = mult eq (common_coef / coef_eq) in
-            let c_mult = mult c (common_coef / coef_c) in
-
-        ) else if List.exists (fun s -> s = atom) c.rhs then (
-
-        ) else c)
-    ) (List.take i cs @ List.drop (i + 1) cs)
-  )
+  if eq.r <> Eq then failwith "elim_eq: cs[i] is not an equality"
+  else
+    let eq =
+      if List.exists (fun s -> s = atom) eq.rhs then
+        (* flip eq *)
+        {
+          r = Eq;
+          lhs = eq.rhs;
+          rhs = eq.lhs;
+          proof =
+            apps
+              (Name "Eq.symm")
+              [
+                Name "Measure"; summands_to_term eq.lhs; summands_to_term eq.rhs; eq.proof;
+              ];
+        }
+      else if List.exists (fun s -> s = atom) eq.lhs then eq
+      else failwith "elim_eq: atom not found in cs[i]"
+    in
+    List.map
+      (fun c ->
+        if List.exists (fun s -> s = atom) c.lhs then
+          let final_eq, matching_c = match_sides_to_cancel eq false c false atom in
+          (* rewrite matching_c using final_eq *)
+          rewrite_lhs matching_c final_eq.rhs final_eq.proof
+        else if List.exists (fun s -> s = atom) c.rhs then
+          let final_eq, matching_c = match_sides_to_cancel eq false c true atom in
+          (* rewrite matching_c using final_eq *)
+          rewrite_rhs matching_c final_eq.rhs final_eq.proof
+        else c)
+      (List.take i cs @ List.drop (i + 1) cs)

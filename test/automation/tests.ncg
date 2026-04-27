@@ -26,6 +26,10 @@ rewrite (Eq.symm _ _ _ (AddAssoc a c b)).
 reflexivity.
 Qed.
 
+Theorem AddCongRight : ∀ (x y z : Measure), x = y -> x + z = y + z :=
+    fun x y z h =>
+    Eq.elim _ x (fun t => x + z = t + z) (Eq.intro _ _) y h
+
 Theorem AddCongLeft : ∀ (x y z : Measure), x = y -> z + x = z + y :=
     fun x y z h =>
     Eq.elim _ x (fun t => z + x = z + t) (Eq.intro _ _) y h
