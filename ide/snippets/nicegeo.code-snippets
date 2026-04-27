@@ -4,8 +4,7 @@
     "body": [
       "Theorem ${1:name} : ${2:Prop}",
       "Proof.",
-      "  ${3:intros.}",
-      "  ${4:exact ${5:term}.}",
+      "  ${3}",
       "Qed."
     ],
     "description": "Insert a theorem proof skeleton."
