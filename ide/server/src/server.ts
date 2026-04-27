@@ -9,7 +9,10 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { fileURLToPath } from "url";
 import { DiagnosticsService, NiceGeoSettings, DiagnosticsTriggerMode } from "./providers/diagnostics";
+import { provideHover } from "./providers/hover";
+import { provideDefinition } from "./providers/definition";
 import { runProofStateAt } from "./providers/proofstate";
+import { provideCompletionItems, resolveCompletionItem } from "./providers/completion";
 
 const STATUS_NOTIFICATION = "nicegeo/status";
 const RUN_DIAGNOSTICS_NOTIFICATION = "nicegeo/runDiagnostics";
@@ -62,7 +65,17 @@ const diagnostics = new DiagnosticsService(
 connection.onInitialize((params: InitializeParams): InitializeResult => {
   hasConfigurationCapability = !!params.capabilities.workspace?.configuration;
   workspaceRoot = params.rootUri ? fileURLToPath(params.rootUri) : undefined;
-  return { capabilities: { textDocumentSync: TextDocumentSyncKind.Incremental } };
+  return {
+    capabilities: {
+      textDocumentSync: TextDocumentSyncKind.Incremental,
+      completionProvider: {
+        triggerCharacters: ["#", ".", " ", "(", ":", "-", "/", "\\"],
+        resolveProvider: true,
+      },
+      hoverProvider: true,
+      definitionProvider: true,
+    },
+  };
 });
 
 connection.onInitialized(() => connection.sendNotification(STATUS_NOTIFICATION, { kind: "idle" }));
@@ -96,6 +109,33 @@ connection.onRequest(
     return runProofStateAt(params.uri, params.line, params.col, workspaceRoot);
   },
 );
+
+connection.onCompletion(async (params) => {
+  if (hasConfigurationCapability) {
+    const cfg = await connection.workspace.getConfiguration({
+      scopeUri: params.textDocument.uri,
+      section: "nicegeo.completion.enable",
+    });
+    if (cfg === false) return [];
+  }
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return [];
+  return provideCompletionItems(doc, params.position.line, params.position.character, workspaceRoot);
+});
+
+connection.onCompletionResolve((item) => resolveCompletionItem(item));
+
+connection.onHover(async (params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+  return provideHover(doc, params.position.line, params.position.character, workspaceRoot);
+});
+
+connection.onDefinition(async (params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+  return provideDefinition(doc, params.position.line, params.position.character, workspaceRoot);
+});
 
 connection.onShutdown(() => diagnostics.dispose());
 
