@@ -182,7 +182,7 @@ let intro (name : string) (st : proof_state) : tactic_result =
   match current_goal st with
   | None -> Failure "intro: no goals remaining"
   | Some g -> (
-      match g.goal_type.inner with
+      match (whnf st.elab_ctx g.goal_type).inner with
       | Arrow (_, bid, premise_ty, conclusion_ty) ->
           let hole_id = fresh_id () in
           let hole = mk_hole hole_id in
