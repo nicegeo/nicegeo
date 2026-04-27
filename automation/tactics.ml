@@ -629,11 +629,12 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
           | Error msg -> fail msg)
       | _ -> fail "destruct_ands: expected a term of type And A B")
 
-(** The [distinct_points] takes a [distinct_from] proof as an argument, and from
+(** The [distinct_points] tactic takes a [distinct_from] proof as an argument, and from
     it proves an inequality between points and adds it to the hypotheses, asking
     for the [List.mem] proof obligation for now (future versions will probably
     try to prove this automatically when possible). *)
 let distinct_points (name : string) (h : term) (st : proof_state) =
+  
   ignore name;
   ignore h;
   ignore st;
