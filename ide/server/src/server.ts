@@ -12,7 +12,6 @@ import { DiagnosticsService, NiceGeoSettings, DiagnosticsTriggerMode } from "./p
 import { provideHover } from "./providers/hover";
 import { provideDefinition } from "./providers/definition";
 import { runProofStateAt } from "./providers/proofstate";
-import { provideCompletionItems, resolveCompletionItem } from "./providers/completion";
 
 const STATUS_NOTIFICATION = "nicegeo/status";
 const RUN_DIAGNOSTICS_NOTIFICATION = "nicegeo/runDiagnostics";
@@ -68,10 +67,6 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
   return {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,
-      completionProvider: {
-        triggerCharacters: ["#", ".", " ", "(", ":", "-", "/", "\\"],
-        resolveProvider: true,
-      },
       hoverProvider: true,
       definitionProvider: true,
     },
@@ -109,21 +104,6 @@ connection.onRequest(
     return runProofStateAt(params.uri, params.line, params.col, workspaceRoot);
   },
 );
-
-connection.onCompletion(async (params) => {
-  if (hasConfigurationCapability) {
-    const cfg = await connection.workspace.getConfiguration({
-      scopeUri: params.textDocument.uri,
-      section: "nicegeo.completion.enable",
-    });
-    if (cfg === false) return [];
-  }
-  const doc = documents.get(params.textDocument.uri);
-  if (!doc) return [];
-  return provideCompletionItems(doc, params.position.line, params.position.character, workspaceRoot);
-});
-
-connection.onCompletionResolve((item) => resolveCompletionItem(item));
 
 connection.onHover(async (params) => {
   const doc = documents.get(params.textDocument.uri);
