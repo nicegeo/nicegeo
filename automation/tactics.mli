@@ -57,4 +57,10 @@ val left : proof_state -> tactic_result
     goal type to B, creating a proof term using [Or.inr] *)
 val right : proof_state -> tactic_result
 
+(** The [distinct_points] takes a [distinct_from] proof as an argument, and from
+    it proves an inequality between points and adds it to the hypotheses, asking
+    for the [List.mem] proof obligation for now (future versions will probably
+    try to prove this automatically when possible). *)
+val distinct_points : string -> term -> proof_state -> tactic_result
+
 val register : unit -> unit

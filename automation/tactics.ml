@@ -629,6 +629,16 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
           | Error msg -> fail msg)
       | _ -> fail "destruct_ands: expected a term of type And A B")
 
+(** The [distinct_points] takes a [distinct_from] proof as an argument, and from
+    it proves an inequality between points and adds it to the hypotheses, asking
+    for the [List.mem] proof obligation for now (future versions will probably
+    try to prove this automatically when possible). *)
+let distinct_points (name : string) (h : term) (st : proof_state) =
+  ignore name;
+  ignore h;
+  ignore st;
+  fail "not yet implemented"
+
 let register () =
   register_tactic "try" Register.(tactical try_tac);
   register_tactic "repeat" Register.(tactical repeat);
@@ -733,5 +743,36 @@ let register () =
                context = { loc = None; decl_name = None; lctx = None };
                error_type =
                  Elab.Error.InvalidTacticParameter "Expected at least one parameter";
+             }));
+  register_tactic "distinct_points" (function
+    | [ { inner = Name n; _ }; trm ] -> distinct_points n trm
+    | trm :: _ ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = Some trm.loc; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   "Expected an identifier, but got a term";
+             })
+    | args ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                   lctx = None;
+                 };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   ("Expected exactly two parameters (a name and a term), but got "
+                   ^ string_of_int (List.length args));
              }));
   ()
