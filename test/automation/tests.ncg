@@ -1,0 +1,65 @@
+
+(* intro tests *)
+
+Theorem intro_unwraps_defs : ∀ (a b : Point), a ≠ b → a ≠ b
+Proof.
+intros a b ab_ne.
+intro ab. (* goal is a ≠ b, intros a = b with goal False *)
+exact (ab_ne ab).
+Qed.
+
+(* have tests *)
+
+(* have with unspecified type inferred from proof *)
+Theorem havetest : ∀ (A B C : Prop), A ∧ B ∧ C → C ∧ B ∧ A
+Proof.
+intros A B C h.
+destruct_ands h a b c.
+have cb _.
+	exact (And.intro _ _ c b).
+exact (And.intro _ _ cb a).
+Qed.
+
+(* destruct_and tests *)
+
+Theorem test1 : ∀ (A B C D E : Prop), A ∧ B ∧ C ∧ D ∧ E → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+Theorem test2 : ∀ (A B C D E : Prop), A ∧ (B ∧ (C ∧ (D ∧ E))) → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+Theorem test3 : ∀ (A B C D E : Prop), (A ∧ B) ∧ (C ∧ (D ∧ E)) → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+(* showing definition unfolding behavior *)
+Definition OutCircle : Point → Circle → Prop := fun a α => ¬OnCircle a α ∧ ¬InCircle a α
+
+Theorem test4 : ∀ a α, a = a ∧ OutCircle a α ∧ α = α → ¬InCircle a α 
+Proof.
+intros a α h.
+destruct_ands h a_rfl outcircle α_rfl.
+destruct_ands outcircle noton notin.
+exact notin.
+Qed.
+
+(* this isn't really an automation test but *)
+Theorem list_test : ∀ (a b c : Point), ∃ d, ¬List.mem _ d [a, b, c]
+Proof.
+intros a b c.
+choose d hd (pt_exists [a, b, c] [] []).
+destruct_ands (distinct_from.elim _ _ _ _ hd) d_not_mem _h2 _h3.
+exists d.
+exact d_not_mem.
+Qed.

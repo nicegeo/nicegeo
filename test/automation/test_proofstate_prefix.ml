@@ -1,13 +1,12 @@
 open Elab
 
-let path_to_env = "../../../../synthetic/env.ncg"
+let path_to_env = "env.ncg"
 
 let suite =
   let open Alcotest in
   ( "proofstate_prefix",
     [
       test_case "cursor before tactic end keeps initial goal" `Quick (fun () ->
-          Automation.Tactics.register ();
           let env = Interface.create () in
           Interface.process_file env path_to_env;
           let src =
@@ -35,7 +34,7 @@ let suite =
           let g1 = List.hd st1.open_goals in
           let s0 = Pretty.term_to_string st0.elab_ctx g0.goal_type in
           let s1 = Pretty.term_to_string st1.elab_ctx g1.goal_type in
-          check string "k=0 goal" "(A : Type) -> A -> A" s0;
+          check string "k=0 goal" "(A : Type) → A → A" s0;
           check int "k=0 hyps" 0 (List.length g0.lctx);
           check int "k=1 hyps" 2 (List.length g1.lctx);
           if String.equal s0 s1 then Alcotest.fail "goal should change after first tactic");

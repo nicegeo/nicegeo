@@ -1,5 +1,5 @@
 %token <string> IDENT STRING_LITERAL
-%token FUN ARROW IFF MAPSTO COLON LPAREN RPAREN TYPE PROP EOF UNDERSCORE PROOF QED ADMITTED PERIOD
+%token FUN ARROW IFF MAPSTO COLON LPAREN RPAREN LBRACKET RBRACKET TYPE PROP EOF UNDERSCORE PROOF QED ADMITTED PERIOD
 %token THEOREM AXIOM DEFINITION DEFEQ IMPORT EQUALS NOT_EQUALS LESS_THAN PLUS NOT OR AND EXISTS FORALL COMMA
 %token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE OPAQUE_DIRECTIVE
 %start <Statement.statement list> main
@@ -181,6 +181,29 @@ atomic_term:
       {Term.inner=Term.Sort 0; loc}
     }
   | LPAREN t = term RPAREN { t }
+  | LBRACKET ts = term_list RBRACKET
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      (* all the type arguments will be the same, might as well help unification out 
+         a bit here that we know they're all the same *)
+      let ty_hole_id = Term.gen_hole_id () in
+      List.fold_right
+        (fun t acc -> 
+        Term.{inner=App ({inner=App ({inner=App (
+          {inner=Name "List.cons"; loc}, 
+          {inner=Hole ty_hole_id; loc}); loc}, 
+          t); loc}, 
+          acc); loc}
+        )
+        ts
+        {Term.inner=App ({inner=Name "List.nil"; loc}, {inner=Hole ty_hole_id; loc}); loc}
+    }
+
+
+term_list:
+  | { [] }
+  | t = term { [t] }
+  | t = term COMMA ts = term_list { t :: ts }
 
 idlist:
   | x = IDENT { [x] }
