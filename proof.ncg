@@ -77,6 +77,21 @@ Definition square : Point -> Point -> Point -> Point -> Prop :=
    Logic and order utilities
    ============================================================ *)
 
+Theorem LeLtOrEq : ∀ (a b : Measure), a ≤ b → a < b ∨ a = b
+Proof.
+intros a b le1ab.
+cases (LtTricot a b) h.
+left.
+exact h.
+
+cases h h1.
+apply (False.elim _).
+exact (le1ab h1).
+
+right.
+exact h1.
+Qed.
+
 (* A strict inequality implies the two values are not equal. *)
 Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
     fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
