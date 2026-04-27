@@ -248,10 +248,14 @@ Theorem lt_mul_5 : ∀ (a b : Measure), a < b → a + a + a + a + a < b + b + b 
 
 (* metric tests *)
 
-(* no way this works right *)
 Theorem test8 : ∀ (a b c : Measure), a < b → b < c → c < a → False
 Proof.
 intros a b c h1 h2 h3.
 metric.
 Qed.
 
+Theorem test9 : ∀ (a b c d e : Measure), a < b → b = c → c < d → d < e → e = a → False
+Proof.
+intros a b c d e h1 h2 h3 h4 h5.
+metric.
+Qed.
