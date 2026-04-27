@@ -1,10 +1,10 @@
-type PlaneView = {
+export type PlaneView = {
   scale: number;
   offsetX: number;
   offsetY: number;
 };
 
-type PlanePointer = {
+export type PlanePointer = {
   active: boolean;
   lastX: number;
   lastY: number;
