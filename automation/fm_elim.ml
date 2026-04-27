@@ -10,8 +10,9 @@ let times (n : int) (m : term) : term =
     m
     (List.init (n - 1) Fun.id)
 
-(** produces a proof of type ∀ (a b : Measure), a rel b → n * a rel n * b where n * a denotes
-    a + a + ... + a (n times) and add_rel_add is the proof of ∀ a b c d, a rel b → c rel d → a + c rel b + d *)
+(** produces a proof of type ∀ (a b : Measure), a rel b → n * a rel n * b where n * a
+    denotes a + a + ... + a (n times) and add_rel_add is the proof of ∀ a b c d, a rel b →
+    c rel d → a + c rel b + d *)
 let order_mul (rel : term) (add_rel_add : term) (n : int) : term =
   let abid = Elab.Term.gen_binder_id () in
   let bbid = Elab.Term.gen_binder_id () in
@@ -29,10 +30,8 @@ let order_mul (rel : term) (add_rel_add : term) (n : int) : term =
             bbid,
             Name "Measure",
             Arrow
-              ( None,
-                hbid,
-                App (App (rel, Bvar abid), Bvar bbid),
-                App (App (rel, na), nb) ) ) )
+              (None, hbid, App (App (rel, Bvar abid), Bvar bbid), App (App (rel, na), nb))
+          ) )
   in
 
   (* creates a proof of n * a < n * b *)
@@ -42,9 +41,7 @@ let order_mul (rel : term) (add_rel_add : term) (n : int) : term =
       let smaller_proof = build_proof (n - 1) in
       let an1 = times (n - 1) (Bvar abid) in
       let bn1 = times (n - 1) (Bvar bbid) in
-      apps
-        add_rel_add
-        [ an1; bn1; Bvar abid; Bvar bbid; smaller_proof; Bvar hbid ]
+      apps add_rel_add [ an1; bn1; Bvar abid; Bvar bbid; smaller_proof; Bvar hbid ]
   in
 
   Fun
@@ -55,8 +52,7 @@ let order_mul (rel : term) (add_rel_add : term) (n : int) : term =
         ( Some "b",
           bbid,
           Name "Measure",
-          Fun (None, hbid, App (App (rel, Bvar abid), Bvar bbid), build_proof n) )
-    )
+          Fun (None, hbid, App (App (rel, Bvar abid), Bvar bbid), build_proof n) ) )
 
 let lt_mul (n : int) : term = order_mul (Name "Lt") (Name "add_lt_add") n
 let le_mul (n : int) : term = order_mul (Name "Le") (Name "add_le_add") n
@@ -208,7 +204,15 @@ let cancel_ij (c : constrain) (i : int) (j : int) : constrain =
             summand_to_term common;
             c.proof;
           ]
-    | Le -> apps (Name "LeCancelRight") [ summands_to_term new_lhs; summands_to_term new_rhs; summand_to_term common; c.proof ]
+    | Le ->
+        apps
+          (Name "LeCancelRight")
+          [
+            summands_to_term new_lhs;
+            summands_to_term new_rhs;
+            summand_to_term common;
+            c.proof;
+          ]
   in
 
   let c = { lhs = new_lhs; rhs = new_rhs; r = c.r; proof } in
@@ -219,7 +223,11 @@ let simp_constrain (c : constrain) : constrain =
   let c = normalize_sides c in
   (* linear search thing *)
   let rec find_common (c : constrain) (i : int) (j : int) : constrain =
-    if i >= List.length c.lhs || j >= List.length c.rhs || c.lhs = [Zero] || c.rhs = [Zero] then c
+    if
+      i >= List.length c.lhs
+      || j >= List.length c.rhs
+      || c.lhs = [ Zero ] || c.rhs = [ Zero ]
+    then c
     else if List.nth c.lhs i = List.nth c.rhs j then
       let c = cancel_ij c i j in
       find_common c i j
@@ -241,7 +249,10 @@ let add_one_both_sides (c : constrain) (s : summand) : constrain =
         apps
           (Name "LtAdd")
           [ summands_to_term c.lhs; summands_to_term c.rhs; summand_to_term s; c.proof ]
-    | Le -> apps (Name "LeAdd") [ summands_to_term c.lhs; summands_to_term c.rhs; summand_to_term s; c.proof ]
+    | Le ->
+        apps
+          (Name "LeAdd")
+          [ summands_to_term c.lhs; summands_to_term c.rhs; summand_to_term s; c.proof ]
   in
   { lhs = new_lhs; rhs = new_rhs; r = c.r; proof }
 
@@ -420,40 +431,39 @@ let elim_atom (cs : constrain list) (atom : summand) : constrain list =
                          final_c_upper.proof;
                          final_c_lower.proof;
                        ] )
-               | Lt, Le -> (
-                Lt,
-                apps
-                  (Name "LtLeLt")
-                  [
-                    summands_to_term final_c_upper.lhs;
-                    summands_to_term final_c_upper.rhs;
-                    summands_to_term final_c_lower.rhs;
-                    final_c_upper.proof;
-                    final_c_lower.proof;
-                  ] )
-               | Le, Lt -> (
-                Lt,
-                apps
-                  (Name "LeLtLt")
-                  [
-                    summands_to_term final_c_upper.lhs;
-                    summands_to_term final_c_upper.rhs;
-                    summands_to_term final_c_lower.rhs;
-                    final_c_upper.proof;
-                    final_c_lower.proof;
-                  ] )
-               | Le, Le -> (
-                Le,
-                apps
-                  (Name "LeTrans")
-                  [
-                    summands_to_term final_c_upper.lhs;
-                    summands_to_term final_c_upper.rhs;
-                    summands_to_term final_c_lower.rhs;
-                    final_c_upper.proof;
-                    final_c_lower.proof;
-                  ]
-               )
+               | Lt, Le ->
+                   ( Lt,
+                     apps
+                       (Name "LtLeLt")
+                       [
+                         summands_to_term final_c_upper.lhs;
+                         summands_to_term final_c_upper.rhs;
+                         summands_to_term final_c_lower.rhs;
+                         final_c_upper.proof;
+                         final_c_lower.proof;
+                       ] )
+               | Le, Lt ->
+                   ( Lt,
+                     apps
+                       (Name "LeLtLt")
+                       [
+                         summands_to_term final_c_upper.lhs;
+                         summands_to_term final_c_upper.rhs;
+                         summands_to_term final_c_lower.rhs;
+                         final_c_upper.proof;
+                         final_c_lower.proof;
+                       ] )
+               | Le, Le ->
+                   ( Le,
+                     apps
+                       (Name "LeTrans")
+                       [
+                         summands_to_term final_c_upper.lhs;
+                         summands_to_term final_c_upper.rhs;
+                         summands_to_term final_c_lower.rhs;
+                         final_c_upper.proof;
+                         final_c_lower.proof;
+                       ] )
                | _ -> failwith "unexpected relation combination in elim_atom"
              in
              { r = rel; lhs = final_c_upper.lhs; rhs = final_c_lower.rhs; proof })
@@ -461,7 +471,8 @@ let elim_atom (cs : constrain list) (atom : summand) : constrain list =
        cs_lower)
   @ unmentioned
 
-let rec try_prove_false (ctx : Elab.Types.ctx) (lctx : Elab.Types.local_ctx) (cs : constrain list) : term option =
+let rec try_prove_false (ctx : Elab.Types.ctx) (lctx : Elab.Types.local_ctx)
+    (cs : constrain list) : term option =
   (* main loop *)
   let cs = List.map simp_constrain cs in
   (* List.iter
@@ -476,7 +487,7 @@ let rec try_prove_false (ctx : Elab.Types.ctx) (lctx : Elab.Types.local_ctx) (cs
       (fun c ->
         if c.r = Lt then
           match (c.lhs, c.rhs) with
-          | lhs, [Zero] -> Some (apps (Name "LtZero") [ summands_to_term lhs; c.proof ])
+          | lhs, [ Zero ] -> Some (apps (Name "LtZero") [ summands_to_term lhs; c.proof ])
           | _ -> None
         else None)
       cs

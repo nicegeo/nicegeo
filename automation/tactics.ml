@@ -691,7 +691,11 @@ let by_contra (name : string) (st : proof_state) : tactic_result =
       let h_ty = mk_app (mk_name "Not") g.goal_type in
       let new_lctx = { name = Some name; bid; ty = h_ty } :: g.lctx in
       let goal_hole, st = fresh_goal st new_lctx (mk_name "False") in
-      let proof = mk_app (mk_app (mk_name "double_negation") g.goal_type) (mk_fun (Some name) bid h_ty goal_hole) in
+      let proof =
+        mk_app
+          (mk_app (mk_name "double_negation") g.goal_type)
+          (mk_fun (Some name) bid h_ty goal_hole)
+      in
       let st = assign_meta g.goal_id proof st in
       let st = close_goal g.goal_id st in
       succeed st
@@ -705,13 +709,17 @@ let unique_name (lctx : local_ctx) : string =
 
 let destruct_measure_eq (st : proof_state) (g : goal) : (term * term) option =
   let a_hole_id, b_hole_id = (gen_hole_id (), gen_hole_id ()) in
-  let pat = mk_app_multiarg (mk_name "Eq") [ mk_name "Measure"; mk_hole a_hole_id; mk_hole b_hole_id ] in
+  let pat =
+    mk_app_multiarg
+      (mk_name "Eq")
+      [ mk_name "Measure"; mk_hole a_hole_id; mk_hole b_hole_id ]
+  in
   let tmp_st = match_term_and_solve_holes g st.elab_ctx g.goal_type pat in
   match (get_hole_sol tmp_st a_hole_id, get_hole_sol tmp_st b_hole_id) with
   | Some a, Some b -> Some (a, b)
   | _ -> None
 
-let run_tactic (st : proof_state) (tac : tactic) : proof_state = 
+let run_tactic (st : proof_state) (tac : tactic) : proof_state =
   match tac st with
   | Success st -> st
   | Failure msg -> failwith ("run_tactic failed: " ^ msg)
@@ -726,35 +734,48 @@ let rec metric (st : proof_state) : tactic_result =
   let st = intro_things st in
   match current_goal st with
   | None -> Failure "No goals remaining."
-  | Some g ->
+  | Some g -> (
       (* special-case a=b by splitting on a < b and b < a *)
       match destruct_measure_eq st g with
       | Some (a, b) -> (
           let st = run_tactic st (apply (mk_app (mk_app (mk_name "EqByContra") a) b)) in
           let st = run_tactic st (intro (unique_name (List.hd st.open_goals).lctx)) in
           match metric st with
-          | Success st -> (
+          | Success st ->
               let st = run_tactic st (intro (unique_name (List.hd st.open_goals).lctx)) in
               metric st
-          )
-          | Failure msg -> Failure msg
-      )
+          | Failure msg -> Failure msg)
       | None -> (
-        let st = run_tactic st (by_contra (unique_name (List.hd st.open_goals).lctx)) in
+          let st = run_tactic st (by_contra (unique_name (List.hd st.open_goals).lctx)) in
 
-        let cs = List.filter_map (fun h -> 
-          (* todo: fully delta reduce h.ty (0 and 90 and length/angle/area) *)
-          create_constrain (Simpterm.to_simpterm (replace_metas st.elab_ctx (Elab.Reduce.reduce st.elab_ctx (Elab.Reduce.delta_reduce st.elab_ctx h.ty)))) (Simpterm.Bvar h.bid)  
-        ) (List.hd st.open_goals).lctx in
-        (* List.iter (fun c ->
+          let cs =
+            List.filter_map
+              (fun h ->
+                (* todo: fully delta reduce h.ty (0 and 90 and length/angle/area) *)
+                create_constrain
+                  (Simpterm.to_simpterm
+                     (replace_metas
+                        st.elab_ctx
+                        (Elab.Reduce.reduce
+                           st.elab_ctx
+                           (Elab.Reduce.delta_reduce st.elab_ctx h.ty))))
+                  (Simpterm.Bvar h.bid))
+              (List.hd st.open_goals).lctx
+          in
+          (* List.iter (fun c ->
           print_endline ("determined constrain: " ^ Elab.Pretty.term_to_string st.elab_ctx ~lctx:(List.hd st.open_goals).lctx (Simpterm.from_simpterm (constrain_ty c)));
         ) cs; *)
-        match try_prove_false st.elab_ctx (List.hd st.open_goals).lctx cs with
-        | Some proof -> (
-          let proof = Simpterm.from_simpterm proof in
-          exact proof st
-        )
-        | None -> Failure "metric: failed to find a contradiction in the context")
+          match try_prove_false st.elab_ctx (List.hd st.open_goals).lctx cs with
+          | Some proof ->
+              let proof = Simpterm.from_simpterm proof in
+              print_endline
+                ("proof: "
+                ^ Elab.Pretty.term_to_string
+                    st.elab_ctx
+                    ~lctx:(List.hd st.open_goals).lctx
+                    proof);
+              exact proof st
+          | None -> Failure "metric: failed to find a contradiction in the context"))
 
 let register () =
   register_tactic "try" Register.(tactical try_tac);

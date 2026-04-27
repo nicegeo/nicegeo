@@ -154,7 +154,8 @@ let measure_of_summands (summands : summand list) : measure =
   { summands; original = tm; proof = refl tm }
 
 (** rewrites the first i summands of m as new_summands, where proof is a proof of
-    m.summands[0..=i-1] = new_summands. this might crash and burn if new_summands = [] and i = length m.summands so uhh maybe dont do that *)
+    m.summands[0..=i-1] = new_summands. this might crash and burn if new_summands = [] and
+    i = length m.summands so uhh maybe dont do that *)
 let congr (m : measure) (i : int) (new_summands : summand list) (proof : Simpterm.term) :
     measure =
   let open Simpterm in
