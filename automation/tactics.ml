@@ -746,9 +746,9 @@ let rec metric (st : proof_state) : tactic_result =
           (* todo: fully delta reduce h.ty (0 and 90 and length/angle/area) *)
           create_constrain (Simpterm.to_simpterm (replace_metas st.elab_ctx (Elab.Reduce.reduce st.elab_ctx (Elab.Reduce.delta_reduce st.elab_ctx h.ty)))) (Simpterm.Bvar h.bid)  
         ) (List.hd st.open_goals).lctx in
-        List.iter (fun c ->
+        (* List.iter (fun c ->
           print_endline ("determined constrain: " ^ Elab.Pretty.term_to_string st.elab_ctx ~lctx:(List.hd st.open_goals).lctx (Simpterm.from_simpterm (constrain_ty c)));
-        ) cs;
+        ) cs; *)
         match try_prove_false st.elab_ctx (List.hd st.open_goals).lctx cs with
         | Some proof -> (
           let proof = Simpterm.from_simpterm proof in

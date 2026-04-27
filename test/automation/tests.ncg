@@ -288,10 +288,53 @@ have h _. exact (LtCancelRight _ _ _ lt).
 exact (ab h).
 Qed.
 
-Theorem LtLeLt : ∀ (a b c : Measure), a < b → Le b c → a < c
+Theorem LeLtOrEq : ∀ (a b : Measure), a ≤ b → a < b ∨ a = b
+Proof.
+intros a b le1ab.
+cases (LtTricot a b) h.
+left.
+exact h.
+
+cases h h1.
+apply (False.elim _).
+exact (le1ab h1).
+
+right.
+exact h1.
+Qed.
+
+Theorem LtLeLt : ∀ (a b c : Measure), a < b → b ≤ c → a < c
 Proof.
 intros a b c ab bc.
-(* cases () *)
+cases (LeLtOrEq _ _ bc) bc'.
+exact (LtTrans _ _ _ ab bc').
+rewrite (Eq.symm _ _ _ bc').
+exact ab.
+Qed.
+
+Theorem LeLtLt : ∀ (a b c : Measure), a ≤ b → b < c → a < c
+Proof.
+intros a b c ab bc.
+cases (LeLtOrEq _ _ ab) ab'.
+exact (LtTrans _ _ _ ab' bc).
+rewrite ab'.
+exact bc.
+Qed.
+
+Theorem le_of_lt : ∀ (a b : Measure), a < b → a ≤ b :=
+	fun a b ab ba => LtAntisymm _ _ ab ba
+
+Theorem le_of_eq : ∀ (a b : Measure), a = b → a ≤ b :=
+	fun a b ab ba => LtNe _ _ ba (Eq.symm _ _ _ ab)
+
+Theorem LeTrans : ∀ (a b c : Measure), a ≤ b → b ≤ c → a ≤ c
+Proof.
+intros a b c ab bc.
+cases (LeLtOrEq _ _ ab) ab'.
+apply (le_of_lt _ _).
+exact (LtLeLt _ _ _ ab' bc).
+rewrite ab'.
+exact bc.
 Qed.
 
 Axiom sorry : (P: Prop) → P

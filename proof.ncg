@@ -502,6 +502,50 @@ have h _. exact (LtCancelRight _ _ _ lt).
 exact (ab h).
 Qed.
 
+Theorem LtLeLt : ∀ (a b c : Measure), a < b → b ≤ c → a < c
+Proof.
+intros a b c ab bc.
+cases (LeLtOrEq _ _ bc) bc'.
+exact (LtTrans _ _ _ ab bc').
+rewrite (Eq.symm _ _ _ bc').
+exact ab.
+Qed.
+
+Theorem LeLtLt : ∀ (a b c : Measure), a ≤ b → b < c → a < c
+Proof.
+intros a b c ab bc.
+cases (LeLtOrEq _ _ ab) ab'.
+exact (LtTrans _ _ _ ab' bc).
+rewrite ab'.
+exact bc.
+Qed.
+
+Theorem le_of_lt : ∀ (a b : Measure), a < b → a ≤ b :=
+	fun a b ab ba => LtAntisymm _ _ ab ba
+
+Theorem le_of_eq : ∀ (a b : Measure), a = b → a ≤ b :=
+	fun a b ab ba => LtNe _ _ ba (Eq.symm _ _ _ ab)
+
+Theorem LeTrans : ∀ (a b c : Measure), a ≤ b → b ≤ c → a ≤ c
+Proof.
+intros a b c ab bc.
+cases (LeLtOrEq _ _ ab) ab'.
+apply (le_of_lt _ _).
+exact (LtLeLt _ _ _ ab' bc).
+rewrite ab'.
+exact bc.
+Qed.
+
+Theorem AddRightComm : ∀ (a b c : Measure), a + b + c = a + c + b
+Proof.
+intros a b c.
+rewrite (AddAssoc a b c).
+rewrite (AddComm b c).
+rewrite (Eq.symm _ _ _ (AddAssoc a c b)).
+reflexivity.
+Qed.
+
+
 Theorem place_segment_ne' : ∀ (a b c : Point),
     (bc : b ≠ c) -> (ab : a ≠ b)
     -> ∃ f, Length a f = Length b c
@@ -524,9 +568,7 @@ Proof.
         (* have lbe (Zero < Length b e). *)
         apply (Or.elim _ _ _ (ZeroLeast (Length b e))).
             intro lbe.
-            have surely (Length d a = Length d e → False). intro h1. metric.
-            have ineq (Length d a < Length d e).
-                metric.
+            have ineq (Length d a < Length d e). metric.
             exact (in_circle_if_lt_radius d e a β dβ eβ ineq).
 
             intro lbe.
@@ -535,12 +577,11 @@ Proof.
     choose f hf (pt_oncircle_of_inside_ne _ _ _ da aβ).
     destruct_ands hf Bdaf fβ.
     exists f.
-    apply (CancelAdd _ _ (Length d a)).
-    rewrite (between_add_lengths _ _ _ Bdaf).
-    rewrite (eq_radius_if_on_circle _ _ _ _ bα eα cα).
-    rewrite (Eq.symm _ _ _ dbda).
-    rewrite (between_add_lengths _ _ _ Bdbe).
-    apply (eq_radius_if_on_circle _ _ _ _ dβ eβ fβ).
+    have h0 _. exact (between_add_lengths _ _ _ Bdaf).
+    have h1 _. exact (eq_radius_if_on_circle _ _ _ _ bα eα cα).
+    have h2 _. exact (between_add_lengths _ _ _ Bdbe).
+    have h3 _. exact (eq_radius_if_on_circle _ _ _ _ dβ eβ fβ).
+    metric.
 Qed.
 
 

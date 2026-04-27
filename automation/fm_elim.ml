@@ -408,7 +408,7 @@ let elim_atom (cs : constrain list) (atom : summand) : constrain list =
                match_sides_to_cancel c_lower false c_upper true atom
              in
              let rel, proof =
-               match (final_c_lower.r, final_c_upper.r) with
+               match (final_c_upper.r, final_c_lower.r) with
                | Lt, Lt ->
                    ( Lt,
                      apps
@@ -420,7 +420,41 @@ let elim_atom (cs : constrain list) (atom : summand) : constrain list =
                          final_c_upper.proof;
                          final_c_lower.proof;
                        ] )
-               | _ -> failwith "elim_atom: not implemented for non-Lt relations"
+               | Lt, Le -> (
+                Lt,
+                apps
+                  (Name "LtLeLt")
+                  [
+                    summands_to_term final_c_upper.lhs;
+                    summands_to_term final_c_upper.rhs;
+                    summands_to_term final_c_lower.rhs;
+                    final_c_upper.proof;
+                    final_c_lower.proof;
+                  ] )
+               | Le, Lt -> (
+                Lt,
+                apps
+                  (Name "LeLtLt")
+                  [
+                    summands_to_term final_c_upper.lhs;
+                    summands_to_term final_c_upper.rhs;
+                    summands_to_term final_c_lower.rhs;
+                    final_c_upper.proof;
+                    final_c_lower.proof;
+                  ] )
+               | Le, Le -> (
+                Le,
+                apps
+                  (Name "LeTrans")
+                  [
+                    summands_to_term final_c_upper.lhs;
+                    summands_to_term final_c_upper.rhs;
+                    summands_to_term final_c_lower.rhs;
+                    final_c_upper.proof;
+                    final_c_lower.proof;
+                  ]
+               )
+               | _ -> failwith "unexpected relation combination in elim_atom"
              in
              { r = rel; lhs = final_c_upper.lhs; rhs = final_c_lower.rhs; proof })
            cs_upper)
@@ -430,12 +464,12 @@ let elim_atom (cs : constrain list) (atom : summand) : constrain list =
 let rec try_prove_false (ctx : Elab.Types.ctx) (lctx : Elab.Types.local_ctx) (cs : constrain list) : term option =
   (* main loop *)
   let cs = List.map simp_constrain cs in
-  List.iter
+  (* List.iter
     (fun c ->
       print_endline
         ("constrain: " ^ Elab.Pretty.term_to_string ctx ~lctx (constrain_ty c |> Simpterm.from_simpterm)) )
     cs;
-  print_endline ("---");
+  print_endline ("---"); *)
   (* is there a contradiction? (a < 0) *)
   match
     List.find_map
