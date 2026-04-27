@@ -693,7 +693,8 @@ let metric (st : proof_state) : tactic_result =
         Failure "measure_norm: goal must be False to use this tactic"
       else
         let cs = List.filter_map (fun h -> 
-          create_constrain (Simpterm.to_simpterm h.ty) (Simpterm.Bvar h.bid)  
+          (* todo: fully delta reduce h.ty (0 and 90 and length/angle/area) *)
+          create_constrain (Simpterm.to_simpterm (replace_metas st.elab_ctx h.ty)) (Simpterm.Bvar h.bid)  
         ) g.lctx in
         match try_prove_false cs with
         | Some proof -> (
