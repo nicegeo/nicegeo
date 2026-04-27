@@ -27,15 +27,11 @@ Theorem three_points_distinct : ∃ (a b c : Point), a ≠ b ∧ b ≠ c ∧ a �
 Proof.
   choose a ha (pt_exists [] [] []).
   choose b hb (pt_exists [a] [] []).
-  have h1 (b ≠ a).
-  exact (distinct_from_pt_neq b a [a] [] [] (list_mem_head _ a _) hb).
+  distinct_points h1 b a hb. exact (list_mem_head _ a _).
   choose c hc (pt_exists [a, b] [] []).
-  have h2 (c ≠ a).
-  exact (distinct_from_pt_neq c a [a, b] [] [] (list_mem_head _ a _) hc).
-  have h3 (c ≠ b).
-  apply (distinct_from_pt_neq c b [a, b] [] []).
-    apply (list_mem_tail Point b _ [b]). apply (list_mem_head _ b _).
-    apply hc.
+  distinct_points h2 c a hc. exact (list_mem_head _ a _).
+  distinct_points h3 c b hc.
+  apply (list_mem_tail Point b _ [b]). apply (list_mem_head _ b _).
   exists a.
   exists b.
   exists c.

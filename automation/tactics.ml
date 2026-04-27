@@ -662,12 +662,26 @@ let distinct_points (name : string) (a : term) (b : term) (h : term) (st : proof
   | Some g -> (
       match infer_distinct a h g st with
       | Some pts, Some ls, Some cs ->
+          (* case 2 goal: show original goal, given new inequality hypothesis *)
+          let ty = mk_app_multiarg (mk_name "Ne") [mk_name "Point"; a; b] in
+          let bid = Elab.Term.gen_binder_id () in
+          let neq_h = { name = Some name; bid; ty } in
+          let goal_pf, st = fresh_goal st (neq_h :: g.lctx) g.goal_type in
+          (* case 1 goal: show mem *)
+          let new_goal_typ = mk_app_multiarg (mk_name "List.mem") [mk_name "Point"; b; pts] in
+          let mem_pf, st = fresh_goal st g.lctx new_goal_typ in
+          (* construct the proof term for case 2 *)
           let neq_pf =
-            mk_app_multiarg (mk_name "distinct_from_pt_neq") [ a; b; pts; ls; cs ]
+            mk_app_multiarg (mk_name "distinct_from_pt_neq") [ a; b; pts; ls; cs; mem_pf; h ]
           in
-          ignore neq_pf;
-          ignore name;
-          fail "not yet implemented"
+          let proof = mk_app (mk_fun (Some name) bid ty goal_pf) neq_pf in (* <- TODO make this actually correct:
+            (fun (h : Ne Point a b) => something...
+                  *)
+          (* TODO open goal for proof of List.mem *)
+          (* update the proof state accordingly (and close duplicated goal) *)
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+          succeed st
       | _ ->
           fail
             (Printf.sprintf
