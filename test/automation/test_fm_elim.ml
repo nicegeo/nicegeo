@@ -209,7 +209,11 @@ let test_elim_eq_more () =
   print_endline ("c4: " ^ Elab.Pretty.term_to_string env (from_simpterm (constrain_ty c4))); *)
 
   Alcotest.(check simpterm) "c1 correct" (b ++ c << d ++ d ++ d) (constrain_ty c1);
-  Alcotest.(check simpterm) "c2 correct" (b ++ b ++ b ++ b ++ d ++ d ++ d ++ d ++ d == b ++ b ++ b ++ c ++ c ++ c ++ c ++ c ++ c ++ c) (constrain_ty c2);
+  Alcotest.(check simpterm)
+    "c2 correct"
+    (b ++ b ++ b ++ b ++ d ++ d ++ d ++ d ++ d
+    == b ++ b ++ b ++ c ++ c ++ c ++ c ++ c ++ c ++ c)
+    (constrain_ty c2);
   Alcotest.(check simpterm) "c3 correct" (b ++ c == b ++ c) (constrain_ty c3);
   Alcotest.(check simpterm) "c4 correct" (b ++ d ++ d << b ++ c) (constrain_ty c4);
   let lctx =

@@ -88,7 +88,8 @@ let eq_mul (n : int) : term =
               App (App (App (Name "Eq", Name "Measure"), Bvar abid), Bvar bbid),
               apps
                 (Name "Eq.elim")
-                [ Name "Measure"; Bvar abid; motive; refl na; Bvar bbid; Bvar hbid ] ) ) )
+                [ Name "Measure"; Bvar abid; motive; refl na; Bvar bbid; Bvar hbid ] ) )
+    )
 
 (** produces a proof of type ∀ (a b : Measure), n * a < n * b → a < b where n * a denotes
     a + a + ... + a (n times) *)
