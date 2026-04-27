@@ -474,9 +474,15 @@ let elim_atom (cs : constrain list) (atom : summand) : constrain list =
        cs_lower)
   @ unmentioned
 
-let rec try_prove_false (cs : constrain list) : term option =
+let rec try_prove_false (ctx : Elab.Types.ctx) (lctx : Elab.Types.local_ctx) (cs : constrain list) : term option =
   (* main loop *)
   let cs = List.map simp_constrain cs in
+  List.iter
+    (fun c ->
+      print_endline
+        ("constrain: " ^ Elab.Pretty.term_to_string ctx ~lctx (constrain_ty c |> Simpterm.from_simpterm)) )
+    cs;
+  print_endline ("---");
   (* is there a contradiction? (a < 0) *)
   match
     List.find_map
@@ -502,7 +508,7 @@ let rec try_prove_false (cs : constrain list) : term option =
       with
       | Some (i, atom) ->
           let cs = elim_eq cs i atom in
-          try_prove_false cs
+          try_prove_false ctx lctx cs
       | None -> (
           (* no Eqs, find any atom *)
           let atom =
@@ -516,5 +522,5 @@ let rec try_prove_false (cs : constrain list) : term option =
           match atom with
           | Some atom ->
               let cs = elim_atom cs atom in
-              try_prove_false cs
+              try_prove_false ctx lctx cs
           | None -> None))

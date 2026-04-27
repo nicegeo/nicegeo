@@ -97,6 +97,18 @@ Qed.
 Theorem ZeroAdd : (a: Measure) -> Zero + a = a :=
     fun (a: Measure) => Eq.elim _ _ (fun x => x = a) (AddZero a) _ (AddComm a Zero)
 
+Theorem EqByContra : ∀ (a b : Measure), ¬a < b → ¬b < a → a = b
+Proof.
+intros a b nab nba.
+cases (LtTricot a b) h.
+apply (False.elim _).
+exact (nab h).
+cases h h1.
+apply (False.elim _).
+exact (nba h1).
+exact h1.
+Qed.
+
 (* intro tests *)
 
 Theorem intro_unwraps_defs : ∀ (a b : Point), a ≠ b → a ≠ b

@@ -411,7 +411,7 @@ let match_term_and_solve_holes (g : goal) (ctx : ctx) (t : term) (expected_term 
   (* expected_term has holes added by the user to specify what they want to infer,
   so make sure those holes are added to the new context *)
   let ctx = ctx_with_new_holes g ctx expected_term in
-  unify ctx t (Hashtbl.create 0) expected_term (Hashtbl.create 0);
+  (try unify ctx t (Hashtbl.create 0) expected_term (Hashtbl.create 0) with _ -> ());
 
   ctx
 
@@ -683,25 +683,78 @@ let simp_constrain (tm : term) (name : string) (st : proof_state) : tactic_resul
           | None -> Failure "simp_constrain: hypothesis type is not a constrain")
       | _ -> Failure "simp_constrain: expected a hypothesis")
 
-let metric (st : proof_state) : tactic_result =
+let by_contra (name : string) (st : proof_state) : tactic_result =
+  match current_goal st with
+  | None -> Failure "no goals"
+  | Some g ->
+      let bid = gen_binder_id () in
+      let h_ty = mk_app (mk_name "Not") g.goal_type in
+      let new_lctx = { name = Some name; bid; ty = h_ty } :: g.lctx in
+      let goal_hole, st = fresh_goal st new_lctx (mk_name "False") in
+      let proof = mk_app (mk_app (mk_name "double_negation") g.goal_type) (mk_fun (Some name) bid h_ty goal_hole) in
+      let st = assign_meta g.goal_id proof st in
+      let st = close_goal g.goal_id st in
+      succeed st
+
+let unique_name (lctx : local_ctx) : string =
+  let rec loop n =
+    let new_name = "h" ^ string_of_int n in
+    if List.exists (fun h -> h.name = Some new_name) lctx then loop (n + 1) else new_name
+  in
+  loop 1
+
+let destruct_measure_eq (st : proof_state) (g : goal) : (term * term) option =
+  let a_hole_id, b_hole_id = (gen_hole_id (), gen_hole_id ()) in
+  let pat = mk_app_multiarg (mk_name "Eq") [ mk_name "Measure"; mk_hole a_hole_id; mk_hole b_hole_id ] in
+  let tmp_st = match_term_and_solve_holes g st.elab_ctx g.goal_type pat in
+  match (get_hole_sol tmp_st a_hole_id, get_hole_sol tmp_st b_hole_id) with
+  | Some a, Some b -> Some (a, b)
+  | _ -> None
+
+let run_tactic (st : proof_state) (tac : tactic) : proof_state = 
+  match tac st with
+  | Success st -> st
+  | Failure msg -> failwith ("run_tactic failed: " ^ msg)
+
+let rec metric (st : proof_state) : tactic_result =
   let open Fm_elim in
+  let rec intro_things (st : proof_state) : proof_state =
+    match intro (unique_name (List.hd st.open_goals).lctx) st with
+    | Success st -> intro_things st
+    | Failure _ -> st
+  in
+  let st = intro_things st in
   match current_goal st with
   | None -> Failure "No goals remaining."
   | Some g ->
-      (* for now *)
-      if g.goal_type.inner <> (Name "False") then
-        Failure "measure_norm: goal must be False to use this tactic"
-      else
+      (* special-case a=b by splitting on a < b and b < a *)
+      match destruct_measure_eq st g with
+      | Some (a, b) -> (
+          let st = run_tactic st (apply (mk_app (mk_app (mk_name "EqByContra") a) b)) in
+          let st = run_tactic st (intro (unique_name (List.hd st.open_goals).lctx)) in
+          match metric st with
+          | Success st -> (
+              let st = run_tactic st (intro (unique_name (List.hd st.open_goals).lctx)) in
+              metric st
+          )
+          | Failure msg -> Failure msg
+      )
+      | None -> (
+        let st = run_tactic st (by_contra (unique_name (List.hd st.open_goals).lctx)) in
+
         let cs = List.filter_map (fun h -> 
           (* todo: fully delta reduce h.ty (0 and 90 and length/angle/area) *)
-          create_constrain (Simpterm.to_simpterm (replace_metas st.elab_ctx h.ty)) (Simpterm.Bvar h.bid)  
-        ) g.lctx in
-        match try_prove_false cs with
+          create_constrain (Simpterm.to_simpterm (replace_metas st.elab_ctx (Elab.Reduce.reduce st.elab_ctx (Elab.Reduce.delta_reduce st.elab_ctx h.ty)))) (Simpterm.Bvar h.bid)  
+        ) (List.hd st.open_goals).lctx in
+        List.iter (fun c ->
+          print_endline ("determined constrain: " ^ Elab.Pretty.term_to_string st.elab_ctx ~lctx:(List.hd st.open_goals).lctx (Simpterm.from_simpterm (constrain_ty c)));
+        ) cs;
+        match try_prove_false st.elab_ctx (List.hd st.open_goals).lctx cs with
         | Some proof -> (
           let proof = Simpterm.from_simpterm proof in
           exact proof st
         )
-        | None -> Failure "measure_norm: failed to find a contradiction in the context"
+        | None -> Failure "metric: failed to find a contradiction in the context")
 
 let register () =
   register_tactic "try" Register.(tactical try_tac);
@@ -870,6 +923,28 @@ let register () =
                error_type =
                  Elab.Error.InvalidTacticParameter
                    ("Expected exactly two parameters (name and type), but got "
+                   ^ string_of_int (List.length args));
+             }));
+  register_tactic "by_contra" (function
+    | [ { inner = Name name; _ } ] -> by_contra name
+    | args ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                   lctx = None;
+                 };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   ("Expected exactly one parameter (an identifier), but got "
                    ^ string_of_int (List.length args));
              }));
   register_tactic "metric" Register.(nullary metric);
