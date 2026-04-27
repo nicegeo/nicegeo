@@ -51,7 +51,55 @@ Qed.
 (* ============================================================
    Lines
    ============================================================ *)
-   
+(* Two distinct points determine a unique line *)
+Theorem line_unique_of_two_pts :
+    ∀ (a b : Point) (L M : Line),
+    a ≠ b ->
+    OnLine a L -> OnLine b L ->
+    OnLine a M -> OnLine b M ->
+    L = M
+Proof.
+  intros a b L M h_ne h_aL h_bL h_aM h_bM.
+  exact (two_distinct_points_determine_unique_line a b L M h_ne h_aL h_bL h_aM h_bM).
+Qed.
+
+(* A point cannot be both endpoints in some betweenness rel *)
+Theorem not_between_same_endpoints :
+    ∀ (a b : Point), Between a b a -> False
+Proof.
+  intros a b h_bet.
+  destruct_ands (between_distinct a b a h_bet) h_sym h_ne_ab h_ne_aa h_not.
+  apply h_ne_aa.
+  reflexivity.
+Qed.
+
+(* A point cannot be both the first endpoint and the middle point of a betweenness relation *)
+Theorem not_between_refl :
+    ∀ (a c : Point), Between a a c -> False
+Proof.
+  intros a c h_bet.
+  destruct_ands (between_distinct a a c h_bet) h_sym h_ne_aa h_ne_ac h_not.
+  apply h_ne_aa.
+  reflexivity.
+Qed.
+
+(* Betweenness implies all three points share a common line *)
+Theorem between_gives_line :
+    ∀ (a b c : Point),
+    Between a b c ->
+    Exists Line (fun L => OnLine a L ∧ OnLine b L ∧ OnLine c L)
+Proof.
+  intros a b c h_bet.
+  destruct_ands (between_distinct a b c h_bet) h_sym h_ne_ab h_ne_ac h_not_bac.
+  choose L hL (line_of_pts a b h_ne_ab).
+  destruct_ands hL h_aL h_bL.
+  exists L.
+  split. split.
+  exact h_aL.
+  exact h_bL.
+  exact (between_collinear_right a b c L h_bet h_aL h_bL).
+Qed.
+
 (* ============================================================
    Circles
    ============================================================ *)
