@@ -7,6 +7,12 @@ type tactic_result =
 
 type tactic = proof_state -> tactic_result
 
+type tactic_documentation = {
+  one_liner : string;
+  expected_parameters : string;
+  example_usage : string;
+}
+
 (** A registry mapping tactic names to their implementations. *)
 val tactics : (string, term list -> tactic) Hashtbl.t
 
@@ -30,7 +36,15 @@ val run : Types.ctx -> Statement.tactic list -> term -> term
 
 (** [register_tactic name tac] registers a new tactic with the given name and
     implementation. *)
-val register_tactic : string -> (term list -> tactic) -> unit
+val register_tactic :
+  documentation:tactic_documentation -> string -> (term list -> tactic) -> unit
+
+(** [tactic_documentation name] returns backend documentation for tactic [name], if
+    it is registered. *)
+val tactic_documentation : string -> tactic_documentation option
+
+(** All registered tactics with their documentation. *)
+val tactic_specs : unit -> (string * tactic_documentation) list
 
 module Register : sig
   val nullary : tactic -> term list -> tactic
