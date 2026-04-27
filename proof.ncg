@@ -137,33 +137,31 @@ Theorem length_eq_of_oncircle : ∀ (a b c : Point) (aa : Circle),
 
 (* On a given finite straight line, construct an equilateral triangle. *)
 Theorem equilateral_triangle : ∀ (a b : Point), (ab : a ≠ b) ->
-    Exists Point (fun c => Length a b = Length a c /\ Length b c = Length b a) :=
-    fun (a b : Point) (ab : a ≠ b) =>
-
-   	Exists.elim _ _ _ (circle_of_ne a b ab)
-    (fun (aa : Circle) (center_and_on : CenterCircle a aa /\ OnCircle b aa) =>
-
-    And.elim1 _ _ _ center_and_on
-    (fun (aaa : CenterCircle a aa) (baa : OnCircle b aa) =>
-
-    Exists.elim _ _ _ (circle_of_ne b a (Ne.symm _ _ _ ab))
-    (fun (bb : Circle) (b_center_and_on : CenterCircle b bb /\ OnCircle a bb) =>
-
-    And.elim1 _ _ _ b_center_and_on
-    (fun (bbb : CenterCircle b bb) (abb : OnCircle a bb) =>
-
-   	Exists.elim _ _ _ (pt_of_circlesinter aa bb (circles_inter_if_on_in b a aa bb baa
+    Exists Point (fun c => Length a b = Length a c /\ Length b c = Length b a)
+Proof.
+    intros a b ab.
+    choose aa center_and_on (circle_of_ne a b ab).
+    destruct_ands center_and_on aaa baa.
+    choose bb b_center_and_on (circle_of_ne b a (Ne.symm _ _ _ ab)).
+    destruct_ands b_center_and_on bbb abb.
+    choose c facts ((pt_of_circlesinter aa bb (circles_inter_if_on_in b a aa bb baa
         (center_lies_inside_circle a aa aaa) 
 		(center_lies_inside_circle b bb bbb) abb
-	))
-    (fun (c : Point) (facts : OnCircle c aa /\ OnCircle c bb) =>
-
-    And.elim1 _ _ _ facts
-    (fun (caa : OnCircle c aa) (cbb : OnCircle c bb) =>
-
-    Exists.intro _ _ c 
-    (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
-	))))))
+	))).
+    destruct_ands facts caa cbb.
+    exists c.
+    split.
+      have h (Iff (Length a b = Length a c) (OnCircle _ _)).
+        exact (on_circle_iff_length_eq a b c aa aaa baa).
+        destruct_ands h _h1 lens.
+        apply lens.
+        exact caa.
+      have h (Iff (Length b c = Length b a) (OnCircle _ _)).
+        exact (on_circle_iff_length_eq b c a bb bbb cbb).
+        destruct_ands h _h1 lens.
+        apply lens.
+        exact abb.
+Qed.
 
 (* Right cancellation of addition: x + z = y + z implies x = y,
    by ruling out x < y and y < x via order on Measure. *)
