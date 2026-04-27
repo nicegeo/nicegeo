@@ -97,6 +97,15 @@ Qed.
 Theorem ZeroAdd : (a: Measure) -> Zero + a = a :=
     fun (a: Measure) => Eq.elim _ _ (fun x => x = a) (AddZero a) _ (AddComm a Zero)
 
+(* intro tests *)
+
+Theorem intro_unwraps_defs : ∀ (a b : Point), a ≠ b → a ≠ b
+Proof.
+intros a b ab_ne.
+intro ab. (* goal is a ≠ b, intros a = b with goal False *)
+exact (ab_ne ab).
+Qed.
+
 (* have tests *)
 
 (* have with unspecified type inferred from proof *)
