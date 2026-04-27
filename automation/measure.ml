@@ -86,18 +86,19 @@ let summands_to_term (summands : summand list) : Simpterm.term =
   | [ t ] -> t
   | t :: ts -> List.fold_left (fun acc t -> App (App (Name "Add", acc), t)) t ts
 
+(** returns proof of t = t *)
+let refl (t : Simpterm.term) : Simpterm.term =
+  App (App (Name "Eq.intro", Name "Measure"), t)
+
 let proof_symm (m : measure) : Simpterm.term =
   let open Simpterm in
+  if summands_to_term m.summands = m.original then refl m.original else
   apps
     (Name "Eq.symm")
     [ Name "Measure"; summands_to_term m.summands; m.original; m.proof ]
 
 let measure_to_term (m : measure) : Elab.Term.term =
   Simpterm.from_simpterm (summands_to_term m.summands)
-
-(** returns proof of t = t *)
-let refl (t : Simpterm.term) : Simpterm.term =
-  App (App (Name "Eq.intro", Name "Measure"), t)
 
 (** tm should not have holes and should be fully beta and delta reduced *)
 let to_measure (tm : Simpterm.term) : measure option =
