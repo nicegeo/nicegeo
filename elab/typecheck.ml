@@ -555,6 +555,19 @@ let process_decl (e : ctx) (d : declaration) : unit =
             | DefEq proof -> proof
           in
           let proof_filled = elaborate e proof (Some ty_filled) in
+          let admitted = match body with
+            | Proof script -> script.admitted
+            | DefEq _ -> false
+          in
+          let loc = match body with
+            | Proof script -> script.qed_loc
+            | DefEq _ -> d.name_loc
+          in
+          if List.mem "sorry_ax" (list_axioms_used e proof_filled) && not admitted then
+            raise (Error.ElabError {
+              context = { loc = Some loc; decl_name = Some d.name; lctx = None };
+              error_type = Error.SorryRequiresAdmitted;
+            });
 
           Kernel.Interface.add_theorem
             e.kenv
