@@ -253,6 +253,47 @@ have h2 (b + c < b + d).
 exact (LtTrans _ _ _ h1 h2).
 Qed.
 
+Theorem add_le_add : ∀ (a b c d : Measure), Le a b → Le c d → Le (a + c) (b + d)
+Proof.
+intros a b c d hab hcd lt.
+cases (LtTricot a b) h.
+cases (LtTricot c d) h1.
+have h2 _. exact (add_lt_add _ _ _ _ h h1).
+exact (LtAntisymm _ _ lt h2).
+cases h1 h2.
+exact (hcd h2).
+(* rewrite h2 at lt. i wish *)
+have lt' (b+d<a+d). exact (Eq.elim Measure c (fun x => b + d < a + x) lt d h2).
+have h3 _. exact (LtCancelRight _ _ _ lt').
+exact (LtAntisymm _ _ h h3).
+cases h h1.
+exact (hab h1).
+(* probably shouldn't have intro'd lt. oh well. live and learn. *)
+have lt' (b+d<b+c). exact (Eq.elim Measure a (fun x => b + d < x + c) lt b h1).
+have h2 _. exact (LtCancelLeft _ _ _ lt').
+exact (hcd h2).
+Qed.
+
+Theorem LeCancelRight : ∀ (a b c : Measure), Le (a + c) (b + c) → Le a b
+Proof.
+intros a b c le ab.
+have h _. exact (LtAdd _ _ c ab).
+exact (le h).
+Qed.
+
+Theorem LeAdd : ∀ (a b c : Measure), Le a b → Le (a + c) (b + c)
+Proof.
+intros a b c ab lt.
+have h _. exact (LtCancelRight _ _ _ lt).
+exact (ab h).
+Qed.
+
+Theorem LtLeLt : ∀ (a b c : Measure), a < b → Le b c → a < c
+Proof.
+intros a b c ab bc.
+(* cases () *)
+Qed.
+
 Axiom sorry : (P: Prop) → P
 
 Theorem lt_mul_5 : ∀ (a b : Measure), a < b → a + a + a + a + a < b + b + b + b + b :=

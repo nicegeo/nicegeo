@@ -626,8 +626,8 @@ let run (prog : string) (args : string list) : unit =
             else print_snapshot_text snap;
             exit 0
       with
-      | Failure _ ->
-          Printf.eprintf "line/col must be integers\n";
+      | Failure msg ->
+          Printf.eprintf "failed: %s\n" msg;
           exit 2
       | Error.ElabError e ->
           let empty = Elab.Interface.create () in

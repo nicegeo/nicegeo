@@ -10,9 +10,9 @@ let times (n : int) (m : term) : term =
     m
     (List.init (n - 1) Fun.id)
 
-(** produces a proof of type ∀ (a b : Measure), a < b → n * a < n * b where n * a denotes
-    a + a + ... + a (n times) *)
-let lt_mul (n : int) : term =
+(** produces a proof of type ∀ (a b : Measure), a rel b → n * a rel n * b where n * a denotes
+    a + a + ... + a (n times) and add_rel_add is the proof of ∀ a b c d, a rel b → c rel d → a + c rel b + d *)
+let order_mul (rel : term) (add_rel_add : term) (n : int) : term =
   let abid = Elab.Term.gen_binder_id () in
   let bbid = Elab.Term.gen_binder_id () in
   let hbid = Elab.Term.gen_binder_id () in
@@ -31,8 +31,8 @@ let lt_mul (n : int) : term =
             Arrow
               ( None,
                 hbid,
-                App (App (Name "Lt", Bvar abid), Bvar bbid),
-                App (App (Name "Lt", na), nb) ) ) )
+                App (App (rel, Bvar abid), Bvar bbid),
+                App (App (rel, na), nb) ) ) )
   in
 
   (* creates a proof of n * a < n * b *)
@@ -43,7 +43,7 @@ let lt_mul (n : int) : term =
       let an1 = times (n - 1) (Bvar abid) in
       let bn1 = times (n - 1) (Bvar bbid) in
       apps
-        (Name "add_lt_add")
+        add_rel_add
         [ an1; bn1; Bvar abid; Bvar bbid; smaller_proof; Bvar hbid ]
   in
 
@@ -55,8 +55,11 @@ let lt_mul (n : int) : term =
         ( Some "b",
           bbid,
           Name "Measure",
-          Fun (None, hbid, App (App (Name "Lt", Bvar abid), Bvar bbid), build_proof n) )
+          Fun (None, hbid, App (App (rel, Bvar abid), Bvar bbid), build_proof n) )
     )
+
+let lt_mul (n : int) : term = order_mul (Name "Lt") (Name "add_lt_add") n
+let le_mul (n : int) : term = order_mul (Name "Le") (Name "add_le_add") n
 
 (** produces a proof of type ∀ (a b : Measure), a = b → n * a = n * b where n * a denotes
     a + a + ... + a (n times) *)
@@ -90,56 +93,6 @@ let eq_mul (n : int) : term =
                 (Name "Eq.elim")
                 [ Name "Measure"; Bvar abid; motive; refl na; Bvar bbid; Bvar hbid ] ) )
     )
-
-(** produces a proof of type ∀ (a b : Measure), n * a < n * b → a < b where n * a denotes
-    a + a + ... + a (n times) *)
-let lt_cancel_mul (n : int) : term =
-  let abid = Elab.Term.gen_binder_id () in
-  let bbid = Elab.Term.gen_binder_id () in
-  let hbid = Elab.Term.gen_binder_id () in
-
-  let na = times n (Bvar abid) in
-  let nb = times n (Bvar bbid) in
-  let proof_ty =
-    Arrow
-      ( Some "a",
-        abid,
-        Name "Measure",
-        Arrow
-          ( Some "b",
-            bbid,
-            Name "Measure",
-            Arrow
-              ( None,
-                hbid,
-                App (App (Name "Lt", na), nb),
-                App (App (Name "Lt", Bvar abid), Bvar bbid) ) ) )
-  in
-  (* TODO: Implement the actual proof *)
-  (* tactic proof for n=5:
-
-Theorem cancel_five : ∀ (a b : Measure), a + a + a + a + a < b + b + b + b + b → a < b
-Proof.
-intros a b h.
-cases (LtTricot a b) hab.
-exact hab.
-
-cases hab hab1.
-apply (False.elim _).
-have hab2 _. exact (add_lt_add _ _ _ _ hab1 hab1).
-have hab3 _. exact (add_lt_add _ _ _ _ hab2 hab1).
-have hab4 _. exact (add_lt_add _ _ _ _ hab3 hab1).
-have hab5 _. exact (add_lt_add _ _ _ _ hab4 hab1).
-exact (LtAntisymm _ _ hab5 h).
-
-apply (False.elim _).
-apply (LtNe _ _ h).
-rewrite hab1.
-reflexivity.
-Qed.
-
-  *)
-  App (Name "sorry", proof_ty)
 
 type relation =
   | Lt
@@ -255,7 +208,7 @@ let cancel_ij (c : constrain) (i : int) (j : int) : constrain =
             summand_to_term common;
             c.proof;
           ]
-    | Le -> failwith "not implemented"
+    | Le -> apps (Name "LeCancelRight") [ summands_to_term new_lhs; summands_to_term new_rhs; summand_to_term common; c.proof ]
   in
 
   let c = { lhs = new_lhs; rhs = new_rhs; r = c.r; proof } in
@@ -288,7 +241,7 @@ let add_one_both_sides (c : constrain) (s : summand) : constrain =
         apps
           (Name "LtAdd")
           [ summands_to_term c.lhs; summands_to_term c.rhs; summand_to_term s; c.proof ]
-    | Le -> failwith "not implemented"
+    | Le -> apps (Name "LeAdd") [ summands_to_term c.lhs; summands_to_term c.rhs; summand_to_term s; c.proof ]
   in
   { lhs = new_lhs; rhs = new_rhs; r = c.r; proof }
 
@@ -355,7 +308,7 @@ let mult_constrain (c : constrain) (n : int) : constrain =
     match c.r with
     | Eq -> apps (eq_mul n) [ lhs_tm; rhs_tm; c.proof ]
     | Lt -> apps (lt_mul n) [ lhs_tm; rhs_tm; c.proof ]
-    | Le -> failwith "mult_constrain Le not implemented"
+    | Le -> apps (le_mul n) [ lhs_tm; rhs_tm; c.proof ]
   in
   create_constrain (App (App (relation_to_term c.r, nlhs), nrhs)) proof |> Option.get
 
