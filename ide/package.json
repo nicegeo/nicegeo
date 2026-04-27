@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@vscode-elements/elements": "^1.9.1",
+    "@vscode/codicons": "^0.0.45",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.11"

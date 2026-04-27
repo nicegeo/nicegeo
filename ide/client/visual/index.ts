@@ -25,13 +25,13 @@ type ToolButtonDefinition = {
 };
 
 const TOOLS: ToolButtonDefinition[] = [
-  { id: "point", label: "Point", icon: "•", action: () => {} },
-  { id: "line", label: "Line", icon: "—", action: () => {} },
-  { id: "circle", label: "Circle", icon: "⊙", action: () => {} },
+  { id: "point", label: "Point", icon: "circle-filled", action: () => {} },
+  { id: "line", label: "Line", icon: "arrow-both", action: () => {} },
+  { id: "circle", label: "Circle", icon: "circle-large", action: () => {} },
 ];
 
 const MODIFIERS: ToolButtonDefinition[] = [
-  { id: "distinct", label: "Distinct", icon: "≠", action: () => {} },
+  { id: "distinct", label: "Distinct", icon: "diff-removed", action: () => {} },
 ];
 
 let activeToolId = TOOLS[0].id;
@@ -51,12 +51,8 @@ const buildToolButton = (
   button.id = `toolButton-${id}`;
   button.className = "toolButton";
   button.title = label;
-
-  const iconSpan = document.createElement("span");
-  iconSpan.className = "toolIcon";
-  iconSpan.textContent = icon;
-
-  button.append(iconSpan);
+  button.icon = icon;
+  
   button.addEventListener("click", () => {
     if (!isModifier) {
       activeToolId = id;

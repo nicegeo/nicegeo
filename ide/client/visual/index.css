@@ -86,11 +86,6 @@ header {
   color: var(--vscode-button-foreground);
 }
 
-.toolIcon {
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
 .canvasShell {
   position: relative;
   flex: 1;

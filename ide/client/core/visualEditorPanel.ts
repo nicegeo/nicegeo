@@ -47,13 +47,18 @@ export class VisualEditorPanel {
       vscode.Uri.joinPath(context.extensionUri, "out", "visual", "index.js"),
     );
 
+    const codiconsUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
+    );
+
     const nonce = VisualEditorPanel.getNonce();
 
     return htmlTemplate
       .replaceAll("{{cspSource}}", webview.cspSource)
       .replaceAll("{{nonce}}", nonce)
       .replaceAll("{{styleUri}}", styleUri.toString())
-      .replaceAll("{{scriptUri}}", webviewScriptUri.toString());
+      .replaceAll("{{scriptUri}}", webviewScriptUri.toString())
+      .replaceAll("{{codiconsUri}}", codiconsUri.toString());
   }
 
   private static getNonce(): string {
