@@ -82,7 +82,7 @@ let summands_to_term (summands : summand list) : Simpterm.term =
   (* wildy inefficient but oh well *)
   let summand_terms = List.map (fun x -> summand_to_term x) summands in
   match summand_terms with
-  | [] -> Name "Zero"
+  | [] -> failwith "summands_to_term: empty summand list"
   | [ t ] -> t
   | t :: ts -> List.fold_left (fun acc t -> App (App (Name "Add", acc), t)) t ts
 
@@ -154,7 +154,7 @@ let measure_of_summands (summands : summand list) : measure =
   { summands; original = tm; proof = refl tm }
 
 (** rewrites the first i summands of m as new_summands, where proof is a proof of
-    m.summands[0..=i-1] = new_summands *)
+    m.summands[0..=i-1] = new_summands. this might crash and burn if new_summands = [] and i = length m.summands so uhh maybe dont do that *)
 let congr (m : measure) (i : int) (new_summands : summand list) (proof : Simpterm.term) :
     measure =
   let open Simpterm in
@@ -255,13 +255,21 @@ let sort (m : measure) : measure =
   in
   bubblesort m 0 (List.length m.summands - 1)
 
-let normalize_measure (m : measure) : measure = m |> normalize_summands |> sort
+let rec cancel_zeros (m : measure) : measure =
+  let open Simpterm in
+  match m.summands with
+  | Zero :: a :: _ ->
+      congr m 2 [ a ] (App (Name "ZeroAdd", summand_to_term a)) |> cancel_zeros
+  | _ -> m
+
+let normalize_measure (m : measure) : measure =
+  m |> normalize_summands |> sort |> cancel_zeros
 
 (** returns a proof of t1 = t2 if they are definitionally equal after sorting *)
-let sorted_rfl (t1 : summand list) (t2 : summand list) : Simpterm.term =
+let normalized_rfl (t1 : summand list) (t2 : summand list) : Simpterm.term =
   let open Simpterm in
-  let m1 = sort (measure_of_summands t1) in
-  let m2 = sort (measure_of_summands t2) in
+  let m1 = cancel_zeros (sort (measure_of_summands t1)) in
+  let m2 = cancel_zeros (sort (measure_of_summands t2)) in
   (* sanity check *)
   if m1.summands = m2.summands then
     let tnorm = summands_to_term m1.summands in
@@ -277,4 +285,4 @@ let sorted_rfl (t1 : summand list) (t2 : summand list) : Simpterm.term =
         proof_symm m1;
         m2.proof;
       ]
-  else failwith "sorted_rfl: summand lists are not equal after sorting"
+  else failwith "normalized_rfl: summand lists are not equal after normalization"

@@ -683,6 +683,25 @@ let simp_constrain (tm : term) (name : string) (st : proof_state) : tactic_resul
           | None -> Failure "simp_constrain: hypothesis type is not a constrain")
       | _ -> Failure "simp_constrain: expected a hypothesis")
 
+let metric (st : proof_state) : tactic_result =
+  let open Fm_elim in
+  match current_goal st with
+  | None -> Failure "No goals remaining."
+  | Some g ->
+      (* for now *)
+      if g.goal_type.inner <> (Name "False") then
+        Failure "measure_norm: goal must be False to use this tactic"
+      else
+        let cs = List.filter_map (fun h -> 
+          create_constrain (Simpterm.to_simpterm h.ty) (Simpterm.Bvar h.bid)  
+        ) g.lctx in
+        match try_prove_false cs with
+        | Some proof -> (
+          let proof = Simpterm.from_simpterm proof in
+          exact proof st
+        )
+        | None -> Failure "measure_norm: failed to find a contradiction in the context"
+
 let register () =
   register_tactic "try" Register.(tactical try_tac);
   register_tactic "repeat" Register.(tactical repeat);
@@ -852,4 +871,5 @@ let register () =
                    ("Expected exactly two parameters (name and type), but got "
                    ^ string_of_int (List.length args));
              }));
+  register_tactic "metric" Register.(nullary metric);
   ()

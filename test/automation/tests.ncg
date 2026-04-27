@@ -84,6 +84,19 @@ Theorem LtCancelRight : ∀ (x y z : Measure), x + z < y + z -> x < y :=
             _
             (AddComm x z))
 
+
+Theorem LtZero : ∀ (a : Measure), a < Zero → False
+Proof.
+intros a ha.
+cases (ZeroLeast a) h.
+exact (LtAntisymm _ _ ha h).
+exact (LtNe _ _ ha (Eq.symm _ _ _ h)).
+Qed.
+
+(* Zero is a left identity for addition: 0 + a = a. *)
+Theorem ZeroAdd : (a: Measure) -> Zero + a = a :=
+    fun (a: Measure) => Eq.elim _ _ (fun x => x = a) (AddZero a) _ (AddComm a Zero)
+
 (* have tests *)
 
 (* have with unspecified type inferred from proof *)
@@ -232,3 +245,13 @@ Theorem lt_mul_5 : ∀ (a b : Measure), a < b → a + a + a + a + a < b + b + b 
 	) h
 	) h
 	) h
+
+(* metric tests *)
+
+(* no way this works right *)
+Theorem test8 : ∀ (a b c : Measure), a < b → b < c → c < a → False
+Proof.
+intros a b c h1 h2 h3.
+metric.
+Qed.
+

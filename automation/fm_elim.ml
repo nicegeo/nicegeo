@@ -217,14 +217,23 @@ let sort_sides (c : constrain) : constrain =
   let new_rhs = sort (measure_of_summands c.rhs) in
   rewrite_rhs c new_rhs.summands (proof_symm new_rhs)
 
+let normalize_sides (c : constrain) : constrain =
+  let new_lhs = normalize_measure (measure_of_summands c.lhs) in
+  let c = rewrite_lhs c new_lhs.summands (proof_symm new_lhs) in
+  let new_rhs = normalize_measure (measure_of_summands c.rhs) in
+  rewrite_rhs c new_rhs.summands (proof_symm new_rhs)
+
+(** don't call this on Zero *)
 let cancel_ij (c : constrain) (i : int) (j : int) : constrain =
   let common = List.nth c.lhs i in
   let new_lhs = List.take i c.lhs @ List.drop (i + 1) c.lhs in
+  let new_lhs = if new_lhs = [] then [ Zero ] else new_lhs in
   let lhs_rewritten = new_lhs @ [ common ] in
-  let c = rewrite_lhs c lhs_rewritten (sorted_rfl c.lhs lhs_rewritten) in
+  let c = rewrite_lhs c lhs_rewritten (normalized_rfl c.lhs lhs_rewritten) in
   let new_rhs = List.take j c.rhs @ List.drop (j + 1) c.rhs in
+  let new_rhs = if new_rhs = [] then [ Zero ] else new_rhs in
   let rhs_rewritten = new_rhs @ [ common ] in
-  let c = rewrite_rhs c rhs_rewritten (sorted_rfl c.rhs rhs_rewritten) in
+  let c = rewrite_rhs c rhs_rewritten (normalized_rfl c.rhs rhs_rewritten) in
 
   let proof =
     match c.r with
@@ -254,10 +263,10 @@ let cancel_ij (c : constrain) (i : int) (j : int) : constrain =
 
 (** simplifies a constrain so that there's no like terms on both sides *)
 let simp_constrain (c : constrain) : constrain =
-  let c = sort_sides c in
+  let c = normalize_sides c in
   (* linear search thing *)
   let rec find_common (c : constrain) (i : int) (j : int) : constrain =
-    if i >= List.length c.lhs || j >= List.length c.rhs then c
+    if i >= List.length c.lhs || j >= List.length c.rhs || c.lhs = [Zero] || c.rhs = [Zero] then c
     else if List.nth c.lhs i = List.nth c.rhs j then
       let c = cancel_ij c i j in
       find_common c i j
@@ -350,7 +359,7 @@ let mult_constrain (c : constrain) (n : int) : constrain =
   in
   create_constrain (App (App (relation_to_term c.r, nlhs), nrhs)) proof |> Option.get
 
-(** returns (a, b) such that s1 + a = s2 + b *)
+(** returns (a, b) such that s1 + a = s2 + b. may return empty lists *)
 let level_sums (s1 : summand list) (s2 : summand list) : summand list * summand list =
   let rec go s1 s2 =
     match s1 with
@@ -423,3 +432,89 @@ let elim_eq (cs : constrain list) (i : int) (atom : summand) : constrain list =
           rewrite_rhs matching_c final_eq.rhs final_eq.proof
         else c)
       (List.take i cs @ List.drop (i + 1) cs)
+
+(** eliminates all occurrences of atom from the list of constrains. constrains must not
+    have any Eqs mentioning atom and must be simplified *)
+let elim_atom (cs : constrain list) (atom : summand) : constrain list =
+  let cs, unmentioned =
+    List.partition
+      (fun c ->
+        List.exists (fun s -> s = atom) c.lhs || List.exists (fun s -> s = atom) c.rhs)
+      cs
+  in
+  let cs_lower, cs_upper =
+    List.partition (fun c -> List.exists (fun s -> s = atom) c.lhs) cs
+  in
+  List.flatten
+    (List.map
+       (fun c_lower ->
+         List.map
+           (fun c_upper ->
+             (* c_upper.rhs mentions atom, c_lower.lhs mentions atom *)
+             let final_c_lower, final_c_upper =
+               match_sides_to_cancel c_lower false c_upper true atom
+             in
+             let rel, proof =
+               match (final_c_lower.r, final_c_upper.r) with
+               | Lt, Lt ->
+                   ( Lt,
+                     apps
+                       (Name "LtTrans")
+                       [
+                         summands_to_term final_c_upper.lhs;
+                         summands_to_term final_c_upper.rhs;
+                         summands_to_term final_c_lower.rhs;
+                         final_c_upper.proof;
+                         final_c_lower.proof;
+                       ] )
+               | _ -> failwith "elim_atom: not implemented for non-Lt relations"
+             in
+             { r = rel; lhs = final_c_upper.lhs; rhs = final_c_lower.rhs; proof })
+           cs_upper)
+       cs_lower)
+  @ unmentioned
+
+let rec try_prove_false (cs : constrain list) : term option =
+  (* main loop *)
+  let cs = List.map simp_constrain cs in
+  (* is there a contradiction? (a < 0) *)
+  match
+    List.find_map
+      (fun c ->
+        if c.r = Lt then
+          match (c.lhs, c.rhs) with
+          | lhs, [Zero] -> Some (apps (Name "LtZero") [ summands_to_term lhs; c.proof ])
+          | _ -> None
+        else None)
+      cs
+  with
+  | Some proof -> Some proof
+  | None -> (
+      (* find an atom to eliminate *)
+      (* search for Eqs first *)
+      match
+        List.find_mapi
+          (fun i c ->
+            match c with
+            | { r = Eq; lhs = s :: _; _ } | { r = Eq; rhs = s :: _; _ } -> Some (i, s)
+            | _ -> None)
+          cs
+      with
+      | Some (i, atom) ->
+          let cs = elim_eq cs i atom in
+          try_prove_false cs
+      | None -> (
+          (* no Eqs, find any atom *)
+          let atom =
+            List.find_map
+              (fun c ->
+                match c with
+                | { lhs = s :: _; _ } | { rhs = s :: _; _ } -> Some s
+                | _ -> None)
+              cs
+          in
+          match atom with
+          | Some atom ->
+              let cs = elim_atom cs atom in
+              try_prove_false cs
+          | None -> None))
