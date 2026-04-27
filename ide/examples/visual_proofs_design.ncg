@@ -23,36 +23,6 @@ Proof.
   exact (pt_exists _ _ _).
 Qed.
 
-Theorem distinct_from_pt_neq : ∀ (a b : Point) (points : List Point) (lines : List Line) (circles : List Circle),
-  (List.mem _ b points) -> distinct_from a points lines circles -> a ≠ b
-Proof.
-  intros a b points lines circles h_mem h_distinct.
-  destruct_ands (distinct_from.elim _ _ _ _ h_distinct) h_point h_line h_circle.
-  intro h_eq.
-  apply h_point.
-  rewrite h_eq.
-  exact h_mem.
-Qed.
-
-Theorem list_mem_head : ∀ (A : Type) (a : A) (list : List A), List.mem _ a (List.cons _ a list)
-Proof.
-  intros A a list.
-  destruct_ands (List.mem_cons _ a a list) h_left h_right.
-  apply h_right.
-  left.
-  reflexivity.
-Qed.
-
-Theorem list_mem_tail : ∀ (A : Type) (a : A) (b : A) (tl : List A),
-  List.mem _ a tl -> List.mem _ a (List.cons _ b tl)
-Proof.
-  intros A a b tl H.
-  destruct_ands (List.mem_cons _ a b tl) h_left h_right.
-  apply h_right.
-  right.
-  exact H.
-Qed.
-
 Theorem three_points_distinct : ∃ (a b c : Point), a ≠ b ∧ b ≠ c ∧ a ≠ c
 Proof.
   choose a ha (pt_exists [] [] []).
