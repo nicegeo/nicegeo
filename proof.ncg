@@ -196,33 +196,31 @@ Theorem length_eq_of_oncircle : ∀ (a b c : Point) (aa : Circle),
 
 (* On a given finite straight line, construct an equilateral triangle. *)
 Theorem equilateral_triangle : ∀ (a b : Point), (ab : a ≠ b) ->
-    Exists Point (fun c => Length a b = Length a c /\ Length b c = Length b a) :=
-    fun (a b : Point) (ab : a ≠ b) =>
-
-   	Exists.elim _ _ _ (circle_of_ne a b ab)
-    (fun (aa : Circle) (center_and_on : CenterCircle a aa /\ OnCircle b aa) =>
-
-    And.elim1 _ _ _ center_and_on
-    (fun (aaa : CenterCircle a aa) (baa : OnCircle b aa) =>
-
-    Exists.elim _ _ _ (circle_of_ne b a (Ne.symm _ _ _ ab))
-    (fun (bb : Circle) (b_center_and_on : CenterCircle b bb /\ OnCircle a bb) =>
-
-    And.elim1 _ _ _ b_center_and_on
-    (fun (bbb : CenterCircle b bb) (abb : OnCircle a bb) =>
-
-   	Exists.elim _ _ _ (pt_of_circlesinter aa bb (circles_inter_if_on_in b a aa bb baa
+    Exists Point (fun c => Length a b = Length a c /\ Length b c = Length b a)
+Proof.
+    intros a b ab.
+    choose aa center_and_on (circle_of_ne a b ab).
+    destruct_ands center_and_on aaa baa.
+    choose bb b_center_and_on (circle_of_ne b a (Ne.symm _ _ _ ab)).
+    destruct_ands b_center_and_on bbb abb.
+    choose c facts ((pt_of_circlesinter aa bb (circles_inter_if_on_in b a aa bb baa
         (center_lies_inside_circle a aa aaa) 
 		(center_lies_inside_circle b bb bbb) abb
-	))
-    (fun (c : Point) (facts : OnCircle c aa /\ OnCircle c bb) =>
-
-    And.elim1 _ _ _ facts
-    (fun (caa : OnCircle c aa) (cbb : OnCircle c bb) =>
-
-    Exists.intro _ _ c 
-    (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
-	))))))
+	))).
+    destruct_ands facts caa cbb.
+    exists c.
+    split.
+      have h (Iff (Length a b = Length a c) (OnCircle _ _)).
+        exact (on_circle_iff_length_eq a b c aa aaa baa).
+        destruct_ands h _h1 lens.
+        apply lens.
+        exact caa.
+      have h (Iff (Length b c = Length b a) (OnCircle _ _)).
+        exact (on_circle_iff_length_eq b c a bb bbb cbb).
+        destruct_ands h _h1 lens.
+        apply lens.
+        exact abb.
+Qed.
 
 (* Right cancellation of addition: x + z = y + z implies x = y,
    by ruling out x < y and y < x via order on Measure. *)
@@ -331,87 +329,52 @@ Theorem ne_23_of_between : ∀ (a b c : Point), Between a b c -> b ≠ c :=
    Length a f = Length b c. *)
 Theorem place_segment_ne : ∀ (a b c : Point),
     (bc : b ≠ c) -> (ab : a ≠ b)
-    -> Exists Point (fun f => Length a f = Length b c) :=
-    fun (a: Point) (b: Point) (c: Point) (bc: b ≠ c) (ab: a ≠ b) =>
+    -> ∃ f, Length a f = Length b c
+Proof.
+    intros a b c bc ab.
+    choose d eqtri (equilateral_triangle a b ab).
+    destruct_ands eqtri abad bdba.
+    choose α hα (circle_of_ne b c bc).
+    destruct_ands hα bα cα.
+    have db (d ≠ b).
+        exact (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ bdba) (Ne.symm _ _ _ ab))).
+    choose e he (pt_oncircle_of_inside_ne _ _ _ db (center_lies_inside_circle b α bα)).
+    destruct_ands he Bdbe eα.
+    choose β hβ (circle_of_ne d e (ne_13_of_between d b e Bdbe)).
+    destruct_ands hβ dβ eβ.
+    have da (d ≠ a). exact (Ne.symm _ _ _ (length_pts_ne _ _ _ _ abad ab)).
+    have dbda (Length d b = Length d a).
+        rewrite (length_symm d b).
+        rewrite bdba.
+        rewrite (length_symm b a).
+        rewrite abad.
+        exact (length_symm _ _).
+    have aβ (InCircle a β).
+        have sum (Length d b + Length b e = Length d e). exact (between_add_lengths d b e Bdbe).
+        apply (Or.elim _ _ _ (ZeroLeast (Length b e))).
+            intro lbe.
+            have ineq (Length d a < Length d e).
+                rewrite (Eq.symm _ _ _ sum).
+                rewrite (AddComm (Length d b) (Length b e) ).
+                rewrite (Eq.symm _ _ _ (ZeroAdd (Length d a))).
+                rewrite (Eq.symm _ _ _ dbda).
+                apply (LtAdd _ _ _). (* wow apply is so smart *)
+                exact lbe.
+            exact (in_circle_if_lt_radius d e a β dβ eβ ineq).
 
-    Exists.elim _ _ _ (equilateral_triangle a b ab)
-    (fun (d: Point) (eqtri: Length a b = Length a d /\ Length b d = Length b a) =>
-
-    Exists.elim _ _ _ (circle_of_ne b c bc)
-    (fun (aa: Circle) (baacaa : CenterCircle b aa /\ OnCircle c aa) =>
-
-    And.elim1 _ _ _ baacaa
-    (fun (baa : CenterCircle b aa) (caa : OnCircle c aa) =>
-
-    have _ _ (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ (snd _ _ eqtri)) (Ne.symm _ _ _ ab)))
-    (fun (db : d ≠ b) =>
-
-    Exists.elim _ _ _ (pt_oncircle_of_inside_ne _ _ _ db (center_lies_inside_circle b aa baa))
-    (fun (e: Point) (h: Between d b e /\ OnCircle e aa) =>
-
-    And.elim1 _ _ _ h
-    (fun (Bdbe : Between d b e) (eaa : OnCircle e aa) =>
-
-    have _ _ (ne_13_of_between d b e Bdbe)
-    (fun (de : d ≠ e) =>
-
-    Exists.elim _ _ _ (circle_of_ne d e de)
-    (fun (bb : Circle) (debb : CenterCircle d bb /\ OnCircle e bb) =>
-
-    And.elim1 _ _ _ debb
-    (fun (dbb : CenterCircle d bb) (ebb: OnCircle e bb) =>
-
-    have _ _ (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (fst _ _ eqtri) ab))
-    (fun (da : d ≠ a) =>
-
-    have _ _ (EqTrans _ _ _ _ (length_symm d b) (EqTrans _ _ _ _ (snd _ _ eqtri) (EqTrans _ _ _ _ (length_symm b a) (EqTrans _ _ _ _ (fst _ _ eqtri) (length_symm a d)))))
-    (fun (dbda : Length d b = Length d a) =>
-
-    have _ _ (
-        have _ _ (between_add_lengths d b e Bdbe)
-        (fun (sum : Length d b + Length b e = Length d e) =>
-        Or.elim _ _ _ (ZeroLeast (Length b e))
-        (fun (lbe: 0 < Length b e) =>
-        (* LtAdd _ _ (Length d b) lbe : 0 + length d b < length b e + length d b *)
-        have _ _ (
-            Eq.elim Measure (Length b e + Length d b) (fun x => Length d a < x)
-            (Eq.elim Measure (0 + Length d b) (fun x => x < Length b e + Length d b) 
-            (LtAdd _ _ (Length d b) lbe) 
-            (Length d a) (EqTrans _ _ _ _ (ZeroAdd (Length d b)) dbda))
-            (Length d e) (EqTrans _ _ _ _ (AddComm (Length b e) (Length d b)) sum)
-        )
-        (fun (ineq : Length d a < Length d e) =>
-        in_circle_if_lt_radius d e a bb dbb ebb ineq
-        )
-        )
-        (fun (lbe: 0 = Length b e) =>
-        False.elim _ (ne_23_of_between d b e Bdbe (eq_if_len_zero b e (Eq.symm _ _ _ lbe)))
-        )
-        )
-    )
-    (fun (abb : InCircle a bb) =>
-
-    Exists.elim _ _ _ (pt_oncircle_of_inside_ne d a bb da abb)
-    (fun (f: Point) (h1: Between d a f /\ OnCircle f bb) =>
-
-    And.elim1 _ _ _ h1
-    (fun (Bdaf : Between d a f) (fbb : OnCircle f bb) =>
-
-    Exists.intro _ _ f (
-    have _ _ (
-        Eq.elim Measure (Length d f) (fun x => Length d a + Length b c = x)
-        (Eq.elim Measure (Length b e) (fun x => Length d a + x = Length d f)
-        (Eq.elim Measure (Length d b) (fun x => x + Length b e = Length d f)
-        (Eq.elim Measure (Length d e) (fun x => x = Length d f)
-        (snd _ _ (on_circle_iff_length_eq d e f bb dbb ebb) fbb)
-        (Add (Length d b) (Length b e)) (Eq.symm _ _ _ (between_add_lengths d b e Bdbe)))
-        (Length d a) dbda)
-        (Length b c) (snd _ _ (on_circle_iff_length_eq b e c aa baa eaa) caa))
-        (Add (Length d a) (Length a f)) (Eq.symm _ _ _ (between_add_lengths d a f Bdaf))
-    )
-    (fun (equality : Length d a + Length b c = Length d a + Length a f) =>
-    Eq.symm _ _ _ (CancelAdd (Length b c) (Length a f) (Length d a) equality)
-    ))))))))))))))))
+            intro lbe.
+            apply (False.elim _).
+            exact (ne_23_of_between d b e Bdbe (eq_if_len_zero b e (Eq.symm _ _ _ lbe))).
+    choose f hf (pt_oncircle_of_inside_ne _ _ _ da aβ).
+    destruct_ands hf Bdaf fβ.
+    exists f.
+    apply (CancelAdd _ _ (Length d a)).
+    rewrite (between_add_lengths _ _ _ Bdaf).
+    rewrite (eq_radius_if_on_circle _ _ _ _ bα eα cα).
+    rewrite (Eq.symm _ _ _ dbda).
+    rewrite (between_add_lengths _ _ _ Bdbe).
+    apply (eq_radius_if_on_circle _ _ _ _ dβ eβ fβ).
+Qed.
 
 Theorem LtZero : ∀ (a : Measure), a < Zero → False
 Proof.
