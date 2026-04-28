@@ -96,12 +96,6 @@ Theorem snd : (A: Prop) -> (B: Prop) -> A /\ B -> B :=
 Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
     fun M P p f => f p
 
-    (* fun (a b c : Point) (aa : Circle)
-        (aaa : CenterCircle a aa)
-        (baa : OnCircle b aa)
-        (caa : OnCircle c aa) =>
-    snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa *)
-
 (* ============================================================
    Proposition 1 (I.1): Constructing an equilateral triangle
    ============================================================ *)
@@ -209,17 +203,15 @@ Proof.
     destruct_ands eqtri abad bdba.
     choose α hα (circle_of_ne b c bc).
     destruct_ands hα bα cα.
-    have db (d ≠ b).
-        exact (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ bdba) (Ne.symm _ _ _ ab))).
+    have db (d ≠ b). metric.
     choose e he (pt_oncircle_of_inside_ne _ _ _ db (center_lies_inside_circle b α bα)).
     destruct_ands he Bdbe eα.
     choose β hβ (circle_of_ne d e (ne_13_of_between d b e Bdbe)).
     destruct_ands hβ dβ eβ.
-    have da (d ≠ a). exact (Ne.symm _ _ _ (length_pts_ne _ _ _ _ abad ab)).
+    have da (d ≠ a). metric.
     have dbda (Length d b = Length d a). metric.
     have aβ (InCircle a β).
         have sum (Length d b + Length b e = Length d e). exact (between_add_lengths d b e Bdbe).
-        (* have lbe (Zero < Length b e). *)
         apply (Or.elim _ _ _ (ZeroLeast (Length b e))).
             intro lbe.
             have ineq (Length d a < Length d e). metric.
@@ -227,7 +219,8 @@ Proof.
 
             intro lbe.
             apply (False.elim _).
-            exact (ne_23_of_between d b e Bdbe (eq_if_len_zero b e (Eq.symm _ _ _ lbe))).
+            have be (b = e). metric.
+            exact (ne_23_of_between d b e Bdbe be).
     choose f hf (pt_oncircle_of_inside_ne _ _ _ da aβ).
     destruct_ands hf Bdaf fβ.
     exists f.
