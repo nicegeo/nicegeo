@@ -2,6 +2,8 @@
 Many of these definitions and theorem/lemma statements and proofs were taken/inspired from 
 an existing System E Lean formalization at https://github.com/ah1112/synthetic_euclid_4/ *)
 
+Import "euclib/euclib.ncg"
+
 (* ============================================================
    Measure shorthands
    ============================================================ *)
@@ -77,37 +79,6 @@ Definition square : Point -> Point -> Point -> Point -> Prop :=
    Logic and order utilities
    ============================================================ *)
 
-Theorem LeLtOrEq : ∀ (a b : Measure), a ≤ b → a < b ∨ a = b
-Proof.
-intros a b le1ab.
-cases (LtTricot a b) h.
-left.
-exact h.
-
-cases h h1.
-apply (False.elim _).
-exact (le1ab h1).
-
-right.
-exact h1.
-Qed.
-
-(* A strict inequality implies the two values are not equal. *)
-Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
-    fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
-        LtAntisymm b b
-            (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
-            (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
-
-(* Equality is symmetric: a = b implies b = a. *)
-Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> a = b -> b = a :=
-    fun (A: Type) (a b : A) (eq_ab : a = b) =>
-        Eq.elim A a (fun (x : A) => x = a) (Eq.intro A a) b eq_ab
-
-(* Non-equality is symmetric: a ≠ b implies b ≠ a. *)
-Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> a ≠ b -> b ≠ a :=
-    fun (A: Type) (a b: A) (ne_ab: a ≠ b) =>
-        fun (eq_ba: b = a) => ne_ab (Eq.symm A b a eq_ba)
 
 (* Eliminates a conjunction by passing both components to a continuation. *)
 Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> A ∧ B -> (f: A -> B -> C) -> C :=
@@ -125,70 +96,11 @@ Theorem snd : (A: Prop) -> (B: Prop) -> A /\ B -> B :=
 Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
     fun M P p f => f p
 
-
-Axiom sorry : (P: Prop) → P
-
-Theorem LtAddLeft : ∀ (a b c : Measure), a < b → c + a < c + b
-Proof.
-intros a b c ab.
-rewrite (AddComm c a).
-rewrite (AddComm c b).
-exact (LtAdd _ _ _ ab).
-Qed.
-
-Theorem add_lt_add : ∀ (a b c d : Measure), a < b → c < d → a + c < b + d
-Proof.
-intros a b c d ab cd.
-have h1 (a + c < b + c).
-    apply (LtAdd _ _ _).
-    exact ab.
-have h2 (b + c < b + d).
-    apply (LtAddLeft _ _ _).
-    exact cd.
-exact (LtTrans _ _ _ h1 h2).
-Qed.
-
-Theorem cancel_five : ∀ (a b : Measure), a + a + a + a + a < b + b + b + b + b → a < b
-Proof.
-intros a b h.
-cases (LtTricot a b) hab.
-exact hab.
-
-cases hab hab1.
-apply (False.elim _).
-have hab2 _. exact (add_lt_add _ _ _ _ hab1 hab1).
-have hab3 _. exact (add_lt_add _ _ _ _ hab2 hab1).
-have hab4 _. exact (add_lt_add _ _ _ _ hab3 hab1).
-have hab5 _. exact (add_lt_add _ _ _ _ hab4 hab1).
-exact (LtAntisymm _ _ hab5 h).
-
-apply (False.elim _).
-apply (LtNe _ _ h).
-rewrite hab1.
-reflexivity.
-Qed.
-
-
-(* A point c lies on a circle iff its distance to the center equals the radius:
-   Length a c = Length a b ↔ OnCircle c d, given a is the center and b is on d. *)
-Theorem on_circle_iff_length_eq : ∀ (a b c : Point) (d : Circle),
-    CenterCircle a d -> OnCircle b d ->
-    Iff (Length a b = Length a c) (OnCircle c d) :=
-    fun (a b c : Point) (d : Circle) (ad : CenterCircle a d) (bd : OnCircle b d) =>
-    And.intro _ _
-    (fun h => on_circle_if_eq_radius a b c d ad bd (Eq.symm _ _ _ h)) 
-    (fun h => Eq.symm _ _ _ (eq_radius_if_on_circle a b c d ad bd h))
-
-Theorem length_eq_of_oncircle : ∀ (a b c : Point) (aa : Circle),
-    CenterCircle a aa ->
-    OnCircle b aa ->
-    OnCircle c aa ->
-    Length a b = Length a c :=
-    fun (a b c : Point) (aa : Circle)
+    (* fun (a b c : Point) (aa : Circle)
         (aaa : CenterCircle a aa)
         (baa : OnCircle b aa)
         (caa : OnCircle c aa) =>
-    snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa
+    snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa *)
 
 (* ============================================================
    Proposition 1 (I.1): Constructing an equilateral triangle
@@ -222,20 +134,6 @@ Proof.
         exact abb.
 Qed.
 
-(* Right cancellation of addition: x + z = y + z implies x = y,
-   by ruling out x < y and y < x via order on Measure. *)
-Theorem AddCancel : ∀ (x y z : Measure), x + z = y + z -> x = y :=
-    fun x y z h =>
-    Or.elim _ _ _ (LtTricot x y)
-    (fun (xly : x < y) =>
-        False.elim _ (LtNe _ _ (LtAdd x y z xly) h))
-    (fun rest =>
-    Or.elim _ _ _ rest
-    (fun (ylx: y < x) =>
-        False.elim _ (LtNe _ _ (LtAdd y x z ylx) (Eq.symm _ _ _ h)))
-    (fun (eqxy : x = y) => eqxy))
-
-
 (* Left cancellation of addition: z + x = z + y implies x = y,
    by rewriting to right-cancellation form using commutativity. *)
 Theorem CancelAdd : ∀ (x y z : Measure), z + x = z + y -> x = y :=
@@ -245,22 +143,6 @@ Theorem CancelAdd : ∀ (x y z : Measure), z + x = z + y -> x = y :=
         (Eq.elim _ _ (fun a => a = z + y) h _ (AddComm z x))
         _ (AddComm z y)
     )
-
-Theorem AddCongRight : ∀ (x y z : Measure), x = y -> x + z = y + z :=
-    fun x y z h =>
-    Eq.elim _ x (fun t => x + z = t + z) (Eq.intro _ _) y h
-
-Theorem AddCongLeft : ∀ (x y z : Measure), x = y -> z + x = z + y :=
-    fun x y z h =>
-    Eq.elim _ x (fun t => z + x = z + t) (Eq.intro _ _) y h
-
-Theorem AddLeftRewrite : ∀ (a a1 b c : Measure), a + b = c → a1 = a → a1 + b = c
-Proof.
-intros a a1 b c abc a1a.
-rewrite a1a.
-exact abc.
-Qed.
-
 
 (* Extending any ray from inside a circle: given b inside aa and a ≠ b,
    there exists c on aa with b between a and c. *)
@@ -301,15 +183,6 @@ Theorem length_pts_ne : ∀ (a b c d : Point), Length a b = Length c d ->
     fun a b c d (h: Eq _ (Length a b) (Length c d)) (ab: Eq _ a b -> False) (cd: Eq _ c d) =>
     ab (length_pts_eq _ _ _ _ (Eq.symm _ _ _ h) cd)
 
-(* Zero is a left identity for addition: 0 + a = a. *)
-Theorem ZeroAdd : (a: Measure) -> 0 + a = a :=
-    fun (a: Measure) => Eq.elim _ _ (fun x => x = a) (AddZero a) _ (AddComm a 0)
-
-(* Equality is transitive: a = b and b = c give a = c. *)
-Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> a = b -> b = c -> a = c :=
-    fun T a b c h1 h2 =>
-    Eq.elim T b (fun x => a = x) h1 c h2
-
 (* The two outer endpoints of a betweenness relation are distinct: B(a,b,c) implies a ≠ c. *)
 Theorem ne_13_of_between : ∀ (a b c : Point), Between a b c -> a ≠ c :=
     fun a b c Babc => 
@@ -328,198 +201,6 @@ Theorem ne_23_of_between : ∀ (a b c : Point), Between a b c -> b ≠ c :=
    the target length bc out along its longer diagonal to land at f with
    Length a f = Length b c. *)
 Theorem place_segment_ne : ∀ (a b c : Point),
-    (bc : b ≠ c) -> (ab : a ≠ b)
-    -> ∃ f, Length a f = Length b c
-Proof.
-    intros a b c bc ab.
-    choose d eqtri (equilateral_triangle a b ab).
-    destruct_ands eqtri abad bdba.
-    choose α hα (circle_of_ne b c bc).
-    destruct_ands hα bα cα.
-    have db (d ≠ b).
-        exact (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ bdba) (Ne.symm _ _ _ ab))).
-    choose e he (pt_oncircle_of_inside_ne _ _ _ db (center_lies_inside_circle b α bα)).
-    destruct_ands he Bdbe eα.
-    choose β hβ (circle_of_ne d e (ne_13_of_between d b e Bdbe)).
-    destruct_ands hβ dβ eβ.
-    have da (d ≠ a). exact (Ne.symm _ _ _ (length_pts_ne _ _ _ _ abad ab)).
-    have dbda (Length d b = Length d a).
-        rewrite (length_symm d b).
-        rewrite bdba.
-        rewrite (length_symm b a).
-        rewrite abad.
-        exact (length_symm _ _).
-    have aβ (InCircle a β).
-        have sum (Length d b + Length b e = Length d e). exact (between_add_lengths d b e Bdbe).
-        apply (Or.elim _ _ _ (ZeroLeast (Length b e))).
-            intro lbe.
-            have ineq (Length d a < Length d e).
-                rewrite (Eq.symm _ _ _ sum).
-                rewrite (AddComm (Length d b) (Length b e) ).
-                rewrite (Eq.symm _ _ _ (ZeroAdd (Length d a))).
-                rewrite (Eq.symm _ _ _ dbda).
-                apply (LtAdd _ _ _). (* wow apply is so smart *)
-                exact lbe.
-            exact (in_circle_if_lt_radius d e a β dβ eβ ineq).
-
-            intro lbe.
-            apply (False.elim _).
-            exact (ne_23_of_between d b e Bdbe (eq_if_len_zero b e (Eq.symm _ _ _ lbe))).
-    choose f hf (pt_oncircle_of_inside_ne _ _ _ da aβ).
-    destruct_ands hf Bdaf fβ.
-    exists f.
-    apply (CancelAdd _ _ (Length d a)).
-    rewrite (between_add_lengths _ _ _ Bdaf).
-    rewrite (eq_radius_if_on_circle _ _ _ _ bα eα cα).
-    rewrite (Eq.symm _ _ _ dbda).
-    rewrite (between_add_lengths _ _ _ Bdbe).
-    apply (eq_radius_if_on_circle _ _ _ _ dβ eβ fβ).
-Qed.
-
-Theorem LtZero : ∀ (a : Measure), a < Zero → False
-Proof.
-intros a ha.
-cases (ZeroLeast a) h.
-exact (LtAntisymm _ _ ha h).
-exact (LtNe _ _ ha (Eq.symm _ _ _ h)).
-Qed.
-
-Theorem LtCancelLeft : ∀ (x y z : Measure), z + x < z + y -> x < y :=
-    fun (x y z : Measure) (h : z + x < z + y) =>
-    Or.elim _ _ _ (LtTricot x y)
-        (fun (x_lt_y : x < y) => x_lt_y)
-        (fun (rest : y < x \/ x = y) =>
-        Or.elim _ _ _ rest
-            (fun (y_lt_x : y < x) =>
-                False.elim _ (LtAntisymm _ _ h
-                    (Eq.elim _ _ (fun t => t < z + x)
-                        (Eq.elim _ _ (fun t => y + z < t)
-                            (LtAdd y x z y_lt_x)
-                            _
-                            (AddComm x z))
-                        _
-                        (AddComm y z))))
-            (fun (x_eq_y : x = y) =>
-                False.elim _ (LtIrrefl (z + y)
-                    (Eq.elim _ _ (fun t => t < z + y)
-                        h
-                        _
-                        (AddCongLeft x y z x_eq_y)))))
-
-Theorem LtCancelRight : ∀ (x y z : Measure), x + z < y + z -> x < y :=
-    fun (x y z : Measure) (h : x + z < y + z) =>
-    LtCancelLeft x y z
-        (Eq.elim _ _ (fun t => t < z + y)
-            (Eq.elim _ _ (fun t => x + z < t)
-                h
-                _
-                (AddComm y z))
-            _
-            (AddComm x z))
-
-
-Theorem EqByContra : ∀ (a b : Measure), ¬a < b → ¬b < a → a = b
-Proof.
-intros a b nab nba.
-cases (LtTricot a b) h.
-apply (False.elim _).
-exact (nab h).
-cases h h1.
-apply (False.elim _).
-exact (nba h1).
-exact h1.
-Qed.
-
-Theorem add_le_add : ∀ (a b c d : Measure), Le a b → Le c d → Le (a + c) (b + d)
-Proof.
-intros a b c d hab hcd lt.
-cases (LtTricot a b) h.
-cases (LtTricot c d) h1.
-have h2 _. exact (add_lt_add _ _ _ _ h h1).
-exact (LtAntisymm _ _ lt h2).
-cases h1 h2.
-exact (hcd h2).
-(* rewrite h2 at lt. i wish *)
-have lt' (b+d<a+d). exact (Eq.elim Measure c (fun x => b + d < a + x) lt d h2).
-have h3 _. exact (LtCancelRight _ _ _ lt').
-exact (LtAntisymm _ _ h h3).
-cases h h1.
-exact (hab h1).
-(* probably shouldn't have intro'd lt. oh well. live and learn. *)
-have lt' (b+d<b+c). exact (Eq.elim Measure a (fun x => b + d < x + c) lt b h1).
-have h2 _. exact (LtCancelLeft _ _ _ lt').
-exact (hcd h2).
-Qed.
-
-Theorem LeCancelRight : ∀ (a b c : Measure), Le (a + c) (b + c) → Le a b
-Proof.
-intros a b c le ab.
-have h _. exact (LtAdd _ _ c ab).
-exact (le h).
-Qed.
-
-Theorem LeAdd : ∀ (a b c : Measure), Le a b → Le (a + c) (b + c)
-Proof.
-intros a b c ab lt.
-have h _. exact (LtCancelRight _ _ _ lt).
-exact (ab h).
-Qed.
-
-Theorem LtLeLt : ∀ (a b c : Measure), a < b → b ≤ c → a < c
-Proof.
-intros a b c ab bc.
-cases (LeLtOrEq _ _ bc) bc'.
-exact (LtTrans _ _ _ ab bc').
-rewrite (Eq.symm _ _ _ bc').
-exact ab.
-Qed.
-
-Theorem LeLtLt : ∀ (a b c : Measure), a ≤ b → b < c → a < c
-Proof.
-intros a b c ab bc.
-cases (LeLtOrEq _ _ ab) ab'.
-exact (LtTrans _ _ _ ab' bc).
-rewrite ab'.
-exact bc.
-Qed.
-
-Theorem le_of_lt : ∀ (a b : Measure), a < b → a ≤ b :=
-	fun a b ab ba => LtAntisymm _ _ ab ba
-
-Theorem le_of_eq : ∀ (a b : Measure), a = b → a ≤ b :=
-	fun a b ab ba => LtNe _ _ ba (Eq.symm _ _ _ ab)
-
-Theorem LeTrans : ∀ (a b c : Measure), a ≤ b → b ≤ c → a ≤ c
-Proof.
-intros a b c ab bc.
-cases (LeLtOrEq _ _ ab) ab'.
-apply (le_of_lt _ _).
-exact (LtLeLt _ _ _ ab' bc).
-rewrite ab'.
-exact bc.
-Qed.
-
-Theorem AddRightComm : ∀ (a b c : Measure), a + b + c = a + c + b
-Proof.
-intros a b c.
-rewrite (AddAssoc a b c).
-rewrite (AddComm b c).
-rewrite (Eq.symm _ _ _ (AddAssoc a c b)).
-reflexivity.
-Qed.
-
-Theorem len_pos_if_ne : ∀ (a b : Point), a ≠ b → 0 < Length a b
-Proof.
-intros a b ab.
-cases (ZeroLeast (Length a b)) h.
-exact h.
-have ab' (a = b).
-exact (eq_if_len_zero a b (Eq.symm _ _ _ h)).
-exact (False.elim _ (ab ab')).
-Qed.
-
-
-Theorem place_segment_ne' : ∀ (a b c : Point),
     (bc : b ≠ c) -> (ab : a ≠ b)
     -> ∃ f, Length a f = Length b c
 Proof.
@@ -556,7 +237,6 @@ Proof.
     have h3 _. exact (eq_radius_if_on_circle _ _ _ _ dβ eβ fβ).
     metric.
 Qed.
-
 
 (* Excluded middle for point equality: every two points are either equal or distinct.
    Derived from the trichotomy of lengths rather than assumed as a classical axiom. *)
@@ -2905,7 +2585,7 @@ Theorem in_circle_of_lt_lt : ∀ (a b c d : Point) (aa bb : Circle),
                 have _ _
                     (EqTrans _ _ _ _
                         (Eq.symm _ _ _ (AddCongRight (Length a e) (Length a c) (Length e b)
-                            (Eq.symm _ _ _ (length_eq_of_oncircle a c e aa aaa caa (snd _ _ he)))))
+                            (eq_radius_if_on_circle a c e aa aaa caa (snd _ _ he))))
                         (between_add_lengths a e b Baeb))
                 (fun (ac_eb_ab : Length a c + Length e b = Length a b) =>
                 have _ _
@@ -2932,7 +2612,7 @@ Theorem in_circle_of_lt_lt : ∀ (a b c d : Point) (aa bb : Circle),
                     (EqTrans _ _ _ _
                         (between_add_lengths a b e Babe)
                         (EqTrans _ _ _ _
-                            (Eq.symm _ _ _ (length_eq_of_oncircle a c e aa aaa caa (snd _ _ he)))
+                            (eq_radius_if_on_circle a c e aa aaa caa (snd _ _ he))
                             (Eq.intro _ _)))
                 (fun (ab_be_ac : Length a b + Length b e = Length a c) =>
                 have _ _
@@ -3139,10 +2819,10 @@ Theorem triangle_of_ineq : ∀ (a b f a1 a2 b1 b2 e : Point) (L : Line),
         (And.intro _ _
             (And.intro _ _
                 (EqTrans _ _ _ _
-                    (Eq.symm _ _ _ (length_eq_of_oncircle a c e aa (fst _ _ haa) (snd _ _ haa) (fst _ _ (snd _ _ he))))
+                    (eq_radius_if_on_circle a c e aa (fst _ _ haa) (snd _ _ haa) (fst _ _ (snd _ _ he)))
                     (snd _ _ hc))
                 (EqTrans _ _ _ _
-                    (Eq.symm _ _ _ (length_eq_of_oncircle b d e bb (fst _ _ hbb) (snd _ _ hbb) (snd _ _ (snd _ _ he))))
+                    (eq_radius_if_on_circle b d e bb (fst _ _ hbb) (snd _ _ hbb) (snd _ _ (snd _ _ he)))
                     (snd _ _ hd)))
             (fst _ _ he))))))))))
 
@@ -4058,7 +3738,7 @@ Theorem perpendicular_of_not_online : ∀ (a : Point) (L : Line),
     (fun (e : Point) (he : Between c e d /\ Length c e = Length d e) =>
     have _ _ (between_collinear_middle c e d L (fst _ _ he) c_on_L d_on_L)
     (fun (e_on_L : OnLine e L) =>
-    have _ _ (length_eq_of_oncircle a c d aa (fst _ _ haa) c_on_aa d_on_aa)
+    have _ _ (Eq.symm _ _ _ (eq_radius_if_on_circle a c d aa (fst _ _ haa) c_on_aa d_on_aa))
     (fun (ac_ad : Length a c = Length a d) =>
     have _ _
         (fst _ _ (snd _ _

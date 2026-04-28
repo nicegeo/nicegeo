@@ -1,12 +1,238 @@
-Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b) -> (Eq A b a) :=
-	fun (A: Type) (a b : A) (eq_ab : Eq A a b) => Eq.elim A a (fun (x : A) => Eq A x a) (Eq.intro A a) b eq_ab
+(* some automation tactics utilize these theorems *)
 
-Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> (Eq A a b -> False) -> (Eq A b a -> False) :=
-	fun (A: Type) (a b: A) (ne_ab: Eq A a b -> False) => fun (eq_ba: Eq A b a) =>
-		ne_ab (Eq.symm A b a eq_ba)
+(* rewrite *)
+(* Equality is symmetric: a = b implies b = a. *)
+Theorem Eq.symm : (A: Type) -> (a: A) -> (b: A) -> a = b -> b = a :=
+    fun (A: Type) (a b : A) (eq_ab : a = b) =>
+        Eq.elim A a (fun (x : A) => x = a) (Eq.intro A a) b eq_ab
 
-Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> And A B -> (f: A -> B -> C) -> C :=
-    fun A B C h f => And.elim A B C f h
+(* Non-equality is symmetric: a ≠ b implies b ≠ a. *)
+Theorem Ne.symm : (A: Type) -> (a: A) -> (b: A) -> a ≠ b -> b ≠ a :=
+    fun (A: Type) (a b: A) (ne_ab: a ≠ b) =>
+        fun (eq_ba: b = a) => ne_ab (Eq.symm A b a eq_ba)
+
+(* Equality is transitive: a = b and b = c give a = c. *)
+Theorem EqTrans : (T: Type) -> (a: T) -> (b: T) -> (c: T) -> a = b -> b = c -> a = c :=
+    fun T a b c h1 h2 =>
+    Eq.elim T b (fun x => a = x) h1 c h2
+
+(* measure *)
+Theorem AddLeftRewrite : ∀ (a a1 b c : Measure), a + b = c → a1 = a → a1 + b = c
+Proof.
+intros a a1 b c abc a1a.
+rewrite a1a.
+exact abc.
+Qed.
+
+Theorem AddRightComm : ∀ (a b c : Measure), a + b + c = a + c + b
+Proof.
+intros a b c.
+rewrite (AddAssoc a b c).
+rewrite (AddComm b c).
+rewrite (Eq.symm _ _ _ (AddAssoc a c b)).
+reflexivity.
+Qed.
+
+Theorem AddCongRight : ∀ (x y z : Measure), x = y -> x + z = y + z :=
+    fun x y z h =>
+    Eq.elim _ x (fun t => x + z = t + z) (Eq.intro _ _) y h
+
+Theorem AddCongLeft : ∀ (x y z : Measure), x = y -> z + x = z + y :=
+    fun x y z h =>
+    Eq.elim _ x (fun t => z + x = z + t) (Eq.intro _ _) y h
+
+(* A strict inequality implies the two values are not equal. *)
+Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
+    fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
+        LtAntisymm b b
+            (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
+            (Eq.elim Measure a (fun (x: Measure) => x < b) lt_ab b eq_ab)
+
+(* Right cancellation of addition: x + z = y + z implies x = y,
+   by ruling out x < y and y < x via order on Measure. *)
+Theorem AddCancel : ∀ (x y z : Measure), x + z = y + z -> x = y :=
+    fun x y z h =>
+    Or.elim _ _ _ (LtTricot x y)
+    (fun (xly : x < y) =>
+        False.elim _ (LtNe _ _ (LtAdd x y z xly) h))
+    (fun rest =>
+    Or.elim _ _ _ rest
+    (fun (ylx: y < x) =>
+        False.elim _ (LtNe _ _ (LtAdd y x z ylx) (Eq.symm _ _ _ h)))
+    (fun (eqxy : x = y) => eqxy))
+
+Theorem LtCancelLeft : ∀ (x y z : Measure), z + x < z + y -> x < y :=
+    fun (x y z : Measure) (h : z + x < z + y) =>
+    Or.elim _ _ _ (LtTricot x y)
+        (fun (x_lt_y : x < y) => x_lt_y)
+        (fun (rest : y < x \/ x = y) =>
+        Or.elim _ _ _ rest
+            (fun (y_lt_x : y < x) =>
+                False.elim _ (LtAntisymm _ _ h
+                    (Eq.elim _ _ (fun t => t < z + x)
+                        (Eq.elim _ _ (fun t => y + z < t)
+                            (LtAdd y x z y_lt_x)
+                            _
+                            (AddComm x z))
+                        _
+                        (AddComm y z))))
+            (fun (x_eq_y : x = y) =>
+                False.elim _ (LtIrrefl (z + y)
+                    (Eq.elim _ _ (fun t => t < z + y)
+                        h
+                        _
+                        (AddCongLeft x y z x_eq_y)))))
+
+Theorem LtCancelRight : ∀ (x y z : Measure), x + z < y + z -> x < y :=
+    fun (x y z : Measure) (h : x + z < y + z) =>
+    LtCancelLeft x y z
+        (Eq.elim _ _ (fun t => t < z + y)
+            (Eq.elim _ _ (fun t => x + z < t)
+                h
+                _
+                (AddComm y z))
+            _
+            (AddComm x z))
+
+
+Theorem LtZero : ∀ (a : Measure), a < Zero → False
+Proof.
+intros a ha.
+cases (ZeroLeast a) h.
+exact (LtAntisymm _ _ ha h).
+exact (LtNe _ _ ha (Eq.symm _ _ _ h)).
+Qed.
+
+(* Zero is a left identity for addition: 0 + a = a. *)
+Theorem ZeroAdd : (a: Measure) -> Zero + a = a :=
+    fun (a: Measure) => Eq.elim _ _ (fun x => x = a) (AddZero a) _ (AddComm a Zero)
+
+Theorem EqByContra : ∀ (a b : Measure), ¬a < b → ¬b < a → a = b
+Proof.
+intros a b nab nba.
+cases (LtTricot a b) h.
+apply (False.elim _).
+exact (nab h).
+cases h h1.
+apply (False.elim _).
+exact (nba h1).
+exact h1.
+Qed.
+
+Theorem len_pos_if_ne : ∀ (a b : Point), a ≠ b → Zero < Length a b
+Proof.
+intros a b ab.
+cases (ZeroLeast (Length a b)) h.
+exact h.
+have ab' (a = b).
+exact (eq_if_len_zero a b (Eq.symm _ _ _ h)).
+exact (False.elim _ (ab ab')).
+Qed.
+
+
+Theorem LtAddLeft : ∀ (a b c : Measure), a < b → c + a < c + b
+Proof.
+intros a b c ab.
+rewrite (AddComm c a).
+rewrite (AddComm c b).
+exact (LtAdd _ _ _ ab).
+Qed.
+
+Theorem add_lt_add : ∀ (a b c d : Measure), a < b → c < d → a + c < b + d
+Proof.
+intros a b c d ab cd.
+have h1 (a + c < b + c).
+    apply (LtAdd _ _ _).
+    exact ab.
+have h2 (b + c < b + d).
+    apply (LtAddLeft _ _ _).
+    exact cd.
+exact (LtTrans _ _ _ h1 h2).
+Qed.
+
+Theorem add_le_add : ∀ (a b c d : Measure), Le a b → Le c d → Le (a + c) (b + d)
+Proof.
+intros a b c d hab hcd lt.
+cases (LtTricot a b) h.
+cases (LtTricot c d) h1.
+have h2 _. exact (add_lt_add _ _ _ _ h h1).
+exact (LtAntisymm _ _ lt h2).
+cases h1 h2.
+exact (hcd h2).
+(* rewrite h2 at lt. i wish *)
+have lt' (b+d<a+d). exact (Eq.elim Measure c (fun x => b + d < a + x) lt d h2).
+have h3 _. exact (LtCancelRight _ _ _ lt').
+exact (LtAntisymm _ _ h h3).
+cases h h1.
+exact (hab h1).
+(* probably shouldn't have intro'd lt. oh well. live and learn. *)
+have lt' (b+d<b+c). exact (Eq.elim Measure a (fun x => b + d < x + c) lt b h1).
+have h2 _. exact (LtCancelLeft _ _ _ lt').
+exact (hcd h2).
+Qed.
+
+Theorem LeCancelRight : ∀ (a b c : Measure), Le (a + c) (b + c) → Le a b
+Proof.
+intros a b c le ab.
+have h _. exact (LtAdd _ _ c ab).
+exact (le h).
+Qed.
+
+Theorem LeAdd : ∀ (a b c : Measure), Le a b → Le (a + c) (b + c)
+Proof.
+intros a b c ab lt.
+have h _. exact (LtCancelRight _ _ _ lt).
+exact (ab h).
+Qed.
+
+Theorem LeLtOrEq : ∀ (a b : Measure), a ≤ b → a < b ∨ a = b
+Proof.
+intros a b le1ab.
+cases (LtTricot a b) h.
+left.
+exact h.
+
+cases h h1.
+apply (False.elim _).
+exact (le1ab h1).
+
+right.
+exact h1.
+Qed.
+
+Theorem LtLeLt : ∀ (a b c : Measure), a < b → b ≤ c → a < c
+Proof.
+intros a b c ab bc.
+cases (LeLtOrEq _ _ bc) bc'.
+exact (LtTrans _ _ _ ab bc').
+rewrite (Eq.symm _ _ _ bc').
+exact ab.
+Qed.
+
+Theorem LeLtLt : ∀ (a b c : Measure), a ≤ b → b < c → a < c
+Proof.
+intros a b c ab bc.
+cases (LeLtOrEq _ _ ab) ab'.
+exact (LtTrans _ _ _ ab' bc).
+rewrite ab'.
+exact bc.
+Qed.
+
+Theorem le_of_lt : ∀ (a b : Measure), a < b → a ≤ b :=
+	fun a b ab ba => LtAntisymm _ _ ab ba
+
+Theorem le_of_eq : ∀ (a b : Measure), a = b → a ≤ b :=
+	fun a b ab ba => LtNe _ _ ba (Eq.symm _ _ _ ab)
+
+Theorem LeTrans : ∀ (a b c : Measure), a ≤ b → b ≤ c → a ≤ c
+Proof.
+intros a b c ab bc.
+cases (LeLtOrEq _ _ ab) ab'.
+apply (le_of_lt _ _).
+exact (LtLeLt _ _ _ ab' bc).
+rewrite ab'.
+exact bc.
+Qed.
 
 Theorem on_circle_iff_length_eq : (a : Point) -> (b : Point) -> (c : Point) -> (d : Circle) ->
     CenterCircle a d -> OnCircle b d -> 
@@ -16,43 +242,3 @@ Theorem on_circle_iff_length_eq : (a : Point) -> (b : Point) -> (c : Point) -> (
     And.intro (Eq _ (Length a b) (Length a c) -> OnCircle c d) (OnCircle c d -> Eq _ (Length a b) (Length a c)) 
     (fun h => on_circle_if_eq_radius a b c d ad bd (Eq.symm _ _ _ h)) 
     (fun h => Eq.symm _ _ _ (eq_radius_if_on_circle a b c d ad bd h))
-
-Theorem fst : (A: Prop) -> (B: Prop) -> And A B -> A :=
-    fun A B h => And.elim1 A B A h (fun a b => a)
-
-Theorem snd : (A: Prop) -> (B: Prop) -> And A B -> B :=
-    fun A B h => And.elim1 A B B h (fun a b => b)
-
-(* Proposition I.I: To construct an equilateral triangle on a given finite straight line. *)
-Theorem prop1 :
-(a : Point) -> (b : Point) -> (ab : Eq Point a b -> False) -> 
-Exists Point (fun (c : Point) =>
-    And (Eq Measure (Length a b) (Length a c))
-        (Eq Measure (Length b c) (Length b a)))
-:= fun (a b : Point) (ab : Eq Point a b -> False) =>
-   	Exists.elim _ _ _ (circle_of_ne a b ab)
-    (fun (aa : Circle) (center_and_on : (And (CenterCircle a aa) (OnCircle b aa))) =>
-
-    And.elim1 _ _ _ center_and_on
-    (fun (aaa : CenterCircle a aa) (baa : OnCircle b aa) =>
-
-    Exists.elim _ _ _ (circle_of_ne b a (Ne.symm _ _ _ ab))
-    (fun (bb : Circle) (b_center_and_on : And (CenterCircle b bb) (OnCircle a bb)) =>
-
-    And.elim1 _ _ _ b_center_and_on
-    (fun (bbb : CenterCircle b bb) (abb : OnCircle a bb) =>
-
-   	Exists.elim _ _ _ (pt_of_circlesinter aa bb (circles_inter_if_on_in b a aa bb baa
-        (center_lies_inside_circle a aa aaa) 
-		(center_lies_inside_circle b bb bbb) abb
-	))
-    (fun (c : Point) (facts : And (OnCircle c aa) (OnCircle c bb)) =>
-
-    And.elim1 _ _ _ facts
-    (fun (caa : OnCircle c aa) (cbb : OnCircle c bb) =>
-
-    Exists.intro Point (fun (c : Point) =>
-		And (Eq Measure (Length a b) (Length a c))
-			(Eq Measure (Length b c) (Length b a)))
-    c (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
-	))))))
