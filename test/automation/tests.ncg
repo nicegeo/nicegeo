@@ -119,129 +119,6 @@ exact (eq_if_len_zero a b (Eq.symm _ _ _ h)).
 exact (False.elim _ (ab ab')).
 Qed.
 
-(* intro tests *)
-
-Theorem intro_unwraps_defs : ∀ (a b : Point), a ≠ b → a ≠ b
-Proof.
-intros a b ab_ne.
-intro ab. (* goal is a ≠ b, intros a = b with goal False *)
-exact (ab_ne ab).
-Qed.
-
-(* have tests *)
-
-(* have with unspecified type inferred from proof *)
-Theorem havetest : ∀ (A B C : Prop), A ∧ B ∧ C → C ∧ B ∧ A
-Proof.
-intros A B C h.
-destruct_ands h a b c.
-have cb _.
-	exact (And.intro _ _ c b).
-exact (And.intro _ _ cb a).
-Qed.
-
-(* destruct_and tests *)
-
-Theorem test1 : ∀ (A B C D E : Prop), A ∧ B ∧ C ∧ D ∧ E → D 
-Proof.
-intros A B C D E h.
-destruct_ands h a b c d e.
-exact d.
-Qed.
-
-Theorem test2 : ∀ (A B C D E : Prop), A ∧ (B ∧ (C ∧ (D ∧ E))) → D 
-Proof.
-intros A B C D E h.
-destruct_ands h a b c d e.
-exact d.
-Qed.
-
-Theorem test3 : ∀ (A B C D E : Prop), (A ∧ B) ∧ (C ∧ (D ∧ E)) → D 
-Proof.
-intros A B C D E h.
-destruct_ands h a b c d e.
-exact d.
-Qed.
-
-(* showing definition unfolding behavior *)
-Definition OutCircle : Point → Circle → Prop := fun a α => ¬OnCircle a α ∧ ¬InCircle a α
-
-Theorem test4 : ∀ a α, a = a ∧ OutCircle a α ∧ α = α → ¬InCircle a α 
-Proof.
-intros a α h.
-destruct_ands h a_rfl outcircle α_rfl.
-destruct_ands outcircle noton notin.
-exact notin.
-Qed.
-
-(* this isn't really an automation test but *)
-Theorem list_test : ∀ (a b c : Point), ∃ d, ¬List.mem _ d [a, b, c]
-Proof.
-intros a b c.
-choose d hd (pt_exists [a, b, c] [] []).
-destruct_ands (distinct_from.elim _ _ _ _ hd) d_not_mem _h2 _h3.
-exists d.
-exact d_not_mem.
-Qed.
-
-(* cases *)
-
-Theorem Or.symm : ∀ (A B : Prop), A ∨ B → B ∨ A
-Proof.
-intros A B or.
-cases or a b.
-right.
-exact a.
-left.
-exact b.
-Qed.
-
-Theorem Or.symm1 : ∀ (A B : Prop), A ∨ B → B ∨ A
-Proof.
-intros A B or.
-cases or h.
-right.
-exact h.
-left.
-exact h.
-Qed.
-
-Theorem em : ∀ (P: Prop), P ∨ ¬P
-Proof.
-intro P.
-cases (excluded_middle P) h.
-left.
-exact h.
-right.
-exact h.
-Qed.
-
-(* measure_norm tests *)
-
-(* it's beautiful *)
-Theorem test5 : ∀ (a b c d : Measure), a + b + a + c + d + b = d + (b + b) + (a + (c + a))
-Proof.
-intros a b c d.
-measure_norm.
-reflexivity.
-Qed.
-
-Theorem test6 : ∀ (a b : Point), Zero + Length a b = Length b a + Zero
-Proof.
-intros a b.
-measure_norm.
-reflexivity.
-Qed.
-
-(* simp_constrain tests *)
-
-(* sooooo beautiful you can't tell me this isn't amazing *)
-Theorem test7 : ∀ (a b c d e f : Measure), a + (b + a + c) + (d + b) + e < d + (b + b + f) + (a + (c + a)) → e < f
-Proof.
-intros a b c d e f h.
-simp_constrain h1 h.
-exact h1.
-Qed.
 
 Theorem LtAddLeft : ∀ (a b c : Measure), a < b → c + a < c + b
 Proof.
@@ -347,30 +224,141 @@ rewrite ab'.
 exact bc.
 Qed.
 
-Axiom sorry : (P: Prop) → P
+(* intro tests *)
 
-Theorem lt_mul_5 : ∀ (a b : Measure), a < b → a + a + a + a + a < b + b + b + b + b :=
-	fun a b h =>
-	add_lt_add (a+a+a+a) (b+b+b+b) a b (
-	add_lt_add (a+a+a) (b+b+b) a b (
-	add_lt_add (a+a) (b+b) a b (
-	add_lt_add (a) (b) a b (
-	h
-	) h
-	) h
-	) h
-	) h
+Theorem intro_unwraps_defs : ∀ (a b : Point), a ≠ b → a ≠ b
+Proof.
+intros a b ab_ne.
+intro ab. (* goal is a ≠ b, intros a = b with goal False *)
+exact (ab_ne ab).
+Qed.
+
+(* have tests *)
+
+(* have with unspecified type inferred from proof *)
+Theorem havetest : ∀ (A B C : Prop), A ∧ B ∧ C → C ∧ B ∧ A
+Proof.
+intros A B C h.
+destruct_ands h a b c.
+have cb _.
+	exact (And.intro _ _ c b).
+exact (And.intro _ _ cb a).
+Qed.
+
+(* destruct_and tests *)
+
+Theorem test1 : ∀ (A B C D E : Prop), A ∧ B ∧ C ∧ D ∧ E → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+Theorem test2 : ∀ (A B C D E : Prop), A ∧ (B ∧ (C ∧ (D ∧ E))) → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+Theorem test3 : ∀ (A B C D E : Prop), (A ∧ B) ∧ (C ∧ (D ∧ E)) → D 
+Proof.
+intros A B C D E h.
+destruct_ands h a b c d e.
+exact d.
+Qed.
+
+(* showing definition unfolding behavior *)
+Definition OutCircle : Point → Circle → Prop := fun a α => ¬OnCircle a α ∧ ¬InCircle a α
+
+Theorem test4 : ∀ a α, a = a ∧ OutCircle a α ∧ α = α → ¬InCircle a α 
+Proof.
+intros a α h.
+destruct_ands h a_rfl outcircle α_rfl.
+destruct_ands outcircle noton notin.
+exact notin.
+Qed.
+
+(* this isn't really an automation test but *)
+Theorem list_test : ∀ (a b c : Point), ∃ d, ¬List.mem _ d [a, b, c]
+Proof.
+intros a b c.
+choose d hd (pt_exists [a, b, c] [] []).
+destruct_ands (distinct_from.elim _ _ _ _ hd) d_not_mem _h2 _h3.
+exists d.
+exact d_not_mem.
+Qed.
+
+(* cases *)
+
+Theorem Or.symm : ∀ (A B : Prop), A ∨ B → B ∨ A
+Proof.
+intros A B or.
+cases or a b.
+right.
+exact a.
+left.
+exact b.
+Qed.
+
+Theorem Or.symm1 : ∀ (A B : Prop), A ∨ B → B ∨ A
+Proof.
+intros A B or.
+cases or h.
+right.
+exact h.
+left.
+exact h.
+Qed.
+
+Theorem em : ∀ (P: Prop), P ∨ ¬P
+Proof.
+intro P.
+cases (excluded_middle P) h.
+left.
+exact h.
+right.
+exact h.
+Qed.
+
+(* measure_norm tests *)
+
+Theorem test5 : ∀ (a b c d : Measure), a + b + a + c + d + b = d + (b + b) + (a + (c + a))
+Proof.
+intros a b c d.
+measure_norm.
+reflexivity.
+Qed.
+
+Theorem test6 : ∀ (a b : Point), Zero + Length a b = Length b a + Zero
+Proof.
+intros a b.
+measure_norm.
+reflexivity.
+Qed.
+
+(* simp_constrain tests *)
+
+Theorem test7 : ∀ (a b c d e f : Measure), a + (b + a + c) + (d + b) + e < d + (b + b + f) + (a + (c + a)) → e < f
+Proof.
+intros a b c d e f h.
+simp_constrain h1 h.
+exact h1.
+Qed.
 
 (* metric tests *)
 
 Theorem test8 : ∀ (a b c : Measure), a < b → b < c → c < a → False
 Proof.
-intros a b c h1 h2 h3.
 metric.
 Qed.
 
 Theorem test9 : ∀ (a b c d e : Measure), a < b → b = c → c < d → d < e → e = a → False
 Proof.
-intros a b c d e h1 h2 h3 h4 h5.
+metric.
+Qed.
+
+Theorem test10 : ∀ (a b c d : Measure), a + b = c → a + d = c → b = d
+Proof.
 metric.
 Qed.
