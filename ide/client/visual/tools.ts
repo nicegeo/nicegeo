@@ -15,14 +15,16 @@ export abstract class Tool {
 
   private readonly label: string;
   private readonly icon: string;
+  private readonly onSelect: () => void;
 
   private _enabled = false;
   private button: VscodeButton | null = null;
 
-  constructor({id, label, icon}: { id: string; label: string; icon: string }) {
+  constructor({id, label, icon, onSelect}: { id: string; label: string; icon: string; onSelect: (tool: Tool) => void }) {
     this.id = id;
     this.label = label;
     this.icon = icon;
+    this.onSelect = () => onSelect(this);
   }
 
   get enabled(): boolean {
@@ -41,16 +43,14 @@ export abstract class Tool {
 
   abstract get inputs(): readonly Construction[];
 
-  render(onSelect: (tool: Tool) => void): VscodeButton {
+  render(): VscodeButton {
     const button = document.createElement("vscode-button") as VscodeButton;
     button.id = `toolButton-${this.id}`;
     button.className = "toolButton";
     button.title = this.label;
     button.icon = this.icon;
 
-    button.addEventListener("click", () => {
-      onSelect(this);
-    });
+    button.addEventListener("click", this.onSelect);
 
     this.button = button;
     return button;
@@ -58,11 +58,12 @@ export abstract class Tool {
 }
 
 export class PointTool extends Tool {
-  constructor() {
+  constructor(onSelect: (tool: Tool) => void) {
     super({
       id: "point",
       label: "Point",
       icon: "circle-filled",
+      onSelect,
     });
   }
 
@@ -83,11 +84,12 @@ export class PointTool extends Tool {
 export class LineTool extends Tool {
   private readonly points: Point[] = [];
 
-  constructor() {
+  constructor(onSelect: (tool: Tool) => void) {
     super({
       id: "line",
       label: "Line",
       icon: "arrow-both",
+      onSelect,
     });
   }
 
@@ -107,11 +109,12 @@ export class LineTool extends Tool {
 export class CircleTool extends Tool {
   private readonly points: Point[] = [];
 
-  constructor() {
+  constructor(onSelect: (tool: Tool) => void) {
     super({
       id: "circle",
       label: "Circle",
       icon: "circle-large",
+      onSelect,
     });
   }
 
@@ -131,11 +134,12 @@ export class CircleTool extends Tool {
 export class DistinctModifier extends Tool {
   private readonly points: Point[] = [];
 
-  constructor() {
+  constructor(onSelect: (tool: Tool) => void) {
     super({
       id: "distinct",
       label: "Distinct",
       icon: "diff-removed",
+      onSelect,
     });
   }
 

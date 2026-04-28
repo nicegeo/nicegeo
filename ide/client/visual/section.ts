@@ -1,4 +1,4 @@
-import { Tool } from "./tools";
+import type { Tool } from "./tools";
 
 abstract class Section {
   private readonly title: string;
@@ -8,11 +8,11 @@ abstract class Section {
   constructor(options: {
     title: string;
     className: string;
-    items: Tool[];
+    items: Array<new (onSelect: (tool: Tool) => void) => Tool>;
   }) {
     this.title = options.title;
     this.className = options.className;
-    this.items = options.items;
+    this.items = options.items.map(cls => new cls(this.onItemSelected));
   }
 
   render(): HTMLElement {
@@ -25,7 +25,7 @@ abstract class Section {
 
     const group = document.createElement("div");
     group.className = "group";
-    group.append(...this.items.map((item) => item.render((i) => this.onItemSelected(i))));
+    group.append(...this.items.map((item) => item.render()));
 
     section.append(titleElement, group);
     return section;

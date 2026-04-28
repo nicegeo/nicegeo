@@ -17,13 +17,13 @@ window.addEventListener("DOMContentLoaded", () => {
   const toolSection = new ToolSection({
     title: "Tools",
     className: "toolSection",
-    items: [new PointTool(), new LineTool(), new CircleTool()],
+    items: [PointTool, LineTool, CircleTool],
   });
 
   const modifierSection = new ModifierSection({
     title: "Modifiers",
     className: "modifierSection",
-    items: [new DistinctModifier()],
+    items: [DistinctModifier],
   });
 
   toolbar.replaceChildren(toolSection.render(), modifierSection.render());
