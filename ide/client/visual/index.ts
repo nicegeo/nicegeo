@@ -2,18 +2,11 @@
 
 import "@vscode-elements/elements";
 import { Plane } from "./plane.js";
-import { Section, Tool } from "./tools.js";
+import { CircleTool, DistinctModifier, LineTool, PointTool } from "./tools.js";
+import { ModifierSection, ToolSection } from "./section.js";
 
 const canvas = document.getElementById("planeCanvas") as HTMLCanvasElement | null;
 const toolbar = document.getElementById("toolbar") as HTMLDivElement | null;
-
-const TOOLS = [
-  new Tool({ id: "point", label: "Point", icon: "circle-filled", action: () => {} }),
-  new Tool({ id: "line", label: "Line", icon: "arrow-both", action: () => {} }),
-  new Tool({ id: "circle", label: "Circle", icon: "circle-large", action: () => {} }),
-];
-
-const MODIFIERS = [new Tool({ id: "distinct", label: "Distinct", icon: "diff-removed", action: () => {} })];
 
 window.addEventListener("DOMContentLoaded", () => {
   if (!canvas || !toolbar) return;
@@ -21,19 +14,17 @@ window.addEventListener("DOMContentLoaded", () => {
   const plane = new Plane(canvas);
   plane.mount();
 
-  const toolsSection = new Section({
+  const toolSection = new ToolSection({
     title: "Tools",
     className: "toolSection",
-    tools: TOOLS,
-    activeTool: TOOLS[0],
+    items: [new PointTool(), new LineTool(), new CircleTool()],
   });
 
-  const modifiersSection = new Section({
+  const modifierSection = new ModifierSection({
     title: "Modifiers",
     className: "modifierSection",
-    tools: MODIFIERS,
-    isModifier: true,
+    items: [new DistinctModifier()],
   });
 
-  toolbar.replaceChildren(toolsSection.render(), modifiersSection.render());
+  toolbar.replaceChildren(toolSection.render(), modifierSection.render());
 });

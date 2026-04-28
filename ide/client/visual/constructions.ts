@@ -4,14 +4,10 @@ import { PlaneView } from './plane';
  * Abstract base class for geometric constructions
  */
 export abstract class Construction {
-  /** Unique identifier for this construction */
-  public readonly id: string;
-
   /** Name/label for this construction */
   public name: string;
 
-  constructor(id: string, name: string) {
-    this.id = id;
+  constructor(name: string) {
     this.name = name;
   }
 
@@ -38,8 +34,8 @@ export class Point extends Construction {
   /** Y coordinate */
   private _y: number;
 
-  constructor(id: string, name: string, x: number, y: number) {
-    super(id, name);
+  constructor(name: string, x: number, y: number) {
+    super(name);
     this._x = x;
     this._y = y;
   }

@@ -1,20 +1,45 @@
 import { VscodeButton } from "@vscode-elements/elements";
+import { Construction, Point } from "./constructions";
 
-type ToolAction = () => void;
+export interface ConstructionInput { kind: "construction"; construction: Construction }
+export interface LocationInput { kind: "location"; x: number; y: number }
+export type ToolInput = ConstructionInput | LocationInput;
 
-export class Tool {
+export interface ConstructionResult { kind: "construction"; construction: Construction }
+export interface FailureResult { kind: "failure" }
+export interface ContinueResult { kind: "continue" }
+export type ToolResult = ConstructionResult | FailureResult | ContinueResult;
+
+export abstract class Tool {
   readonly id: string;
+
   private readonly label: string;
   private readonly icon: string;
-  private readonly action: ToolAction;
+
+  private _enabled = false;
   private button: VscodeButton | null = null;
 
-  constructor(options: { id: string; label: string; icon: string; action: ToolAction }) {
-    this.id = options.id;
-    this.label = options.label;
-    this.icon = options.icon;
-    this.action = options.action;
+  constructor({id, label, icon}: { id: string; label: string; icon: string }) {
+    this.id = id;
+    this.label = label;
+    this.icon = icon;
   }
+
+  get enabled(): boolean {
+    return this._enabled;
+  }
+
+  set enabled(isEnabled: boolean) {
+    this._enabled = isEnabled;
+    if (!this.button) return;
+    this.button.classList.toggle("toolButtonActive", isEnabled);
+  }
+
+  abstract activate(input: ToolInput): ToolResult;
+
+  abstract reset(): void;
+
+  abstract get inputs(): readonly Construction[];
 
   render(onSelect: (tool: Tool) => void): VscodeButton {
     const button = document.createElement("vscode-button") as VscodeButton;
@@ -25,68 +50,104 @@ export class Tool {
 
     button.addEventListener("click", () => {
       onSelect(this);
-      this.action();
     });
 
     this.button = button;
     return button;
   }
+}
 
-  setActive(isActive: boolean): void {
-    if (!this.button) return;
-    this.button.classList.toggle("toolButtonActive", isActive);
+export class PointTool extends Tool {
+  constructor() {
+    super({
+      id: "point",
+      label: "Point",
+      icon: "circle-filled",
+    });
+  }
+
+  override activate(input: ToolInput): ToolResult {
+    if (input.kind !== "location") return { kind: 'failure' };
+    const { x, y } = input;
+    const p = new Point('', x, y);
+    return { kind: 'construction', construction: p };
+  }
+
+  override get inputs(): readonly Construction[] {
+    return [];
+  }
+
+  override reset(): void {}
+}
+
+export class LineTool extends Tool {
+  private readonly points: Point[] = [];
+
+  constructor() {
+    super({
+      id: "line",
+      label: "Line",
+      icon: "arrow-both",
+    });
+  }
+
+  override activate(input: ToolInput): ToolResult {
+    return { kind: 'failure' };
+  }
+
+  override reset(): void {
+    this.points.length = 0;
+  }
+
+  override get inputs(): readonly Construction[] {
+    return this.points;
   }
 }
 
-export class Section {
-  private readonly title: string;
-  private readonly className: string;
-  private readonly tools: Tool[];
-  private readonly isModifier: boolean;
-  private activeTool: Tool | null;
+export class CircleTool extends Tool {
+  private readonly points: Point[] = [];
 
-  constructor(options: {
-    title: string;
-    className: string;
-    tools: Tool[];
-    isModifier?: boolean;
-    activeTool?: Tool;
-  }) {
-    this.title = options.title;
-    this.className = options.className;
-    this.tools = options.tools;
-    this.isModifier = options.isModifier ?? false;
-    this.activeTool = options.activeTool ?? null;
+  constructor() {
+    super({
+      id: "circle",
+      label: "Circle",
+      icon: "circle-large",
+    });
   }
 
-  render(): HTMLElement {
-    const section = document.createElement("section");
-    section.className = this.className;
-
-    const titleElement = document.createElement("span");
-    titleElement.className = "sectionTitle";
-    titleElement.textContent = this.title;
-
-    const group = document.createElement("div");
-    group.className = "group";
-    group.append(...this.tools.map((tool) => tool.render(this.onToolSelected)));
-
-    section.append(titleElement, group);
-    this.updateActiveToolButtons();
-    return section;
+  override activate(input: ToolInput): ToolResult {
+    return { "kind": "failure" };
   }
 
-  private readonly onToolSelected = (tool: Tool): void => {
-    if (this.isModifier) return;
-    this.activeTool = tool;
-    this.updateActiveToolButtons();
-  };
+  override reset(): void {
+    this.points.length = 0;
+  }
 
-  private updateActiveToolButtons(): void {
-    if (this.isModifier) return;
+  override get inputs(): readonly Construction[] {
+    return this.points;
+  }
+}
 
-    for (const tool of this.tools) {
-      tool.setActive(tool === this.activeTool);
-    }
+export class DistinctModifier extends Tool {
+  private readonly points: Point[] = [];
+
+  constructor() {
+    super({
+      id: "distinct",
+      label: "Distinct",
+      icon: "diff-removed",
+    });
+  }
+
+  override activate(input: ToolInput): ToolResult {
+    return { "kind": "failure" };
+  }
+
+  override reset(): void {
+    this.points.length = 0;
+  }
+
+  override get inputs(): readonly Construction[] {
+    return this.points;
   }
 }
