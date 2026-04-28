@@ -128,11 +128,13 @@ let to_measure (tm : Simpterm.term) : measure option =
 
   let rec assoc_normal (tm : term) : term * term =
     match right_normal tm with
-    | App (App (Name "Add", t1), t2), proof ->
+    | App (App (Name "Add", t1), t2) as t, proof ->
         let t1_normal, proof1 = assoc_normal t1 in
         (* proof : t1 + t2 = tm *)
         (* proof1 : t1_normal = t1 *)
         (* need to return proof that t1_normal + t2 = tm *)
+        if t1_normal = t1 then (t, proof)
+        else
         ( App (App (Name "Add", t1_normal), t2),
           apps (Name "AddLeftRewrite") [ t1; t1_normal; t2; tm; proof; proof1 ] )
     | t, proof -> (t, proof)
