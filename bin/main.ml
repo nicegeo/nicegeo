@@ -31,7 +31,7 @@ let () =
   in
 
   let errors_exist =
-    List.exists
+    List.map
       (fun stmt ->
         try
           Elab.Interface.process_statement env stmt;
@@ -44,7 +44,7 @@ let () =
       stmts
   in
 
-  if errors_exist then (
+  if List.exists (fun x -> x) errors_exist then (
     (match Nice_messages.pick_message tone Nice_messages.After_error with
     | Some extra -> Printf.printf "\n%s\n\n" extra
     | None -> ());
