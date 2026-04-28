@@ -56,6 +56,9 @@ let order_mul (rel : term) (add_rel_add : term) (n : int) : term =
 let lt_mul (n : int) : term = order_mul (Name "Lt") (Name "add_lt_add") n
 let le_mul (n : int) : term = order_mul (Name "Le") (Name "add_le_add") n
 
+let refl (t : Simpterm.term) : Simpterm.term =
+  App (App (Name "Eq.intro", Name "Measure"), t)
+
 (** produces a proof of type ∀ (a b : Measure), a = b → n * a = n * b where n * a denotes
     a + a + ... + a (n times) *)
 let eq_mul (n : int) : term =
