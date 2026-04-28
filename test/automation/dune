@@ -1,8 +1,11 @@
 (test
  (name tests)
  (modes exe byte)
- (deps tests.ncg env.ncg)
+ (deps tests.ncg env.ncg euclib.ncg)
  (libraries kernel elab automation alcotest))
 
 (rule
  (copy ../../synthetic/env.ncg env.ncg))
+
+(rule
+ (copy ../../euclib/euclib.ncg euclib.ncg))
