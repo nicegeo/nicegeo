@@ -109,6 +109,16 @@ exact (nba h1).
 exact h1.
 Qed.
 
+Theorem len_pos_if_ne : ∀ (a b : Point), a ≠ b → Zero < Length a b
+Proof.
+intros a b ab.
+cases (ZeroLeast (Length a b)) h.
+exact h.
+have ab' (a = b).
+exact (eq_if_len_zero a b (Eq.symm _ _ _ h)).
+exact (False.elim _ (ab ab')).
+Qed.
+
 (* intro tests *)
 
 Theorem intro_unwraps_defs : ∀ (a b : Point), a ≠ b → a ≠ b
@@ -362,5 +372,10 @@ Qed.
 Theorem test9 : ∀ (a b c d e : Measure), a < b → b = c → c < d → d < e → e = a → False
 Proof.
 intros a b c d e h1 h2 h3 h4 h5.
+metric.
+Qed.
+
+Theorem metric_handles_point : ∀ (a b c d : Point), a = b → b = c → c = d → a = d
+Proof.
 metric.
 Qed.

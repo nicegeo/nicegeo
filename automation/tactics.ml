@@ -751,7 +751,6 @@ let rec metric (st : proof_state) : tactic_result =
           let cs =
             List.filter_map
               (fun h ->
-                (* todo: fully delta reduce h.ty (0 and 90 and length/angle/area) *)
                 create_constrain
                   (Simpterm.to_simpterm
                      (replace_metas
@@ -763,8 +762,8 @@ let rec metric (st : proof_state) : tactic_result =
               (List.hd st.open_goals).lctx
           in
           (* List.iter (fun c ->
-          print_endline ("determined constrain: " ^ Elab.Pretty.term_to_string st.elab_ctx ~lctx:(List.hd st.open_goals).lctx (Simpterm.from_simpterm (constrain_ty c)));
-        ) cs; *)
+            print_endline ("determined constrain: " ^ Elab.Pretty.term_to_string st.elab_ctx ~lctx:(List.hd st.open_goals).lctx (Simpterm.from_simpterm (constrain_ty c)));
+          ) cs; *)
           match try_prove_false st.elab_ctx (List.hd st.open_goals).lctx cs with
           | Some proof ->
               let proof = Simpterm.from_simpterm proof in

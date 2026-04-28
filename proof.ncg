@@ -545,6 +545,16 @@ rewrite (Eq.symm _ _ _ (AddAssoc a c b)).
 reflexivity.
 Qed.
 
+Theorem len_pos_if_ne : ∀ (a b : Point), a ≠ b → 0 < Length a b
+Proof.
+intros a b ab.
+cases (ZeroLeast (Length a b)) h.
+exact h.
+have ab' (a = b).
+exact (eq_if_len_zero a b (Eq.symm _ _ _ h)).
+exact (False.elim _ (ab ab')).
+Qed.
+
 
 Theorem place_segment_ne' : ∀ (a b c : Point),
     (bc : b ≠ c) -> (ab : a ≠ b)

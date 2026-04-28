@@ -312,20 +312,39 @@ let add_one_both_sides (c : constrain) (s : summand) : constrain =
 let add_both_sides (c : constrain) (ss : summand list) : constrain =
   List.fold_left add_one_both_sides c ss
 
-let destruct_relation_ty (tm : term) : (relation * term * term) option =
-  match tm with
-  | App (App (rel, lhs), rhs) -> (
-      match rel with
-      | Name "Lt" -> Some (Lt, lhs, rhs)
-      | Name "Le" -> Some (Le, lhs, rhs)
-      | App (Name "Eq", Name "Measure") -> Some (Eq, lhs, rhs)
-      | _ -> None)
+(** preprocess a term to extract its relation type. in particular converts Eq/Ne Point into appropriate measure relations. returns relation, lhs, rhs, proof *)
+let preprocess_hyp (ty : term) (proof : term) : (relation * term * term * term) option =
+  match ty with
+  | App (App (Name "Lt", lhs), rhs) -> Some (Lt, lhs, rhs, proof)
+  | App (App (Name "Le", lhs), rhs) -> Some (Le, lhs, rhs, proof)
+  | App (App (App (Name "Eq", Name "Measure"), lhs), rhs) -> Some (Eq, lhs, rhs, proof)
   (* handle head-reduced Le a b := Lt b a -> False *)
-  | Arrow (_, _, App (App (Name "Lt", rhs), lhs), Name "False") -> Some (Le, lhs, rhs)
+  | Arrow (_, _, App (App (Name "Lt", rhs), lhs), Name "False") -> Some (Le, lhs, rhs, proof)
+  (* eq on points *)
+  | App (App (App (Name "Eq", Name "Point"), a), b) -> (
+      let lhs = App (App (Name "Length", a), b) in
+      let rhs = Name "Zero" in
+      let proof =
+        apps
+          (Name "len_zero_if_eq")
+          [ a; b; proof ]
+      in
+      Some (Eq, lhs, rhs, proof) )
+  (* ne on points *)
+  | App (App (App (Name "Ne", Name "Point"), a), b)
+  | Arrow (_, _, App (App (App (Name "Eq", Name "Point"), a), b), Name "False") -> (
+      let lhs = Name "Zero" in
+      let rhs = App (App (Name "Length", a), b) in
+      let proof =
+        apps
+          (Name "len_pos_if_ne")
+          [ a; b; proof ]
+      in
+      Some (Lt, lhs, rhs, proof) )
   | _ -> None
 
 let create_constrain (ty : term) (proof : term) : constrain option =
-  Option.bind (destruct_relation_ty ty) (fun (r, lhs, rhs) ->
+  Option.bind (preprocess_hyp ty proof) (fun (r, lhs, rhs, proof) ->
       Option.bind (to_measure lhs) (fun lhs_meas ->
           let lhs_norm = normalize_measure lhs_meas in
           (* lhs_norm.proof : lhs_norm = lhs *)
