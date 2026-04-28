@@ -33,6 +33,8 @@ export abstract class Tool {
 
   set enabled(isEnabled: boolean) {
     this._enabled = isEnabled;
+    if (!isEnabled) this.reset();
+
     if (!this.button) return;
     this.button.classList.toggle("toolButtonActive", isEnabled);
   }
@@ -44,7 +46,7 @@ export abstract class Tool {
   abstract get inputs(): readonly Construction[];
 
   render(): VscodeButton {
-    const button = document.createElement("vscode-button") as VscodeButton;
+    const button = document.createElement("vscode-button");
     button.id = `toolButton-${this.id}`;
     button.className = "toolButton";
     button.title = this.label;

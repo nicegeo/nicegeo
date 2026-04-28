@@ -12,7 +12,7 @@ abstract class Section {
   }) {
     this.title = options.title;
     this.className = options.className;
-    this.items = options.items.map(cls => new cls(this.onItemSelected));
+    this.items = options.items.map(cls => new cls(tool => this.onItemSelected(tool)));
   }
 
   render(): HTMLElement {
@@ -25,7 +25,7 @@ abstract class Section {
 
     const group = document.createElement("div");
     group.className = "group";
-    group.append(...this.items.map((item) => item.render()));
+    group.append(...this.items.map(item => item.render()));
 
     section.append(titleElement, group);
     return section;
@@ -38,16 +38,16 @@ export class ToolSection extends Section {
   private activeTool: Tool | null = null;
 
   protected override onItemSelected = (tool: Tool): void => {
-    this.activeTool?.reset();
-    this.activeTool = this.activeTool === tool ? null : tool;
-    this.updateActiveTools();
-  };
-
-  private updateActiveTools(): void {
-    for (const tool of this.items) {
-      tool.enabled = tool === this.activeTool;
+    if (this.activeTool) {
+      this.activeTool.enabled = false;
     }
-  }
+
+    this.activeTool = this.activeTool === tool ? null : tool;
+
+    if (this.activeTool) {
+      this.activeTool.enabled = true;
+    }
+  };
 }
 
 export class ModifierSection extends Section {
@@ -56,16 +56,10 @@ export class ModifierSection extends Section {
   protected override onItemSelected = (modifier: Tool): void => {
     if (this.activeModifiers.has(modifier)) {
       this.activeModifiers.delete(modifier);
-      modifier.reset();
+      modifier.enabled = false;
     } else {
       this.activeModifiers.add(modifier);
+      modifier.enabled = true;
     }
-    this.updateModifierButtons();
   };
-
-  private updateModifierButtons(): void {
-    for (const item of this.items) {
-      item.enabled = this.activeModifiers.has(item);
-    }
-  }
 }
