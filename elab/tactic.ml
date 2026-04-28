@@ -8,6 +8,7 @@ type tactic_result =
 type tactic = proof_state -> tactic_result
 
 let tactics : (string, term list -> tactic) Hashtbl.t = Hashtbl.create 8
+
 type tactic_documentation = {
   one_liner : string;
   expected_parameters : string;
@@ -108,7 +109,8 @@ let register_tactic ~(documentation : tactic_documentation) (name : string)
 let tactic_documentation (name : string) : tactic_documentation option =
   Hashtbl.find_opt tactic_docs name
 
-let tactic_specs () : (string * tactic_documentation) list = Hashtbl.to_seq tactic_docs |> List.of_seq
+let tactic_specs () : (string * tactic_documentation) list =
+  Hashtbl.to_seq tactic_docs |> List.of_seq
 
 module Register = struct
   let nullary (f : tactic) : term list -> tactic = function

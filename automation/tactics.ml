@@ -677,7 +677,8 @@ let register () =
   register_tactic
     ~documentation:
       {
-        one_liner = "Repeats the given tactic until it fails, keeping the last successful state.";
+        one_liner =
+          "Repeats the given tactic until it fails, keeping the last successful state.";
         expected_parameters = "<tactic-name> [args...]";
         example_usage = "repeat intro.";
       }
@@ -699,7 +700,8 @@ let register () =
         expected_parameters = "<term>";
         example_usage = "exact h.";
       }
-    "exact" Register.(unary_term exact);
+    "exact"
+    Register.(unary_term exact);
   register_tactic
     ~documentation:
       {
@@ -707,7 +709,8 @@ let register () =
         expected_parameters = "<term>";
         example_usage = "apply theorem_name.";
       }
-    "apply" Register.(unary_term apply);
+    "apply"
+    Register.(unary_term apply);
   register_tactic
     ~documentation:
       {
@@ -715,7 +718,8 @@ let register () =
         expected_parameters = "(no parameters)";
         example_usage = "sorry.";
       }
-    "sorry" Register.(nullary sorry);
+    "sorry"
+    Register.(nullary sorry);
   register_tactic
     ~documentation:
       {
@@ -723,7 +727,8 @@ let register () =
         expected_parameters = "<identifier>";
         example_usage = "intro h.";
       }
-    "intro" Register.(unary_ident intro);
+    "intro"
+    Register.(unary_ident intro);
   register_tactic
     ~documentation:
       {
@@ -740,7 +745,8 @@ let register () =
         expected_parameters = "(no parameters)";
         example_usage = "left.";
       }
-    "left" Register.(nullary left);
+    "left"
+    Register.(nullary left);
   register_tactic
     ~documentation:
       {
@@ -748,7 +754,8 @@ let register () =
         expected_parameters = "(no parameters)";
         example_usage = "right.";
       }
-    "right" Register.(nullary right);
+    "right"
+    Register.(nullary right);
   register_tactic
     ~documentation:
       {
@@ -756,55 +763,62 @@ let register () =
         expected_parameters = "(no parameters)";
         example_usage = "split.";
       }
-    "split" Register.(nullary split);
-  register_tactic 
+    "split"
+    Register.(nullary split);
+  register_tactic
     ~documentation:
-    {
-      one_liner = "Splits the goal into two subgoals for the left and right cases of a provided Or.";
-      expected_parameters = "<term> <identifier for left case> <identifier for right case>";
-      example_usage = "cases h h_left h_right.";
-    }
-  "cases" (function
-  | [ tm; { inner = Name n1; _ }; { inner = Name n2; _ } ] -> cases tm n1 n2
-  | [ tm; { inner = Name n1; _ } ] -> cases tm n1 n1
-  | tm :: _ ->
-      raise
-        (Elab.Error.ElabError
-            {
-              context = { loc = Some tm.loc; decl_name = None; lctx = None };
-              error_type =
-                Elab.Error.InvalidTacticParameter
-                  "Expected an identifier, but got a term";
-            })
-  | args ->
-      raise
-        (Elab.Error.ElabError
-            {
-              context =
-                {
-                  loc =
-                    Some
-                      {
-                        start = (List.hd args).loc.start;
-                        end_ = (List.hd (List.rev args)).loc.end_;
-                      };
-                  decl_name = None;
-                  lctx = None;
-                };
-              error_type =
-                Elab.Error.InvalidTacticParameter
-                  ("Expected two or three parameters, but got "
-                  ^ string_of_int (List.length args));
-            }));
+      {
+        one_liner =
+          "Splits the goal into two subgoals for the left and right cases of a provided \
+           Or.";
+        expected_parameters =
+          "<term> <identifier for left case> <identifier for right case>";
+        example_usage = "cases h h_left h_right.";
+      }
+    "cases"
+    (function
+    | [ tm; { inner = Name n1; _ }; { inner = Name n2; _ } ] -> cases tm n1 n2
+    | [ tm; { inner = Name n1; _ } ] -> cases tm n1 n1
+    | tm :: _ ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = Some tm.loc; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   "Expected an identifier, but got a term";
+             })
+    | args ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                   lctx = None;
+                 };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   ("Expected two or three parameters, but got "
+                   ^ string_of_int (List.length args));
+             }));
   (* There's a clever design somewhere that lets me write this with some combinators, but for time's sake this one gets hard-coded for now. *)
   register_tactic
     ~documentation:
       {
-        one_liner = "Adds a named intermediate claim and opens subgoals for proof and continuation.";
+        one_liner =
+          "Adds a named intermediate claim and opens subgoals for proof and continuation.";
         expected_parameters = "<identifier> <type>";
         example_usage = "have h (P -> Q).";
       }
-    "have" (function
+    "have"
+    (function
     | [ { inner = Name name; _ }; ty ] -> have name ty
     | ty :: _ ->
         raise
@@ -842,15 +856,18 @@ let register () =
         expected_parameters = "<term>";
         example_usage = "rewrite eq_proof.";
       }
-    "rewrite" Register.(unary_term rewrite);
+    "rewrite"
+    Register.(unary_term rewrite);
   register_tactic
     ~documentation:
       {
-        one_liner = "Provides a witness for an existential goal and opens the proof obligation.";
+        one_liner =
+          "Provides a witness for an existential goal and opens the proof obligation.";
         expected_parameters = "<term>";
         example_usage = "exists witness.";
       }
-    "exists" Register.(unary_term exists);
+    "exists"
+    Register.(unary_term exists);
   (* I don't feel comfortable enough with registration yet to extend Register *)
   register_tactic
     ~documentation:
@@ -860,7 +877,8 @@ let register () =
         expected_parameters = "<identifier> <identifier> <term>";
         example_usage = "choose x hx hexists_term.";
       }
-    "choose" (function
+    "choose"
+    (function
     | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
     | trm :: _ ->
         raise
@@ -894,11 +912,13 @@ let register () =
   register_tactic
     ~documentation:
       {
-        one_liner = "Recursively destructs a conjunction hypothesis into named leaf hypotheses.";
+        one_liner =
+          "Recursively destructs a conjunction hypothesis into named leaf hypotheses.";
         expected_parameters = "<term> <identifier>...";
         example_usage = "destruct_ands h h1 h2.";
       }
-    "destruct_ands" (function
+    "destruct_ands"
+    (function
     | tm :: names ->
         let names =
           List.map

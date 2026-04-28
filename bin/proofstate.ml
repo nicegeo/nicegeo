@@ -613,12 +613,12 @@ let run (prog : string) (args : string list) : unit =
     let items =
       Tactic.tactic_specs ()
       |> List.map (fun (name, (doc : Tactic.tactic_documentation)) ->
-             Printf.sprintf
-               "{\"name\":\"%s\",\"documentation\":{\"oneLiner\":\"%s\",\"expectedParameters\":\"%s\",\"exampleUsage\":\"%s\"}}"
-               (json_escape name)
-               (json_escape doc.one_liner)
-               (json_escape doc.expected_parameters)
-               (json_escape doc.example_usage))
+          Printf.sprintf
+            "{\"name\":\"%s\",\"documentation\":{\"oneLiner\":\"%s\",\"expectedParameters\":\"%s\",\"exampleUsage\":\"%s\"}}"
+            (json_escape name)
+            (json_escape doc.one_liner)
+            (json_escape doc.expected_parameters)
+            (json_escape doc.example_usage))
       |> String.concat ","
     in
     Printf.printf "{\"ok\":true,\"tactics\":[%s]}\n" items;
