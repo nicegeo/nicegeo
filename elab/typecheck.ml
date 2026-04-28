@@ -557,25 +557,29 @@ let process_decl (e : ctx) (d : declaration) : unit =
       check_is_type e [] ty_filled;
       match d.kind with
       | Theorem body ->
-          let proof =
+          let proof_filled =
             match body with
-            | Proof script -> replace_metas e (Tactic.run e script.tactics ty_filled)
-            | DefEq proof -> proof
+            | Proof script ->
+                let proof_tm = replace_metas e (Tactic.run e script.tactics ty_filled) in
+                let proof_filled = elaborate e proof_tm (Some ty_filled) in
+                if
+                  List.mem "sorry_ax" (list_axioms_used e proof_filled)
+                  && not script.admitted
+                then
+                  raise
+                    (Error.ElabError
+                       {
+                         context =
+                           {
+                             loc = Some script.qed_loc;
+                             decl_name = Some d.name;
+                             lctx = None;
+                           };
+                         error_type = Error.SorryRequiresAdmitted;
+                       })
+                else proof_filled
+            | DefEq proof -> elaborate e proof (Some ty_filled)
           in
-          let proof_filled = elaborate e proof (Some ty_filled) in
-          let admitted = match body with
-            | Proof script -> script.admitted
-            | DefEq _ -> false
-          in
-          let loc = match body with
-            | Proof script -> script.qed_loc
-            | DefEq _ -> d.name_loc
-          in
-          if List.mem "sorry_ax" (list_axioms_used e proof_filled) && not admitted then
-            raise (Error.ElabError {
-              context = { loc = Some loc; decl_name = Some d.name; lctx = None };
-              error_type = Error.SorryRequiresAdmitted;
-            });
 
           Kernel.Interface.add_theorem
             e.kenv

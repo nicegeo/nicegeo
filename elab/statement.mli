@@ -11,7 +11,7 @@ type tactic = {
 
 type proof_script = {
   tactics : tactic list;
-  qed_loc : range;  (** Span of the closing [Qed] token. *)
+  qed_loc : range;  (** Span of the closing [Qed] or [Admitted] token. *)
   admitted : bool;
 }
 
