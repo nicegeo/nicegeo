@@ -3,58 +3,6 @@ open Measure
 
 (** decides (in)equalities on Measures using Fourier–Motzkin elimination *)
 
-(*
-one problem i need to think about
-eventually we might come across a constraint "Length a b = 0"
-which will imply a = b, which will identify some atoms
-but that can happen in the middle of a run
-which might kill completeness if we don't stop everything and rerun with that constraint, and also
-  search for all constraints of that form
-
-maybe it would help to try to find an example where just continuing would fail
-well 1. continuing doesn't find a contradiction, 2. it doesn't find the constraint in the first place
-2.
-Length a b = Length c d
-Length c d = 0
-Length a b = 0
-Length a c < Length b c
-
-we might eliminate Length a b using the first equality to get
-Length c d = 0
-Length a c < Length b c
-
-and now Length a b = 0 is lost, and in general the second system is satisfiable when the first wasn't
-it's more like things equaling (or ≤ing 0) can lead to atom identifications
-
-is it easy to decide what has to be zero from the constraints (assuming they're all individually satisfiable)?
-like anything ≤ 0 or anything = 0 obviously
-length a b = length c d
-length a b = length c d + length e f
-
-seems no unfortunately
-
-i guess only the atoms mentioned could lead to an a=b
-so for every Length a b in the context, try to prove Length a b = 0, then identify those atoms
-which means assuming 0 < Length a b and contradicting
-if we cancel that first, that would look like uhh
-ok we don't support cancelling < before =
-wait if we prove a ≠ b
-ok what will happen is it will fail to prove a ≠ b. but that doesn't mean a = b
-counterexample:
-0 = 0
-
-optimization: a=b might already be in the context so just use that. if a≠b is in the context, 
-  don't bother trying to prove a=b because a≠b will already add Length a b > 0 to the constrains (todo)
-  so if it could be proven by identifying a and b, that would involve finding a contradiction assuming
-  Length a b > 0, which would prove the goal already. 
-
-maybe it's ok. but maybe that's for like a bigger gun tactic and the basic one doesn't do that.
-ok let's optimize the proofs first
-
-
-
-*)
-
 let times (n : int) (m : term) : term =
   List.fold_left
     (fun acc _ -> App (App (Name "Add", acc), m))
