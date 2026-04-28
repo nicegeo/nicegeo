@@ -326,4 +326,6 @@ let pp_exn (e : Types.ctx) (info : elab_error_info) : string =
       Printf.sprintf "Tactic failed%s:%s\nReason: %s" ctx_str snippet msg
   | SorryRequiresAdmitted ->
       Printf.sprintf
-        "Proof used sorry and ended with Qed. when it must end with Admitted."
+        "Proof used sorry and ended with Qed. when it must end with Admitted.\n%s\n%s"
+        ctx_str
+        snippet
