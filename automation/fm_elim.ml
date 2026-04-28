@@ -260,35 +260,29 @@ let add_one_both_sides (c : constrain) (s : summand) : constrain =
 let add_both_sides (c : constrain) (ss : summand list) : constrain =
   List.fold_left add_one_both_sides c ss
 
-(** preprocess a term to extract its relation type. in particular converts Eq/Ne Point into appropriate measure relations. returns relation, lhs, rhs, proof *)
+(** preprocess a term to extract its relation type. in particular converts Eq/Ne Point
+    into appropriate measure relations. returns relation, lhs, rhs, proof *)
 let preprocess_hyp (ty : term) (proof : term) : (relation * term * term * term) option =
   match ty with
   | App (App (Name "Lt", lhs), rhs) -> Some (Lt, lhs, rhs, proof)
   | App (App (Name "Le", lhs), rhs) -> Some (Le, lhs, rhs, proof)
   | App (App (App (Name "Eq", Name "Measure"), lhs), rhs) -> Some (Eq, lhs, rhs, proof)
   (* handle head-reduced Le a b := Lt b a -> False *)
-  | Arrow (_, _, App (App (Name "Lt", rhs), lhs), Name "False") -> Some (Le, lhs, rhs, proof)
+  | Arrow (_, _, App (App (Name "Lt", rhs), lhs), Name "False") ->
+      Some (Le, lhs, rhs, proof)
   (* eq on points *)
-  | App (App (App (Name "Eq", Name "Point"), a), b) -> (
+  | App (App (App (Name "Eq", Name "Point"), a), b) ->
       let lhs = App (App (Name "Length", a), b) in
       let rhs = Name "Zero" in
-      let proof =
-        apps
-          (Name "len_zero_if_eq")
-          [ a; b; proof ]
-      in
-      Some (Eq, lhs, rhs, proof) )
+      let proof = apps (Name "len_zero_if_eq") [ a; b; proof ] in
+      Some (Eq, lhs, rhs, proof)
   (* ne on points *)
   | App (App (App (Name "Ne", Name "Point"), a), b)
-  | Arrow (_, _, App (App (App (Name "Eq", Name "Point"), a), b), Name "False") -> (
+  | Arrow (_, _, App (App (App (Name "Eq", Name "Point"), a), b), Name "False") ->
       let lhs = Name "Zero" in
       let rhs = App (App (Name "Length", a), b) in
-      let proof =
-        apps
-          (Name "len_pos_if_ne")
-          [ a; b; proof ]
-      in
-      Some (Lt, lhs, rhs, proof) )
+      let proof = apps (Name "len_pos_if_ne") [ a; b; proof ] in
+      Some (Lt, lhs, rhs, proof)
   | _ -> None
 
 let create_constrain (ty : term) (proof : term) : constrain option =

@@ -374,8 +374,3 @@ Proof.
 intros a b c d e h1 h2 h3 h4 h5.
 metric.
 Qed.
-
-Theorem metric_handles_point : ∀ (a b c d : Point), a = b → b = c → c = d → a = d
-Proof.
-metric.
-Qed.

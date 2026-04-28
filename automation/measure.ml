@@ -36,6 +36,7 @@ ok cool
 ok also unless we change the axiom we can only get angle a b c = angle c b a if we also have proofs of a ≠ b and a ≠ c
 we can keep a "database" of all the ≠ conditions we have for all angles
 thats for later
+oh and if we ever implement congruence closure on points, we also have to consider this inequality database
 *)
 
 (** identified and ordered by default OCaml lexicographic ordering *)
