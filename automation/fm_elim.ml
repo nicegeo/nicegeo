@@ -519,7 +519,8 @@ let rec try_prove_false (ctx : Elab.Types.ctx) (lctx : Elab.Types.local_ctx)
         List.find_mapi
           (fun i c ->
             match c with
-            | { r = Eq; lhs = s :: _; _ } | { r = Eq; rhs = s :: _; _ } -> Some (i, s)
+            | { r = Eq; lhs = s :: _; _ } when s <> Zero -> Some (i, s)
+            | { r = Eq; rhs = s :: _; _ } when s <> Zero -> Some (i, s)
             | _ -> None)
           cs
       with
@@ -532,7 +533,8 @@ let rec try_prove_false (ctx : Elab.Types.ctx) (lctx : Elab.Types.local_ctx)
             List.find_map
               (fun c ->
                 match c with
-                | { lhs = s :: _; _ } | { rhs = s :: _; _ } -> Some s
+                | { lhs = s :: _; _ } when s <> Zero -> Some s
+                | { rhs = s :: _; _ } when s <> Zero -> Some s
                 | _ -> None)
               cs
           in
