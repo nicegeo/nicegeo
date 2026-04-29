@@ -269,6 +269,8 @@ let term_map (f : term -> term) (t : term) : term =
   Inspired by Lean's kabstract function
 *)
 let abstract_pat (ctx : ctx) (t : term) (pat : term) : int * term =
+  (* replace known holes in t *)
+  let t = replace_metas ctx ~complete:false t in
   let bid = gen_binder_id () in
   let rec go (t : term) =
     try
@@ -633,6 +635,8 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
                    non-And type")
       in
 
+      (* replace known metavar solutions for pattern matching *)
+      let tm_ty = replace_metas st.elab_ctx ~complete:false tm_ty in
       (* head reduce type once to unfold definitions like eqtri *)
       let tm_ty = Elab.Typecheck.whnf st.elab_ctx tm_ty in
       (* check tm_ty is And *)

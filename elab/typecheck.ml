@@ -489,12 +489,12 @@ let rec create_metas (e : ctx) (tm : term) (stack : int list) =
 
 (** Needs to be trusted for faithfulness of meaning. This returns tm unchanged except for
     replacing metavariables (holes) with their solutions. *)
-let rec replace_metas (e : ctx) (tm : term) : term =
+let rec replace_metas (e : ctx) ?(complete = true) (tm : term) : term =
   match tm.inner with
   | Hole m -> (
       match Hashtbl.find_opt e.metas m with
       | Some { sol = Some tm_sol; _ } -> replace_metas e tm_sol
-      | _ -> raise_at tm None Error.CannotInferHole)
+      | _ -> if complete then raise_at tm None Error.CannotInferHole else tm)
   | Fun (arg, bid, ty_arg, body) ->
       let ty_arg_filled = replace_metas e ty_arg in
       let body_filled = replace_metas e body in
