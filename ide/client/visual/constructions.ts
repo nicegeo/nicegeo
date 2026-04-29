@@ -70,18 +70,17 @@ export class Point extends Construction {
     const canvasX = rect.width / 2 + view.offsetX + this._x * view.scale;
     const canvasY = rect.height / 2 + view.offsetY + this._y * view.scale;
 
-    const radius = 4;
-    const lineWidth = 2;
+    const radius = 12;
+    const color = getComputedStyle(document.body).getPropertyValue("--vscode-button-background");
 
-    // Draw the point circle
-    ctx.strokeStyle = '#ff6b6b';
-    ctx.lineWidth = lineWidth;
+    ctx.fillStyle = color;
+
+    ctx.globalAlpha = 0.5;
     ctx.beginPath();
     ctx.arc(canvasX, canvasY, radius, 0, 2 * Math.PI);
-    ctx.stroke();
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
-    // Draw a filled center
-    ctx.fillStyle = '#ff6b6b';
     ctx.beginPath();
     ctx.arc(canvasX, canvasY, radius / 2, 0, 2 * Math.PI);
     ctx.fill();
