@@ -30,6 +30,11 @@ export class CanvasPoint {
     return new CanvasPoint(center.x + view.offsetX, center.y + view.offsetY);
   }
 
+  toClient(canvas: HTMLCanvasElement): ClientPoint {
+    const rect = canvas.getBoundingClientRect();
+    return new ClientPoint(this.x + rect.left, this.y + rect.top);
+  }
+
   toLocal(canvas: HTMLCanvasElement, view: PlaneView): LocalPoint {
     const origin = CanvasPoint.origin(canvas, view);
     return new LocalPoint(
@@ -41,6 +46,10 @@ export class CanvasPoint {
 
 export class LocalPoint {
   constructor(public x: number, public y: number) {}
+
+  toClient(canvas: HTMLCanvasElement, view: PlaneView): ClientPoint {
+    return this.toCanvas(canvas, view).toClient(canvas);
+  }
 
   toCanvas(canvas: HTMLCanvasElement, view: PlaneView): CanvasPoint {
     const origin = CanvasPoint.origin(canvas, view);

@@ -6,8 +6,7 @@ import { CanvasPoint, ClientPoint } from "./coordinates";
 
 export type PlanePointer = {
   active: boolean;
-  lastX: number;
-  lastY: number;
+  point?: ClientPoint;
 };
 
 export class Plane {
@@ -17,6 +16,7 @@ export class Plane {
   private readonly modifiers: ModifierSection;
 
   private readonly constructions: Construction[] = [];
+  private readonly hovered: Set<Construction> = new Set();
 
   private readonly view: PlaneView = {
     scale: 60,
@@ -26,8 +26,7 @@ export class Plane {
 
   private readonly pointer: PlanePointer = {
     active: false,
-    lastX: 0,
-    lastY: 0,
+    point: undefined,
   };
 
   constructor(canvas: HTMLCanvasElement, tools: ToolSection, modifiers: ModifierSection) {
@@ -44,9 +43,22 @@ export class Plane {
     this.canvas.addEventListener("pointermove", this.onPointerMove);
     this.canvas.addEventListener("pointerup", this.onPointerEnd);
     this.canvas.addEventListener("pointercancel", this.onPointerEnd);
+    this.canvas.addEventListener("pointerleave", this.onPointerLeave);
     this.canvas.addEventListener("wheel", this.onWheel, { passive: false });
 
     this.canvas.style.cursor = "grab";
+  }
+
+  private updateHovers(): void {
+    this.hovered.clear();
+
+    if (!this.pointer.point) return;
+
+    for (const c of this.constructions) {
+      if (c.isHovering(this.pointer.point, this.canvas, this.view)) {
+        this.hovered.add(c);
+      }
+    }
   }
 
   private readonly draw = (): void => {
@@ -83,6 +95,7 @@ export class Plane {
 
     ctx.lineWidth = 1;
     ctx.strokeStyle = gridColor;
+
     ctx.globalAlpha = 0.85;
 
     const startX = originX % gridStep;
@@ -105,32 +118,30 @@ export class Plane {
     ctx.globalAlpha = 1;
 
     for (const c of this.constructions) {
-      c.render(ctx, this.view);
+      c.render(ctx, this.view, this.hovered.has(c));
     }
   };
 
   private readonly onPointerDown = (event: PointerEvent): void => {
+    this.pointer.point = new ClientPoint(event.clientX, event.clientY);
+    this.updateHovers();
+    
     const activeTool = this.tools.activeTool;
 
     if (!activeTool) {
       this.pointer.active = true;
-      this.pointer.lastX = event.clientX;
-      this.pointer.lastY = event.clientY;
       this.canvas.setPointerCapture(event.pointerId);
       this.canvas.style.cursor = "grabbing";
 
       return;
     }
 
-    const point: LocalPoint = new ClientPoint(event.clientX, event.clientY).toLocal(this.canvas, this.view);
-
-    const input: LocationInput = { kind: "location", point };
+    const input: LocationInput = { kind: "location", point: this.pointer.point.toLocal(this.canvas, this.view) };
 
     const result: ToolResult = activeTool.activate(input);
     switch (result.kind) {
       case "construction":
         this.constructions.push(result.construction);
-        this.draw();
         break;
       case "failure":
         this.tools.cancel();
@@ -140,18 +151,27 @@ export class Plane {
       default:
         throw result satisfies never;
     }
+    
+    this.draw();
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
-    if (!this.pointer.active) return;
+    if (this.pointer.active && this.pointer.point) {
+      const dx = event.clientX - this.pointer.point.x;
+      const dy = event.clientY - this.pointer.point.y;
 
-    const dx = event.clientX - this.pointer.lastX;
-    const dy = event.clientY - this.pointer.lastY;
+      if (this.hovered.size > 0) {
+        for (const c of this.hovered) {
+          c.move(dx / this.view.scale, dy / this.view.scale);
+        }
+      } else {
+        this.view.offsetX += dx;
+        this.view.offsetY += dy;
+      }
+    }
 
-    this.pointer.lastX = event.clientX;
-    this.pointer.lastY = event.clientY;
-    this.view.offsetX += dx;
-    this.view.offsetY += dy;
+    this.pointer.point = new ClientPoint(event.clientX, event.clientY);
+    this.updateHovers();
 
     this.draw();
   };
@@ -164,6 +184,13 @@ export class Plane {
     this.canvas.style.cursor = "grab";
   };
 
+  private readonly onPointerLeave = (): void => {
+    this.pointer.point = undefined;
+    this.updateHovers();
+
+    this.draw();
+  };
+
   private readonly onWheel = (event: WheelEvent): void => {
     event.preventDefault();
 
@@ -172,7 +199,7 @@ export class Plane {
     const canvasPoint = new ClientPoint(event.clientX, event.clientY).toCanvas(this.canvas);
     const nextScale = Math.min(240, Math.max(12, this.view.scale * zoomFactor));
     const scaleRatio = nextScale / this.view.scale;
-    
+
     const center = CanvasPoint.center(this.canvas);
 
     this.view.offsetX *= scaleRatio;
