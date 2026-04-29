@@ -75,9 +75,12 @@ let rec get_prec (e : ctx) (t : term) : int =
           | "And", 2 -> prec_conjunction
           | "Not", 1 -> prec_prop
           | "Lt", 2 -> prec_prop
+          | "Le", 2 -> prec_prop
           | "Eq", 3 -> prec_prop
           | "Ne", 3 -> prec_prop
           | "Add", 2 -> prec_sum
+          | "List.nil", 1 -> prec_atomic
+          | "List.cons", 3 -> prec_atomic
           | _ -> prec_app)
       | _ -> prec_app)
   | Fun _ | Arrow _ -> prec_term
@@ -85,6 +88,14 @@ let rec get_prec (e : ctx) (t : term) : int =
       match Hashtbl.find_opt e.metas m with
       | Some { sol = Some tm_sol; _ } -> get_prec e tm_sol
       | _ -> prec_atomic)
+
+let rec flatten_list (e : ctx) (lctx : local_ctx) (t : term) : term list * term option =
+  match get_pattern t with
+  | Some ("List.nil", [ _ ]) -> ([], None)
+  | Some ("List.cons", [ _; head; tail ]) ->
+      let elems, last = flatten_list e lctx tail in
+      (head :: elems, last)
+  | _ -> ([], Some t)
 
 let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
   let rec term_to_string_helper (e : ctx) (lctx : local_ctx) (t : term) (level : int) :
@@ -169,6 +180,10 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
                   term_to_string_helper e lctx a prec_sum
                   ^ " < "
                   ^ term_to_string_helper e lctx b prec_sum
+              | "Le", [ a; b ] ->
+                  term_to_string_helper e lctx a prec_sum
+                  ^ " ≤ "
+                  ^ term_to_string_helper e lctx b prec_sum
               | "Eq", [ _; a; b ] ->
                   term_to_string_helper e lctx a prec_sum
                   ^ " = "
@@ -181,6 +196,24 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
                   term_to_string_helper e lctx a prec_sum
                   ^ " + "
                   ^ term_to_string_helper e lctx b prec_app
+              | "List.nil", [ _ ] -> "[]"
+              | "List.cons", [ _; _; _ ] -> (
+                  let tm_list, rest = flatten_list e lctx t in
+                  let elems_str =
+                    String.concat
+                      ", "
+                      (List.map
+                         (fun x -> term_to_string_helper e lctx x prec_term)
+                         tm_list)
+                  in
+                  (* this notation doesn't exist, but [a, b, ...L] is still much nicer
+                     than List.cons Blah a (List.cons Blah b L) *)
+                  match rest with
+                  | Some r ->
+                      "[" ^ elems_str ^ ", ..."
+                      ^ term_to_string_helper e lctx r prec_atomic
+                      ^ "]"
+                  | None -> "[" ^ elems_str ^ "]")
               | _ -> default ())
           | _ -> default ())
   in

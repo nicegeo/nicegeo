@@ -32,6 +32,10 @@ val run : Types.ctx -> Statement.tactic list -> term -> term
     implementation. *)
 val register_tactic : string -> (term list -> tactic) -> unit
 
+(** [registered_tactic_names ()] returns all currently registered tactic names, sorted
+    alphabetically. *)
+val registered_tactic_names : unit -> string list
+
 module Register : sig
   val nullary : tactic -> term list -> tactic
   val unary_term : (term -> tactic) -> term list -> tactic

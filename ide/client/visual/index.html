@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src {{cspSource}} data:; style-src {{cspSource}}; script-src {{cspSource}} 'nonce-{{nonce}}'; font-src {{cspSource}};"
+    />
+    <title>NiceGeo Visual Editor</title>
+    <link rel="stylesheet" href="{{styleUri}}" />
+    <link
+      rel="stylesheet"
+      href="{{codiconsUri}}"
+      id="vscode-codicon-stylesheet"
+    />
+    <script nonce="{{nonce}}" type="module" src="{{scriptUri}}"></script>
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <div id="toolbar" role="toolbar"></div>
+      </header>
+      <section class="canvasShell">
+        <canvas id="planeCanvas"></canvas>
+      </section>
+    </main>
+  </body>
+</html>

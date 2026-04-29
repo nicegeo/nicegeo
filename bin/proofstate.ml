@@ -50,16 +50,41 @@ type proofstate_snapshot = {
 }
 
 let usage_standalone (prog : string) : unit =
-  Printf.eprintf "Usage:\n  %s [--json] <filename> <line> <col>\n" prog
+  Printf.eprintf
+    "Usage:\n  %s [--json] <filename> <line> <col>\n  %s --list-tactics [--json]\n"
+    prog
+    prog
 
-let parse_args (args : string list) : (bool * string * int * int) option =
-  let use_json, rest = List.partition (fun s -> s = "--json") args in
+type cli_mode =
+  | SnapshotAt of {
+      use_json : bool;
+      filename : string;
+      line : int;
+      col : int;
+    }
+  | ListTactics of { use_json : bool }
+
+let parse_args (args : string list) : cli_mode option =
+  let use_json, no_json_args = List.partition (fun s -> s = "--json") args in
   let json = use_json <> [] in
-  match rest with
-  | [ filename; line_s; col_s ] -> (
-      try Some (json, filename, int_of_string line_s, int_of_string col_s)
-      with Failure _ -> None)
-  | _ -> None
+  let is_list, rest = List.partition (fun s -> s = "--list-tactics") no_json_args in
+  let list_tactics = is_list <> [] in
+  if list_tactics then
+    match rest with [] -> Some (ListTactics { use_json = json }) | _ -> None
+  else
+    match rest with
+    | [ filename; line_s; col_s ] -> (
+        try
+          Some
+            (SnapshotAt
+               {
+                 use_json = json;
+                 filename;
+                 line = int_of_string line_s;
+                 col = int_of_string col_s;
+               })
+        with Failure _ -> None)
+    | _ -> None
 
 let json_escape (s : string) : string =
   let s = Yojson.to_string (`String s) in
@@ -595,51 +620,73 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     snap.tactics_applied
     open_goals_json
 
+let print_tactics (use_json : bool) : unit =
+  let names = Tactic.registered_tactic_names () in
+  if use_json then
+    let items =
+      names
+      |> List.map (fun n -> Printf.sprintf "\"%s\"" (json_escape n))
+      |> String.concat ","
+    in
+    Printf.printf "{\"ok\":true,\"tactics\":[%s]}\n" items
+  else List.iter (fun n -> Printf.printf "%s\n" n) names
+
 let run (prog : string) (args : string list) : unit =
   match parse_args args with
   | None ->
       Printf.eprintf
         "Invalid arguments.\n\
-         Expected: [--json] <filename> <line> <col>   (line and column are 1-based \
-         integers)\n\
+         Expected:\n\
+         - [--json] <filename> <line> <col>   (line and column are 1-based integers)\n\
+         - --list-tactics [--json]\n\
          Example:\n\
          dune exec %s -- [--json] <filename> <line> <col>\n\n"
         prog;
       usage_standalone prog;
       exit 2
-  | Some (use_json, filename, line, col) -> (
+  | Some mode -> (
       try
         Automation.Tactics.register ();
-        match snapshot_proofstate filename line col with
-        | None ->
+        match mode with
+        | ListTactics { use_json } ->
+            print_tactics use_json;
+            exit 0
+        | SnapshotAt { use_json; filename; line; col } -> (
+            match snapshot_proofstate filename line col with
+            | None ->
+                if use_json then
+                  Printf.printf
+                    "{\"ok\":false,\"error\":\"No declaration found at this \
+                     position.\",\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d}}\n"
+                    (json_escape filename)
+                    line
+                    col
+                else Printf.printf "No declaration found at %s:%d:%d\n" filename line col;
+                exit 1
+            | Some snap ->
+                if use_json then print_snapshot_json filename line col snap
+                else print_snapshot_text snap;
+                exit 0)
+      with Error.ElabError e -> (
+        let empty = Elab.Interface.create () in
+        match mode with
+        | ListTactics { use_json } ->
             if use_json then
               Printf.printf
-                "{\"ok\":false,\"error\":\"No declaration found at this \
-                 position.\",\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d}}\n"
+                "{\"ok\":false,\"error\":\"%s\"}\n"
+                (json_escape (Error.pp_exn empty e))
+            else Printf.eprintf "%s\n" (Error.pp_exn empty e);
+            exit 1
+        | SnapshotAt { use_json; filename; line; col } ->
+            if use_json then
+              Printf.printf
+                "{\"ok\":false,\"error\":\"%s\",\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d}}\n"
+                (json_escape (Error.pp_exn empty e))
                 (json_escape filename)
                 line
                 col
-            else Printf.printf "No declaration found at %s:%d:%d\n" filename line col;
-            exit 1
-        | Some snap ->
-            if use_json then print_snapshot_json filename line col snap
-            else print_snapshot_text snap;
-            exit 0
-      with
-      | Failure _ ->
-          Printf.eprintf "line/col must be integers\n";
-          exit 2
-      | Error.ElabError e ->
-          let empty = Elab.Interface.create () in
-          if use_json then
-            Printf.printf
-              "{\"ok\":false,\"error\":\"%s\",\"query\":{\"file\":\"%s\",\"line\":%d,\"col\":%d}}\n"
-              (json_escape (Error.pp_exn empty e))
-              (json_escape filename)
-              line
-              col
-          else Printf.eprintf "%s\n" (Error.pp_exn empty e);
-          exit 1)
+            else Printf.eprintf "%s\n" (Error.pp_exn empty e);
+            exit 1))
 
 let () =
   record_backtrace true;

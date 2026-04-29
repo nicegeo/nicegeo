@@ -61,12 +61,15 @@ let token lexbuf =
     | ":" -> COLON
     | "(" -> LPAREN
     | ")" -> RPAREN
+    | "[" -> LBRACKET
+    | "]" -> RBRACKET
     | "Type" -> TYPE
     | "Prop" -> PROP
     | "_" -> UNDERSCORE
     | "=" -> EQUALS
     | Utf8 "≠" -> NOT_EQUALS
     | "<" -> LESS_THAN
+    | Utf8 "≤" -> LESS_THAN_OR_EQUAL
     | "+" -> PLUS
     | "\\/" | Utf8 "∨" -> OR
     | "/\\" | Utf8 "∧" -> AND
