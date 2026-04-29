@@ -535,6 +535,13 @@ Theorem ne_13_of_triangle : ∀ (a b c : Point), triangle a b c → a ≠ c :=
     fun (a b c : Point) (tri : triangle a b c) =>
     ne_12_of_triangle a c b (swap_23_triangle _ _ _ tri)
 
+Theorem ne_32_of_triangle : ∀ (a b c : Point), triangle a b c → c ≠ b
+Proof.
+    intros a b c tri.
+    apply (Ne.symm _ _ _).
+    exact (ne_23_of_triangle _ _ _ tri).
+Qed.
+
 (* A point collinear with two distinct points already on L also lies on L. *)
 Theorem online_of_col_online : ∀ (a b c : Point) (L : Line),
     a ≠ b -> OnLine a L -> OnLine b L -> colinear a b c -> OnLine c L :=
@@ -731,49 +738,28 @@ Theorem sameside_of_sameside_diffside : ∀ (a b c d : Point) (L M N : Line),
    Proposition 5 (I.5): Base angles of an isoceles triangle are equal
    ============================================================ *)
 
-(* Proof: case-split on whether a = b.
-   - If a = b: iso gives a = c; both angles collapse to Angle a a a.
-   - If a ≠ b: get a ≠ c and b ≠ c; apply SSS to triangles (a,b,c) and (a,c,b). *)
-Theorem angle_eq_of_iso : ∀ a b c, iso_tri a b c → Angle a b c = Angle a c b :=
-    fun (a b c : Point) (hiso : iso_tri a b c) =>
-    have _ _ (fst _ _ hiso) (fun (tri : triangle a b c) =>
-    have _ _ (snd _ _ hiso) (fun (hlen : Length a b = Length a c) =>
-    Or.elim _ _ _ (point_eq_em a b)
-    (fun (hab : a = b) =>
-        have _ _ (eq_if_len_zero a c
-            (EqTrans Measure (Length a c) (Length a b) Zero
-                (Eq.symm Measure (Length a b) (Length a c) hlen)
-                (len_zero_if_eq a b hab)))
-        (fun (hac : a = c) =>
-        have _ _ (Eq.elim Point a (fun x => Angle a a x = Angle a x a)
-            (Eq.intro Measure (Angle a a a)) c hac)
-        (fun (h1 : Angle a a c = Angle a c a) =>
-            Eq.elim Point a (fun x => Angle a x c = Angle a c x) h1 b hab)))
-    (fun (ab : a ≠ b) =>
-        have _ _ (length_pts_ne a b a c hlen ab) (fun (ac : a ≠ c) =>
-        Or.elim _ _ _ (point_eq_em b c)
-        (fun (hbc : b = c) =>
-            False.elim _
-            (tri (Exists.elim _ _ _ (line_of_pts a b ab)
-            (fun (L : Line) (hL : OnLine a L /\ OnLine b L) =>
-            Exists.intro _ _ L (And.intro _ _
-                (And.intro _ _ (fst _ _ hL) (snd _ _ hL))
-                (Eq.elim Point b (fun x => OnLine x L) (snd _ _ hL) c hbc))))))
-        (fun (bc : b ≠ c) =>
-            fst _ _ (snd _ _
-            (sss_congruence a b c a c b
-                ab bc ac
-                ac (Ne.symm Point b c bc) ab
-                hlen
-                (length_symm b c)
-                (EqTrans Measure (Length c a) (Length a b) (Length b a)
-                    (EqTrans Measure (Length c a) (Length a c) (Length a b)
-                        (length_symm c a)
-                        (Eq.symm Measure (Length a b) (Length a c) hlen))
-                    (length_symm a b))))
-        ))
-    )))
-
+(* Proof: apply SSS to triangles (a,b,c) and (a,c,b). *)
+Theorem angle_eq_of_iso : ∀ a b c, iso_tri a b c → Angle a b c = Angle a c b
+Proof.
+    intros a b c hiso.
+    destruct_ands hiso tri hlen.
+    (* sort of a hack to get have all the arguments of sss_congruence as goals *)
+    have f (_ ∧ _). apply (sss_congruence a b c a c b).
+        exact (ne_12_of_triangle _ _ _ tri).
+        exact (ne_23_of_triangle _ _ _ tri).
+        exact (ne_13_of_triangle _ _ _ tri).
+        exact (ne_13_of_triangle _ _ _ tri).
+        exact (ne_32_of_triangle _ _ _ tri).
+        exact (ne_12_of_triangle _ _ _ tri).
+        exact hlen.
+        apply (length_symm _ _).
+        apply (Eq.symm _ _ _).
+        rewrite (length_symm b a).
+        rewrite (length_symm c a).
+        exact hlen.
+    destruct_ands f h1 h2 h3 h4.
+    exact h2.
+Qed.
 
 (* ============================================================
    Proposition 6 (I.6): Equal base angles imply isoceles
