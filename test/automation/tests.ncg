@@ -1,4 +1,13 @@
 
+(* intro tests *)
+
+Theorem intro_unwraps_defs : ∀ (a b : Point), a ≠ b → a ≠ b
+Proof.
+intros a b ab_ne.
+intro ab. (* goal is a ≠ b, intros a = b with goal False *)
+exact (ab_ne ab).
+Qed.
+
 (* have tests *)
 
 (* have with unspecified type inferred from proof *)
@@ -43,4 +52,46 @@ intros a α h.
 destruct_ands h a_rfl outcircle α_rfl.
 destruct_ands outcircle noton notin.
 exact notin.
+Qed.
+
+(* this isn't really an automation test but *)
+Theorem list_test : ∀ (a b c : Point), ∃ d, ¬List.mem _ d [a, b, c]
+Proof.
+intros a b c.
+choose d hd (pt_exists [a, b, c] [] []).
+destruct_ands (distinct_from.elim _ _ _ _ hd) d_not_mem _h2 _h3.
+exists d.
+exact d_not_mem.
+Qed.
+
+(* cases *)
+
+Theorem Or.symm : ∀ (A B : Prop), A ∨ B → B ∨ A
+Proof.
+intros A B or.
+cases or a b.
+right.
+exact a.
+left.
+exact b.
+Qed.
+
+Theorem Or.symm1 : ∀ (A B : Prop), A ∨ B → B ∨ A
+Proof.
+intros A B or.
+cases or h.
+right.
+exact h.
+left.
+exact h.
+Qed.
+
+Theorem em : ∀ (P: Prop), P ∨ ¬P
+Proof.
+intro P.
+cases (excluded_middle P) h.
+left.
+exact h.
+right.
+exact h.
 Qed.
