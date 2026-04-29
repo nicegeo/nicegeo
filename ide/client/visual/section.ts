@@ -35,17 +35,28 @@ abstract class Section {
 }
 
 export class ToolSection extends Section {
-  private activeTool: Tool | null = null;
+  private _activeTool: Tool | null = null;
+
+  get activeTool(): Tool | null {
+    return this._activeTool;
+  }
+
+  cancel() {
+    if (this._activeTool) {
+      this._activeTool.enabled = false;
+      this._activeTool = null;
+    }
+  }
 
   protected override onItemSelected = (tool: Tool): void => {
-    if (this.activeTool) {
-      this.activeTool.enabled = false;
+    if (this._activeTool) {
+      this._activeTool.enabled = false;
     }
 
-    this.activeTool = this.activeTool === tool ? null : tool;
+    this._activeTool = this._activeTool === tool ? null : tool;
 
-    if (this.activeTool) {
-      this.activeTool.enabled = true;
+    if (this._activeTool) {
+      this._activeTool.enabled = true;
     }
   };
 }

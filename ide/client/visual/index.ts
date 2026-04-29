@@ -11,9 +11,6 @@ const toolbar = document.getElementById("toolbar") as HTMLDivElement | null;
 window.addEventListener("DOMContentLoaded", () => {
   if (!canvas || !toolbar) return;
 
-  const plane = new Plane(canvas);
-  plane.mount();
-
   const toolSection = new ToolSection({
     title: "Tools",
     className: "toolSection",
@@ -27,4 +24,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   toolbar.replaceChildren(toolSection.render(), modifierSection.render());
+
+  const plane = new Plane(canvas, toolSection, modifierSection);
+  plane.mount();
 });

@@ -1,3 +1,7 @@
+import type { ModifierSection, ToolSection } from "./section";
+import type { LocationInput, ToolResult } from "./tools";
+import type { Construction } from "./constructions";
+
 export type PlaneView = {
   scale: number;
   offsetX: number;
@@ -13,8 +17,13 @@ export type PlanePointer = {
 export class Plane {
   private readonly canvas: HTMLCanvasElement;
 
+  private readonly tools: ToolSection;
+  private readonly modifiers: ModifierSection;
+
+  private readonly constructions: Construction[] = [];
+
   private readonly view: PlaneView = {
-    scale: 40,
+    scale: 60,
     offsetX: 0,
     offsetY: 0,
   };
@@ -25,8 +34,10 @@ export class Plane {
     lastY: 0,
   };
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, tools: ToolSection, modifiers: ModifierSection) {
     this.canvas = canvas;
+    this.tools = tools;
+    this.modifiers = modifiers;
   }
 
   mount(): void {
@@ -95,6 +106,10 @@ export class Plane {
     }
 
     ctx.globalAlpha = 1;
+
+    for (const c of this.constructions) {
+      c.render(ctx, this.view);
+    }
   };
 
   private readonly zoomAtPoint = (clientX: number, clientY: number, deltaScale: number): void => {
@@ -113,11 +128,41 @@ export class Plane {
   };
 
   private readonly onPointerDown = (event: PointerEvent): void => {
-    this.pointer.active = true;
-    this.pointer.lastX = event.clientX;
-    this.pointer.lastY = event.clientY;
-    this.canvas.setPointerCapture(event.pointerId);
-    this.canvas.style.cursor = "grabbing";
+    const activeTool = this.tools.activeTool;
+
+    if (!activeTool) {
+      this.pointer.active = true;
+      this.pointer.lastX = event.clientX;
+      this.pointer.lastY = event.clientY;
+      this.canvas.setPointerCapture(event.pointerId);
+      this.canvas.style.cursor = "grabbing";
+
+      return;
+    }
+
+    const rect = this.canvas.getBoundingClientRect();
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+
+    const worldX = (localX - (rect.width / 2 + this.view.offsetX)) / this.view.scale;
+    const worldY = (localY - (rect.height / 2 + this.view.offsetY)) / this.view.scale;
+
+    const input: LocationInput = { kind: "location", x: worldX, y: worldY };
+
+    const result: ToolResult = activeTool.activate(input);
+    switch (result.kind) {
+      case "construction":
+        this.constructions.push(result.construction);
+        this.draw();
+        break;
+      case "failure":
+        this.tools.cancel();
+        break;
+      case "continue":
+        break;
+      default:
+        throw result satisfies never;
+    }
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
