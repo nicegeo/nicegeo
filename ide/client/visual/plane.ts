@@ -1,12 +1,8 @@
 import type { ModifierSection, ToolSection } from "./section";
 import type { LocationInput, ToolResult } from "./tools";
 import type { Construction } from "./constructions";
-
-export type PlaneView = {
-  scale: number;
-  offsetX: number;
-  offsetY: number;
-};
+import type { LocalPoint, PlaneView } from "./coordinates";
+import { CanvasPoint, ClientPoint } from "./coordinates";
 
 export type PlanePointer = {
   active: boolean;
@@ -73,8 +69,9 @@ export class Plane {
 
     const w = rect.width;
     const h = rect.height;
-    const originX = w / 2 + this.view.offsetX;
-    const originY = h / 2 + this.view.offsetY;
+
+    const { x: originX, y: originY } = CanvasPoint.origin(this.canvas, this.view);
+
     const gridStep = this.view.scale;
 
     const style = getComputedStyle(document.body);
@@ -88,8 +85,8 @@ export class Plane {
     ctx.strokeStyle = gridColor;
     ctx.globalAlpha = 0.85;
 
-    const startX = ((originX % gridStep) + gridStep) % gridStep;
-    const startY = ((originY % gridStep) + gridStep) % gridStep;
+    const startX = originX % gridStep;
+    const startY = originY % gridStep;
 
     for (let x = startX; x <= w; x += gridStep) {
       ctx.beginPath();
@@ -112,21 +109,6 @@ export class Plane {
     }
   };
 
-  private readonly zoomAtPoint = (clientX: number, clientY: number, deltaScale: number): void => {
-    const rect = this.canvas.getBoundingClientRect();
-    const localX = clientX - rect.left;
-    const localY = clientY - rect.top;
-
-    const nextScale = Math.min(240, Math.max(12, this.view.scale * deltaScale));
-    const scaleRatio = nextScale / this.view.scale;
-
-    this.view.offsetX = localX - (localX - this.view.offsetX) * scaleRatio;
-    this.view.offsetY = localY - (localY - this.view.offsetY) * scaleRatio;
-    this.view.scale = nextScale;
-
-    this.draw();
-  };
-
   private readonly onPointerDown = (event: PointerEvent): void => {
     const activeTool = this.tools.activeTool;
 
@@ -140,14 +122,9 @@ export class Plane {
       return;
     }
 
-    const rect = this.canvas.getBoundingClientRect();
-    const localX = event.clientX - rect.left;
-    const localY = event.clientY - rect.top;
+    const point: LocalPoint = new ClientPoint(event.clientX, event.clientY).toLocal(this.canvas, this.view);
 
-    const worldX = (localX - (rect.width / 2 + this.view.offsetX)) / this.view.scale;
-    const worldY = (localY - (rect.height / 2 + this.view.offsetY)) / this.view.scale;
-
-    const input: LocationInput = { kind: "location", x: worldX, y: worldY };
+    const input: LocationInput = { kind: "location", point };
 
     const result: ToolResult = activeTool.activate(input);
     switch (result.kind) {
@@ -189,7 +166,23 @@ export class Plane {
 
   private readonly onWheel = (event: WheelEvent): void => {
     event.preventDefault();
+
     const zoomFactor = event.deltaY < 0 ? 1.12 : 0.89;
-    this.zoomAtPoint(event.clientX, event.clientY, zoomFactor);
+
+    const canvasPoint = new ClientPoint(event.clientX, event.clientY).toCanvas(this.canvas);
+    const nextScale = Math.min(240, Math.max(12, this.view.scale * zoomFactor));
+    const scaleRatio = nextScale / this.view.scale;
+    
+    const center = CanvasPoint.center(this.canvas);
+
+    this.view.offsetX *= scaleRatio;
+    this.view.offsetY *= scaleRatio;
+
+    this.view.offsetX += (canvasPoint.x - center.x) * (1 - scaleRatio);
+    this.view.offsetY += (canvasPoint.y - center.y) * (1 - scaleRatio);
+
+    this.view.scale = nextScale;
+
+    this.draw();
   };
 }

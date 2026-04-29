@@ -1,8 +1,9 @@
 import { VscodeButton } from "@vscode-elements/elements";
 import { Construction, Point } from "./constructions";
+import { LocalPoint } from "./coordinates";
 
 export interface ConstructionInput { kind: "construction"; construction: Construction }
-export interface LocationInput { kind: "location"; x: number; y: number }
+export interface LocationInput { kind: "location"; point: LocalPoint }
 export type ToolInput = ConstructionInput | LocationInput;
 
 export interface ConstructionResult { kind: "construction"; construction: Construction }
@@ -71,9 +72,11 @@ export class PointTool extends Tool {
 
   override activate(input: ToolInput): ToolResult {
     if (input.kind !== "location") return { kind: 'failure' };
-    const { x, y } = input;
-    const p = new Point('', x, y);
-    return { kind: 'construction', construction: p };
+
+    return { 
+      kind: 'construction', 
+      construction: new Point('', input.point.x, input.point.y)
+    };
   }
 
   override get inputs(): readonly Construction[] {

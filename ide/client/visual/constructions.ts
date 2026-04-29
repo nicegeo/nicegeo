@@ -1,4 +1,4 @@
-import { PlaneView } from './plane';
+import { LocalPoint, PlaneView } from './coordinates';
 
 /**
  * Abstract base class for geometric constructions
@@ -12,13 +12,11 @@ export abstract class Construction {
   }
 
   /**
-   * Abstract method that must be implemented by subclasses
    * Renders this construction on the given canvas context
    */
   abstract render(ctx: CanvasRenderingContext2D, planeView: PlaneView): void;
 
   /**
-   * Abstract method that must be implemented by subclasses
    * Validates the construction
    */
   abstract validate(): boolean;
@@ -28,47 +26,27 @@ export abstract class Construction {
  * A Point construction
  */
 export class Point extends Construction {
-  /** X coordinate */
-  private _x: number;
-
-  /** Y coordinate */
-  private _y: number;
+  private _pos: LocalPoint;
 
   constructor(name: string, x: number, y: number) {
     super(name);
-    this._x = x;
-    this._y = y;
+    this._pos = new LocalPoint(x, y);
   }
 
-  /**
-   * Get the X coordinate
-   */
   get x(): number {
-    return this._x;
+    return this._pos.x;
   }
 
-  /**
-   * Get the Y coordinate
-   */
   get y(): number {
-    return this._y;
+    return this._pos.y;
   }
 
-  /**
-   * Set the coordinates
-   */
   setCoordinates(x: number, y: number): void {
-    this._x = x;
-    this._y = y;
+    this._pos = new LocalPoint(x, y);
   }
 
-  /**
-   * Render the point on the canvas
-   */
   override render(ctx: CanvasRenderingContext2D, view: PlaneView): void {
-    const rect = ctx.canvas.getBoundingClientRect();
-    const canvasX = rect.width / 2 + view.offsetX + this._x * view.scale;
-    const canvasY = rect.height / 2 + view.offsetY + this._y * view.scale;
+    const { x: canvasX, y: canvasY } = this._pos.toCanvas(ctx.canvas, view);
 
     const radius = 12;
     const color = getComputedStyle(document.body).getPropertyValue("--vscode-button-background");
@@ -86,9 +64,6 @@ export class Point extends Construction {
     ctx.fill();
   }
 
-  /**
-   * Validate the point coordinates
-   */
   override validate(): boolean {
     return true;
   }
