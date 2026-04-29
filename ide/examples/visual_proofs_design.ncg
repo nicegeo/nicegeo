@@ -1,0 +1,147 @@
+Import "euclib/euclib.ncg"
+
+(* This file includes some simple proofs about points, lines, and circles to kick off visual proof design  *)
+
+(* ============================================================
+   Points
+   ============================================================ *)
+
+(*
+  I tried to prove three distinct points exist but even that I did incorrectly apparently.
+  Oh well, I proved something.
+*)
+Theorem three_points_with_one_distinct_point_exists:
+  Exists _ (fun (a : Point) =>
+    Exists _ (fun (b : Point) => 
+        Exists _ (fun (c : Point) =>
+          distinct_from c (List.cons _ a (List.cons _ b (List.nil _))) (List.nil _) (List.nil _))))
+Proof.
+  choose a ha (pt_exists (List.nil _) (List.nil _) (List.nil _)).
+  exists a.
+  choose b hb (pt_exists (List.nil _) (List.nil _) (List.nil _)).
+  exists b.
+  exact (pt_exists _ _ _).
+Qed.
+
+Theorem three_points_distinct : ∃ (a b c : Point), a ≠ b ∧ b ≠ c ∧ a ≠ c
+Proof.
+  choose a ha (pt_exists [] [] []).
+  choose b hb (pt_exists [a] [] []).
+  distinct_points h1 b a hb. exact (list_mem_head _ a _).
+  choose c hc (pt_exists [a, b] [] []).
+  distinct_points h2 c a hc. exact (list_mem_head _ a _).
+  distinct_points h3 c b hc.
+  apply (list_mem_tail Point b _ [b]). apply (list_mem_head _ b _).
+  exists a.
+  exists b.
+  exists c.
+  split. split.
+  apply (Ne.symm _ _ _).
+  exact h1.
+  apply (Ne.symm _ _ _).
+  exact h3.
+  apply (Ne.symm _ _ _).
+  exact h2.
+Qed.
+
+(* ============================================================
+   Lines
+   ============================================================ *)
+(* Two distinct points determine a unique line *)
+Theorem line_unique_of_two_pts :
+    ∀ (a b : Point) (L M : Line),
+    a ≠ b ->
+    OnLine a L -> OnLine b L ->
+    OnLine a M -> OnLine b M ->
+    L = M
+Proof.
+  intros a b L M h_ne h_aL h_bL h_aM h_bM.
+  exact (two_distinct_points_determine_unique_line a b L M h_ne h_aL h_bL h_aM h_bM).
+Qed.
+
+(* A point cannot be both endpoints in some betweenness rel *)
+Theorem not_between_same_endpoints :
+    ∀ (a b : Point), Between a b a -> False
+Proof.
+  intros a b h_bet.
+  destruct_ands (between_distinct a b a h_bet) h_sym h_ne_ab h_ne_aa h_not.
+  apply h_ne_aa.
+  reflexivity.
+Qed.
+
+(* A point cannot be both the first endpoint and the middle point of a betweenness relation *)
+Theorem not_between_refl :
+    ∀ (a c : Point), Between a a c -> False
+Proof.
+  intros a c h_bet.
+  destruct_ands (between_distinct a a c h_bet) h_sym h_ne_aa h_ne_ac h_not.
+  apply h_ne_aa.
+  reflexivity.
+Qed.
+
+(* Betweenness implies all three points share a common line *)
+Theorem between_gives_line :
+    ∀ (a b c : Point),
+    Between a b c ->
+    Exists Line (fun L => OnLine a L ∧ OnLine b L ∧ OnLine c L)
+Proof.
+  intros a b c h_bet.
+  destruct_ands (between_distinct a b c h_bet) h_sym h_ne_ab h_ne_ac h_not_bac.
+  choose L hL (line_of_pts a b h_ne_ab).
+  destruct_ands hL h_aL h_bL.
+  exists L.
+  split. split.
+  exact h_aL.
+  exact h_bL.
+  exact (between_collinear_right a b c L h_bet h_aL h_bL).
+Qed.
+
+(* ============================================================
+   Circles
+   ============================================================ *)
+
+Theorem center_not_on_circle :
+    (o : Point) -> (aa : Circle) ->
+    CenterCircle o aa -> OnCircle o aa -> False
+Proof.
+  intros o aa h_center h_on.
+  apply (inside_implies_not_on_circle o aa).
+  apply (center_lies_inside_circle o aa).
+  exact h_center.
+  exact h_on.
+Qed.
+
+Theorem center_ne_pt_on_circle :
+   (o : Point) -> (p : Point) -> (aa : Circle) ->
+   CenterCircle o aa -> OnCircle p aa -> Eq Point o p -> False
+Proof.
+   intros o p aa h_center h_on h_eq.
+   apply (center_not_on_circle o aa h_center).
+   rewrite h_eq.
+   exact h_on. 
+Qed.
+
+Theorem radius_nonzero :
+    (o : Point) -> (p : Point) -> (aa : Circle) ->
+    CenterCircle o aa -> OnCircle p aa ->
+    Eq Measure (Length o p) Zero -> False
+Proof.
+  intros o p aa h_center h_on h_zero.
+  apply (center_ne_pt_on_circle o p aa h_center h_on).
+  apply (eq_if_len_zero o p).
+  exact h_zero.
+Qed.
+
+Theorem chord_interior :
+    (a : Point) -> (b : Point) -> (c : Point) -> (aa : Circle) ->
+    OnCircle a aa -> OnCircle b aa -> Between a c b ->
+    InCircle c aa
+Proof.
+   intros a b c aa h_a h_b h_bet.
+   apply (circle_convex a b c aa).
+   right.
+   exact h_a.
+   right.
+   exact h_b.
+   exact h_bet. 
+Qed.
