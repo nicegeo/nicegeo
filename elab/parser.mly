@@ -1,6 +1,6 @@
 %token <string> IDENT STRING_LITERAL
 %token FUN ARROW IFF MAPSTO COLON LPAREN RPAREN LBRACKET RBRACKET TYPE PROP EOF UNDERSCORE PROOF QED PERIOD
-%token THEOREM AXIOM DEFINITION DEFEQ IMPORT EQUALS NOT_EQUALS LESS_THAN PLUS NOT OR AND EXISTS FORALL COMMA
+%token THEOREM AXIOM DEFINITION DEFEQ IMPORT EQUALS NOT_EQUALS LESS_THAN LESS_THAN_OR_EQUAL PLUS NOT OR AND EXISTS FORALL COMMA
 %token PRINT_DIRECTIVE INFER_DIRECTIVE CHECK_DIRECTIVE REDUCE_DIRECTIVE OPAQUE_DIRECTIVE
 %start <Statement.statement list> main
 %start <Term.term> single_term
@@ -129,6 +129,11 @@ proposition_term:
     {
       let loc = { Term.start = $startpos; Term.end_ = $endpos } in
       Term.{inner=App ({inner=App ({inner=Name "Lt"; loc}, t1); loc}, t2); loc}
+    }
+  | t1 = sum_term LESS_THAN_OR_EQUAL t2 = sum_term
+    {
+      let loc = { Term.start = $startpos; Term.end_ = $endpos } in
+      Term.{inner=App ({inner=App ({inner=Name "Le"; loc}, t1); loc}, t2); loc}
     }
   | t1 = sum_term EQUALS t2 = sum_term
     {
