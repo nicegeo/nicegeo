@@ -1,0 +1,13 @@
+Axiom TrueI : True
+
+Definition Keep
+  : (A : Prop) -> A -> A
+  := fun (A : Prop) (a : A) => a
+
+Theorem DemoHoverGoto
+  : (A : Prop) -> A -> True
+  := fun (A : Prop) (a : A) => TrueI
+
+Theorem DemoSecondUse
+  : (A : Prop) -> A -> A
+  := fun (A : Prop) (a : A) => Keep A a

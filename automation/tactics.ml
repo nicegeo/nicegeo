@@ -665,17 +665,118 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
       | _ -> fail "destruct_ands: expected a term of type And A B")
 
 let register () =
-  register_tactic "try" Register.(tactical try_tac);
-  register_tactic "repeat" Register.(tactical repeat);
-  register_tactic "reflexivity" Register.(nullary reflexivity);
-  register_tactic "exact" Register.(unary_term exact);
-  register_tactic "apply" Register.(unary_term apply);
-  register_tactic "sorry" Register.(nullary sorry);
-  register_tactic "intro" Register.(unary_ident intro);
-  register_tactic "intros" Register.(variadic_ident intros);
-  register_tactic "left" Register.(nullary left);
-  register_tactic "right" Register.(nullary right);
-  register_tactic "cases" (function
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Runs the given tactic and succeeds without changes if it fails.";
+        expected_parameters = "<tactic-name> [args...]";
+        example_usage = "try intro.";
+      }
+    "try"
+    Register.(tactical try_tac);
+  register_tactic
+    ~documentation:
+      {
+        one_liner =
+          "Repeats the given tactic until it fails, keeping the last successful state.";
+        expected_parameters = "<tactic-name> [args...]";
+        example_usage = "repeat intro.";
+      }
+    "repeat"
+    Register.(tactical repeat);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Closes equality goals when both sides are definitionally equal.";
+        expected_parameters = "(no parameters)";
+        example_usage = "reflexivity.";
+      }
+    "reflexivity"
+    Register.(nullary reflexivity);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Solves the current goal with a term that typechecks against it.";
+        expected_parameters = "<term>";
+        example_usage = "exact h.";
+      }
+    "exact"
+    Register.(unary_term exact);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Applies a term to the goal, creating subgoals for missing arguments.";
+        expected_parameters = "<term>";
+        example_usage = "apply theorem_name.";
+      }
+    "apply"
+    Register.(unary_term apply);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Admits the current goal using the unsafe sorry axiom.";
+        expected_parameters = "(no parameters)";
+        example_usage = "sorry.";
+      }
+    "sorry"
+    Register.(nullary sorry);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Introduces one binder from an implication/forall goal into context.";
+        expected_parameters = "<identifier>";
+        example_usage = "intro h.";
+      }
+    "intro"
+    Register.(unary_ident intro);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Introduces multiple binders from the goal into context in order.";
+        expected_parameters = "<identifier>...";
+        example_usage = "intros h1 h2 h3.";
+      }
+    "intros"
+    Register.(variadic_ident intros);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Solves an Or goal by choosing the left branch.";
+        expected_parameters = "(no parameters)";
+        example_usage = "left.";
+      }
+    "left"
+    Register.(nullary left);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Solves an Or goal by choosing the right branch.";
+        expected_parameters = "(no parameters)";
+        example_usage = "right.";
+      }
+    "right"
+    Register.(nullary right);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Splits an And goal into two subgoals.";
+        expected_parameters = "(no parameters)";
+        example_usage = "split.";
+      }
+    "split"
+    Register.(nullary split);
+  register_tactic
+    ~documentation:
+      {
+        one_liner =
+          "Splits the goal into two subgoals for the left and right cases of a provided \
+           Or.";
+        expected_parameters =
+          "<term> <identifier for left case> <identifier for right case>";
+        example_usage = "cases h h_left h_right.";
+      }
+    "cases"
+    (function
     | [ tm; { inner = Name n1; _ }; { inner = Name n2; _ } ] -> cases tm n1 n2
     | [ tm; { inner = Name n1; _ } ] -> cases tm n1 n1
     | tm :: _ ->
@@ -707,9 +808,17 @@ let register () =
                    ("Expected two or three parameters, but got "
                    ^ string_of_int (List.length args));
              }));
-  register_tactic "split" Register.(nullary split);
   (* There's a clever design somewhere that lets me write this with some combinators, but for time's sake this one gets hard-coded for now. *)
-  register_tactic "have" (function
+  register_tactic
+    ~documentation:
+      {
+        one_liner =
+          "Adds a named intermediate claim and opens subgoals for proof and continuation.";
+        expected_parameters = "<identifier> <type>";
+        example_usage = "have h (P -> Q).";
+      }
+    "have"
+    (function
     | [ { inner = Name name; _ }; ty ] -> have name ty
     | ty :: _ ->
         raise
@@ -740,10 +849,36 @@ let register () =
                    ("Expected exactly two parameters (name and type), but got "
                    ^ string_of_int (List.length args));
              }));
-  register_tactic "rewrite" Register.(unary_term rewrite);
-  register_tactic "exists" Register.(unary_term exists);
+  register_tactic
+    ~documentation:
+      {
+        one_liner = "Rewrites the goal using an equality proof.";
+        expected_parameters = "<term>";
+        example_usage = "rewrite eq_proof.";
+      }
+    "rewrite"
+    Register.(unary_term rewrite);
+  register_tactic
+    ~documentation:
+      {
+        one_liner =
+          "Provides a witness for an existential goal and opens the proof obligation.";
+        expected_parameters = "<term>";
+        example_usage = "exists witness.";
+      }
+    "exists"
+    Register.(unary_term exists);
   (* I don't feel comfortable enough with registration yet to extend Register *)
-  register_tactic "choose" (function
+  register_tactic
+    ~documentation:
+      {
+        one_liner =
+          "Eliminates an existential hypothesis into witness and proof hypotheses.";
+        expected_parameters = "<identifier> <identifier> <term>";
+        example_usage = "choose x hx hexists_term.";
+      }
+    "choose"
+    (function
     | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
     | trm :: _ ->
         raise
@@ -774,7 +909,16 @@ let register () =
                    ("Expected exactly three parameters (two names and a term), but got "
                    ^ string_of_int (List.length args));
              }));
-  register_tactic "destruct_ands" (function
+  register_tactic
+    ~documentation:
+      {
+        one_liner =
+          "Recursively destructs a conjunction hypothesis into named leaf hypotheses.";
+        expected_parameters = "<term> <identifier>...";
+        example_usage = "destruct_ands h h1 h2.";
+      }
+    "destruct_ands"
+    (function
     | tm :: names ->
         let names =
           List.map

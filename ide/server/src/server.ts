@@ -9,6 +9,8 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { fileURLToPath } from "url";
 import { DiagnosticsService, NiceGeoSettings, DiagnosticsTriggerMode } from "./providers/diagnostics";
+import { provideHover } from "./providers/hover";
+import { provideDefinition } from "./providers/definition";
 import { runProofStateAt } from "./providers/proofstate";
 
 const STATUS_NOTIFICATION = "nicegeo/status";
@@ -62,7 +64,13 @@ const diagnostics = new DiagnosticsService(
 connection.onInitialize((params: InitializeParams): InitializeResult => {
   hasConfigurationCapability = !!params.capabilities.workspace?.configuration;
   workspaceRoot = params.rootUri ? fileURLToPath(params.rootUri) : undefined;
-  return { capabilities: { textDocumentSync: TextDocumentSyncKind.Incremental } };
+  return {
+    capabilities: {
+      textDocumentSync: TextDocumentSyncKind.Incremental,
+      hoverProvider: true,
+      definitionProvider: true,
+    },
+  };
 });
 
 connection.onInitialized(() => connection.sendNotification(STATUS_NOTIFICATION, { kind: "idle" }));
@@ -96,6 +104,18 @@ connection.onRequest(
     return runProofStateAt(params.uri, params.line, params.col, workspaceRoot);
   },
 );
+
+connection.onHover(async (params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+  return provideHover(doc, params.position.line, params.position.character, workspaceRoot);
+});
+
+connection.onDefinition(async (params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+  return provideDefinition(doc, params.position.line, params.position.character, workspaceRoot);
+});
 
 connection.onShutdown(() => diagnostics.dispose());
 

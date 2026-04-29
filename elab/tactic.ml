@@ -9,6 +9,14 @@ type tactic = proof_state -> tactic_result
 
 let tactics : (string, term list -> tactic) Hashtbl.t = Hashtbl.create 8
 
+type tactic_documentation = {
+  one_liner : string;
+  expected_parameters : string;
+  example_usage : string;
+}
+
+let tactic_docs : (string, tactic_documentation) Hashtbl.t = Hashtbl.create 8
+
 type tactic_step_outcome =
   | Tactic_step_ok of proof_state
   | Tactic_step_unknown
@@ -90,10 +98,19 @@ let run (e : Types.ctx) (tacs : Statement.tactic list) (goal : term) : term =
          })
   else state.statement
 
-let register_tactic (name : string) (tac : term list -> tactic) : unit =
+let register_tactic ~(documentation : tactic_documentation) (name : string)
+    (tac : term list -> tactic) : unit =
   if Hashtbl.mem tactics name then
     failwith (Printf.sprintf "Tactic '%s' is already registered." name)
-  else Hashtbl.replace tactics name tac
+  else (
+    Hashtbl.replace tactics name tac;
+    Hashtbl.replace tactic_docs name documentation)
+
+let tactic_documentation (name : string) : tactic_documentation option =
+  Hashtbl.find_opt tactic_docs name
+
+let tactic_specs () : (string * tactic_documentation) list =
+  Hashtbl.to_seq tactic_docs |> List.of_seq
 
 module Register = struct
   let nullary (f : tactic) : term list -> tactic = function

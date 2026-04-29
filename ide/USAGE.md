@@ -52,3 +52,27 @@ In the NiceGeo sidebar, you will see:
 - If the cursor is at/after a tactic end, that tactic is included.
 - At/after `Qed`, the full proof script is treated as applied.
 - Exit Proof Mode to stop automatic proof-state refresh.
+
+## 7) Use Hover
+
+- Hover over global names (theorems/definitions/axioms) to see declaration info.
+- Hover over local names to see local type info.
+- Hover over tactics to see:
+  - one-line summary,
+  - expected parameters,
+  - example usage.
+- Tactic docs are loaded from backend tactic registration metadata.
+
+## 8) Use Go-to-Definition
+
+- Place cursor on a symbol and run:
+  - `Go to Definition` (`F12` / context menu).
+- For declaration references, the IDE jumps to the declaration range.
+- For symbols declared in the same file, same-file declaration lookup is supported.
+
+## 9) Quick visual test
+
+- Open `ide/examples/hover_goto_demo.ncg`.
+- Hover on symbols like `Keep`, `TrueI`, `A`, `a`.
+- Hover on tactics in a `Proof ... Qed` script to inspect tactic docs.
+- Try go-to-definition on symbol uses to verify navigation.
