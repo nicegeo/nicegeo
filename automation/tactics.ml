@@ -664,6 +664,68 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
           | Error msg -> fail msg)
       | _ -> fail "destruct_ands: expected a term of type And A B")
 
+(* Infer the type of the distinct_from hypothesis for any of the distinct tactics *)
+let infer_distinct (a : term) (h : term) (g : goal) (st : proof_state) :
+    term option * term option * term option =
+  let pts = gen_hole_id () in
+  let ls = gen_hole_id () in
+  let cs = gen_hole_id () in
+  let expected =
+    mk_app_multiarg (mk_name "distinct_from") [ a; mk_hole pts; mk_hole ls; mk_hole cs ]
+  in
+  create_metas st.elab_ctx h (List.map (fun h -> h.bid) g.lctx);
+  let h_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx h in
+  let ctx = ctx_with_new_holes g st.elab_ctx expected in
+  unify ctx h_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
+  match
+    ( Hashtbl.find_opt ctx.metas pts,
+      Hashtbl.find_opt ctx.metas ls,
+      Hashtbl.find_opt ctx.metas cs )
+  with
+  | Some mvar1, Some mvar2, Some mvar3 -> (mvar1.sol, mvar2.sol, mvar3.sol)
+  | _ -> failwith "internal nicegeo programming error: created hole does not exist!"
+
+(* The [distinct_points] tactic takes a [distinct_from] proof as an argument, and from
+    it proves an inequality between points and adds it to the hypotheses, asking
+    for the [List.mem] proof obligation for now (future versions will probably
+    try to prove this automatically when possible). For now this also explicitly
+    takes the points that one is saying are not equal, though later it may
+    infer these in concrete instances. *)
+let distinct_points (name : string) (a : term) (b : term) (h : term) (st : proof_state) =
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g -> (
+      match infer_distinct a h g st with
+      | Some pts, Some ls, Some cs ->
+          (* case 2 goal: show original goal, given new inequality hypothesis *)
+          let ty = mk_app_multiarg (mk_name "Ne") [ mk_name "Point"; a; b ] in
+          let bid = Elab.Term.gen_binder_id () in
+          let neq_h = { name = Some name; bid; ty } in
+          let goal_pf, st = fresh_goal st (neq_h :: g.lctx) g.goal_type in
+          (* case 1 goal: show mem *)
+          let new_goal_typ =
+            mk_app_multiarg (mk_name "List.mem") [ mk_name "Point"; b; pts ]
+          in
+          let mem_pf, st = fresh_goal st g.lctx new_goal_typ in
+          (* construct the proof term for case 2 *)
+          let neq_pf =
+            mk_app_multiarg
+              (mk_name "distinct_from_pt_neq")
+              [ a; b; pts; ls; cs; mem_pf; h ]
+          in
+          let proof = mk_app (mk_fun (Some name) bid ty goal_pf) neq_pf in
+          (* update the proof state accordingly (and close original goal) *)
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+          succeed st
+      | _ ->
+          fail
+            (Printf.sprintf
+               "The term %s is expected to have type (distinct_from %s pts ls cs) for \
+                lists pts, ls, and cs, but we cannot infer instances of pts, ls, and cs"
+               (pp_term st.elab_ctx a)
+               (pp_term st.elab_ctx h)))
+
 let register () =
   register_tactic "try" Register.(tactical try_tac);
   register_tactic "repeat" Register.(tactical repeat);
@@ -800,5 +862,36 @@ let register () =
                context = { loc = None; decl_name = None; lctx = None };
                error_type =
                  Elab.Error.InvalidTacticParameter "Expected at least one parameter";
+             }));
+  register_tactic "distinct_points" (function
+    | [ { inner = Name n; _ }; a; b; h ] -> distinct_points n a b h
+    | trm :: _ ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context = { loc = Some trm.loc; decl_name = None; lctx = None };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   "Expected an identifier, but got a term";
+             })
+    | args ->
+        raise
+          (Elab.Error.ElabError
+             {
+               context =
+                 {
+                   loc =
+                     Some
+                       {
+                         start = (List.hd args).loc.start;
+                         end_ = (List.hd (List.rev args)).loc.end_;
+                       };
+                   decl_name = None;
+                   lctx = None;
+                 };
+               error_type =
+                 Elab.Error.InvalidTacticParameter
+                   ("Expected exactly four parameters, but got "
+                   ^ string_of_int (List.length args));
              }));
   ()
