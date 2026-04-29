@@ -22,21 +22,24 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
 let workspaceRoot: string | undefined;
-const defaultSettings: NiceGeoSettings = { trigger: "onSave", debounceMs: 650 };
+const defaultSettings: NiceGeoSettings = { trigger: "onSave", debounceMs: 650, executionMode: "dune" };
 const documentSettings = new Map<string, Thenable<NiceGeoSettings>>();
 
 function normalizeSettings(raw: unknown): NiceGeoSettings {
   const input = (raw ?? {}) as {
     diagnostics?: { trigger?: DiagnosticsTriggerMode; debounceMs?: number };
+    execution?: { mode?: string };
   };
   const trigger = input.diagnostics?.trigger;
   const debounceMs = input.diagnostics?.debounceMs;
+  const executionMode = input.execution?.mode;
   return {
     trigger: trigger === "onType" || trigger === "both" || trigger === "onSave" ? trigger : "onSave",
     debounceMs:
       Number.isFinite(debounceMs) && debounceMs !== undefined
         ? Math.max(100, Math.min(10_000, Math.floor(debounceMs)))
         : 650,
+    executionMode: executionMode === "installedBinary" ? "installedBinary" : "dune",
   };
 }
 
@@ -96,13 +99,14 @@ connection.onNotification(RUN_DIAGNOSTICS_NOTIFICATION, (params: { uri?: string 
   if (!params?.uri) return;
   const doc = documents.get(params.uri);
   if (!doc) return;
-  void diagnostics.runNow(doc, workspaceRoot);
+  void getDocumentSettings(params.uri).then((settings) => diagnostics.runNow(doc, settings, workspaceRoot));
 });
 
 connection.onRequest(
   PROOF_STATE_AT_REQUEST,
   async (params: { uri: string; line: number; col: number }) => {
-    return runProofStateAt(params.uri, params.line, params.col, workspaceRoot);
+    const settings = await getDocumentSettings(params.uri);
+    return runProofStateAt(params.uri, params.line, params.col, workspaceRoot, settings);
   },
 );
 
