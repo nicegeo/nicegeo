@@ -37,10 +37,13 @@ ide/
 
 Open the `ide/` folder as your workspace:
 
-- Build the packaged extension (client + bundled server):
+- Build the packaged extension once (client + bundled server):
   - `npm run compile`
-- Or use the VS Code task:
+- Or start the watch build used by the debugger:
+  - `npm run watch`
+- VS Code task used by debugging:
   - Task label: `build-nicegeo-ide`
+  - Runs in the background and watches for changes
 
 ## Debug in VS Code
 
@@ -48,7 +51,7 @@ From the `ide/` workspace, use Run and Debug:
 
 - Launch config: `NiceGeo IDE (Extension Host)`
 - It automatically:
-  - runs prelaunch task `build-nicegeo-ide`
+  - runs prelaunch task `build-nicegeo-ide` in watch mode
   - starts extension from `ide/`
   - opens `examples` and `examples/proof.ncg`
 
