@@ -10,6 +10,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { fileURLToPath } from "url";
 import { DiagnosticsService, NiceGeoSettings, DiagnosticsTriggerMode } from "./providers/diagnostics";
 import { runProofStateAt } from "./providers/proofstate";
+import { provideCompletionItems, resolveCompletionItem } from "./providers/completion";
 
 const STATUS_NOTIFICATION = "nicegeo/status";
 const RUN_DIAGNOSTICS_NOTIFICATION = "nicegeo/runDiagnostics";
@@ -21,21 +22,24 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
 let workspaceRoot: string | undefined;
-const defaultSettings: NiceGeoSettings = { trigger: "onSave", debounceMs: 650 };
+const defaultSettings: NiceGeoSettings = { trigger: "onSave", debounceMs: 650, executionMode: "dune" };
 const documentSettings = new Map<string, Thenable<NiceGeoSettings>>();
 
 function normalizeSettings(raw: unknown): NiceGeoSettings {
   const input = (raw ?? {}) as {
     diagnostics?: { trigger?: DiagnosticsTriggerMode; debounceMs?: number };
+    execution?: { mode?: string };
   };
   const trigger = input.diagnostics?.trigger;
   const debounceMs = input.diagnostics?.debounceMs;
+  const executionMode = input.execution?.mode;
   return {
     trigger: trigger === "onType" || trigger === "both" || trigger === "onSave" ? trigger : "onSave",
     debounceMs:
       Number.isFinite(debounceMs) && debounceMs !== undefined
         ? Math.max(100, Math.min(10_000, Math.floor(debounceMs)))
         : 650,
+    executionMode: executionMode === "installedBinary" ? "installedBinary" : "dune",
   };
 }
 
@@ -62,7 +66,15 @@ const diagnostics = new DiagnosticsService(
 connection.onInitialize((params: InitializeParams): InitializeResult => {
   hasConfigurationCapability = !!params.capabilities.workspace?.configuration;
   workspaceRoot = params.rootUri ? fileURLToPath(params.rootUri) : undefined;
-  return { capabilities: { textDocumentSync: TextDocumentSyncKind.Incremental } };
+  return {
+    capabilities: {
+      textDocumentSync: TextDocumentSyncKind.Incremental,
+      completionProvider: {
+        triggerCharacters: ["#", ".", " ", "(", ":", "-", "/", "\\"],
+        resolveProvider: true,
+      },
+    },
+  };
 });
 
 connection.onInitialized(() => connection.sendNotification(STATUS_NOTIFICATION, { kind: "idle" }));
@@ -87,15 +99,31 @@ connection.onNotification(RUN_DIAGNOSTICS_NOTIFICATION, (params: { uri?: string 
   if (!params?.uri) return;
   const doc = documents.get(params.uri);
   if (!doc) return;
-  void diagnostics.runNow(doc, workspaceRoot);
+  void getDocumentSettings(params.uri).then((settings) => diagnostics.runNow(doc, settings, workspaceRoot));
 });
 
 connection.onRequest(
   PROOF_STATE_AT_REQUEST,
   async (params: { uri: string; line: number; col: number }) => {
-    return runProofStateAt(params.uri, params.line, params.col, workspaceRoot);
+    const settings = await getDocumentSettings(params.uri);
+    return runProofStateAt(params.uri, params.line, params.col, workspaceRoot, settings);
   },
 );
+
+connection.onCompletion(async (params) => {
+  if (hasConfigurationCapability) {
+    const cfg = await connection.workspace.getConfiguration({
+      scopeUri: params.textDocument.uri,
+      section: "nicegeo.completion.enable",
+    });
+    if (cfg === false) return [];
+  }
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return [];
+  return provideCompletionItems(doc, params.position.line, params.position.character, workspaceRoot);
+});
+
+connection.onCompletionResolve((item) => resolveCompletionItem(item));
 
 connection.onShutdown(() => diagnostics.dispose());
 

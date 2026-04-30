@@ -4,10 +4,20 @@
     {
       "label": "build-nicegeo-ide",
       "type": "shell",
-      "command": "npm run compile",
-      "problemMatcher": ["$tsc"],
+      "command": "npm run watch",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": ".*"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^Watching extension, server, and webview builds\\.\\.\\.$",
+          "endsPattern": "^Watching extension, server, and webview builds\\.\\.\\.$"
+        }
+      },
       "group": "build"
     }
   ]
 }
-

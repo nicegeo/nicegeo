@@ -9,6 +9,7 @@ import {
 
 import { NiceGeoOutput } from "./core/output";
 import { NiceGeoStatusBar } from "./core/status";
+import { VisualEditorPanel } from "./core/visualEditorPanel";
 import type { ProofStateAtPayload } from "./core/proofStatePanel";
 import { ProofStateSidebarWebviewProvider } from "./core/proofStateSidebarWebview";
 
@@ -195,6 +196,11 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.visualEditor.open", () => {
+      VisualEditorPanel.open(context);
+    }),
+  );
 
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorSelection((e) => {
