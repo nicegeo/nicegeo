@@ -79,19 +79,6 @@ Definition square : Point -> Point -> Point -> Point -> Prop :=
    Logic and order utilities
    ============================================================ *)
 
-
-(* Eliminates a conjunction by passing both components to a continuation. *)
-Theorem And.elim1 : (A: Prop) -> (B: Prop) -> (C: Prop) -> A ∧ B -> (f: A -> B -> C) -> C :=
-    fun A B C h f => And.elim A B C f h
-
-(* Extracts the left component of a conjunction. *)
-Theorem fst : (A: Prop) -> (B: Prop) -> A /\ B -> A :=
-    fun A B h => And.elim1 A B A h (fun a b => a)
-
-(* Extracts the right component of a conjunction. *)
-Theorem snd : (A: Prop) -> (B: Prop) -> A /\ B -> B :=
-    fun A B h => And.elim1 A B B h (fun a b => b)
-
 (* Names an intermediate result for reuse: prove P, then use it to prove M. *)
 Theorem have : (M: Prop) -> (P: Prop) -> P -> (P -> M) -> M :=
     fun M P p f => f p
