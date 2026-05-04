@@ -766,7 +766,8 @@ let register () =
         parameters = [ "<term>" ];
         example = "exact h.";
       }
-    "exact" Register.(unary_term exact);
+    "exact"
+    Register.(unary_term exact);
   register_tactic
     ~documentation:
       {
@@ -775,7 +776,8 @@ let register () =
         parameters = [ "<term>" ];
         example = "apply theorem_name.";
       }
-    "apply" Register.(unary_term apply);
+    "apply"
+    Register.(unary_term apply);
   register_tactic
     ~documentation:
       {
@@ -783,7 +785,8 @@ let register () =
         parameters = [];
         example = "sorry.";
       }
-    "sorry" Register.(nullary sorry);
+    "sorry"
+    Register.(nullary sorry);
   register_tactic
     ~documentation:
       {
@@ -792,7 +795,8 @@ let register () =
         parameters = [ "<identifier>" ];
         example = "intro h.";
       }
-    "intro" Register.(unary_ident intro);
+    "intro"
+    Register.(unary_ident intro);
   register_tactic
     ~documentation:
       {
@@ -810,7 +814,8 @@ let register () =
         parameters = [];
         example = "left.";
       }
-    "left" Register.(nullary left);
+    "left"
+    Register.(nullary left);
   register_tactic
     ~documentation:
       {
@@ -818,7 +823,8 @@ let register () =
         parameters = [];
         example = "right.";
       }
-    "right" Register.(nullary right);
+    "right"
+    Register.(nullary right);
   register_tactic
     ~documentation:
       {
@@ -877,7 +883,8 @@ let register () =
         parameters = [ "<identifier>"; "<type>" ];
         example = "have h (P -> Q).";
       }
-    "have" (function
+    "have"
+    (function
     | [ { inner = Name name; _ }; ty ] -> have name ty
     | ty :: _ ->
         raise
@@ -915,7 +922,8 @@ let register () =
         parameters = [ "<term>" ];
         example = "rewrite eq_proof.";
       }
-    "rewrite" Register.(unary_term rewrite);
+    "rewrite"
+    Register.(unary_term rewrite);
   register_tactic
     ~documentation:
       {
@@ -924,7 +932,8 @@ let register () =
         parameters = [ "<term>" ];
         example = "exists witness.";
       }
-    "exists" Register.(unary_term exists);
+    "exists"
+    Register.(unary_term exists);
   (* I don't feel comfortable enough with registration yet to extend Register *)
   register_tactic
     ~documentation:
@@ -934,7 +943,8 @@ let register () =
         parameters = [ "<identifier>"; "<identifier>"; "<term>" ];
         example = "choose x hx hexists_term.";
       }
-    "choose" (function
+    "choose"
+    (function
     | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
     | trm :: _ ->
         raise
@@ -973,7 +983,8 @@ let register () =
         parameters = [ "<term>"; "<identifier>…" ];
         example = "destruct_ands h h1 h2.";
       }
-    "destruct_ands" (function
+    "destruct_ands"
+    (function
     | tm :: names ->
         let names =
           List.map

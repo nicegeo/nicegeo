@@ -39,8 +39,8 @@ val run : Types.ctx -> Statement.tactic list -> term -> term
 val register_tactic :
   documentation:tactic_documentation -> string -> (term list -> tactic) -> unit
 
-(** [tactic_documentation name] returns backend documentation for tactic [name], if
-    it is registered. *)
+(** [tactic_documentation name] returns backend documentation for tactic [name], if it is
+    registered. *)
 val tactic_documentation : string -> tactic_documentation option
 
 (** All registered tactics with their documentation. *)
