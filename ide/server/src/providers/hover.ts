@@ -40,15 +40,25 @@ function formatSymbolCard(kind: string, name: string, type: string, file?: strin
   return parts.join("\n");
 }
 
-function formatTacticDoc(name: string, oneLiner: string, expected: string, example: string): string {
+function formatTacticDoc(
+  name: string,
+  description: string,
+  parameters: string[] | undefined,
+  example: string,
+): string {
   const parts = [`### tactic ${name}`];
-  if (oneLiner.trim()) parts.push(oneLiner);
-  parts.push("**Expected parameters**");
-  parts.push("```nicegeo");
-  parts.push(`${name} ${expected}`.trim());
-  parts.push("```");
+  if (description.trim()) parts.push(description);
+  const params = parameters ?? [];
+  if (params.length > 0) {
+    parts.push("");
+    parts.push("**Parameters**");
+    parts.push("```nicegeo");
+    parts.push(params.join("\n"));
+    parts.push("```");
+  }
   if (example.trim()) {
-    parts.push("**Example usage**");
+    parts.push("");
+    parts.push("**Example**");
     parts.push("```nicegeo");
     parts.push(example);
     parts.push("```");
@@ -74,9 +84,9 @@ function formatHoverMarkdown(symbol: string | null, snapshot: ProofStateAtRespon
     const doc = tacticAtCursor.documentation;
     return formatTacticDoc(
       tacticAtCursor.name,
-      doc?.oneLiner ?? "",
-      doc?.expectedParameters ?? "",
-      doc?.exampleUsage ?? "",
+      doc?.description ?? "",
+      doc?.parameters,
+      doc?.example ?? "",
     );
   }
 
@@ -137,7 +147,7 @@ export async function provideHover(
     return {
       contents: {
         kind: MarkupKind.Markdown,
-        value: formatTacticDoc(spec.name, doc.oneLiner, doc.expectedParameters, doc.exampleUsage),
+        value: formatTacticDoc(spec.name, doc.description, doc.parameters, doc.example),
       },
     };
   }

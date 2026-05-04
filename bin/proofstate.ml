@@ -66,6 +66,10 @@ let json_escape (s : string) : string =
   let s = Yojson.to_string (`String s) in
   String.sub s 1 (String.length s - 2)
 
+let json_escape_string_array (xs : string list) : string =
+  xs |> List.map (fun s -> Printf.sprintf "\"%s\"" (json_escape s)) |> String.concat ","
+  |> fun s -> "[" ^ s ^ "]"
+
 let pos_col (p : Lexing.position) : int = p.pos_cnum - p.pos_bol + 1
 
 let pos_lex_lt (line_a : int) (col_a : int) (line_b : int) (col_b : int) : bool =
@@ -528,21 +532,18 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     | None -> "null"
     | Some s -> Printf.sprintf "\"%s\"" (json_escape s)
   in
+  let json_string_list xs = json_escape_string_array xs in
   let json_doc = function
     | None -> "null"
     | Some (doc : Tactic.tactic_documentation) ->
         Printf.sprintf
-          "{\"oneLiner\":\"%s\",\"expectedParameters\":\"%s\",\"exampleUsage\":\"%s\"}"
-          (json_escape doc.one_liner)
-          (json_escape doc.expected_parameters)
-          (json_escape doc.example_usage)
+          "{\"description\":\"%s\",\"parameters\":%s,\"example\":\"%s\"}"
+          (json_escape doc.description)
+          (json_escape_string_array doc.parameters)
+          (json_escape doc.example)
   in
   let json_int_list (xs : int list) : string =
     "[" ^ String.concat "," (List.map string_of_int xs) ^ "]"
-  in
-  let json_string_list (xs : string list) : string =
-    xs |> List.map (fun s -> Printf.sprintf "\"%s\"" (json_escape s)) |> String.concat ","
-    |> fun s -> "[" ^ s ^ "]"
   in
   let env_items =
     snap.environment
@@ -614,11 +615,11 @@ let run (prog : string) (args : string list) : unit =
       Tactic.tactic_specs ()
       |> List.map (fun (name, (doc : Tactic.tactic_documentation)) ->
              Printf.sprintf
-               "{\"name\":\"%s\",\"documentation\":{\"oneLiner\":\"%s\",\"expectedParameters\":\"%s\",\"exampleUsage\":\"%s\"}}"
+               "{\"name\":\"%s\",\"documentation\":{\"description\":\"%s\",\"parameters\":%s,\"example\":\"%s\"}}"
                (json_escape name)
-               (json_escape doc.one_liner)
-               (json_escape doc.expected_parameters)
-               (json_escape doc.example_usage))
+               (json_escape doc.description)
+               (json_escape_string_array doc.parameters)
+               (json_escape doc.example))
       |> String.concat ","
     in
     Printf.printf "{\"ok\":true,\"tactics\":[%s]}\n" items;

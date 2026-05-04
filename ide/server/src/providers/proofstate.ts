@@ -42,9 +42,9 @@ export interface ProofStateAtResponse {
 }
 
 export interface TacticDocumentation {
-  oneLiner: string;
-  expectedParameters: string;
-  exampleUsage: string;
+  description: string;
+  parameters: string[];
+  example: string;
 }
 
 export interface TacticSpec {

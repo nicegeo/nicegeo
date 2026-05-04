@@ -9,9 +9,9 @@ type tactic = proof_state -> tactic_result
 
 let tactics : (string, term list -> tactic) Hashtbl.t = Hashtbl.create 8
 type tactic_documentation = {
-  one_liner : string;
-  expected_parameters : string;
-  example_usage : string;
+  description : string;
+  parameters : string list;
+  example : string;
 }
 
 let tactic_docs : (string, tactic_documentation) Hashtbl.t = Hashtbl.create 8

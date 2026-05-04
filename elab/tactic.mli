@@ -8,9 +8,9 @@ type tactic_result =
 type tactic = proof_state -> tactic_result
 
 type tactic_documentation = {
-  one_liner : string;
-  expected_parameters : string;
-  example_usage : string;
+  description : string;
+  parameters : string list;
+  example : string;
 }
 
 (** A registry mapping tactic names to their implementations. *)
