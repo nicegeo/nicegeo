@@ -1175,43 +1175,47 @@ let register () =
       }
     "measure_norm"
     Register.(nullary Measure_norm.measure_norm);
-  register_tactic 
-  ~documentation: {
-    description = "Simplifies a hypothesis that is a relation on Measures, e.g. a + 0 + c < b + c becomes a < b.";
-    parameters = [ "<identifier>"; "<term>" ];
-    example = "simp_constrain h1 h.";
-  }
-  "simp_constrain" (function
-    | [ { inner = Name name; _ }; tm ] -> simp_constrain tm name
-    | tm :: _ ->
-        raise
-          (Elab.Error.ElabError
-             {
-               context = { loc = Some tm.loc; decl_name = None; lctx = None };
-               error_type =
-                 Elab.Error.InvalidTacticParameter
-                   "Expected an identifier, but got a term";
-             })
-    | args ->
-        raise
-          (Elab.Error.ElabError
-             {
-               context =
-                 {
-                   loc =
-                     Some
-                       {
-                         start = (List.hd args).loc.start;
-                         end_ = (List.hd (List.rev args)).loc.end_;
-                       };
-                   decl_name = None;
-                   lctx = None;
-                 };
-               error_type =
-                 Elab.Error.InvalidTacticParameter
-                   ("Expected exactly two parameters (name and term), but got "
-                   ^ string_of_int (List.length args));
-             }));
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Simplifies a hypothesis that is a relation on Measures, e.g. a + 0 + c < b + \
+           c becomes a < b.";
+        parameters = [ "<identifier>"; "<term>" ];
+        example = "simp_constrain h1 h.";
+      }
+    "simp_constrain"
+    (function
+      | [ { inner = Name name; _ }; tm ] -> simp_constrain tm name
+      | tm :: _ ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context = { loc = Some tm.loc; decl_name = None; lctx = None };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     "Expected an identifier, but got a term";
+               })
+      | args ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context =
+                   {
+                     loc =
+                       Some
+                         {
+                           start = (List.hd args).loc.start;
+                           end_ = (List.hd (List.rev args)).loc.end_;
+                         };
+                     decl_name = None;
+                     lctx = None;
+                   };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     ("Expected exactly two parameters (name and term), but got "
+                     ^ string_of_int (List.length args));
+               }));
   register_tactic
     ~documentation:
       {
