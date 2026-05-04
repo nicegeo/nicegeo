@@ -8,10 +8,9 @@
     - Angle a b c (lexicographically ordered, normalized with a ≤ c)
     - Area a b c (lexicographically ordered, normalized sorted)
     - Bvar id (ordered by id)
-    
-    Note: Angle symmetry (a b c ≡ c b a) is still unimplemented, requires additional inequality conditions
-    (a ≠ b and a ≠ c) which would be tracked separately. 
-*)
+
+    Note: Angle symmetry (a b c ≡ c b a) is still unimplemented, requires additional
+    inequality conditions (a ≠ b and a ≠ c) which would be tracked separately. *)
 
 (** identified and ordered by default OCaml lexicographic ordering *)
 type summand =
