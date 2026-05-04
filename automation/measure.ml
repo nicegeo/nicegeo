@@ -1,42 +1,16 @@
-(* canonical order for Measures *)
-(*
-there are a few things that are Measures (infertype on it returns Measure)
-Zero
-RightAngle
-Add a b
-Length a b
-Angle a b c
-Area a b c
-bvar id
-f x where f : _ -> Measure not definitionally one of the above (maybe we can just error out in this case)
+(** Canonical ordering for Measures.
 
-ok we want the normalization to actually account for things
-like the point of having an order is to not have to think about commutativity
-but we also want to not think about associativity which involves flattening the Adds
-there was an algorithm for this
-so we need an order on the summands which is every measure except Add
-say
-- Zero
-- RightAngle
-- Length a b
-- Angle a b c
-- Area a b c
-- bvar id
-where Length a b is lexicographically ordered
-ok what does lexicographic order on a b c look like (which are points)
-need an order on points, which are:
-- bvar id
-hm. thats easy.
-
-uhhhhh ok actually angle complicates things
-we don't permute angle arbitrarily, only angle a b c = angle c b a
-so normal form is just where a ≤ c
-length and area just sorted
-ok cool
-ok also unless we change the axiom we can only get angle a b c = angle c b a if we also have proofs of a ≠ b and a ≠ c
-we can keep a "database" of all the ≠ conditions we have for all angles
-thats for later
-oh and if we ever implement congruence closure on points, we also have to consider this inequality database
+    Measures are normalized into a canonical form using lexicographic ordering on summands
+    (all measure types except Add). The summand types are ordered as follows:
+    - Zero
+    - RightAngle
+    - Length a b (lexicographically ordered, normalized with Bvar indices a ≤ b)
+    - Angle a b c (lexicographically ordered, normalized with a ≤ c)
+    - Area a b c (lexicographically ordered, normalized sorted)
+    - Bvar id (ordered by id)
+    
+    Note: Angle symmetry (a b c ≡ c b a) is still unimplemented, requires additional inequality conditions
+    (a ≠ b and a ≠ c) which would be tracked separately. 
 *)
 
 (** identified and ordered by default OCaml lexicographic ordering *)
