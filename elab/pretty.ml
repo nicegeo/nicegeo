@@ -75,6 +75,7 @@ let rec get_prec (e : ctx) (t : term) : int =
           | "And", 2 -> prec_conjunction
           | "Not", 1 -> prec_prop
           | "Lt", 2 -> prec_prop
+          | "Le", 2 -> prec_prop
           | "Eq", 3 -> prec_prop
           | "Ne", 3 -> prec_prop
           | "Add", 2 -> prec_sum
@@ -178,6 +179,10 @@ let term_to_string (e : ctx) ?(lctx : local_ctx = []) (t : term) : string =
               | "Lt", [ a; b ] ->
                   term_to_string_helper e lctx a prec_sum
                   ^ " < "
+                  ^ term_to_string_helper e lctx b prec_sum
+              | "Le", [ a; b ] ->
+                  term_to_string_helper e lctx a prec_sum
+                  ^ " ≤ "
                   ^ term_to_string_helper e lctx b prec_sum
               | "Eq", [ _; a; b ] ->
                   term_to_string_helper e lctx a prec_sum

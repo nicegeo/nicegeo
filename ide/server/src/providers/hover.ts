@@ -1,5 +1,6 @@
 import { Hover, MarkupKind } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import type { NiceGeoSettings } from "./diagnostics";
 import { ProofStateAtResponse, getCachedTacticSpec, getTacticSpecs, runProofStateAt } from "./proofstate";
 
 const KEYWORD_DOCS: Record<string, string> = {
@@ -123,6 +124,7 @@ export async function provideHover(
   line: number,
   character: number,
   workspaceRoot?: string,
+  settings?: NiceGeoSettings,
 ): Promise<Hover | null> {
   const rawSymbol = getWordAtPosition(doc, line, character);
   if (!rawSymbol) return null;
@@ -143,15 +145,15 @@ export async function provideHover(
     spec = tacticSpecs.find((t) => t.name === symbol) ?? null;
   }
   if (spec) {
-    const doc = spec.documentation;
+    const tacticDoc = spec.documentation;
     return {
       contents: {
         kind: MarkupKind.Markdown,
-        value: formatTacticDoc(spec.name, doc.description, doc.parameters, doc.example),
+        value: formatTacticDoc(spec.name, tacticDoc.description, tacticDoc.parameters, tacticDoc.example),
       },
     };
   }
-  const snapshot = await runProofStateAt(doc.uri, line, character, workspaceRoot);
+  const snapshot = await runProofStateAt(doc.uri, line, character, workspaceRoot, settings);
   const markdown = formatHoverMarkdown(symbol, snapshot);
   if (!markdown) return null;
   return {

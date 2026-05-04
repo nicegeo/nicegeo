@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
+import type { NiceGeoSettings } from "./diagnostics";
 
 /** Response shape from `nicegeo-proofstate --json` (stdout JSON line). */
 export interface ProofStateAtResponse {
@@ -119,6 +120,7 @@ export function runProofStateAt(
   line0: number,
   col0: number,
   workspaceRoot?: string,
+  settings?: NiceGeoSettings,
 ): Promise<ProofStateAtResponse> {
   const filePath = fileURLToPath(documentUri);
   const line1 = line0 + 1;
@@ -126,32 +128,30 @@ export function runProofStateAt(
   const repoRoot = findRepoRoot(filePath);
   const cwd = repoRoot ?? workspaceRoot ?? process.cwd();
 
+  const proofstateArgs = ["--json", filePath, String(line1), String(col1)];
   const duneExecByPathArgs = [
     "exec",
     ...(repoRoot ? ["--root", repoRoot] : []),
     "./bin/proofstate.exe",
     "--",
-    "--json",
-    filePath,
-    String(line1),
-    String(col1),
+    ...proofstateArgs,
   ];
   const duneExecByPublicNameArgs = [
     "exec",
     ...(repoRoot ? ["--root", repoRoot] : []),
     "nicegeo-proofstate",
     "--",
-    "--json",
-    filePath,
-    String(line1),
-    String(col1),
+    ...proofstateArgs,
   ];
-  const attempts: Array<{ cmd: string; args: string[] }> = [
-    { cmd: "dune", args: duneExecByPathArgs },
-    { cmd: "dune", args: duneExecByPublicNameArgs },
-    { cmd: "opam", args: ["exec", "--", "dune", ...duneExecByPathArgs] },
-    { cmd: "opam", args: ["exec", "--", "dune", ...duneExecByPublicNameArgs] },
-  ];
+  const attempts: Array<{ cmd: string; args: string[] }> =
+    settings?.executionMode === "installedBinary"
+      ? [{ cmd: "nicegeo-proofstate", args: proofstateArgs }]
+      : [
+          { cmd: "dune", args: duneExecByPathArgs },
+          { cmd: "dune", args: duneExecByPublicNameArgs },
+          { cmd: "opam", args: ["exec", "--", "dune", ...duneExecByPathArgs] },
+          { cmd: "opam", args: ["exec", "--", "dune", ...duneExecByPublicNameArgs] },
+        ];
 
   const runAttempt = (idx: number): Promise<ProofStateAtResponse> =>
     new Promise((resolve) => {

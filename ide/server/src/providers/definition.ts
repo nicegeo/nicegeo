@@ -1,5 +1,6 @@
 import { Definition, Location, Position, Range } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import type { NiceGeoSettings } from "./diagnostics";
 import { runProofStateAt } from "./proofstate";
 
 const DECL_RE = /\b(?:Theorem|Definition|Axiom)\s+([A-Za-z_][A-Za-z0-9_'.!?]*)/g;
@@ -39,11 +40,12 @@ export async function provideDefinition(
   line: number,
   character: number,
   workspaceRoot?: string,
+  settings?: NiceGeoSettings,
 ): Promise<Definition | null> {
   const symbol = getWordAtPosition(doc, line, character);
   if (!symbol) return null;
 
-  const snapshot = await runProofStateAt(doc.uri, line, character, workspaceRoot);
+  const snapshot = await runProofStateAt(doc.uri, line, character, workspaceRoot, settings);
   const decl = snapshot.declaration;
   if (snapshot.ok && decl && decl.name === symbol && decl.file) {
     const start: Position = {

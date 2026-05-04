@@ -69,6 +69,7 @@ let token lexbuf =
     | "=" -> EQUALS
     | Utf8 "≠" -> NOT_EQUALS
     | "<" -> LESS_THAN
+    | Utf8 "≤" -> LESS_THAN_OR_EQUAL
     | "+" -> PLUS
     | "\\/" | Utf8 "∨" -> OR
     | "/\\" | Utf8 "∧" -> AND

@@ -110,6 +110,9 @@ let tactic_documentation (name : string) : tactic_documentation option =
 
 let tactic_specs () : (string * tactic_documentation) list = Hashtbl.to_seq tactic_docs |> List.of_seq
 
+let registered_tactic_names () : string list =
+  Hashtbl.fold (fun name _ acc -> name :: acc) tactics [] |> List.sort String.compare
+
 module Register = struct
   let nullary (f : tactic) : term list -> tactic = function
     | [] -> f

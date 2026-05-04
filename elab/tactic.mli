@@ -46,6 +46,10 @@ val tactic_documentation : string -> tactic_documentation option
 (** All registered tactics with their documentation. *)
 val tactic_specs : unit -> (string * tactic_documentation) list
 
+(** [registered_tactic_names ()] returns all currently registered tactic names, sorted
+    alphabetically. *)
+val registered_tactic_names : unit -> string list
+
 module Register : sig
   val nullary : tactic -> term list -> tactic
   val unary_term : (term -> tactic) -> term list -> tactic

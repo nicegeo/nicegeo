@@ -77,6 +77,21 @@ Definition square : Point -> Point -> Point -> Point -> Prop :=
    Logic and order utilities
    ============================================================ *)
 
+Theorem LeLtOrEq : ∀ (a b : Measure), a ≤ b → a < b ∨ a = b
+Proof.
+intros a b le1ab.
+cases (LtTricot a b) h.
+left.
+exact h.
+
+cases h h1.
+apply (False.elim _).
+exact (le1ab h1).
+
+right.
+exact h1.
+Qed.
+
 (* A strict inequality implies the two values are not equal. *)
 Theorem LtNe : (a: Measure) -> (b: Measure) -> a < b -> a ≠ b :=
     fun (a: Measure) (b: Measure) (lt_ab: a < b) (eq_ab: a = b) =>
@@ -263,87 +278,52 @@ Theorem ne_23_of_between : ∀ (a b c : Point), Between a b c -> b ≠ c :=
    Length a f = Length b c. *)
 Theorem place_segment_ne : ∀ (a b c : Point),
     (bc : b ≠ c) -> (ab : a ≠ b)
-    -> Exists Point (fun f => Length a f = Length b c) :=
-    fun (a: Point) (b: Point) (c: Point) (bc: b ≠ c) (ab: a ≠ b) =>
+    -> ∃ f, Length a f = Length b c
+Proof.
+    intros a b c bc ab.
+    choose d eqtri (equilateral_triangle a b ab).
+    destruct_ands eqtri abad bdba.
+    choose α hα (circle_of_ne b c bc).
+    destruct_ands hα bα cα.
+    have db (d ≠ b).
+        exact (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ bdba) (Ne.symm _ _ _ ab))).
+    choose e he (pt_oncircle_of_inside_ne _ _ _ db (center_lies_inside_circle b α bα)).
+    destruct_ands he Bdbe eα.
+    choose β hβ (circle_of_ne d e (ne_13_of_between d b e Bdbe)).
+    destruct_ands hβ dβ eβ.
+    have da (d ≠ a). exact (Ne.symm _ _ _ (length_pts_ne _ _ _ _ abad ab)).
+    have dbda (Length d b = Length d a).
+        rewrite (length_symm d b).
+        rewrite bdba.
+        rewrite (length_symm b a).
+        rewrite abad.
+        exact (length_symm _ _).
+    have aβ (InCircle a β).
+        have sum (Length d b + Length b e = Length d e). exact (between_add_lengths d b e Bdbe).
+        apply (Or.elim _ _ _ (ZeroLeast (Length b e))).
+            intro lbe.
+            have ineq (Length d a < Length d e).
+                rewrite (Eq.symm _ _ _ sum).
+                rewrite (AddComm (Length d b) (Length b e) ).
+                rewrite (Eq.symm _ _ _ (ZeroAdd (Length d a))).
+                rewrite (Eq.symm _ _ _ dbda).
+                apply (LtAdd _ _ _). (* wow apply is so smart *)
+                exact lbe.
+            exact (in_circle_if_lt_radius d e a β dβ eβ ineq).
 
-    Exists.elim _ _ _ (equilateral_triangle a b ab)
-    (fun (d: Point) (eqtri: Length a b = Length a d /\ Length b d = Length b a) =>
-
-    Exists.elim _ _ _ (circle_of_ne b c bc)
-    (fun (aa: Circle) (baacaa : CenterCircle b aa /\ OnCircle c aa) =>
-
-    And.elim1 _ _ _ baacaa
-    (fun (baa : CenterCircle b aa) (caa : OnCircle c aa) =>
-
-    have _ _ (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (Eq.symm _ _ _ (snd _ _ eqtri)) (Ne.symm _ _ _ ab)))
-    (fun (db : d ≠ b) =>
-
-    Exists.elim _ _ _ (pt_oncircle_of_inside_ne _ _ _ db (center_lies_inside_circle b aa baa))
-    (fun (e: Point) (h: Between d b e /\ OnCircle e aa) =>
-
-    And.elim1 _ _ _ h
-    (fun (Bdbe : Between d b e) (eaa : OnCircle e aa) =>
-
-    have _ _ (ne_13_of_between d b e Bdbe)
-    (fun (de : d ≠ e) =>
-
-    Exists.elim _ _ _ (circle_of_ne d e de)
-    (fun (bb : Circle) (debb : CenterCircle d bb /\ OnCircle e bb) =>
-
-    And.elim1 _ _ _ debb
-    (fun (dbb : CenterCircle d bb) (ebb: OnCircle e bb) =>
-
-    have _ _ (Ne.symm _ _ _ (length_pts_ne _ _ _ _ (fst _ _ eqtri) ab))
-    (fun (da : d ≠ a) =>
-
-    have _ _ (EqTrans _ _ _ _ (length_symm d b) (EqTrans _ _ _ _ (snd _ _ eqtri) (EqTrans _ _ _ _ (length_symm b a) (EqTrans _ _ _ _ (fst _ _ eqtri) (length_symm a d)))))
-    (fun (dbda : Length d b = Length d a) =>
-
-    have _ _ (
-        have _ _ (between_add_lengths d b e Bdbe)
-        (fun (sum : Length d b + Length b e = Length d e) =>
-        Or.elim _ _ _ (ZeroLeast (Length b e))
-        (fun (lbe: 0 < Length b e) =>
-        (* LtAdd _ _ (Length d b) lbe : 0 + length d b < length b e + length d b *)
-        have _ _ (
-            Eq.elim Measure (Length b e + Length d b) (fun x => Length d a < x)
-            (Eq.elim Measure (0 + Length d b) (fun x => x < Length b e + Length d b) 
-            (LtAdd _ _ (Length d b) lbe) 
-            (Length d a) (EqTrans _ _ _ _ (ZeroAdd (Length d b)) dbda))
-            (Length d e) (EqTrans _ _ _ _ (AddComm (Length b e) (Length d b)) sum)
-        )
-        (fun (ineq : Length d a < Length d e) =>
-        in_circle_if_lt_radius d e a bb dbb ebb ineq
-        )
-        )
-        (fun (lbe: 0 = Length b e) =>
-        False.elim _ (ne_23_of_between d b e Bdbe (eq_if_len_zero b e (Eq.symm _ _ _ lbe)))
-        )
-        )
-    )
-    (fun (abb : InCircle a bb) =>
-
-    Exists.elim _ _ _ (pt_oncircle_of_inside_ne d a bb da abb)
-    (fun (f: Point) (h1: Between d a f /\ OnCircle f bb) =>
-
-    And.elim1 _ _ _ h1
-    (fun (Bdaf : Between d a f) (fbb : OnCircle f bb) =>
-
-    Exists.intro _ _ f (
-    have _ _ (
-        Eq.elim Measure (Length d f) (fun x => Length d a + Length b c = x)
-        (Eq.elim Measure (Length b e) (fun x => Length d a + x = Length d f)
-        (Eq.elim Measure (Length d b) (fun x => x + Length b e = Length d f)
-        (Eq.elim Measure (Length d e) (fun x => x = Length d f)
-        (snd _ _ (on_circle_iff_length_eq d e f bb dbb ebb) fbb)
-        (Add (Length d b) (Length b e)) (Eq.symm _ _ _ (between_add_lengths d b e Bdbe)))
-        (Length d a) dbda)
-        (Length b c) (snd _ _ (on_circle_iff_length_eq b e c aa baa eaa) caa))
-        (Add (Length d a) (Length a f)) (Eq.symm _ _ _ (between_add_lengths d a f Bdaf))
-    )
-    (fun (equality : Length d a + Length b c = Length d a + Length a f) =>
-    Eq.symm _ _ _ (CancelAdd (Length b c) (Length a f) (Length d a) equality)
-    ))))))))))))))))
+            intro lbe.
+            apply (False.elim _).
+            exact (ne_23_of_between d b e Bdbe (eq_if_len_zero b e (Eq.symm _ _ _ lbe))).
+    choose f hf (pt_oncircle_of_inside_ne _ _ _ da aβ).
+    destruct_ands hf Bdaf fβ.
+    exists f.
+    apply (CancelAdd _ _ (Length d a)).
+    rewrite (between_add_lengths _ _ _ Bdaf).
+    rewrite (eq_radius_if_on_circle _ _ _ _ bα eα cα).
+    rewrite (Eq.symm _ _ _ dbda).
+    rewrite (between_add_lengths _ _ _ Bdbe).
+    apply (eq_radius_if_on_circle _ _ _ _ dβ eβ fβ).
+Qed.
 
 
 (* Excluded middle for point equality: every two points are either equal or distinct.
@@ -555,6 +535,13 @@ Theorem ne_13_of_triangle : ∀ (a b c : Point), triangle a b c → a ≠ c :=
     fun (a b c : Point) (tri : triangle a b c) =>
     ne_12_of_triangle a c b (swap_23_triangle _ _ _ tri)
 
+Theorem ne_32_of_triangle : ∀ (a b c : Point), triangle a b c → c ≠ b
+Proof.
+    intros a b c tri.
+    apply (Ne.symm _ _ _).
+    exact (ne_23_of_triangle _ _ _ tri).
+Qed.
+
 (* A point collinear with two distinct points already on L also lies on L. *)
 Theorem online_of_col_online : ∀ (a b c : Point) (L : Line),
     a ≠ b -> OnLine a L -> OnLine b L -> colinear a b c -> OnLine c L :=
@@ -751,49 +738,28 @@ Theorem sameside_of_sameside_diffside : ∀ (a b c d : Point) (L M N : Line),
    Proposition 5 (I.5): Base angles of an isoceles triangle are equal
    ============================================================ *)
 
-(* Proof: case-split on whether a = b.
-   - If a = b: iso gives a = c; both angles collapse to Angle a a a.
-   - If a ≠ b: get a ≠ c and b ≠ c; apply SSS to triangles (a,b,c) and (a,c,b). *)
-Theorem angle_eq_of_iso : ∀ a b c, iso_tri a b c → Angle a b c = Angle a c b :=
-    fun (a b c : Point) (hiso : iso_tri a b c) =>
-    have _ _ (fst _ _ hiso) (fun (tri : triangle a b c) =>
-    have _ _ (snd _ _ hiso) (fun (hlen : Length a b = Length a c) =>
-    Or.elim _ _ _ (point_eq_em a b)
-    (fun (hab : a = b) =>
-        have _ _ (eq_if_len_zero a c
-            (EqTrans Measure (Length a c) (Length a b) Zero
-                (Eq.symm Measure (Length a b) (Length a c) hlen)
-                (len_zero_if_eq a b hab)))
-        (fun (hac : a = c) =>
-        have _ _ (Eq.elim Point a (fun x => Angle a a x = Angle a x a)
-            (Eq.intro Measure (Angle a a a)) c hac)
-        (fun (h1 : Angle a a c = Angle a c a) =>
-            Eq.elim Point a (fun x => Angle a x c = Angle a c x) h1 b hab)))
-    (fun (ab : a ≠ b) =>
-        have _ _ (length_pts_ne a b a c hlen ab) (fun (ac : a ≠ c) =>
-        Or.elim _ _ _ (point_eq_em b c)
-        (fun (hbc : b = c) =>
-            False.elim _
-            (tri (Exists.elim _ _ _ (line_of_pts a b ab)
-            (fun (L : Line) (hL : OnLine a L /\ OnLine b L) =>
-            Exists.intro _ _ L (And.intro _ _
-                (And.intro _ _ (fst _ _ hL) (snd _ _ hL))
-                (Eq.elim Point b (fun x => OnLine x L) (snd _ _ hL) c hbc))))))
-        (fun (bc : b ≠ c) =>
-            fst _ _ (snd _ _
-            (sss_congruence a b c a c b
-                ab bc ac
-                ac (Ne.symm Point b c bc) ab
-                hlen
-                (length_symm b c)
-                (EqTrans Measure (Length c a) (Length a b) (Length b a)
-                    (EqTrans Measure (Length c a) (Length a c) (Length a b)
-                        (length_symm c a)
-                        (Eq.symm Measure (Length a b) (Length a c) hlen))
-                    (length_symm a b))))
-        ))
-    )))
-
+(* Proof: apply SSS to triangles (a,b,c) and (a,c,b). *)
+Theorem angle_eq_of_iso : ∀ a b c, iso_tri a b c → Angle a b c = Angle a c b
+Proof.
+    intros a b c hiso.
+    destruct_ands hiso tri hlen.
+    (* sort of a hack to get have all the arguments of sss_congruence as goals *)
+    have f (_ ∧ _). apply (sss_congruence a b c a c b).
+        exact (ne_12_of_triangle _ _ _ tri).
+        exact (ne_23_of_triangle _ _ _ tri).
+        exact (ne_13_of_triangle _ _ _ tri).
+        exact (ne_13_of_triangle _ _ _ tri).
+        exact (ne_32_of_triangle _ _ _ tri).
+        exact (ne_12_of_triangle _ _ _ tri).
+        exact hlen.
+        apply (length_symm _ _).
+        apply (Eq.symm _ _ _).
+        rewrite (length_symm b a).
+        rewrite (length_symm c a).
+        exact hlen.
+    destruct_ands f h1 h2 h3 h4.
+    exact h2.
+Qed.
 
 (* ============================================================
    Proposition 6 (I.6): Equal base angles imply isoceles
