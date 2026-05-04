@@ -1,0 +1,9 @@
+(* NiceGeo walkthrough — quick sample
+   This file lives inside the extension. Use File > Save As… to keep an editable
+   copy in your workspace if you like.
+*)
+
+Theorem walkthrough_hello : (A : Type) -> A -> A :=
+  fun (A : Type) (a : A) => a
+
+#check walkthrough_hello

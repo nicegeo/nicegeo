@@ -85,6 +85,39 @@ export function activate(context: vscode.ExtensionContext) {
 
   const clientStart = client.start();
 
+  const openBundledNcG = async (relativePath: string) => {
+    const uri = vscode.Uri.file(context.asAbsolutePath(relativePath));
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document, {
+      viewColumn: vscode.ViewColumn.Beside,
+      preview: false,
+    });
+  };
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openQuickSample", async () => {
+      await openBundledNcG(path.join("media", "tutorials", "quicksample.ncg"));
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openProofTutorial", async () => {
+      await openBundledNcG(path.join("media", "tutorials", "nicegeo-walkthrough-tutorial.ncg"));
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.ackQuickstartMore", () => {
+      /* walkthrough completionEvents */
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.ackProofPlay", () => {
+      /* walkthrough completionEvents */
+    }),
+  );
+
   let proofStateFollowDebounce: ReturnType<typeof setTimeout> | undefined;
   const refreshProofStateAtCursor = async (
     editor: vscode.TextEditor,
