@@ -98,3 +98,18 @@ Proof Mode enables rich proof-state tracking at the cursor.
   - before tactic end: tactic not applied
   - at/after tactic end: tactic applied
   - at/after `Qed`: full script treated as applied
+- Exit Proof Mode to stop automatic proof-state refresh.
+
+### Hover
+
+- Hover over global names (theorems/definitions/axioms) for declaration info.
+- Hover over local names for local type info.
+- Hover over tactics for description, parameters, and an example (from backend tactic metadata).
+
+### Go-to-Definition
+
+- Use **Go to Definition** (`F12`) on symbols; declaration-range navigation is supported, including within the same file.
+
+### Quick visual test
+
+- Open `ide/examples/hover_goto_demo.ncg` and try hover / go-to-definition on symbols and tactics.
