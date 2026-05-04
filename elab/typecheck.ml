@@ -458,6 +458,9 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
   (* print_endline ("inferred type " ^ Pretty.term_to_string e res ^ " for term " ^ Pretty.term_to_string e tm); *)
   res
 
+(** Throws an error if the given term is not a type, otherwise does nothing.
+  It checks that the type of the given term is a [Sort] (or that it is a [Hole]).
+*)
 and check_is_type ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : unit =
   (* print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " is a type"); *)
   match tm.inner with
@@ -530,12 +533,20 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
   | _ -> []
 
+(** [elaborate ctx tm ty] elaborates term [tm] with an optional expected type [ty].
+
+    Uses [checktype] or [infertype] to do the actual work of assigning the
+    holes.
+*)
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   create_metas e tm [];
   (match ty with Some ty -> checktype e [] tm ty | None -> ignore (infertype e [] tm));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
-  (* Re-typecheck term to validate meta solutions *)
+  (* Re-typecheck term to validate meta solutions.
+    This is necessary as explained in issue #116
+    (https://github.com/nicegeo/nicegeo/issues/116).
+  *)
   (match ty with
   | Some ty -> checktype e [] tm_filled ty
   | None -> ignore (infertype e [] tm_filled));
@@ -553,7 +564,7 @@ let process_decl (e : ctx) (d : declaration) : unit =
          })
   else
     try
-      let ty_filled = elaborate e d.ty None in
+      let ty_filled : term = elaborate e d.ty None in
       check_is_type e [] ty_filled;
       match d.kind with
       | Theorem body ->
