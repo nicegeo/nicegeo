@@ -65,4 +65,6 @@ val right : proof_state -> tactic_result
     invoked. *)
 val distinct_points : string -> term -> term -> term -> proof_state -> tactic_result
 
+(** Registers the name of all the tactics and their implementations.
+    Every tactic that can be used is registered here.  *)
 val register : unit -> unit
