@@ -269,6 +269,8 @@ let term_map (f : term -> term) (t : term) : term =
   Inspired by Lean's kabstract function
 *)
 let abstract_pat (ctx : ctx) (t : term) (pat : term) : int * term =
+  (* replace known holes in t *)
+  let t = replace_metas ctx ~complete:false t in
   let bid = gen_binder_id () in
   let rec go (t : term) =
     try
@@ -633,6 +635,8 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
                    non-And type")
       in
 
+      (* replace known metavar solutions for pattern matching *)
+      let tm_ty = replace_metas st.elab_ctx ~complete:false tm_ty in
       (* head reduce type once to unfold definitions like eqtri *)
       let tm_ty = Elab.Typecheck.whnf st.elab_ctx tm_ty in
       (* check tm_ty is And *)
@@ -664,141 +668,390 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
           | Error msg -> fail msg)
       | _ -> fail "destruct_ands: expected a term of type And A B")
 
+(* Infer the type of the distinct_from hypothesis for any of the distinct tactics *)
+let infer_distinct (a : term) (h : term) (g : goal) (st : proof_state) :
+    term option * term option * term option =
+  let pts = gen_hole_id () in
+  let ls = gen_hole_id () in
+  let cs = gen_hole_id () in
+  let expected =
+    mk_app_multiarg (mk_name "distinct_from") [ a; mk_hole pts; mk_hole ls; mk_hole cs ]
+  in
+  create_metas st.elab_ctx h (List.map (fun h -> h.bid) g.lctx);
+  let h_typ = Elab.Typecheck.infertype st.elab_ctx g.lctx h in
+  let ctx = ctx_with_new_holes g st.elab_ctx expected in
+  unify ctx h_typ (Hashtbl.create 0) expected (Hashtbl.create 0);
+  match
+    ( Hashtbl.find_opt ctx.metas pts,
+      Hashtbl.find_opt ctx.metas ls,
+      Hashtbl.find_opt ctx.metas cs )
+  with
+  | Some mvar1, Some mvar2, Some mvar3 -> (mvar1.sol, mvar2.sol, mvar3.sol)
+  | _ -> failwith "internal nicegeo programming error: created hole does not exist!"
+
+(* The [distinct_points] tactic takes a [distinct_from] proof as an argument, and from
+    it proves an inequality between points and adds it to the hypotheses, asking
+    for the [List.mem] proof obligation for now (future versions will probably
+    try to prove this automatically when possible). For now this also explicitly
+    takes the points that one is saying are not equal, though later it may
+    infer these in concrete instances. *)
+let distinct_points (name : string) (a : term) (b : term) (h : term) (st : proof_state) =
+  match current_goal st with
+  | None -> fail "No goals remaining."
+  | Some g -> (
+      match infer_distinct a h g st with
+      | Some pts, Some ls, Some cs ->
+          (* case 2 goal: show original goal, given new inequality hypothesis *)
+          let ty = mk_app_multiarg (mk_name "Ne") [ mk_name "Point"; a; b ] in
+          let bid = Elab.Term.gen_binder_id () in
+          let neq_h = { name = Some name; bid; ty } in
+          let goal_pf, st = fresh_goal st (neq_h :: g.lctx) g.goal_type in
+          (* case 1 goal: show mem *)
+          let new_goal_typ =
+            mk_app_multiarg (mk_name "List.mem") [ mk_name "Point"; b; pts ]
+          in
+          let mem_pf, st = fresh_goal st g.lctx new_goal_typ in
+          (* construct the proof term for case 2 *)
+          let neq_pf =
+            mk_app_multiarg
+              (mk_name "distinct_from_pt_neq")
+              [ a; b; pts; ls; cs; mem_pf; h ]
+          in
+          let proof = mk_app (mk_fun (Some name) bid ty goal_pf) neq_pf in
+          (* update the proof state accordingly (and close original goal) *)
+          let st = assign_meta g.goal_id proof st in
+          let st = close_goal g.goal_id st in
+          succeed st
+      | _ ->
+          fail
+            (Printf.sprintf
+               "The term %s is expected to have type (distinct_from %s pts ls cs) for \
+                lists pts, ls, and cs, but we cannot infer instances of pts, ls, and cs"
+               (pp_term st.elab_ctx a)
+               (pp_term st.elab_ctx h)))
+
 let register () =
-  register_tactic "try" Register.(tactical try_tac);
-  register_tactic "repeat" Register.(tactical repeat);
-  register_tactic "reflexivity" Register.(nullary reflexivity);
-  register_tactic "exact" Register.(unary_term exact);
-  register_tactic "apply" Register.(unary_term apply);
-  register_tactic "sorry" Register.(nullary sorry);
-  register_tactic "intro" Register.(unary_ident intro);
-  register_tactic "intros" Register.(variadic_ident intros);
-  register_tactic "left" Register.(nullary left);
-  register_tactic "right" Register.(nullary right);
-  register_tactic "cases" (function
-    | [ tm; { inner = Name n1; _ }; { inner = Name n2; _ } ] -> cases tm n1 n2
-    | [ tm; { inner = Name n1; _ } ] -> cases tm n1 n1
-    | tm :: _ ->
-        raise
-          (Elab.Error.ElabError
-             {
-               context = { loc = Some tm.loc; decl_name = None; lctx = None };
-               error_type =
-                 Elab.Error.InvalidTacticParameter
-                   "Expected an identifier, but got a term";
-             })
-    | args ->
-        raise
-          (Elab.Error.ElabError
-             {
-               context =
-                 {
-                   loc =
-                     Some
-                       {
-                         start = (List.hd args).loc.start;
-                         end_ = (List.hd (List.rev args)).loc.end_;
-                       };
-                   decl_name = None;
-                   lctx = None;
-                 };
-               error_type =
-                 Elab.Error.InvalidTacticParameter
-                   ("Expected two or three parameters, but got "
-                   ^ string_of_int (List.length args));
-             }));
-  register_tactic "split" Register.(nullary split);
+  register_tactic
+    ~documentation:
+      {
+        description = "Runs the given tactic and succeeds without changes if it fails.";
+        parameters = [ "<tactic-name>"; "[args...]" ];
+        example = "try intro.";
+      }
+    "try"
+    Register.(tactical try_tac);
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Repeats the given tactic until it fails, keeping the last successful state.";
+        parameters = [ "<tactic-name>"; "[args...]" ];
+        example = "repeat intro.";
+      }
+    "repeat"
+    Register.(tactical repeat);
+  register_tactic
+    ~documentation:
+      {
+        description = "Closes equality goals when both sides are definitionally equal.";
+        parameters = [];
+        example = "reflexivity.";
+      }
+    "reflexivity"
+    Register.(nullary reflexivity);
+  register_tactic
+    ~documentation:
+      {
+        description = "Solves the current goal with a term that typechecks against it.";
+        parameters = [ "<term>" ];
+        example = "exact h.";
+      }
+    "exact"
+    Register.(unary_term exact);
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Applies a term to the goal, creating subgoals for missing arguments.";
+        parameters = [ "<term>" ];
+        example = "apply theorem_name.";
+      }
+    "apply"
+    Register.(unary_term apply);
+  register_tactic
+    ~documentation:
+      {
+        description = "Admits the current goal using the unsafe sorry axiom.";
+        parameters = [];
+        example = "sorry.";
+      }
+    "sorry"
+    Register.(nullary sorry);
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Introduces one binder from an implication/forall goal into context.";
+        parameters = [ "<identifier>" ];
+        example = "intro h.";
+      }
+    "intro"
+    Register.(unary_ident intro);
+  register_tactic
+    ~documentation:
+      {
+        description = "Introduces multiple binders from the goal into context in order.";
+        parameters = [ "<identifier>…" ];
+        example = "intros h1 h2 h3.";
+      }
+    "intros"
+    Register.(variadic_ident intros);
+  register_tactic
+    ~documentation:
+      {
+        description = "Solves an Or goal by choosing the left branch.";
+        parameters = [];
+        example = "left.";
+      }
+    "left"
+    Register.(nullary left);
+  register_tactic
+    ~documentation:
+      {
+        description = "Solves an Or goal by choosing the right branch.";
+        parameters = [];
+        example = "right.";
+      }
+    "right"
+    Register.(nullary right);
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Eliminates a disjunctive hypothesis of type [Or A B] into two subgoals, \
+           binding the left and right sides with the given names.";
+        parameters = [ "<term>"; "<identifier>"; "<identifier>" ];
+        example = "cases hor h1 h2.";
+      }
+    "cases"
+    (function
+      | [ tm; { inner = Name n1; _ }; { inner = Name n2; _ } ] -> cases tm n1 n2
+      | [ tm; { inner = Name n1; _ } ] -> cases tm n1 n1
+      | tm :: _ ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context = { loc = Some tm.loc; decl_name = None; lctx = None };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     "Expected an identifier, but got a term";
+               })
+      | args ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context =
+                   {
+                     loc =
+                       Some
+                         {
+                           start = (List.hd args).loc.start;
+                           end_ = (List.hd (List.rev args)).loc.end_;
+                         };
+                     decl_name = None;
+                     lctx = None;
+                   };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     ("Expected two or three parameters, but got "
+                     ^ string_of_int (List.length args));
+               }));
+  register_tactic
+    ~documentation:
+      {
+        description = "Splits an And goal into two subgoals.";
+        parameters = [];
+        example = "split.";
+      }
+    "split"
+    Register.(nullary split);
   (* There's a clever design somewhere that lets me write this with some combinators, but for time's sake this one gets hard-coded for now. *)
-  register_tactic "have" (function
-    | [ { inner = Name name; _ }; ty ] -> have name ty
-    | ty :: _ ->
-        raise
-          (Elab.Error.ElabError
-             {
-               context = { loc = Some ty.loc; decl_name = None; lctx = None };
-               error_type =
-                 Elab.Error.InvalidTacticParameter
-                   "Expected an identifier, but got a term";
-             })
-    | args ->
-        raise
-          (Elab.Error.ElabError
-             {
-               context =
-                 {
-                   loc =
-                     Some
-                       {
-                         start = (List.hd args).loc.start;
-                         end_ = (List.hd (List.rev args)).loc.end_;
-                       };
-                   decl_name = None;
-                   lctx = None;
-                 };
-               error_type =
-                 Elab.Error.InvalidTacticParameter
-                   ("Expected exactly two parameters (name and type), but got "
-                   ^ string_of_int (List.length args));
-             }));
-  register_tactic "rewrite" Register.(unary_term rewrite);
-  register_tactic "exists" Register.(unary_term exists);
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Adds a named intermediate claim and opens subgoals for proof and continuation.";
+        parameters = [ "<identifier>"; "<type>" ];
+        example = "have h (P -> Q).";
+      }
+    "have"
+    (function
+      | [ { inner = Name name; _ }; ty ] -> have name ty
+      | ty :: _ ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context = { loc = Some ty.loc; decl_name = None; lctx = None };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     "Expected an identifier, but got a term";
+               })
+      | args ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context =
+                   {
+                     loc =
+                       Some
+                         {
+                           start = (List.hd args).loc.start;
+                           end_ = (List.hd (List.rev args)).loc.end_;
+                         };
+                     decl_name = None;
+                     lctx = None;
+                   };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     ("Expected exactly two parameters (name and type), but got "
+                     ^ string_of_int (List.length args));
+               }));
+  register_tactic
+    ~documentation:
+      {
+        description = "Rewrites the goal using an equality proof.";
+        parameters = [ "<term>" ];
+        example = "rewrite eq_proof.";
+      }
+    "rewrite"
+    Register.(unary_term rewrite);
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Provides a witness for an existential goal and opens the proof obligation.";
+        parameters = [ "<term>" ];
+        example = "exists witness.";
+      }
+    "exists"
+    Register.(unary_term exists);
   (* I don't feel comfortable enough with registration yet to extend Register *)
-  register_tactic "choose" (function
-    | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
-    | trm :: _ ->
-        raise
-          (Elab.Error.ElabError
-             {
-               context = { loc = Some trm.loc; decl_name = None; lctx = None };
-               error_type =
-                 Elab.Error.InvalidTacticParameter
-                   "Expected an identifier, but got a term";
-             })
-    | args ->
-        raise
-          (Elab.Error.ElabError
-             {
-               context =
-                 {
-                   loc =
-                     Some
-                       {
-                         start = (List.hd args).loc.start;
-                         end_ = (List.hd (List.rev args)).loc.end_;
-                       };
-                   decl_name = None;
-                   lctx = None;
-                 };
-               error_type =
-                 Elab.Error.InvalidTacticParameter
-                   ("Expected exactly three parameters (two names and a term), but got "
-                   ^ string_of_int (List.length args));
-             }));
-  register_tactic "destruct_ands" (function
-    | tm :: names ->
-        let names =
-          List.map
-            (function
-              | { inner = Name id; _ } -> id
-              | term ->
-                  raise
-                    (Elab.Error.ElabError
-                       {
-                         context = { loc = Some term.loc; decl_name = None; lctx = None };
-                         error_type =
-                           Elab.Error.InvalidTacticParameter
-                             "Expected an identifier, but got a term";
-                       }))
-            names
-        in
-        destruct_ands tm names
-    | [] ->
-        (* uhh we don't have access to tactic location here *)
-        raise
-          (Elab.Error.ElabError
-             {
-               context = { loc = None; decl_name = None; lctx = None };
-               error_type =
-                 Elab.Error.InvalidTacticParameter "Expected at least one parameter";
-             }));
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Eliminates an existential hypothesis into witness and proof hypotheses.";
+        parameters = [ "<identifier>"; "<identifier>"; "<term>" ];
+        example = "choose x hx hexists_term.";
+      }
+    "choose"
+    (function
+      | [ { inner = Name n1; _ }; { inner = Name n2; _ }; trm ] -> choose (n1, n2) trm
+      | trm :: _ ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context = { loc = Some trm.loc; decl_name = None; lctx = None };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     "Expected an identifier, but got a term";
+               })
+      | args ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context =
+                   {
+                     loc =
+                       Some
+                         {
+                           start = (List.hd args).loc.start;
+                           end_ = (List.hd (List.rev args)).loc.end_;
+                         };
+                     decl_name = None;
+                     lctx = None;
+                   };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     ("Expected exactly three parameters (two names and a term), but got "
+                     ^ string_of_int (List.length args));
+               }));
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Recursively destructs a conjunction hypothesis into named leaf hypotheses.";
+        parameters = [ "<term>"; "<identifier>…" ];
+        example = "destruct_ands h h1 h2.";
+      }
+    "destruct_ands"
+    (function
+      | tm :: names ->
+          let names =
+            List.map
+              (function
+                | { inner = Name id; _ } -> id
+                | term ->
+                    raise
+                      (Elab.Error.ElabError
+                         {
+                           context =
+                             { loc = Some term.loc; decl_name = None; lctx = None };
+                           error_type =
+                             Elab.Error.InvalidTacticParameter
+                               "Expected an identifier, but got a term";
+                         }))
+              names
+          in
+          destruct_ands tm names
+      | [] ->
+          (* uhh we don't have access to tactic location here *)
+          raise
+            (Elab.Error.ElabError
+               {
+                 context = { loc = None; decl_name = None; lctx = None };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter "Expected at least one parameter";
+               }));
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "From a [distinct_from] proof for two points, adds an inequality hypothesis in \
+           context and opens a [List.mem] obligation (geometry).";
+        parameters = [ "<identifier>"; "<point>"; "<point>"; "<term>" ];
+        example = "distinct_points neq a b h_distinct.";
+      }
+    "distinct_points"
+    (function
+      | [ { inner = Name n; _ }; a; b; h ] -> distinct_points n a b h
+      | trm :: _ ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context = { loc = Some trm.loc; decl_name = None; lctx = None };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     "Expected an identifier, but got a term";
+               })
+      | args ->
+          raise
+            (Elab.Error.ElabError
+               {
+                 context =
+                   {
+                     loc =
+                       Some
+                         {
+                           start = (List.hd args).loc.start;
+                           end_ = (List.hd (List.rev args)).loc.end_;
+                         };
+                     decl_name = None;
+                     lctx = None;
+                   };
+                 error_type =
+                   Elab.Error.InvalidTacticParameter
+                     ("Expected exactly four parameters, but got "
+                     ^ string_of_int (List.length args));
+               }));
   ()

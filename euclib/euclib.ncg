@@ -56,3 +56,56 @@ Exists Point (fun (c : Point) =>
 			(Eq Measure (Length b c) (Length b a)))
     c (And.intro _ _ (snd _ _ (on_circle_iff_length_eq a b c aa aaa baa) caa) (snd _ _ (on_circle_iff_length_eq b c a bb bbb cbb) abb))
 	))))))
+
+Theorem distinct_from_pt_neq : ∀ (a b : Point) (points : List Point) (lines : List Line) (circles : List Circle),
+  (List.mem _ b points) -> distinct_from a points lines circles -> a ≠ b
+Proof.
+  intros a b points lines circles h_mem h_distinct.
+  destruct_ands (distinct_from.elim _ _ _ _ h_distinct) h_point h_line h_circle.
+  intro h_eq.
+  apply h_point.
+  rewrite h_eq.
+  exact h_mem.
+Qed.
+
+Theorem list_mem_head : ∀ (A : Type) (a : A) (list : List A), List.mem _ a (List.cons _ a list)
+Proof.
+  intros A a list.
+  destruct_ands (List.mem_cons _ a a list) h_left h_right.
+  apply h_right.
+  left.
+  reflexivity.
+Qed.
+
+Theorem list_mem_tail : ∀ (A : Type) (a : A) (b : A) (tl : List A),
+  List.mem _ a tl -> List.mem _ a (List.cons _ b tl)
+Proof.
+  intros A a b tl H.
+  destruct_ands (List.mem_cons _ a b tl) h_left h_right.
+  apply h_right.
+  right.
+  exact H.
+Qed.
+
+(** Distinctness helpers *)
+Theorem distinct_ne_head : ∀ a b ps ls cs, distinct_from a (List.cons _ b ps) ls cs → a ≠ b
+Proof.
+intros a b ps ls cs h ab.
+destruct_ands (distinct_from.elim _ _ _ _ h) hps _hls _hcs.
+have amem _.
+exact (snd _ _ (List.mem_cons _ _ _ ps) (Or.inl _ _ ab)).
+exact (hps amem).
+Qed.
+
+Theorem distinct_tail : ∀ a b ps ls cs, distinct_from a (List.cons _ b ps) ls cs → distinct_from a ps ls cs
+Proof.
+intros a b ps ls cs h.
+destruct_ands (distinct_from.elim _ _ _ _ h) hps hls hcs.
+apply (distinct_from.intro _ _ _ _).
+intro mem.
+have amem _.
+exact (snd _ _ (List.mem_cons _ _ b _) (Or.inr _ _ mem)).
+exact (hps amem).
+exact hls.
+exact hcs.
+Qed.

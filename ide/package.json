@@ -19,12 +19,17 @@
     "onStartupFinished"
   ],
   "scripts": {
-    "compile:server": "tsc -p server/tsconfig.json",
-    "compile": "npm run compile:server && tsc -p .",
-    "watch": "tsc -w -p .",
-    "vscode:prepublish": "npm run compile"
+    "check-types": "tsc --noEmit -p . && tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p client/visual/tsconfig.json",
+    "clean": "node esbuild.config.mjs --clean",
+    "build": "node esbuild.config.mjs",
+    "compile": "npm run build",
+    "watch": "node esbuild.config.mjs --watch",
+    "package": "npm run check-types && node esbuild.config.mjs --production",
+    "vscode:prepublish": "npm run package"
   },
   "dependencies": {
+    "@vscode-elements/elements": "^1.9.1",
+    "@vscode/codicons": "^0.0.45",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.11"
@@ -32,6 +37,8 @@
   "devDependencies": {
     "@types/node": "^22.13.10",
     "@types/vscode": "^1.80.0",
+    "@types/vscode-webview": "^1.57.5",
+    "esbuild": "^0.25.4",
     "typescript": "^5.8.2"
   },
   "contributes": {
@@ -58,6 +65,11 @@
         "command": "nicegeo.proofMode.toggle",
         "category": "NiceGeo",
         "title": "Toggle Proof Mode"
+      },
+      {
+        "command": "nicegeo.visualEditor.open",
+        "category": "NiceGeo",
+        "title": "Open Visual Editor"
       }
     ],
     "menus": {
@@ -103,6 +115,12 @@
         "path": "./syntaxes/nicegeo.tmLanguage.json"
       }
     ],
+    "snippets": [
+      {
+        "language": "nicegeo",
+        "path": "./snippets/nicegeo.code-snippets"
+      }
+    ],
     "configuration": {
       "title": "NiceGeo",
       "properties": {
@@ -123,6 +141,15 @@
           "maximum": 10000,
           "description": "Debounce delay in milliseconds for on-type diagnostics."
         },
+        "nicegeo.execution.mode": {
+          "type": "string",
+          "default": "dune",
+          "enum": [
+            "dune",
+            "installedBinary"
+          ],
+          "description": "How nicegeo commands are launched. Use dune to run in the project, or installedBinary to run the nicegeo binaries from PATH."
+        },
         "nicegeo.proofState.followCursor": {
           "type": "boolean",
           "default": true,
@@ -134,6 +161,11 @@
           "minimum": 50,
           "maximum": 5000,
           "description": "Debounce for follow-cursor proof state updates (milliseconds)."
+        },
+        "nicegeo.completion.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable NiceGeo language server autocompletion."
         }
       }
     },
