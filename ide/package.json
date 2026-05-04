@@ -115,6 +115,12 @@
         "path": "./syntaxes/nicegeo.tmLanguage.json"
       }
     ],
+    "snippets": [
+      {
+        "language": "nicegeo",
+        "path": "./snippets/nicegeo.code-snippets"
+      }
+    ],
     "configuration": {
       "title": "NiceGeo",
       "properties": {
@@ -155,6 +161,11 @@
           "minimum": 50,
           "maximum": 5000,
           "description": "Debounce for follow-cursor proof state updates (milliseconds)."
+        },
+        "nicegeo.completion.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable NiceGeo language server autocompletion."
         }
       }
     },
