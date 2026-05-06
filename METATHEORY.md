@@ -87,6 +87,10 @@ These are straightforwardly faithful to the paper.
 
 We directly axiomatize SSS and SAS rather than a single superposition axiom from which we can project to prove SAS and SSS. 
 
+# Classical Logic
+
+We add general double negation elimination as an axiom, which implies general excluded middle, allowing classical reasoning in our system. However, System E seems to only allow double negation elimination and case splits on atomic formulas (basic relations and their negations). In the context of Euclidean proofs, this likely does not change much as there is little reason to case split on a non-atomic formula, and allowing it should not affect soundness. We have plans in [#144](https://github.com/nicegeo/nicegeo/issues/144) to add a way to tag/track tactics and proofs that use the classical axiom.
+
 # Direct Consequence
 
-We just axiomatize the classical proof by contradiction axiom without worrying too much about the discussion in the paper of intuitinoistic proof and complexity and so on. Notably, the paper says that the specific double-negation-elimination principle does not, in their sequent calculus model, imply LEM. But in our base logic, the version of DNE we added definitely does imply LEM! We have plans in [#144](https://github.com/nicegeo/nicegeo/issues/144) to add a way to tag/track tactics and proofs that use the classical axiom, and we think this is a satisfactory compromise. 
+The paper describes a notion of a "direct consequence", which are one-step inferences that proofs are allowed to declare without providing an explicit invocation of axioms. This corresponds to automation in our system. We [plan](https://github.com/nicegeo/nicegeo/issues/277) to implement this notion, but it is one of several ideas we have for automation. In the meantime, proofs in our system always correspond to a typechecked term.
