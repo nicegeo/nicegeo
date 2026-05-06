@@ -14,7 +14,7 @@ val get_all_statements : string -> Statement.statement list
 (** [process_statement env stmt] processes the statement [stmt] in the context [env].
 
     For a declaration, it typechecks it and then adds it to the environment.
-    For a directive, it executes it and prints the result stdout.
+    For a directive, it executes it and prints the result to stdout.
     For an import, it throws an error.
 *)
 val process_statement : Types.ctx -> Statement.statement -> unit
