@@ -46,7 +46,7 @@ type directive =
 
 type import = { filename : string }
 
-(** A parsed statement (either a declaration or a directive). *)
+(** A parsed statement (either a declaration, directive, or import statement). *)
 type statement =
   | Declaration of declaration
       (** [Declaration(decl)] is a parsed declaration, intended to be added to the
