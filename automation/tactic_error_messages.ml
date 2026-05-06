@@ -1,7 +1,3 @@
-open Elab.Term
-open Elab.Types
-open Elab.Proofstate
-open Elab.Typecheck
 open Elab.Tactic
 
 
