@@ -65,4 +65,6 @@ val right : proof_state -> tactic_result
     invoked. *)
 val distinct_points : string -> term -> term -> term -> proof_state -> tactic_result
 
+val set_error_mood : string -> proof_state -> tactic_result
+
 val register : unit -> unit
