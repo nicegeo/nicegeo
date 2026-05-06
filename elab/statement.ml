@@ -9,6 +9,7 @@ type tactic = {
 type proof_script = {
   tactics : tactic list;
   qed_loc : range;  (** Span of the closing [Qed] token. *)
+  admitted : bool;
 }
 
 type theorem_body =

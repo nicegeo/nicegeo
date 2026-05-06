@@ -1,4 +1,4 @@
 (test
  (name tests)
  (modes exe byte)
- (libraries kernel elab alcotest))
+ (libraries kernel elab automation alcotest))

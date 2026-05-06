@@ -93,6 +93,9 @@ type error_type =
   | TacticFailure of string
       (** [TacticFailure(msg)] indicates that a tactic failed to apply. [msg] describes
           the reason for failure. *)
+  | SorryRequiresAdmitted
+      (** [SorryRequiresAdmitted] indicates that a proof depending on [sorry_ax] was
+          closed with [Qed.] instead of [Admitted.]. *)
 
 (** The complete error record raised by the elaborator. *)
 type elab_error_info = {
