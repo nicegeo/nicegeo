@@ -1,159 +1,45 @@
-# NiceGeo
+NiceGeo is a type-theory-based synthetic Euclidean geometry proof assistant. Its axiomatic system is based on System E, with significant inspiration from formalizations of System E in other proof assistants, like LeanEuclid. The project combines a trusted proof kernel, synthetic geometry foundations, an elaboration layer, and an interactive tactic framework to support formal geometric reasoning in a more intuitive and educational way. The "Nice" in NiceGeo reflects an overarching design philosophy on our part, in which we aim to have the proof assistant always give kind and helpful feedback.
 
-NiceGeo is a tactic-based geometry proof assistant inspired by Euclidean geometry systems such as LeanEuclid and System E. The project combines a trusted proof kernel, an elaboration layer, synthetic geometry foundations, and an interactive tactic framework to support formal geometric reasoning in a more intuitive and educational way.
+The system is designed around a layered architecture where all proofs are ultimately verified by a small trusted kernel (the de Bruijn criterion), with an exhaustively-tested synthetic geometry layer sitting just above that kernel. Higher-level components such as tactics, automation, proof states, and future visualization interfaces improve usability and interaction.
 
-The system is designed around a layered architecture where all proofs are ultimately verified by a small trusted kernel, while higher-level components such as tactics, automation, proof states, and future visualization interfaces improve usability and interaction.
+NiceGeo was initially deisgned and implemented as a whole-course-project, through the effort of the entire class ([Build Your Own Proof Assistant, UIUC](https://dependenttyp.es/classes/598sp2026.html)). It is now open to contributions from the rest of the world. See [CONTRIBUTING.md](./CONTRIBUTING.md) to contribute!
 
----
+# Features
 
-## Features
+## Implemented
 
-- Dependent type theory based proof kernel
-- Synthetic Euclidean geometry foundations
+- Dependent-type-theory-based proof kernel
+- Exhaustively tested synthetic Euclidean geometry foundations (axiomatization of System E)
 - Tactic-based interactive proofs
 - Hole creation and automatic hole filling
 - Bidirectional type checking and unification
 - Proof state management
 - Custom tactic framework
 - Pretty-printing and error reporting
-- Modular standard library for geometry
-- Extensible architecture for automation and IDE integration
+- Kind error messages
+- Standard library (Euclib) for Euclidean geometry
+- VSCode IDE plugin with many novel usability features
+- Some geometry-specific proof automation
 
----
+The E-based foundations are documented in [METATHEORY.md](./METATHEORY.md).
 
-# Project Structure
+## What's Next
 
-## `kernel/`
+- Interactive visual proofs
+- Tabular proofs
+- More geometry-specific automation
+- More advanced automation
+- Interactive visual proofs
+- Stronger IDE integration
+- Expansions to Euclib
 
-Trusted core of the system responsible for soundness and proof verification.
+Please see our GitHub issues for more!
 
-Main components include:
-- Type inference
-- Definitional equality checking
-- Reduction and normalization
-- Core term language
+# Getting Started
 
-Important files:
-- `infer.ml`
-- `term.ml`
-- `exceptions.ml`
+Want to try out NiceGeo? Then pull the code in this repository, build it, and install the VSCode plugin.
 
-
-## `elab/`
-
-Elaboration and frontend layer built on top of the kernel.
-
-Handles:
-- Parsing and lexing
-- Bidirectional type checking
-- Metavariables / holes
-- Unification
-- Reduction
-- Conversion to kernel terms
-- Pretty-printing and diagnostics
-
-Important files:
-- `typecheck.ml`
-- `convert.ml`
-- `reduce.ml`
-- `pretty.ml`
-- `nice_messages.ml`
-- `interface.ml`
-- `parser.mly`
-- `lexer.ml`
-
-
-## `automation/`
-
-Interactive tactic framework and proof automation infrastructure.
-
-Includes:
-- Tactic definitions
-- Proof state transformations
-- Tactical combinators
-- User-facing tactic error messages
-- Automation utilities
-
-Important files:
-- `tactics.ml`
-- `tactic_error_messages.ml`
-- `proofstate.ml`
-
-Current tactics include functionality similar to:
-- `intro`
-- `apply`
-- `exact`
-- `rewrite`
-- `split`
-- `have`
-- `refl`
-- `exists`
-
-
-## `synthetic/`
-
-Synthetic geometry environment and foundational geometry declarations.
-
-Contains:
-- Primitive geometry objects
-- Axioms
-- Geometry environment setup
-
-
-## `euclib/`
-
-Standard Euclidean geometry library.
-
-Contains reusable:
-- Geometry lemmas
-- Theorems
-- Euclidean propositions
-- Construction helpers
-
-The long-term goal is formalization of Euclid’s Book I propositions.
-
-
-## `test/`
-
-Unit tests and tactic tests for the system.
-
-Includes tests for:
-- Kernel behavior
-- Elaboration
-- Pretty-printing
-- Tactics
-- Proof state transitions
-- Automation utilities
-
-
-## `bin/`
-
-Executable entry point and command-line interface.
-
-Main file:
-- `main.ml`
-
-
-## `ide/`
-
-IDE and editor integration support for interactive proof development.
-
-This layer is intended to improve usability and accessibility by providing:
-- Proof state visualization
-- Context and goal display
-- Better diagnostics and error reporting
-- Hover/info views
-- Future LSP-style features
-- Integration with tactic execution and proof interaction
-
-The long-term goal is to support a more interactive geometry proving experience similar to modern proof assistants such as Lean.
-
-----
-
-
-# Building the Project
-
-## Requirements
+## Building NiceGeo
 
 - OCaml
 - opam
@@ -179,10 +65,15 @@ Build the project:
 dune build
 ```
 
+To make sure it works, run the tests:
 
-# Running NiceGeo
+```bash
+dune runtest
+```
 
-Run a proof file:
+## Running NiceGeo via Command Line:
+
+You can check a NiceGeo proof file via the command line as follows:
 
 ```bash
 dune exec nicegeo file.ncg
@@ -194,118 +85,108 @@ Example:
 dune exec nicegeo euclib/euclib.ncg
 ```
 
+## The NiceGeo IDE
 
-# Running Tests
+If you plan to do any serious NiceGeo development, you probably want to download our IDE. This is a VSCode plugin (with a `.vsix` extension) that can be found in the `ide` folder. Simply right-click it and install it from within VSCode. Further instructions can be found in the IDE.
 
-```bash
-dune runtest
-```
+# Project Structure
 
+Below we detail our code structure a bit more.
 
-# Current Development
+## `kernel/`
 
-Some actively developed features include:
+Trusted core of the system responsible for proof checking. This has been extensively human-vetted, though further vetting is always welcome.
 
-- Better tactic automation
-- User-written tactics
-- Improved proof state visualization
-- Enhanced error reporting
-- IDE/LSP support
-- Info views and hover support
+Main components include:
+- Type inference
+- Definitional equality checking
+- Reduction and normalization
+- Core term language
 
----
+## `synthetic/`
 
-# Design Philosophy
+Synthetic geometry environment, encoding our interpretation of the axioms from System E, as well as any primitives needed for stating and using these axioms. This sits just above the kernel in terms of trust. The elaboration of the synthetic letter is exhaustively tested, and the axioms themselves have been extensively human-vetted.
 
-NiceGeo separates the trusted kernel from higher-level automation and interfaces. This allows advanced features such as tactics, automation, and future graphical proof systems while preserving logical soundness through kernel verification.
+Contains:
+- Primitives
+- Axioms
+- Geometry environment setup
+- Exhaustive regression tests for elaboration of the above
 
-The project aims to make formal geometry proofs more approachable while still maintaining rigorous proof checking.
+## `elab/`
 
----
+Elaboration layer, inspired by Lean's view of elaboration (although not nearly as liberal as Lean's).
+This gets between the nicer-looking terms and types that users see, and the full terms and types that the kernel checks in the end.
+Bugs in the elaborator layer cannot make it possible to prove false (unlike bugs in the kernel and synthetic layers),
+but they can mislead the user. This is the lowest layer at which we welcome vibecoded/AI-aided contributions.
 
-# Example Areas of the Codebase
+Handles:
+- Parsing and lexing
+- Bidirectional type checking
+- Metavariables / holes
+- Unification
+- Some reduction
+- Conversion to kernel terms
+- Pretty-printing and diagnostics
 
-| Area | Purpose |
-|---|---|
-| `kernel/` | Trusted proof checking |
-| `elab/` | Elaboration and type checking |
-| `automation/` | Tactics and proof automation |
-| `synthetic/` | Geometry foundations |
-| `euclib/` | Euclidean theorem library |
-| `test/` | Tests and validation |
+## `automation/`
 
----
+Interactive tactic framework and proof automation infrastructure.
 
-# Future Work
+Includes:
+- Tactic definitions
+- Proof state transformations
+- Tactical combinators
+- User-facing tactic error messages
+- Automation utilities
 
-Planned future extensions include:
+Current tactics include functionality similar to:
+- `intro`
+- `apply`
+- `exact`
+- `rewrite`
+- `split`
+- `have`
+- `refl`
+- `exists`
+- `lia`
+- `sorry` or `admit`
 
-- Geometry-specific automation
-- Interactive visual proofs
-- Diagram-based proof construction
-- Tabular proofs
-- Stronger IDE integration
-- Expanded Euclidean standard library
-- Additional tactic combinators and tacticals
+There are also some geometry-specific tactics. Documentation of all available tactics can be found in this file
+when tactics are registered, as well as in the IDE through the combined auto-complete and hover functionalities.
 
----
+## `euclib/`
 
-# Acknowledgements
+Euclidean geometry standard library.
 
-This project draws inspiration from:
-- LeanEuclid
-- System E
-- Interactive theorem provers and geometry proof systems
+Contains:
+- Some simple geometry lemmas and theorems
+- Some of Euclid's propositions
+- Construction helpers
 
----
+The long-term goal is formalization of Euclid’s Book I propositions, plus anything else that might be useful to anyone
+who wants to do Euclidean geometry using NiceGeo. Contributions to Euclib to this end are strongly welcome, and are a great
+way to test out NiceGeo.
 
-# Course Project
+## `test/`
 
-This project was deisgned and completed as a course (Build Your Own Proof Assistant,CS 598, UIUC).
+Unit tests and tactic tests for the system. All new features should come with accompanying tests. Please feel free to add tests where you see any currently missing.
 
-[Course link](https://dependenttyp.es/classes/598sp2026.html)
+## `bin/`
 
+Executable entry point and command-line interface, following the standard OCaml convention.
 
+## `ide/`
 
-## Build the project and run tests
-First, install OCaml and opam and then create a switch for the project.
-```bash
-opam init
-opam switch create nicegeo 5.4.1
-eval $(opam env --switch=nicegeo)
-```
+IDE and editor integration support for interactive proof development.
 
-Install the dependency:
-```bash
-opam install --deps-only --with-test .
-```
+This layer is intended to improve usability and accessibility by providing:
+- Proof state visualization
+- Context and goal display
+- Expandable display of metavariables and their constraints for debugging
+- Better diagnostics and error reporting
+- Hover/info views
+- Autocomplete
+- Integration with tactic execution and proof interaction
 
-Build the project:
-```bash
-dune build
-```
-
-Run the kernel on the test file:
-```bash
-dune exec nicegeo proof.ncg
-```
-
-## Running Tests
-
-```bash
-dune runtest
-```
-
-## Project Structure
-- `bin/main.ml` is the entry point. It reads in the proofs from the file and checks if it is correct.
-- `kernel/` contains the trusted type checking logic. 
-	- `kernel/infer.ml` defines the `inferType` and `isDefEq` functions.
-	- `kernel/term.ml` defines the basic kernel-level `term` types.
-- `elab/` is a layer on top of the kernel with many usability features separate from the kernel. It handles
-  parsing, automatically filling holes inserted by the user, and has its own typechecking logic. It ultimately
-  produces a kernel-level term (that should represent what the user intended to some degree) for the kernel to check. 
-	- `elab/interface.ml` contains the main interface of the layer: creating a context, adding the axioms in `synthetic/env.ncg`,
-	  and checking parsed proofs. 
-	- `elab/typecheck.ml` contains the type checking and unification logic for automatically filling holes, and
-	  calls the kernel to check the final produced term.
-	- `elab/lexer.ml` (implemented with sedlex) and `elab/parser.mly` define the grammar for the text file parser. 
+While the IDE is currently under development, it already includes many novel features. We welcome contributions to the IDE. We also welcome the creation of new GitHub issues suggesting improvements to or documenting bugs in the IDE.
