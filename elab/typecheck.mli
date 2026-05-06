@@ -36,6 +36,8 @@ val create_metas : Types.ctx -> term -> int list -> unit
 *)
 val replace_metas : Types.ctx -> ?complete:bool -> term -> term
 
+(** Takes in two terms [t1] and [t2] (both defined in the same context [e]) and solves for
+    holes assuming that [t1 = t2]. (i.e. "make t1 and t2 definitionally equal") *)
 val unify :
   ?depth:int ->
   Types.ctx ->
