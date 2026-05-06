@@ -23,7 +23,7 @@ let () =
   let stmts =
     try Elab.Interface.get_all_statements filename
     with Error.ElabError info ->
-      print_endline ("Error processing file " ^ filename ^ ": " ^ Error.pp_exn env info);
+      print_endline ("Error parsing file " ^ filename ^ ": " ^ Error.pp_exn env info);
       (match Nice_messages.pick_message tone Nice_messages.After_error with
       | Some extra -> Printf.printf "\n%s\n\n" extra
       | None -> ());
