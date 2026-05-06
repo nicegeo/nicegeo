@@ -21,8 +21,7 @@ let test_sorry_qed_rejected () =
     (function
       | Error.ElabError { error_type = Error.SorryRequiresAdmitted; _ } -> true
       | _ -> false)
-    (fun () ->
-      process_ncg "Axiom P : Prop\nTheorem t : P\nProof.\n  sorry.\nQed.\n")
+    (fun () -> process_ncg "Axiom P : Prop\nTheorem t : P\nProof.\n  sorry.\nQed.\n")
 
 (* Proof: admitted theorem used as a lemma, closed with Qed. — transitive sorry should be rejected. *)
 let test_transitive_sorry_qed_rejected () =
@@ -34,8 +33,14 @@ let test_transitive_sorry_qed_rejected () =
     (fun () ->
       process_ncg
         "Axiom P : Prop\n\
-         Theorem lemma : P\nProof.\n  sorry.\nAdmitted.\n\
-         Theorem t : P\nProof.\n  exact lemma.\nQed.\n")
+         Theorem lemma : P\n\
+         Proof.\n\
+        \  sorry.\n\
+         Admitted.\n\
+         Theorem t : P\n\
+         Proof.\n\
+        \  exact lemma.\n\
+         Qed.\n")
 
 let suite =
   let open Alcotest in
@@ -43,5 +48,8 @@ let suite =
     [
       test_case "sorry with Admitted. is accepted" `Quick test_sorry_admitted_accepted;
       test_case "sorry with Qed. is rejected" `Quick test_sorry_qed_rejected;
-      test_case "transitive sorry with Qed. is rejected" `Quick test_transitive_sorry_qed_rejected;
+      test_case
+        "transitive sorry with Qed. is rejected"
+        `Quick
+        test_transitive_sorry_qed_rejected;
     ] )
