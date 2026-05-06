@@ -6,3 +6,7 @@ val subst : Types.ctx -> Term.term -> Term.termkind -> Term.termkind -> Term.ter
 
 (** [reduce ctx tm] fully beta-reduces [tm], substituting solved metavariables. *)
 val reduce : Types.ctx -> Term.term -> Term.term
+
+(** [delta_reduce ctx tm] fully delta-reduces [tm] so that no subterms have a definition
+    body. *)
+val delta_reduce : Types.ctx -> Term.term -> Term.term

@@ -43,3 +43,27 @@ let rec reduce (e : Types.ctx) (tm : term) : term =
       let ty_ret = reduce e ty_ret in
       { inner = Arrow (arg, bid, ty_arg, ty_ret); loc = tm.loc }
   | _ -> tm
+
+let rec delta_reduce (e : Types.ctx) (tm : term) : term =
+  match tm.inner with
+  | App (f, arg) ->
+      let fn = delta_reduce e f in
+      let arg = delta_reduce e arg in
+      { inner = App (fn, arg); loc = tm.loc }
+  | Hole m -> (
+      match Hashtbl.find_opt e.metas m with
+      | Some { sol = Some tm_sol; _ } -> delta_reduce e tm_sol
+      | _ -> tm)
+  | Name n -> (
+      match Hashtbl.find_opt e.env n with
+      | Some { data = Def (_, body, false); _ } -> delta_reduce e body
+      | _ -> tm)
+  | Fun (arg, bid, ty, body) ->
+      let ty = delta_reduce e ty in
+      let body = delta_reduce e body in
+      { inner = Fun (arg, bid, ty, body); loc = tm.loc }
+  | Arrow (arg, bid, ty_arg, ty_ret) ->
+      let ty_arg = delta_reduce e ty_arg in
+      let ty_ret = delta_reduce e ty_ret in
+      { inner = Arrow (arg, bid, ty_arg, ty_ret); loc = tm.loc }
+  | _ -> tm

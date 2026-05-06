@@ -27,7 +27,10 @@ type enventry = {
   data : enventry_data;
 }
 
-(** Elaboration context. *)
+(** Elaboration context.
+
+    It stores a map of names to their definitions and a map of metavariable ids to their
+    data. *)
 type ctx = {
   env : (string, enventry) Hashtbl.t;
       (** Elaboration-level environment mapping defined names to their entries. *)
