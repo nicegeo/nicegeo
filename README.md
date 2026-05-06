@@ -1,20 +1,20 @@
 NiceGeo is a type-theory-based synthetic Euclidean geometry proof assistant. Its axiomatic system is based on System E, with significant inspiration from formalizations of System E in other proof assistants, like LeanEuclid. The project combines a trusted proof kernel, synthetic geometry foundations, an elaboration layer, and an interactive tactic framework to support formal geometric reasoning in a more intuitive and educational way. The "Nice" in NiceGeo reflects an overarching design philosophy on our part, in which we aim to have the proof assistant always give kind and helpful feedback.
 
-The system is designed around a layered architecture where all proofs are ultimately verified by a small trusted kernel (the de Bruijn criterion), with an exhaustively-tested synthetic geometry layer sitting just above that kernel. Higher-level components such as tactics, automation, proof states, and future visualization interfaces improve usability and interaction.
+The system is designed around a layered architecture where all proofs are ultimately verified by a small trusted kernel (the de Bruijn criterion), with a synthetic geometry layer sitting just above that kernel. Crucially, the elaboration of the synthetic layer is exhaustively tested. Higher-level components such as holes, tactics, automation, proof states, and future visualization interfaces improve usability and interaction.
 
-NiceGeo was initially deisgned and implemented as a whole-course-project, through the effort of the entire class ([Build Your Own Proof Assistant, UIUC](https://dependenttyp.es/classes/598sp2026.html)). It is now open to contributions from the rest of the world. See [CONTRIBUTING.md](./CONTRIBUTING.md) to contribute!
+NiceGeo was initially designed and implemented as a whole-course-project, through the effort of the entire class ([Build Your Own Proof Assistant, UIUC](https://dependenttyp.es/classes/598sp2026.html)). It is now open to contributions from the rest of the world. See [CONTRIBUTING.md](./CONTRIBUTING.md) to contribute!
 
 # Features
 
 ## Implemented
 
 - Dependent-type-theory-based proof kernel
-- Exhaustively tested synthetic Euclidean geometry foundations (axiomatization of System E)
+- Synthetic Euclidean geometry layer (axiomatization of System E) with elaboration exhaustively tested
 - Tactic-based interactive proofs
 - Hole creation and automatic hole filling
 - Bidirectional type checking and unification
 - Proof state management
-- Custom tactic framework
+- Custom tactic framework in OCaml
 - Pretty-printing and error reporting
 - Kind error messages
 - Standard library (Euclib) for Euclidean geometry
@@ -29,6 +29,7 @@ The E-based foundations are documented in [METATHEORY.md](./METATHEORY.md).
 - Tabular proofs
 - More geometry-specific automation
 - More advanced automation
+- Better support for user-written automation (e.g., a tactic language)
 - Interactive visual proofs
 - Stronger IDE integration
 - Expansions to Euclib
