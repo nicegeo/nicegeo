@@ -20,7 +20,7 @@ As mentioned above, the last three sorts (magnitudes in the paper) are all one `
 
 ## Construction Rules
 
-The construction rules match one-to-one (though the comments do not), with the addition of a `distinct_from` predicate that is axiomatized (this appears to be optional in the paper) which has its own introduction and elimination rule separate from the point introduction and elimination rules (which in turn use our axiomatization of `List.mem`). The sixth point construction rule diverges (see #165); unsure which version (ours or the paper's) is correct, but I will document that here once I know more. In the ninth point construction rule, "outside" is interpreted as "neither in or on," which is how it is described earlier in the E paper as an abbreviation. We do not explicitly define `outside`, though.
+The construction rules match one-to-one (though the comments do not), with the addition of a `distinct_from` predicate that is axiomatized (this appears to be optional in the paper) which has its own introduction and elimination rule separate from the point introduction and elimination rules (which in turn use our axiomatization of `List.mem`). The sixth point construction rule matches the updated, correct version from the paper, rather than the incorrect version in the arxiv draft of the paper (see [#165](https://github.com/nicegeo/nicegeo/issues/165)). In the ninth point construction rule, "outside" is interpreted as "neither in or on," which is how it is described earlier in the E paper as an abbreviation.
 
 # Diagrammatic Inferences
 
@@ -30,7 +30,7 @@ These match completely with the paper.
 
 ## Between Axioms
 
-These are also aligned completely with the paper, though there is a mistake the _comment_ for the first one (see the first comment in #164).
+These are also aligned completely with the paper, though there is a mistake the _comment_ for the first one (see the first comment in [#164](https://github.com/nicegeo/nicegeo/issues/164)).
 
 ## Same Side Axioms
 
@@ -46,7 +46,7 @@ These are aligned completely with the paper.
 
 ## Circle Axioms
 
-These appear completely aligned with the paper. Distinctness is interpreted as inequality, which works due to other axioms (see discussion from #168).
+These appear completely aligned with the paper. Distinctness is interpreted as inequality, which works due to other axioms (see discussion from [#168](https://github.com/nicegeo/nicegeo/issues/168)).
 
 ## Intersection Rules
 
@@ -55,7 +55,7 @@ The paper reads:
 
 > If a is on or inside α, b is on or inside α, a is inside β, and b is outside β, then α and β intersect.
 
-But, as noted in #143, this is unsound, as can be seen by letting β be an arbitrarily small circle around a. We replaced that axiom with what we believe the intended behavior to be:
+But, as noted in [#143](https://github.com/nicegeo/nicegeo/issues/143), this is unsound, as can be seen by letting β be an arbitrarily small circle around a. We replaced that axiom with what we believe the intended behavior to be:
 
 > If a is on α, b is on or inside α, a is inside β, and b is outside β, then α and β intersect.
 
@@ -91,4 +91,4 @@ We directly axiomatize SSS and SAS rather than a single superposition axiom from
 
 # Direct Consequence
 
-We just axiomatize the classical proof by contradiction axiom without worrying too much about the discussion in the paper of intuitinoistic proof and complexity and so on. Notably, the paper says that the specific double-negation-elimination principle does not, in their sequent calculus model, imply LEM. But in our base logic, the version of DNE we added definitely does imply LEM! We have plans in #144 to add a way to tag/track tactics and proofs that use the classical axiom, and we think this is a satisfactory compromise. 
+We just axiomatize the classical proof by contradiction axiom without worrying too much about the discussion in the paper of intuitinoistic proof and complexity and so on. Notably, the paper says that the specific double-negation-elimination principle does not, in their sequent calculus model, imply LEM. But in our base logic, the version of DNE we added definitely does imply LEM! We have plans in [#144](https://github.com/nicegeo/nicegeo/issues/144) to add a way to tag/track tactics and proofs that use the classical axiom, and we think this is a satisfactory compromise. 
