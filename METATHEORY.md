@@ -1,0 +1,96 @@
+This is a working documentation file on the difference between our implementation of System E and the core theory presented in the System E paper (and the reference embedded formalizations we used), as well as any open metatheoretical questions we have.
+
+# Primitives
+
+## Core Logic
+
+Our base logic is our kernel's dependent type theory, which is loosely the Calculus of Constructions with a universe hierarchy (no inductive types). Basic logical primitives for E along with their introduction and elimination rules are axiomatized at the synthetic layer, as are propositional equality and lists (there is an underlying definitional equality in our kernel). The E paper's base logic is some kind of FOL (I think, need to ask more about this) with quantifiers, above which a sequent calculus is applied. 
+
+## Sorts
+
+The E paper has points, lines, circles, segments, angles, and areas as separate sorts. Our core type theory, in contrast, has two language-level sorts (`Prop` and `Type`, though with universes we have many levels of `Type`). Then, `Point`, `Line`, and `Circle` are embedded/synthetic sorts, in the sense of having type `Type`, but are not represented as sorts to the kernel. In the meantime, segments, angles, and areas all use one single `Measure` embedded/synthetic sort (also something of type `Type`). This more closely matches one of the Lean embeddings of E.
+
+## Basic Relations
+
+The axiomatizations of the basic relations over the first three sorts from the paper (on, same-side, between, inside, center, and intersects) are all the same in our synthetic layer. 
+
+## Magnitudes/Measures
+
+As mentioned above, the last three sorts (magnitudes in the paper) are all one `Measure` in our synthetic layer. We have axiomatizations of less than, the constant zero, and the addition function. The basic properties of these are axiomatized as well. 
+
+## Construction Rules
+
+The construction rules match one-to-one, with the addition of a `distinct_from` predicate that is axiomatized (this appears to be optional in the paper) which has its own introduction and elimination rule separate from the point introduction and elimination rules (which in turn use our axiomatization of `List.mem`). The sixth point construction rule matches the updated, correct version from the paper, rather than the incorrect version in the arxiv draft of the paper (see [#165](https://github.com/nicegeo/nicegeo/issues/165)). In the ninth point construction rule, "outside" is interpreted as "neither in or on," which is how it is described earlier in the E paper as an abbreviation.
+
+# Diagrammatic Inferences
+
+## Generalities
+
+These match completely with the paper.
+
+## Between Axioms
+
+These are also aligned completely with the paper.
+
+## Same Side Axioms
+
+These are also aligned completely with the paper.
+
+## Pasch Axioms
+
+These are also aligned completely with the paper.
+
+## Triple Incidence
+
+These are aligned completely with the paper.
+
+## Circle Axioms
+
+These appear completely aligned with the paper. Distinctness is interpreted as inequality, which works due to other axioms (see discussion from [#168](https://github.com/nicegeo/nicegeo/issues/168)).
+
+## Intersection Rules
+
+Most of the axioms are the same, but the fourth axiom is changed to fix a mistake in the original paper.
+The paper reads:
+
+> If a is on or inside α, b is on or inside α, a is inside β, and b is outside β, then α and β intersect.
+
+But, as noted in [#143](https://github.com/nicegeo/nicegeo/issues/143), this is unsound, as can be seen by letting β be an arbitrarily small circle around a. We replaced that axiom with what we believe the intended behavior to be:
+
+> If a is on α, b is on or inside α, a is inside β, and b is outside β, then α and β intersect.
+
+But we are unsure of the completeness implications of this change.
+
+## Equality Axioms
+
+These are the same, this is just moved upward in the file when we first axiomatize equality, and denoted explicitly as introduction and elimination rules in the standard type-theoretic fashion. 
+
+# Metric Inferences
+
+The measure axioms are the same as in the paper (though we have a single sort, as noted earlier), they just appear early in the file when we first axiomatize `Measure`. The remaining axioms are formalized in a way that is straightforwardly faithful to the paper.
+
+# Transfer Inferences
+
+## Diagram-Segment Transfer Axioms
+
+These are straightforwardly faithful to the paper.
+
+## Diagram-Angle Transfer Axioms
+
+These are straightforwardly faithful to the paper.
+
+## Diagram-Area Transfer Axioms
+
+These are straightforwardly faithful to the paper.
+
+# Superposition
+
+We directly axiomatize SSS and SAS rather than a single superposition axiom from which we can project to prove SAS and SSS. 
+
+# Classical Logic
+
+We add general double negation elimination as an axiom, which implies general excluded middle, allowing classical reasoning in our system. However, System E seems to only allow double negation elimination and case splits on atomic formulas (basic relations and their negations). In the context of Euclidean proofs, this likely does not change much as there is little reason to case split on a non-atomic formula, and allowing it should not affect soundness. We have plans in [#144](https://github.com/nicegeo/nicegeo/issues/144) to add a way to tag/track tactics and proofs that use the classical axiom.
+
+# Direct Consequence
+
+The paper describes a notion of a "direct consequence", which are one-step inferences that proofs are allowed to declare without providing an explicit invocation of axioms. This corresponds to automation in our system. We [plan](https://github.com/nicegeo/nicegeo/issues/277) to implement this notion, but it is one of several ideas we have for automation. In the meantime, proofs in our system always correspond to a typechecked term.
