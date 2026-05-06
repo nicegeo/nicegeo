@@ -6,16 +6,11 @@ open Elab.Tactic
 
 module TEM = Tactic_error_messages
 
-let set_error_mood mood =
-  Tactic_error_messages.set_error_mood mood
-
+let set_error_mood mood = Tactic_error_messages.set_error_mood mood
 let succeed st = Success st
 let fail msg = TEM.simple_failure msg
-
 let fail_no_goals tactic = TEM.no_goals tactic
-
-let fail_nice tactic category =
-  TEM.nice_failure ~tactic ~category ()
+let fail_nice tactic category = TEM.nice_failure ~tactic ~category ()
 
 (* Used by future tactics that need to catch elaboration errors and return a Failure. *)
 let catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
@@ -85,10 +80,7 @@ let reflexivity (st : proof_state) : tactic_result =
             ~category:TEM.ReflexivityNotDefeq
             ~goal:(pp_term st.elab_ctx ty)
             ~details:
-              [
-                "lhs: " ^ pp_term st.elab_ctx lhs;
-                "rhs: " ^ pp_term st.elab_ctx rhs;
-              ]
+              ["lhs: " ^ pp_term st.elab_ctx lhs; "rhs: " ^ pp_term st.elab_ctx rhs]
             ()
 (* need to map to existing error categories*)
 
@@ -356,8 +348,7 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
             ~category:TEM.RewriteFailed
             ~goal:(pp_term st.elab_ctx g.goal_type)
             ~given:(pp_term st.elab_ctx lhs)
-            ()
-    )
+            ())
 
 (** Breaks goal of the form [A and B] into two subgoals for [A] and [B] by applying
     [And.intro]. Fails if the current goal is not a conjunction. *)
@@ -382,8 +373,7 @@ let split (st : proof_state) : tactic_result =
             ~tactic:"split"
             ~category:TEM.SplitExpectedAnd
             ~goal:(pp_term st.elab_ctx ty)
-            ()
-      )
+            ())
 
 (** Helper function that creates a tuple (hole_id, hole_term) where the hole_term is just
     the Hole term corresponding to the created hole ID *)
@@ -499,10 +489,7 @@ let constructor_or_tactic (use_right : bool) (st : proof_state) : tactic_result 
   | None -> fail_no_goals (if use_right then "right" else "left")
   | Some g -> (
       match infer_or_type g st with
-      | None ->
-        fail_nice
-          (if use_right then "right" else "left")
-          TEM.LeftRightExpectedOr
+      | None -> fail_nice (if use_right then "right" else "left") TEM.LeftRightExpectedOr
       | Some (left_type, right_type) ->
           let new_goal_type = if use_right then right_type else left_type in
           let new_goal_hole, st = fresh_goal st g.lctx new_goal_type in

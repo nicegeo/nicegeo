@@ -135,51 +135,36 @@ let choose_message ?(mood = !default_mood) category =
   | [] -> "The tactic failed."
   | _ -> (List.nth pool (Random.int (List.length pool))).text
 
-let bullet_lines xs =
-  xs |> List.map (fun s -> "  - " ^ s) |> String.concat "\n"
+let bullet_lines xs = xs |> List.map (fun s -> "  - " ^ s) |> String.concat "\n"
 
-let nice_failure ~(tactic : string) ~(category : tactic_error_category)
-    ?mood ?goal ?given ?msg ?(details = []) () : tactic_result =
+let nice_failure ~(tactic : string) ~(category : tactic_error_category) ?mood ?goal ?given
+    ?msg ?(details = []) () : tactic_result =
   let mood = Option.value mood ~default:!default_mood in
-    let base_message =
-    match msg with
-    | Some m -> m
-    | None -> choose_message ~mood category
-    in  
-    let parts =
+  let base_message =
+    match msg with Some m -> m | None -> choose_message ~mood category
+  in
+  let parts =
     [
-    Some
-      (match category with
-      | NoGoalsLeft ->
-          Printf.sprintf
-            "%s%s"
-            base_message
-            ("" ^ choose_message ~mood category)
-      | _ ->
-          Printf.sprintf "%s failed: %s" tactic base_message);
+      Some
+        (match category with
+        | NoGoalsLeft ->
+            Printf.sprintf "%s%s" base_message ("" ^ choose_message ~mood category)
+        | _ -> Printf.sprintf "%s failed: %s" tactic base_message);
       Option.map (fun g -> "Goal:\n  " ^ g) goal;
       Option.map (fun x -> "Given:\n  " ^ x) given;
-      if details = [] then None else Some ("Details:\n" ^ bullet_lines details);
+      (if details = [] then None else Some ("Details:\n" ^ bullet_lines details));
     ]
   in
   Failure (String.concat "\n" (List.filter_map Fun.id parts))
 
-let simple_failure msg =
-  nice_failure ~tactic:"tactic" ~category:(CustomFailure msg) ()
+let simple_failure msg = nice_failure ~tactic:"tactic" ~category:(CustomFailure msg) ()
 
 let no_goals tactic =
-  nice_failure
-    ~tactic
-    ~category:NoGoalsLeft
-    ~msg:"No goals remaining."
-    ()
-
+  nice_failure ~tactic ~category:NoGoalsLeft ~msg:"No goals remaining." ()
 
 let set_error_mood name st =
   match mood_of_string name with
   | Some mood ->
       set_default_mood mood;
       Success st
-  | None ->
-      Failure
-        ("unknown mood: " ^ name ^ "\navailable moods: " ^ available_moods)
+  | None -> Failure ("unknown mood: " ^ name ^ "\navailable moods: " ^ available_moods)
