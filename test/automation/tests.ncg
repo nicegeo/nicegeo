@@ -1,3 +1,4 @@
+Import "euclib.ncg"
 
 (* intro tests *)
 
@@ -94,4 +95,46 @@ left.
 exact h.
 right.
 exact h.
+Qed.
+
+(* measure_norm tests *)
+
+Theorem test5 : ∀ (a b c d : Measure), a + b + a + c + d + b = d + (b + b) + (a + (c + a))
+Proof.
+intros a b c d.
+measure_norm.
+reflexivity.
+Qed.
+
+Theorem test6 : ∀ (a b : Point), Zero + Length a b = Length b a + Zero
+Proof.
+intros a b.
+measure_norm.
+reflexivity.
+Qed.
+
+(* simp_constrain tests *)
+
+Theorem test7 : ∀ (a b c d e f : Measure), a + (b + a + c) + (d + b) + e < d + (b + b + f) + (a + (c + a)) → e < f
+Proof.
+intros a b c d e f h.
+simp_constrain h1 h.
+exact h1.
+Qed.
+
+(* metric tests *)
+
+Theorem test8 : ∀ (a b c : Measure), a < b → b < c → c < a → False
+Proof.
+metric.
+Qed.
+
+Theorem test9 : ∀ (a b c d e : Measure), a < b → b = c → c < d → d < e → e = a → False
+Proof.
+metric.
+Qed.
+
+Theorem test10 : ∀ (a b c d : Measure), a + b = c → a + d = c → b = d
+Proof.
+metric.
 Qed.
