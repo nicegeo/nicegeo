@@ -148,14 +148,14 @@ let nice_failure ~(tactic : string) ~(category : tactic_error_category)
     let parts =
     [
     Some
-    (Printf.sprintf
-        "%s failed: %s%s"
-        tactic
-        base_message
-        (match category with
-        | NoGoalsLeft ->
-            " " ^ choose_message ~mood category
-        | _ -> ""));
+      (match category with
+      | NoGoalsLeft ->
+          Printf.sprintf
+            "%s%s"
+            base_message
+            (" " ^ choose_message ~mood category)
+      | _ ->
+          Printf.sprintf "%s failed: %s" tactic base_message);
       Option.map (fun g -> "Goal:\n  " ^ g) goal;
       Option.map (fun x -> "Given:\n  " ^ x) given;
       if details = [] then None else Some ("Details:\n" ^ bullet_lines details);
