@@ -5,6 +5,7 @@ import {
   MarkupKind,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import type { NiceGeoSettings } from "./diagnostics";
 import { runProofStateAt } from "./proofstate";
 import { getRegisteredTactics } from "./tactics";
 
@@ -40,6 +41,7 @@ const TACTIC_SNIPPETS: Record<string, string> = {
   sorry: "sorry.",
   left: "left.",
   right: "right.",
+  cases: "cases ${1:term} ${2:h1} ${3:h2}.",
   split: "split.",
   exact: "exact ${1:term}.",
   apply: "apply ${1:term}.",
@@ -129,6 +131,7 @@ export async function provideCompletionItems(
   line0: number,
   col0: number,
   workspaceRoot?: string,
+  settings?: NiceGeoSettings,
 ): Promise<CompletionItem[]> {
   const prefix = currentLinePrefix(doc, line0, col0);
   const inProof = isInsideProofBlock(doc, line0);
@@ -241,7 +244,7 @@ export async function provideCompletionItems(
 
   // Levels 2 + 3: semantic context from proofstate snapshot.
   if (ctx.shouldQuerySemantic) {
-    const snapshot = await runProofStateAt(doc.uri, line0, col0, workspaceRoot);
+    const snapshot = await runProofStateAt(doc.uri, line0, col0, workspaceRoot, settings);
     if (!(snapshot.ok && snapshot.proofState)) return items.slice(0, MAX_ITEMS);
     const ps = snapshot.proofState;
 

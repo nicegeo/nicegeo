@@ -23,6 +23,7 @@ type tactic_step_item = {
   step_index : int;
   step_name : string;
   step_args : string list;
+  step_documentation : Tactic.tactic_documentation option;
   step_goal_before : string option;
   step_goals_after : string list;
   step_status : string;
@@ -89,6 +90,10 @@ let parse_args (args : string list) : cli_mode option =
 let json_escape (s : string) : string =
   let s = Yojson.to_string (`String s) in
   String.sub s 1 (String.length s - 2)
+
+let json_escape_string_array (xs : string list) : string =
+  xs |> List.map (fun s -> Printf.sprintf "\"%s\"" (json_escape s)) |> String.concat ","
+  |> fun s -> "[" ^ s ^ "]"
 
 let pos_col (p : Lexing.position) : int = p.pos_cnum - p.pos_bol + 1
 
@@ -242,6 +247,7 @@ let snapshot_tactic_steps (e : Types.ctx) (goal_ty_tm : Term.term)
             step_index = idx;
             step_name = tac.name;
             step_args = args_pp;
+            step_documentation = Tactic.tactic_documentation tac.name;
             step_goal_before = goal_before;
             step_goals_after =
               List.map (pp_goal_type next_state.elab_ctx) next_state.open_goals;
@@ -551,12 +557,18 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     | None -> "null"
     | Some s -> Printf.sprintf "\"%s\"" (json_escape s)
   in
+  let json_string_list xs = json_escape_string_array xs in
+  let json_doc = function
+    | None -> "null"
+    | Some (doc : Tactic.tactic_documentation) ->
+        Printf.sprintf
+          "{\"description\":\"%s\",\"parameters\":%s,\"example\":\"%s\"}"
+          (json_escape doc.description)
+          (json_escape_string_array doc.parameters)
+          (json_escape doc.example)
+  in
   let json_int_list (xs : int list) : string =
     "[" ^ String.concat "," (List.map string_of_int xs) ^ "]"
-  in
-  let json_string_list (xs : string list) : string =
-    xs |> List.map (fun s -> Printf.sprintf "\"%s\"" (json_escape s)) |> String.concat ","
-    |> fun s -> "[" ^ s ^ "]"
   in
   let env_items =
     snap.environment
@@ -585,10 +597,11 @@ let print_snapshot_json (filename : string) (line : int) (col : int)
     snap.tactic_steps
     |> List.map (fun s ->
         Printf.sprintf
-          "{\"index\":%d,\"name\":\"%s\",\"args\":%s,\"goalBefore\":%s,\"goalsAfter\":%s,\"status\":\"%s\",\"atCursor\":%s}"
+          "{\"index\":%d,\"name\":\"%s\",\"args\":%s,\"documentation\":%s,\"goalBefore\":%s,\"goalsAfter\":%s,\"status\":\"%s\",\"atCursor\":%s}"
           s.step_index
           (json_escape s.step_name)
           (json_string_list s.step_args)
+          (json_doc s.step_documentation)
           (json_opt_string s.step_goal_before)
           (json_string_list s.step_goals_after)
           (json_escape s.step_status)
@@ -632,6 +645,21 @@ let print_tactics (use_json : bool) : unit =
   else List.iter (fun n -> Printf.printf "%s\n" n) names
 
 let run (prog : string) (args : string list) : unit =
+  if args = [ "--tactic-specs-json" ] then (
+    Automation.Tactics.register ();
+    let items =
+      Tactic.tactic_specs ()
+      |> List.map (fun (name, (doc : Tactic.tactic_documentation)) ->
+          Printf.sprintf
+            "{\"name\":\"%s\",\"documentation\":{\"description\":\"%s\",\"parameters\":%s,\"example\":\"%s\"}}"
+            (json_escape name)
+            (json_escape doc.description)
+            (json_escape_string_array doc.parameters)
+            (json_escape doc.example))
+      |> String.concat ","
+    in
+    Printf.printf "{\"ok\":true,\"tactics\":[%s]}\n" items;
+    exit 0);
   match parse_args args with
   | None ->
       Printf.eprintf
