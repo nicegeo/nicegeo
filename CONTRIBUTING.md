@@ -1,4 +1,4 @@
-While the class is in session (until May 2026), we will generally only accept contributions from students or auditors in the UIUC class CS 598 TLR Build Your Own Proof Assistant. Any exceptions will be approved by Talia Ringer. 
+(Update May 2026) All contributors welcome! We welcome bug reports, feature requests, documentation improvements, and code contributions. 
 
 ## Legal
 By contributing to this project, you agree that your code is licensed under the license specified in the LICENSE file. 
