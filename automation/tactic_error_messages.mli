@@ -35,9 +35,10 @@ val nice_failure :
   ?mood:mood ->
   ?goal:string ->
   ?given:string ->
+  ?msg:string ->
   ?details:string list ->
   unit ->
-  tactic_result
+  Elab.Tactic.tactic_result
 
 val simple_failure : string -> tactic_result
 val no_goals : string -> tactic_result
