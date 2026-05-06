@@ -61,8 +61,6 @@ But, as noted in [#143](https://github.com/nicegeo/nicegeo/issues/143), this is 
 
 But we are unsure of the completeness implications of this change.
 
-In the meantime, we have a bug in the first two of our intersection rules, described in #169, that we need to fix.
-
 ## Equality Axioms
 
 These are the same, this is just moved upward in the file when we first axiomatize equality, and denoted explicitly as introduction and elimination rules in the standard type-theoretic fashion. 
