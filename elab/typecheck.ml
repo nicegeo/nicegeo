@@ -458,9 +458,8 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
   (* print_endline ("inferred type " ^ Pretty.term_to_string e res ^ " for term " ^ Pretty.term_to_string e tm); *)
   res
 
-(** Throws an error if the given term is not a type, otherwise does nothing.
-  It checks that the type of the given term is a [Sort] (or that it is a [Hole]).
-*)
+(** Throws an error if the given term is not a type, otherwise does nothing. It checks
+    that the type of the given term is a [Sort] (or that it is a [Hole]). *)
 and check_is_type ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : unit =
   (* print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " is a type"); *)
   match tm.inner with
@@ -535,9 +534,7 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
 
 (** [elaborate ctx tm ty] elaborates term [tm] with an optional expected type [ty].
 
-    Uses [checktype] or [infertype] to do the actual work of assigning the
-    holes.
-*)
+    Uses [checktype] or [infertype] to do the actual work of assigning the holes. *)
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   create_metas e tm [];
   (match ty with Some ty -> checktype e [] tm ty | None -> ignore (infertype e [] tm));
