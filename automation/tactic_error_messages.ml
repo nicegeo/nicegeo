@@ -154,7 +154,7 @@ let nice_failure ~(tactic : string) ~(category : tactic_error_category)
           Printf.sprintf
             "%s%s"
             base_message
-            (" " ^ choose_message ~mood category)
+            ("" ^ choose_message ~mood category)
       | _ ->
           Printf.sprintf "%s failed: %s" tactic base_message);
       Option.map (fun g -> "Goal:\n  " ^ g) goal;
