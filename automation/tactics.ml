@@ -7,7 +7,7 @@ open Elab.Tactic
 module TEM = Tactic_error_messages
 
 let set_error_mood mood =
-  Tactic_error_messages.set_mood mood
+  Tactic_error_messages.set_error_mood mood
 
 let succeed st = Success st
 let fail msg = TEM.simple_failure msg
