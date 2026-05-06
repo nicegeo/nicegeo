@@ -20,7 +20,7 @@ As mentioned above, the last three sorts (magnitudes in the paper) are all one `
 
 ## Construction Rules
 
-The construction rules match one-to-one (though the comments do not), with the addition of a `distinct_from` predicate that is axiomatized (this appears to be optional in the paper) which has its own introduction and elimination rule separate from the point introduction and elimination rules (which in turn use our axiomatization of `List.mem`). The sixth point construction rule matches the updated, correct version from the paper, rather than the incorrect version in the arxiv draft of the paper (see [#165](https://github.com/nicegeo/nicegeo/issues/165)). In the ninth point construction rule, "outside" is interpreted as "neither in or on," which is how it is described earlier in the E paper as an abbreviation.
+The construction rules match one-to-one, with the addition of a `distinct_from` predicate that is axiomatized (this appears to be optional in the paper) which has its own introduction and elimination rule separate from the point introduction and elimination rules (which in turn use our axiomatization of `List.mem`). The sixth point construction rule matches the updated, correct version from the paper, rather than the incorrect version in the arxiv draft of the paper (see [#165](https://github.com/nicegeo/nicegeo/issues/165)). In the ninth point construction rule, "outside" is interpreted as "neither in or on," which is how it is described earlier in the E paper as an abbreviation.
 
 # Diagrammatic Inferences
 
@@ -30,7 +30,7 @@ These match completely with the paper.
 
 ## Between Axioms
 
-These are also aligned completely with the paper, though there is a mistake the _comment_ for the first one (see the first comment in [#164](https://github.com/nicegeo/nicegeo/issues/164)).
+These are also aligned completely with the paper.
 
 ## Same Side Axioms
 
