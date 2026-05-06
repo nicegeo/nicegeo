@@ -358,6 +358,7 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
             ~given:(pp_term st.elab_ctx lhs)
             ()
     )
+
 (** Breaks goal of the form [A and B] into two subgoals for [A] and [B] by applying
     [And.intro]. Fails if the current goal is not a conjunction. *)
 let split (st : proof_state) : tactic_result =
@@ -383,6 +384,7 @@ let split (st : proof_state) : tactic_result =
             ~goal:(pp_term st.elab_ctx ty)
             ()
       )
+
 (** Helper function that creates a tuple (hole_id, hole_term) where the hole_term is just
     the Hole term corresponding to the created hole ID *)
 let create_hole () : int * term =
