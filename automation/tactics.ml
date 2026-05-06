@@ -6,6 +6,9 @@ open Elab.Tactic
 
 module TEM = Tactic_error_messages
 
+let set_error_mood mood =
+  Tactic_error_messages.set_mood mood
+
 let succeed st = Success st
 let fail msg = TEM.simple_failure msg
 
@@ -20,17 +23,17 @@ let catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
 
 let beta_nf (e : ctx) (tm : term) : term = Elab.Reduce.reduce e tm
 
-(** [seq t1 t2] applies t1 to the state. If it succeeds, it applies t2 to the new state.
+(* [seq t1 t2] applies t1 to the state. If it succeeds, it applies t2 to the new state.
 *)
 let seq (t1 : tactic) (t2 : tactic) (st : proof_state) : tactic_result =
   match t1 st with Failure msg -> Failure msg | Success st_new -> t2 st_new
 
-(** [try_tac t] attempts to apply t. If t fails, it simply does nothing and succeeds with
+(* [try_tac t] attempts to apply t. If t fails, it simply does nothing and succeeds with
     the original state. *)
 let try_tac (t : tactic) (st : proof_state) : tactic_result =
   match t st with Success st_new -> Success st_new | Failure _ -> succeed st
 
-(** [repeat t] applies t over and over until it fails, then returns the last successful
+(* [repeat t] applies t over and over until it fails, then returns the last successful
     state. *)
 let rec repeat (t : tactic) (st : proof_state) : tactic_result =
   match t st with
@@ -63,7 +66,7 @@ let destruct_eq (e : ctx) (t : term) : term * term * term =
       (a, lhs, rhs)
   | _ -> failwith (Printf.sprintf "expected 'Eq A lhs rhs', got '%s'" (pp_term e t))
 
-(** [Eq A lhs rhs] when [lhs] and [rhs] are definitionally equal, proof term is
+(* [Eq A lhs rhs] when [lhs] and [rhs] are definitionally equal, proof term is
     + [@refl A lhs]. *)
 let reflexivity (st : proof_state) : tactic_result =
   match current_goal st with
@@ -107,14 +110,14 @@ let exact (tm : term) (st : proof_state) : tactic_result =
           let st = close_goal g.goal_id st in
           succeed st)
 
-(** Modifies the contents of [tbl1] to the contents of [tbl2]. Useful for restoring the
+(* Modifies the contents of [tbl1] to the contents of [tbl2]. Useful for restoring the
     state of the ctx.metas table. *)
 let hashtbl_set tbl1 tbl2 =
   if tbl1 != tbl2 then (
     Hashtbl.clear tbl1;
     Hashtbl.iter (fun k v -> Hashtbl.replace tbl1 k v) tbl2)
 
-(** [apply tm st] attempts to solve the current goal by applying [tm].
+(* [apply tm st] attempts to solve the current goal by applying [tm].
 
     The tactic repeatedly tries [tm], [tm ?m1], [tm ?m1 ?m2], ... by introducing fresh
     metavariables as arguments until the inferred type of the application unifies with the
@@ -355,7 +358,7 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
             ~given:(pp_term st.elab_ctx lhs)
             ()
     )
-(** Breaks goal of the form [A and B] into two subgoals for [A] and [B] by applying
+(* Breaks goal of the form [A and B] into two subgoals for [A] and [B] by applying
     [And.intro]. Fails if the current goal is not a conjunction. *)
 let split (st : proof_state) : tactic_result =
   match current_goal st with
@@ -380,21 +383,21 @@ let split (st : proof_state) : tactic_result =
             ~goal:(pp_term st.elab_ctx ty)
             ()
       )
-(** Helper function that creates a tuple (hole_id, hole_term) where the hole_term is just
+(* Helper function that creates a tuple (hole_id, hole_term) where the hole_term is just
     the Hole term corresponding to the created hole ID *)
 let create_hole () : int * term =
   let hole_id = gen_hole_id () in
   let hole_term = mk_hole hole_id in
   (hole_id, hole_term)
 
-(** Get the solution term for the hole `hole_id`, or return None if there is no solution
+(* Get the solution term for the hole `hole_id`, or return None if there is no solution
     for the given hole (i.e. unification couldn't find a solution) *)
 let get_hole_sol (ctx : ctx) (hole_id : int) : term option =
   match Hashtbl.find_opt ctx.metas hole_id with
   | Some mvar -> mvar.sol
   | None -> failwith "internal nicegeo programming error: created hole does not exist!"
 
-(** Create a new context by adding each hole that appears in `expected_term` to the
+(* Create a new context by adding each hole that appears in `expected_term` to the
     existing context `ctx` if it hasn't been added already.
 
     This function doesn't modify `ctx` itself, instead returning the new context, in
@@ -414,7 +417,7 @@ let ctx_with_new_holes (g : goal) (ctx : ctx) (expected_term : term) : ctx =
   create_metas new_ctx expected_term outer_local_var_bids;
   new_ctx
 
-(** Use unification to both check if a given term `t` matches a certain expected format,
+(* Use unification to both check if a given term `t` matches a certain expected format,
     where the expected format is specified as a term with holes for places where arbitrary
     values are allowed. Specifically, The expected format is specified by `expected_term`,
     which should use new holes created by the user (e.g. using `create_hole`) for the
@@ -472,7 +475,7 @@ let exists (a : term) (st : proof_state) : tactic_result =
       | None -> fail_nice "exists" TEM.ExistsExpected)
   | None -> fail_no_goals "exists"
 
-(** Infer the values of A and B such that the goal type for `g` is `Or A B`, or return
+(* Infer the values of A and B such that the goal type for `g` is `Or A B`, or return
     None if values of A and B can't be found *)
 let infer_or_type (g : goal) (st : proof_state) : (term * term) option =
   let ctx = st.elab_ctx in
@@ -486,7 +489,7 @@ let infer_or_type (g : goal) (st : proof_state) : (term * term) option =
   | Some left_type, Some right_type -> Some (left_type, right_type)
   | _ -> None
 
-(** Constructor tactic for Or that behaves like `right` (i.e. turns the right side of the
+(* Constructor tactic for Or that behaves like `right` (i.e. turns the right side of the
     Or into the goal) if the argument `use_right` is true, and behaves like `left` if not
 *)
 let constructor_or_tactic (use_right : bool) (st : proof_state) : tactic_result =
@@ -515,7 +518,7 @@ let constructor_or_tactic (use_right : bool) (st : proof_state) : tactic_result 
 let left = constructor_or_tactic false
 let right = constructor_or_tactic true
 
-(** eliminating an Or. name1 is the name of the left hypothesis in the first subgoal,
+(* eliminating an Or. name1 is the name of the left hypothesis in the first subgoal,
     name2 is the name of the right hypothesis in the second subgoal *)
 let cases (tm : term) (name1 : string) (name2 : string) (st : proof_state) : tactic_result
     =
@@ -606,7 +609,7 @@ let choose (names : string * string) (e : term) (st : proof_state) : tactic_resu
       | _ -> fail_nice "choose" TEM.ChooseExpected)
   | None -> fail_no_goals "choose"
 
-(** Recursively destructs a term whose type is an And tree into all of its leaves named
+(* Recursively destructs a term whose type is an And tree into all of its leaves named
     from left to right *)
 let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_result =
   match current_goal st with
