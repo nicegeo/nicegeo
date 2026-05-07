@@ -309,7 +309,7 @@ let get_rewrite_motives (ctx : ctx) (t : term) (ty : term) (pat : term) : term l
   if has_bid bid abstracted then [ mk_fun (Some "x") bid ty abstracted ] else []
 
 (*
-  Given a zterm `t : lhs = rhs`, it rewrites all occurrences of `lhs`
+  Given a term `t : lhs = rhs`, it rewrites all occurrences of `lhs`
   to being `rhs` in the new goal.
 *)
 let rewrite (t : term) (st : proof_state) : tactic_result =
