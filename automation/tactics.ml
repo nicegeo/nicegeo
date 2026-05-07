@@ -3,7 +3,6 @@ open Elab.Types
 open Elab.Proofstate
 open Elab.Typecheck
 open Elab.Tactic
-
 module TEM = Tactic_error_messages
 
 let set_error_mood mood = Tactic_error_messages.set_error_mood mood
@@ -76,12 +75,12 @@ let reflexivity (st : proof_state) : tactic_result =
         succeed st
       else
         TEM.nice_failure
-            ~tactic:"reflexivity"
-            ~category:TEM.ReflexivityNotDefeq
-            ~goal:(pp_term st.elab_ctx ty)
-            ~details:
-              ["lhs: " ^ pp_term st.elab_ctx lhs; "rhs: " ^ pp_term st.elab_ctx rhs]
-            ()
+          ~tactic:"reflexivity"
+          ~category:TEM.ReflexivityNotDefeq
+          ~goal:(pp_term st.elab_ctx ty)
+          ~details:
+            [ "lhs: " ^ pp_term st.elab_ctx lhs; "rhs: " ^ pp_term st.elab_ctx rhs ]
+          ()
 (* need to map to existing error categories*)
 
 let exact (tm : term) (st : proof_state) : tactic_result =

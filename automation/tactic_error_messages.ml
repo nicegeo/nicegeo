@@ -1,6 +1,5 @@
 open Elab.Tactic
 
-
 type mood =
   | Calm
   | Cheerful
@@ -25,9 +24,9 @@ type nice_message = {
   text : string;
   mood : mood;
 }
+
 let mood_names = [ "calm"; "cheerful"; "minimal"; "funny" ]
 let available_moods = String.concat ", " mood_names
-
 
 let mood_of_string s =
   match String.lowercase_ascii s with
@@ -51,15 +50,20 @@ let default_mood : mood ref =
 
 let set_default_mood mood = default_mood := mood
 let get_default_mood () = !default_mood
-
 let () = Random.self_init ()
 
 let messages_for = function
   | ReflexivityNotDefeq ->
       [
-        { text = "Hey, they looked definitionally equal to me too, no stress."; mood = Calm };
+        {
+          text = "Hey, they looked definitionally equal to me too, no stress.";
+          mood = Calm;
+        };
         { text = "The two sides are not definitionally equal."; mood = Minimal };
-        { text = "Reflexivity stared very hard, but the two sides did not blink."; mood = Funny };
+        {
+          text = "Reflexivity stared very hard, but the two sides did not blink.";
+          mood = Funny;
+        };
       ]
   | ExactFailed ->
       [
@@ -71,9 +75,13 @@ let messages_for = function
       [
         { text = "You are great at applying yourself, keep going!"; mood = Funny };
         { text = "The theorem could not be applied to the current goal."; mood = Minimal };
-        { text = "This does not line up with the goal yet, but the idea may still be useful."; mood = Calm };
+        {
+          text =
+            "This does not line up with the goal yet, but the idea may still be useful.";
+          mood = Calm;
+        };
       ]
-(* Removing the messages for NoGoalsLeft to make compatible with current test strutures *)
+  (* Removing the messages for NoGoalsLeft to make compatible with current test strutures *)
   | NoGoalsLeft ->
       [
         { text = ""; mood = Cheerful };
@@ -84,7 +92,10 @@ let messages_for = function
       [
         { text = "intro needs the goal to be an implication or forall."; mood = Minimal };
         { text = "Nothing to introduce here yet."; mood = Calm };
-        { text = "intro reached for a hypothesis, but the goal had no handle."; mood = Funny };
+        {
+          text = "intro reached for a hypothesis, but the goal had no handle.";
+          mood = Funny;
+        };
       ]
   | SplitExpectedAnd ->
       [
@@ -100,8 +111,14 @@ let messages_for = function
       ]
   | RewriteFailed ->
       [
-        { text = "rewrite could not find the left-hand side in the goal."; mood = Minimal };
-        { text = "The equality is valid, but I could not find where to use it."; mood = Calm };
+        {
+          text = "rewrite could not find the left-hand side in the goal.";
+          mood = Minimal;
+        };
+        {
+          text = "The equality is valid, but I could not find where to use it.";
+          mood = Calm;
+        };
         { text = "rewrite looked everywhere and came back empty-handed."; mood = Funny };
       ]
   | ExistsExpected ->
@@ -116,7 +133,10 @@ let messages_for = function
       ]
   | DestructExpectedAnd ->
       [
-        { text = "destruct_ands needs a term whose type is a conjunction."; mood = Minimal };
+        {
+          text = "destruct_ands needs a term whose type is a conjunction.";
+          mood = Minimal;
+        };
         { text = "I could not break this term into And-components."; mood = Calm };
       ]
   | CustomFailure msg ->

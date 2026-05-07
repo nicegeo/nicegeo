@@ -26,7 +26,6 @@ val string_of_mood : mood -> string
 val available_moods : string
 val set_default_mood : mood -> unit
 val get_default_mood : unit -> mood
-
 val choose_message : ?mood:mood -> tactic_error_category -> string
 
 val nice_failure :
