@@ -3,9 +3,13 @@ open Elab.Types
 open Elab.Proofstate
 open Elab.Typecheck
 open Elab.Tactic
+module TEM = Tactic_error_messages
 
+let set_error_mood mood = Tactic_error_messages.set_error_mood mood
 let succeed st = Success st
-let fail msg = Failure msg
+let fail msg = TEM.simple_failure msg
+let fail_no_goals tactic = TEM.no_goals tactic
+let fail_nice tactic category = TEM.nice_failure ~tactic ~category ()
 
 (* Used by future tactics that need to catch elaboration errors and return a Failure. *)
 let catch_elab (ectx : ctx) (f : unit -> tactic_result) : tactic_result =
@@ -60,7 +64,7 @@ let destruct_eq (e : ctx) (t : term) : term * term * term =
     + [@refl A lhs]. *)
 let reflexivity (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> fail "No goals remaining."
+  | None -> fail_no_goals "reflexivity"
   | Some g ->
       let ty = beta_nf st.elab_ctx g.goal_type in
       let _a, lhs, rhs = destruct_eq st.elab_ctx ty in
@@ -70,16 +74,18 @@ let reflexivity (st : proof_state) : tactic_result =
         let st = close_goal g.goal_id st in
         succeed st
       else
-        fail
-          (Printf.sprintf
-             "reflexivity: lhs '%s' and rhs '%s' are not definitionally equal."
-             (pp_term st.elab_ctx lhs)
-             (pp_term st.elab_ctx rhs))
+        TEM.nice_failure
+          ~tactic:"reflexivity"
+          ~category:TEM.ReflexivityNotDefeq
+          ~goal:(pp_term st.elab_ctx ty)
+          ~details:
+            [ "lhs: " ^ pp_term st.elab_ctx lhs; "rhs: " ^ pp_term st.elab_ctx rhs ]
+          ()
 (* need to map to existing error categories*)
 
 let exact (tm : term) (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> fail "No goals remaining."
+  | None -> fail_no_goals "exact"
   | Some g ->
       (* Catch ill-typed or unknown-name errors from infertype as Failure
         rather than letting them escape as exceptions. *)
@@ -115,7 +121,7 @@ let hashtbl_set tbl1 tbl2 =
     shape yields a well-typed term that unifies with the goal, the tactic fails. *)
 let apply (tm : term) (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> fail "No goals remaining."
+  | None -> fail_no_goals "apply"
   | Some g ->
       (* Create a copy of the metas state for restoration. This is required because the 
          tactic interface expects us to modify the passed in st.elab_ctx.metas as it does 
@@ -152,7 +158,7 @@ let apply (tm : term) (st : proof_state) : tactic_result =
           (* infertype failed so term is not well-typed, probably added too many terms so we are done *)
           (* restore metas state *)
           hashtbl_set st.elab_ctx.metas metas;
-          Failure "application of term does not unify with the goal"
+          fail_nice "apply" TEM.ApplyUnificationFailed
       in
       loop tm []
 
@@ -169,7 +175,7 @@ let ensure_sorry_ax (st : proof_state) : unit =
 
 let sorry (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> fail "No goals remaining."
+  | None -> fail_no_goals "sorry"
   | Some g ->
       Printf.eprintf "Warning: proof used sorry - this proof is not valid. \n";
       ensure_sorry_ax st;
@@ -180,7 +186,7 @@ let sorry (st : proof_state) : tactic_result =
 
 let intro (name : string) (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> Failure "intro: no goals remaining"
+  | None -> fail_no_goals "intro"
   | Some g -> (
       match (whnf st.elab_ctx g.goal_type).inner with
       | Arrow (_, bid, premise_ty, conclusion_ty) ->
@@ -200,14 +206,14 @@ let intro (name : string) (st : proof_state) : tactic_result =
           in
           let remaining_goals = List.tl st_assigned.open_goals in
           Success { st_assigned with open_goals = new_goal :: remaining_goals }
-      | _ -> Failure "intro: goal is not an implication or forall")
+      | _ -> fail_nice "intro" TEM.IntroExpectedArrow)
 
 let rec intros (names : string list) : tactic =
   match names with [] -> succeed | name :: rest -> intro name >> intros rest
 
 let have (name : string) (ty : term) (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> Failure "have: no goals remaining"
+  | None -> fail_no_goals "have"
   | Some g ->
       create_metas st.elab_ctx ty (List.map (fun h -> h.bid) g.lctx);
       (* fill holes if not itself a hole *)
@@ -308,7 +314,7 @@ let get_rewrite_motives (ctx : ctx) (t : term) (ty : term) (pat : term) : term l
 *)
 let rewrite (t : term) (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> fail "No goals remaining."
+  | None -> fail_no_goals "rewrite"
   | Some g -> (
       create_metas st.elab_ctx t (List.map (fun h -> h.bid) g.lctx);
       let t_ty = beta_nf st.elab_ctx (infertype st.elab_ctx g.lctx t) in
@@ -336,17 +342,18 @@ let rewrite (t : term) (st : proof_state) : tactic_result =
           let st = close_goal g.goal_id st in
           succeed st
       | [] ->
-          fail
-            (Printf.sprintf
-               "rewrite: failed to find instance of '%s' in goal '%s'"
-               (pp_term st.elab_ctx lhs)
-               (pp_term st.elab_ctx g.goal_type)))
+          TEM.nice_failure
+            ~tactic:"rewrite"
+            ~category:TEM.RewriteFailed
+            ~goal:(pp_term st.elab_ctx g.goal_type)
+            ~given:(pp_term st.elab_ctx lhs)
+            ())
 
 (** Breaks goal of the form [A and B] into two subgoals for [A] and [B] by applying
     [And.intro]. Fails if the current goal is not a conjunction. *)
 let split (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> fail "No goals remaining."
+  | None -> fail_no_goals "split"
   | Some g -> (
       let ty = beta_nf st.elab_ctx g.goal_type in
       match ty.inner with
@@ -361,10 +368,11 @@ let split (st : proof_state) : tactic_result =
 
           succeed st
       | _ ->
-          fail
-            (Printf.sprintf
-               "split: goal '%s' is not a conjunction."
-               (pp_term st.elab_ctx ty)))
+          TEM.nice_failure
+            ~tactic:"split"
+            ~category:TEM.SplitExpectedAnd
+            ~goal:(pp_term st.elab_ctx ty)
+            ())
 
 (** Helper function that creates a tuple (hole_id, hole_term) where the hole_term is just
     the Hole term corresponding to the created hole ID *)
@@ -455,8 +463,8 @@ let exists (a : term) (st : proof_state) : tactic_result =
           let st = assign_meta g.goal_id proof st in
           let st = close_goal g.goal_id st in
           succeed st
-      | None -> fail "Goal must have the form [Exists A p]")
-  | None -> fail "No goals remaining"
+      | None -> fail_nice "exists" TEM.ExistsExpected)
+  | None -> fail_no_goals "exists"
 
 (** Infer the values of A and B such that the goal type for `g` is `Or A B`, or return
     None if values of A and B can't be found *)
@@ -477,10 +485,10 @@ let infer_or_type (g : goal) (st : proof_state) : (term * term) option =
 *)
 let constructor_or_tactic (use_right : bool) (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> fail "No goals remaining"
+  | None -> fail_no_goals (if use_right then "right" else "left")
   | Some g -> (
       match infer_or_type g st with
-      | None -> fail "Goal must be of the form [Or A B]"
+      | None -> fail_nice (if use_right then "right" else "left") TEM.LeftRightExpectedOr
       | Some (left_type, right_type) ->
           let new_goal_type = if use_right then right_type else left_type in
           let new_goal_hole, st = fresh_goal st g.lctx new_goal_type in
@@ -503,7 +511,7 @@ let right = constructor_or_tactic true
 let cases (tm : term) (name1 : string) (name2 : string) (st : proof_state) : tactic_result
     =
   match current_goal st with
-  | None -> fail "No goals remaining"
+  | None -> fail_no_goals "cases"
   | Some g -> (
       create_metas st.elab_ctx tm (List.map (fun h -> h.bid) g.lctx);
       let tm_ty = Elab.Typecheck.infertype st.elab_ctx g.lctx tm in
@@ -531,7 +539,7 @@ let cases (tm : term) (name1 : string) (name2 : string) (st : proof_state) : tac
           let st = assign_meta g.goal_id proof st in
           let st = close_goal g.goal_id st in
           succeed st
-      | _ -> fail "Argument must have type [Or A B]")
+      | _ -> fail "cases: argument must have type [Or A B]")
 
 (*
  * Infer both [A] and the motive [p] for the choose tactic, by way of unifying
@@ -586,14 +594,14 @@ let choose (names : string * string) (e : term) (st : proof_state) : tactic_resu
           let st = assign_meta g.goal_id proof st in
           let st = close_goal g.goal_id st in
           succeed st
-      | _ -> fail "Argument must have the type [Exists A p]")
-  | None -> fail "No goals remaining"
+      | _ -> fail_nice "choose" TEM.ChooseExpected)
+  | None -> fail_no_goals "choose"
 
 (** Recursively destructs a term whose type is an And tree into all of its leaves named
     from left to right *)
 let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_result =
   match current_goal st with
-  | None -> fail "No goals remaining."
+  | None -> fail_no_goals "destruct_ands"
   | Some g -> (
       create_metas st.elab_ctx tm (List.map (fun h -> h.bid) g.lctx);
       let tm_ty = infertype st.elab_ctx g.lctx tm in
@@ -666,7 +674,7 @@ let destruct_ands (tm : term) (names : string list) (st : proof_state) : tactic_
                 let st = { st with open_goals = new_goal :: st.open_goals } in
                 succeed st
           | Error msg -> fail msg)
-      | _ -> fail "destruct_ands: expected a term of type And A B")
+      | _ -> fail_nice "destruct_ands" TEM.DestructExpectedAnd)
 
 (* Infer the type of the distinct_from hypothesis for any of the distinct tactics *)
 let infer_distinct (a : term) (h : term) (g : goal) (st : proof_state) :
@@ -697,7 +705,7 @@ let infer_distinct (a : term) (h : term) (g : goal) (st : proof_state) :
     infer these in concrete instances. *)
 let distinct_points (name : string) (a : term) (b : term) (h : term) (st : proof_state) =
   match current_goal st with
-  | None -> fail "No goals remaining."
+  | None -> fail_no_goals "distinct_points"
   | Some g -> (
       match infer_distinct a h g st with
       | Some pts, Some ls, Some cs ->
@@ -843,6 +851,16 @@ let rec metric (st : proof_state) : tactic_result =
           | None -> Failure "metric: failed to find a contradiction in the context"))
 
 let register () =
+  register_tactic
+    ~documentation:
+      {
+        description =
+          "Sets the mood/style used by tactic error messages for the rest of this run.";
+        parameters = [ "calm | cheerful | minimal | funny" ];
+        example = "set_error_mood funny.";
+      }
+    "set_error_mood"
+    Register.(unary_ident TEM.set_error_mood);
   register_tactic
     ~documentation:
       {
