@@ -18,7 +18,6 @@ depends: [
   "alcotest" {= "1.9.1" & with-test}
   "ppx_expect" {= "v0.17.3" & with-test}
   "odoc" {with-doc}
-  "menhir" {>= "20180523"}
 ]
 build: [
   ["dune" "subst"] {dev}
