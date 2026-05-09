@@ -1,35 +1,12 @@
 (* NiceGeo walkthrough — hands-on tutorial
-   Open the NiceGeo activity bar (grid icon) and the Proof State view.
-   Turn on Proof Mode (command palette: "NiceGeo: Enter Proof Mode" or status bar).
-
-   The proof state panel updates as you move the cursor inside a tactic script:
-   before the end of a tactic line, that tactic is not yet applied; at or after
-   the line end, it is applied. Try moving line by line through the proof below.
-*)
-
-Axiom TrueI : True
-
-Definition walkthrough_dup
-  : (A : Prop) -> A -> A
-  := fun (A : Prop) (a : A) => a
-
-Theorem walkthrough_demo_term
-  : (P : Prop) -> P -> P
-  := fun (P : Prop) (p : P) => walkthrough_dup P p
-
-(* --- Hover / go-to-definition practice ---
-   Put the cursor on walkthrough_dup or TrueI below and use:
-   - Hover for types and docs
-   - F12 (Go to Definition) on names
-*)
-
-Theorem walkthrough_demo_hover : True
-  := TrueI
-
-(* --- Tactic script (Proof Mode shines here) ---
-   Step 1: Enter Proof Mode and open Proof State.
-   Step 2: Click inside "intros A a." then move to end of line vs middle.
-   Step 3: After Qed., the whole script is treated as applied.
+   ------------------------------------------------------------
+   Tactic scripts first: every block below uses Proof. … Qed.
+   Turn on Proof Mode, open the Proof State view (NiceGeo activity bar), then
+   move the caret line-by-line inside a proof:
+   - Before the end of a tactic line → that tactic is not applied yet.
+   - At or after the end of the line → it is applied.
+   After Qed., the whole script counts as applied.
+   ------------------------------------------------------------
 *)
 
 Theorem walkthrough_id_tactic : (A : Type) -> A -> A
@@ -38,9 +15,47 @@ Proof.
   exact a.
 Qed.
 
-Theorem walkthrough_and : (A : Prop) -> (B : Prop) -> And A B -> A
+Theorem walkthrough_and_elim : (A : Prop) -> (B : Prop) -> And A B -> A
 Proof.
   intros A B h.
   destruct_ands h a b.
   exact a.
 Qed.
+
+Theorem walkthrough_and_swap : (A : Prop) -> (B : Prop) -> And A B -> And B A
+Proof.
+  intros A B h.
+  destruct_ands h a b.
+  split.
+    apply b.
+    apply a.
+Qed.
+
+(* --- Hover and go-to-definition (same file) ---
+   Names below are used in the next proofs. Put the caret on walkthrough_dup,
+   TrueI, or local names after intros and use hover; F12 jumps to definitions.
+*)
+
+Axiom TrueI : True
+
+Definition walkthrough_dup
+  : (A : Prop) -> A -> A
+  := fun (A : Prop) (a : A) => a
+
+Theorem walkthrough_demo_hover : True
+Proof.
+  exact TrueI.
+Qed.
+
+Theorem walkthrough_demo_chain
+  : (P : Prop) -> P -> P
+Proof.
+  intros P p.
+  exact (walkthrough_dup P p).
+Qed.
+
+(* For contrast: term-style proof (no Proof./Qed.) — Proof Mode targets scripts above. *)
+
+Theorem walkthrough_demo_term_only
+  : (P : Prop) -> P -> P
+  := fun (P : Prop) (p : P) => walkthrough_dup P p

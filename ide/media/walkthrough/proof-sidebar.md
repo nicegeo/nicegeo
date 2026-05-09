@@ -1,5 +1,7 @@
-# Show Proof State
+# Proof State sidebar
 
-Open the **NiceGeo** activity bar container and select **Proof State**.
+Open the **NiceGeo** icon in the **activity bar** (left), then choose **Proof State**.
 
-Keep the tutorial `.ncg` focused and click inside a tactic line—move the caret before vs after the end of a tactic to see goals update.
+Pin or widen the view if you like. With Proof Mode **on** and the **tutorial** editor focused, click on different lines inside a `Proof.` … `Qed.` block — especially between **`intros`** and **`exact`** — and watch goals and hypotheses change.
+
+If nothing updates, confirm Proof Mode is on, the active document is the tutorial `.ncg`, and the view is actually visible (some layouts hide secondary side bars).

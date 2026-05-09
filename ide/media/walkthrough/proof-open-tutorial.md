@@ -1,7 +1,7 @@
-# Open the tutorial file
+# Open the tutorial `.ncg`
 
-Open the bundled **walkthrough tutorial** (`.ncg`) in a split editor so you can follow comments inside the file while keeping this walkthrough visible.
+The walkthrough tutorial is a single **`.ncg`** file that **begins with tactic proofs** (`Proof.` … `Qed.`), so you are immediately in the setting Proof Mode is built for.
 
-Use the action in the step description, or **NiceGeo: Open walkthrough tutorial** from the Command Palette.
+Use the action in the step on the left or **Command Palette → NiceGeo: Open walkthrough tutorial**. It opens **beside** this page.
 
-The file is read-only inside the extension folder—use **File → Save As…** if you want a writable copy in your workspace.
+**Read-only note:** the file lives under the extension install directory. To edit freely, use **File → Save As…** into your workspace.
