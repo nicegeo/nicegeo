@@ -94,6 +94,21 @@ export function activate(context: vscode.ExtensionContext) {
     });
   };
 
+  const openBundledNcGAtLine = async (relativePath: string, line: number) => {
+    const uri = vscode.Uri.file(context.asAbsolutePath(relativePath));
+    const document = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(document, {
+      viewColumn: vscode.ViewColumn.Beside,
+      preview: false,
+    });
+    const target = new vscode.Position(line, 0);
+    editor.selection = new vscode.Selection(target, target);
+    editor.revealRange(
+      new vscode.Range(target, target),
+      vscode.TextEditorRevealType.InCenter,
+    );
+  };
+
   context.subscriptions.push(
     vscode.commands.registerCommand("nicegeo.walkthrough.openQuickSample", async () => {
       await openBundledNcG(path.join("media", "tutorials", "quicksample.ncg"));
@@ -103,6 +118,52 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("nicegeo.walkthrough.openProofTutorial", async () => {
       await openBundledNcG(path.join("media", "tutorials", "nicegeo-walkthrough-tutorial.ncg"));
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openProofModeWalkthrough", async () => {
+      await vscode.commands.executeCommand(
+        "workbench.action.openWalkthrough",
+        "nicegeo.nicegeo-ide#nicegeo.proofMode",
+        false,
+      );
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openSettings", async () => {
+      await vscode.commands.executeCommand("workbench.action.openSettings", "nicegeo");
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureDiagnostics", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 9);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureCompletion", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 22);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureHover", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 33);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureGoto", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 44);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureProofState", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 54);
     }),
   );
 

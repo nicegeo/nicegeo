@@ -1,0 +1,28 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Run diagnostics in NiceGeo">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="56" y="64" width="1168" height="592" rx="16" fill="#252526" stroke="#3c3c3c"/>
+  <text x="96" y="118" fill="#cccccc" font-size="30" font-family="Arial, sans-serif">Run Diagnostics</text>
+
+  <rect x="96" y="148" width="710" height="468" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="124" y="192" fill="#9cdcfe" font-size="20" font-family="monospace">Theorem broken : (A : Type) -&gt; A -&gt; A</text>
+  <text x="124" y="228" fill="#c586c0" font-size="20" font-family="monospace">Proof.</text>
+  <text x="124" y="264" fill="#ce9178" font-size="20" font-family="monospace">  intros A a.</text>
+  <text x="124" y="300" fill="#f48771" font-size="20" font-family="monospace">  exat a.</text>
+  <line x1="124" y1="308" x2="215" y2="308" stroke="#f14c4c" stroke-width="3"/>
+  <text x="124" y="336" fill="#f48771" font-size="16" font-family="Arial, sans-serif">Unknown tactic: exat (did you mean exact?)</text>
+  <text x="124" y="372" fill="#c586c0" font-size="20" font-family="monospace">Qed.</text>
+
+  <rect x="838" y="148" width="346" height="228" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="862" y="190" fill="#dcdcaa" font-size="22" font-family="Arial, sans-serif">Command Palette</text>
+  <rect x="862" y="212" width="298" height="42" rx="8" fill="#094771" stroke="#0e639c"/>
+  <text x="878" y="239" fill="#ffffff" font-size="18" font-family="Arial, sans-serif">NiceGeo: Run Diagnostics</text>
+  <text x="862" y="284" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Or save / type based on settings.</text>
+
+  <rect x="838" y="388" width="346" height="228" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="862" y="430" fill="#dcdcaa" font-size="22" font-family="Arial, sans-serif">Output channel</text>
+  <text x="862" y="468" fill="#89d185" font-size="16" font-family="monospace">[nicegeo] checking file...</text>
+  <text x="862" y="496" fill="#f48771" font-size="16" font-family="monospace">error: Unknown tactic "exat"</text>
+  <text x="862" y="524" fill="#cccccc" font-size="16" font-family="monospace">hint: use "exact"</text>
+
+  <text x="96" y="640" fill="#bbbbbb" font-size="18" font-family="Arial, sans-serif">Tip: keep the .ncg editor focused before running diagnostics.</text>
+</svg>

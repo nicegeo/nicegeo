@@ -1,0 +1,15 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NiceGeo go to definition feature">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="70" y="70" width="1140" height="580" rx="16" fill="#252526" stroke="#3c3c3c"/>
+  <text x="110" y="126" fill="#cccccc" font-size="32" font-family="Arial, sans-serif">Go To Definition</text>
+  <text x="110" y="162" fill="#bbbbbb" font-size="20" font-family="Arial, sans-serif">Use F12 on symbols to jump to definitions.</text>
+
+  <rect x="110" y="210" width="480" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="140" y="260" fill="#9cdcfe" font-size="18" font-family="monospace">Theorem use_dup : P -&gt; P</text>
+  <text x="140" y="294" fill="#9cdcfe" font-size="18" font-family="monospace">  := dup</text>
+
+  <rect x="650" y="210" width="520" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="680" y="260" fill="#dcdcaa" font-size="20" font-family="Arial, sans-serif">Definition dup</text>
+  <text x="680" y="300" fill="#cccccc" font-size="17" font-family="monospace">P -&gt; P</text>
+  <text x="680" y="336" fill="#ce9178" font-size="17" font-family="monospace">:= fun (p: P) =&gt; p</text>
+</svg>

@@ -82,6 +82,41 @@
         "title": "Open walkthrough tutorial"
       },
       {
+        "command": "nicegeo.walkthrough.openProofModeWalkthrough",
+        "category": "NiceGeo",
+        "title": "Open Proof Mode walkthrough"
+      },
+      {
+        "command": "nicegeo.walkthrough.openSettings",
+        "category": "NiceGeo",
+        "title": "Open NiceGeo settings"
+      },
+      {
+        "command": "nicegeo.walkthrough.openFeatureDiagnostics",
+        "category": "NiceGeo",
+        "title": "Walkthrough: Open diagnostics section"
+      },
+      {
+        "command": "nicegeo.walkthrough.openFeatureCompletion",
+        "category": "NiceGeo",
+        "title": "Walkthrough: Open completion section"
+      },
+      {
+        "command": "nicegeo.walkthrough.openFeatureHover",
+        "category": "NiceGeo",
+        "title": "Walkthrough: Open hover section"
+      },
+      {
+        "command": "nicegeo.walkthrough.openFeatureGoto",
+        "category": "NiceGeo",
+        "title": "Walkthrough: Open go-to-definition section"
+      },
+      {
+        "command": "nicegeo.walkthrough.openFeatureProofState",
+        "category": "NiceGeo",
+        "title": "Walkthrough: Open proof-state section"
+      },
+      {
         "command": "nicegeo.walkthrough.ackQuickstartMore",
         "category": "NiceGeo",
         "title": "Walkthrough: mark quick start finished"
@@ -202,55 +237,113 @@
       {
         "id": "nicegeo.quickstart",
         "title": "NiceGeo: Quick start",
-        "description": "See what the extension does, open a sample file, and run diagnostics.",
+        "description": "Quick tour of NiceGeo features and setup.",
         "steps": [
           {
             "id": "nicegeo.quickstart.welcome",
             "title": "What is NiceGeo IDE?",
-            "description": "This extension adds **NiceGeo** (`.ncg`) support in VS Code: diagnostics, completion, hover, go-to-definition, **Proof Mode** with a live **Proof State** panel, and an optional visual editor.\n\nUse the overview on the right, then continue with the next step.",
+            "description": "**NiceGeo IDE** adds language intelligence for **`.ncg`** in VS Code.\n\nIt includes diagnostics, completion, hover, go-to-definition, Proof Mode with the Proof State sidebar, and optional visual tooling.\n\nRead the overview and continue.",
             "media": {
-              "markdown": "media/walkthrough/quickstart-welcome.md"
+              "image": "media/walkthrough/quickstart-overview.svg",
+              "altText": "NiceGeo quick start overview with editor and proof state"
             }
           },
           {
             "id": "nicegeo.quickstart.toolchain",
-            "title": "Toolchain and settings",
-            "description": "Checks run on your machine via **opam** / **dune** (or a **nicegeo** binary on `PATH`, depending on settings). Install project deps from the NiceGeo repo when you work on real proofs.\n\nSearch settings for `nicegeo` to tune diagnostics and execution.",
+            "title": "Open NiceGeo settings",
+            "description": "Open filtered Settings for **NiceGeo** and review all key categories: execution, diagnostics, and proof-state behavior.\n\nUse the visual overview on the right, then open settings to apply your defaults.\n\n[Open NiceGeo settings](command:nicegeo.walkthrough.openSettings)",
             "media": {
-              "markdown": "media/walkthrough/quickstart-toolchain.md"
-            }
-          },
-          {
-            "id": "nicegeo.quickstart.sample",
-            "title": "Open the quick sample",
-            "description": "Open a tiny bundled `.ncg` in a split editor so the language server attaches.\n\n[Open quick sample](command:nicegeo.walkthrough.openQuickSample)",
-            "media": {
-              "markdown": "media/walkthrough/quickstart-sample.md"
+              "image": "media/walkthrough/quickstart-settings.svg",
+              "altText": "Categorized NiceGeo settings overview"
             },
             "completionEvents": [
-              "onCommand:nicegeo.walkthrough.openQuickSample"
+              "onCommand:nicegeo.walkthrough.openSettings"
             ]
           },
           {
             "id": "nicegeo.quickstart.diagnostics",
-            "title": "Run diagnostics",
-            "description": "With the **quick sample** editor focused, run a check manually (or rely on save/on-type if configured).\n\n[Run diagnostics](command:nicegeo.diagnostics.run)",
+            "title": "Diagnostics feature",
+            "description": "Open the guided feature file at the diagnostics section. Follow the comment there for what to do and what to expect.\n\n[See in action](command:nicegeo.walkthrough.openFeatureDiagnostics)",
             "media": {
-              "markdown": "media/walkthrough/quickstart-diagnostics.md"
+              "image": "media/walkthrough/quickstart-diagnostics.svg",
+              "altText": "NiceGeo diagnostics feature overview"
             },
             "completionEvents": [
-              "onCommand:nicegeo.diagnostics.run"
+              "onCommand:nicegeo.walkthrough.openFeatureDiagnostics"
+            ]
+          },
+          {
+            "id": "nicegeo.quickstart.completion",
+            "title": "Autocompletion feature",
+            "description": "Open the guided feature file at the autocompletion section. Follow the in-file comment for action and expected behavior.\n\n[See in action](command:nicegeo.walkthrough.openFeatureCompletion)",
+            "media": {
+              "image": "media/walkthrough/quickstart-completion.svg",
+              "altText": "NiceGeo autocompletion feature"
+            },
+            "completionEvents": [
+              "onCommand:nicegeo.walkthrough.openFeatureCompletion"
+            ]
+          },
+          {
+            "id": "nicegeo.quickstart.hover",
+            "title": "Hover feature",
+            "description": "Open the guided feature file at the hover section. The comment tells where to place the cursor and what hover should show.\n\n[See in action](command:nicegeo.walkthrough.openFeatureHover)",
+            "media": {
+              "image": "media/walkthrough/quickstart-hover.svg",
+              "altText": "NiceGeo hover feature"
+            },
+            "completionEvents": [
+              "onCommand:nicegeo.walkthrough.openFeatureHover"
+            ]
+          },
+          {
+            "id": "nicegeo.quickstart.goto",
+            "title": "Go-to-definition feature",
+            "description": "Open the guided feature file at the go-to-definition section. Follow the comment and press `F12` on the target symbol.\n\n[See in action](command:nicegeo.walkthrough.openFeatureGoto)",
+            "media": {
+              "image": "media/walkthrough/quickstart-goto.svg",
+              "altText": "NiceGeo go-to-definition feature"
+            },
+            "completionEvents": [
+              "onCommand:nicegeo.walkthrough.openFeatureGoto"
+            ]
+          },
+          {
+            "id": "nicegeo.quickstart.proofstate",
+            "title": "Proof state feature",
+            "description": "Open the guided feature file at the proof-state section. Then enter Proof Mode and observe updates while moving through tactics.\n\n[See in action](command:nicegeo.walkthrough.openFeatureProofState)",
+            "media": {
+              "image": "media/walkthrough/quickstart-proofstate.svg",
+              "altText": "NiceGeo proof state feature"
+            },
+            "completionEvents": [
+              "onCommand:nicegeo.walkthrough.openFeatureProofState",
+              "onCommand:nicegeo.proofMode.enter",
+              "onView:nicegeoProofStateWebview"
+            ]
+          },
+          {
+            "id": "nicegeo.quickstart.commands",
+            "title": "Manual commands (granular control)",
+            "description": "Most behavior is automated from settings. If you need fine control, use categorized commands from the palette.\n\n[Open Command Palette](command:workbench.action.showCommands)",
+            "media": {
+              "image": "media/walkthrough/quickstart-commands.svg",
+              "altText": "Categorized NiceGeo commands for manual control"
+            },
+            "completionEvents": [
+              "onCommand:workbench.action.showCommands"
             ]
           },
           {
             "id": "nicegeo.quickstart.more",
-            "title": "Go further",
-            "description": "Try **completion** (`Ctrl+Space` / `Cmd+Space`), then the **Proof Mode** walkthrough for the Proof State sidebar.\n\nOptionally [open the Visual Editor](command:nicegeo.visualEditor.open), or [mark this step complete](command:nicegeo.walkthrough.ackQuickstartMore).",
+            "title": "Explore more and contribute",
+            "description": "Continue with deeper hands-on learning and join project development.\n\n- [Open the Getting Started: Proof Mode tutorial](command:nicegeo.walkthrough.openProofModeWalkthrough)\n- [Contribute to the project on GitHub](https://github.com/nicegeo/nicegeo)\n\nWhen done, [mark this step complete](command:nicegeo.walkthrough.ackQuickstartMore).",
             "media": {
               "markdown": "media/walkthrough/quickstart-more.md"
             },
             "completionEvents": [
-              "onCommand:nicegeo.visualEditor.open",
+              "onCommand:nicegeo.walkthrough.openProofModeWalkthrough",
+              "onLink:https://github.com/nicegeo/nicegeo",
               "onCommand:nicegeo.walkthrough.ackQuickstartMore"
             ]
           }
@@ -259,20 +352,21 @@
       {
         "id": "nicegeo.proofMode",
         "title": "NiceGeo: Proof Mode tutorial",
-        "description": "Turn on Proof Mode, open Proof State, and follow a bundled tutorial file.",
+        "description": "Learn Proof Mode with live goal tracking.",
         "steps": [
           {
             "id": "nicegeo.proofMode.intro",
             "title": "Proof Mode in brief",
-            "description": "**Proof Mode** asks the language server for proof state **up to your cursor** inside tactic scripts. The **Proof State** view shows goals, hypotheses, and progress as you move the caret.\n\nRead the panel on the right, then continue.",
+            "description": "In **`Proof.` … `Qed.`** scripts, the server can report proof state **up to the cursor**. Moving the caret before vs after the end of a tactic line changes whether that tactic is applied in the snapshot; after **`Qed.`**, the whole script counts as done.\n\nThe **Proof State** view shows goals, hypotheses, and related detail as you move.\n\nRead the summary on the right, then continue.",
             "media": {
-              "markdown": "media/walkthrough/proof-intro.md"
+              "image": "media/walkthrough/proof-intro.svg",
+              "altText": "Proof mode cursor behavior and proof state overview"
             }
           },
           {
             "id": "nicegeo.proofMode.openTutorial",
             "title": "Open the tutorial file",
-            "description": "Open the walkthrough `.ncg` beside this page. It is read-only inside the extension folder—use **File → Save As…** if you want a writable copy in your workspace.\n\n[Open walkthrough tutorial](command:nicegeo.walkthrough.openProofTutorial)",
+            "description": "Open the bundled tutorial: it **leads with several `Proof.` … `Qed.` proofs**, then hover/go-to-definition practice, then a small term-style contrast at the end.\n\nIt opens **beside** this walkthrough. The path is inside the extension install (read-only); use **File → Save As…** for a workspace copy.\n\n[Open walkthrough tutorial](command:nicegeo.walkthrough.openProofTutorial)",
             "media": {
               "markdown": "media/walkthrough/proof-open-tutorial.md"
             },
@@ -283,7 +377,7 @@
           {
             "id": "nicegeo.proofMode.enter",
             "title": "Enter Proof Mode",
-            "description": "With the tutorial file focused, turn proof tracking on.\n\n[Enter Proof Mode](command:nicegeo.proofMode.enter)",
+            "description": "Focus the **tutorial** tab, then enable proof tracking so the sidebar can query the server.\n\n[Enter Proof Mode](command:nicegeo.proofMode.enter)",
             "media": {
               "markdown": "media/walkthrough/proof-enter-mode.md"
             },
@@ -294,9 +388,10 @@
           {
             "id": "nicegeo.proofMode.sidebar",
             "title": "Show Proof State",
-            "description": "Open the **NiceGeo** activity bar entry, then the **Proof State** view. You can also [focus the NiceGeo side bar](command:workbench.view.extension.nicegeoSidebar).\n\nMove the cursor inside a `Proof.` … `Qed.` block to see updates.",
+            "description": "Open **NiceGeo** in the activity bar, then **Proof State**. You can also [show the NiceGeo side bar](command:workbench.view.extension.nicegeoSidebar).\n\nClick inside the **first** `Proof.` … `Qed.` block in the tutorial and move line-by-line — watch goals update.",
             "media": {
-              "markdown": "media/walkthrough/proof-sidebar.md"
+              "image": "media/walkthrough/proof-sidebar.svg",
+              "altText": "Open NiceGeo sidebar and inspect proof state while moving cursor"
             },
             "completionEvents": [
               "onView:nicegeoProofStateWebview"
@@ -305,7 +400,7 @@
           {
             "id": "nicegeo.proofMode.play",
             "title": "Explore the tutorial",
-            "description": "In the tutorial file, step through tactics with the caret, use **hover** and **F12** on names, and watch **Proof State**.\n\n[Mark this step complete](command:nicegeo.walkthrough.ackProofPlay)",
+            "description": "Work through the file **top to bottom**: several tactic scripts, then **hover** / **F12** on `walkthrough_dup`, `TrueI`, and locals, then notice the final **term-only** theorem (no `Proof.`) as a contrast.\n\n[Mark this step complete](command:nicegeo.walkthrough.ackProofPlay)",
             "media": {
               "markdown": "media/walkthrough/proof-play.md"
             },

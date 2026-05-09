@@ -1,8 +1,19 @@
-# Toolchain
+# Core settings at a glance
 
-NiceGeo checks run through your machine’s **opam** / **dune** setup (or a **nicegeo** binary on `PATH`, depending on settings).
+Configure these first for a smooth experience:
 
-- From the NiceGeo project root, install deps: `opam install --deps-only --with-test .`
-- If something is missing, diagnostics and the output channel explain what to install.
+1. **Execution mode**  
+   `nicegeo.execution.mode`  
+   - `dune`: run from your project context  
+   - `installedBinary`: use `nicegeo` on `PATH`
 
-You can tune execution under **Settings → NiceGeo** (`nicegeo.execution.mode`: `dune` vs `installedBinary`).
+2. **Diagnostics trigger**  
+   `nicegeo.diagnostics.trigger` (`onSave`, `onType`, `both`)
+
+3. **Diagnostics debounce**  
+   `nicegeo.diagnostics.debounceMs` (typing responsiveness)
+
+4. **Proof state tracking**  
+   `nicegeo.proofState.followCursor` and `nicegeo.proofState.followCursorDebounceMs`
+
+If toolchain setup is incomplete, run **NiceGeo: Show Diagnostics Output** for actionable logs.

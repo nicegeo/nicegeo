@@ -1,5 +1,22 @@
-# Run diagnostics
+# Essential commands (manual control)
 
-With the quick sample **focused**, run **NiceGeo: Run Diagnostics** (Command Palette) or save the file if your setting runs checks on save.
+NiceGeo is mostly **automated** once your settings are configured:
 
-Squiggles and the **NiceGeo** output channel show parse/type issues and tooling hints.
+- diagnostics run based on `nicegeo.diagnostics.trigger`
+- proof-state follows cursor when enabled
+
+Use commands when you want explicit, granular control.
+
+## Diagnostics
+- [NiceGeo: Run Diagnostics](command:nicegeo.diagnostics.run)
+- [NiceGeo: Show Diagnostics Output](command:nicegeo.diagnostics.showOutput)
+
+## Proof mode
+- [NiceGeo: Enter Proof Mode](command:nicegeo.proofMode.enter)
+- [NiceGeo: Exit Proof Mode](command:nicegeo.proofMode.exit)
+- [NiceGeo: Toggle Proof Mode](command:nicegeo.proofMode.toggle)
+
+## Extras
+- [NiceGeo: Open Visual Editor](command:nicegeo.visualEditor.open)
+
+Tip: open Command Palette and type `NiceGeo:` to browse the full set.

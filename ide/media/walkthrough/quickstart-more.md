@@ -1,7 +1,13 @@
-# Go further
+# Explore more and contribute
 
-- **Completion**: `Ctrl+Space` inside `.ncg` files (keywords, tactics in proofs, context-aware names).
-- **Proof Mode**: try the **NiceGeo: Proof Mode tutorial** walkthrough next.
-- **Visual editor**: Command Palette → **NiceGeo: Open Visual Editor**.
+## Continue learning
 
-Open **Settings** and search for `nicegeo` to adjust diagnostics timing and proof-state follow-cursor behavior.
+- Open **Getting Started: Proof Mode tutorial** from this step.
+- Follow the guided, hands-on proof-state walkthrough.
+
+## Contribute to NiceGeo
+
+- GitHub project: [nicegeo/nicegeo](https://github.com/nicegeo/nicegeo)
+- Report issues, suggest UX improvements, or submit PRs.
+
+Thanks for helping improve the language and IDE experience.

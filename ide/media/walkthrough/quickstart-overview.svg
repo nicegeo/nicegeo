@@ -1,0 +1,39 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NiceGeo quick start overview">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="44" y="52" width="1192" height="616" rx="16" fill="#252526" stroke="#3c3c3c"/>
+  <rect x="44" y="52" width="1192" height="56" rx="16" fill="#333333"/>
+  <circle cx="78" cy="80" r="8" fill="#f48771"/>
+  <circle cx="106" cy="80" r="8" fill="#e2c08d"/>
+  <circle cx="134" cy="80" r="8" fill="#89d185"/>
+  <text x="172" y="87" fill="#cccccc" font-size="20" font-family="Arial, sans-serif">NiceGeo: Quick start</text>
+
+  <rect x="84" y="142" width="300" height="486" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="108" y="182" fill="#dcdcaa" font-size="22" font-family="Arial, sans-serif">Steps</text>
+  <rect x="108" y="206" width="252" height="54" rx="8" fill="#094771" stroke="#0e639c"/>
+  <text x="124" y="240" fill="#ffffff" font-size="18" font-family="Arial, sans-serif">1. Open sample</text>
+  <rect x="108" y="274" width="252" height="54" rx="8" fill="#2d2d30" stroke="#3c3c3c"/>
+  <text x="124" y="308" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">2. Run diagnostics</text>
+  <rect x="108" y="342" width="252" height="54" rx="8" fill="#2d2d30" stroke="#3c3c3c"/>
+  <text x="124" y="376" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">3. Try completion</text>
+
+  <rect x="420" y="142" width="772" height="486" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="456" y="188" fill="#4ec9b0" font-size="28" font-family="Arial, sans-serif">.ncg language support</text>
+  <text x="456" y="234" fill="#cccccc" font-size="21" font-family="Arial, sans-serif">Diagnostics, completion, hover, go to definition</text>
+  <text x="456" y="270" fill="#cccccc" font-size="21" font-family="Arial, sans-serif">Proof Mode + live Proof State sidebar</text>
+
+  <rect x="456" y="314" width="300" height="220" rx="10" fill="#252526" stroke="#3c3c3c"/>
+  <text x="476" y="350" fill="#dcdcaa" font-size="20" font-family="Arial, sans-serif">Editor</text>
+  <text x="476" y="390" fill="#9cdcfe" font-size="18" font-family="monospace">Theorem id : (A : Type) -&gt; A -&gt; A</text>
+  <text x="476" y="425" fill="#c586c0" font-size="18" font-family="monospace">Proof.</text>
+  <text x="476" y="458" fill="#ce9178" font-size="18" font-family="monospace">  intros A a.</text>
+  <text x="476" y="491" fill="#ce9178" font-size="18" font-family="monospace">  exact a.</text>
+  <text x="476" y="524" fill="#c586c0" font-size="18" font-family="monospace">Qed.</text>
+
+  <rect x="792" y="314" width="360" height="220" rx="10" fill="#252526" stroke="#3c3c3c"/>
+  <text x="812" y="350" fill="#dcdcaa" font-size="20" font-family="Arial, sans-serif">Proof State</text>
+  <text x="812" y="388" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Goal: A</text>
+  <text x="812" y="422" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Context: A : Type, a : A</text>
+  <text x="812" y="456" fill="#89d185" font-size="18" font-family="Arial, sans-serif">Status: tactic applied</text>
+
+  <text x="456" y="590" fill="#bbbbbb" font-size="18" font-family="Arial, sans-serif">Open a bundled tutorial file and follow step-by-step actions.</text>
+</svg>

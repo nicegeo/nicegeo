@@ -1,0 +1,29 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NiceGeo Proof Mode overview">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="50" y="56" width="1180" height="608" rx="16" fill="#252526" stroke="#3c3c3c"/>
+  <text x="90" y="108" fill="#cccccc" font-size="30" font-family="Arial, sans-serif">Proof Mode (cursor-driven)</text>
+
+  <rect x="90" y="140" width="640" height="484" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="118" y="184" fill="#9cdcfe" font-size="19" font-family="monospace">Theorem walkthrough_id : (A : Type) -&gt; A -&gt; A</text>
+  <text x="118" y="220" fill="#c586c0" font-size="19" font-family="monospace">Proof.</text>
+  <rect x="114" y="238" width="372" height="32" rx="6" fill="#2d2d30"/>
+  <text x="124" y="260" fill="#ce9178" font-size="19" font-family="monospace">intros A a.</text>
+  <text x="118" y="296" fill="#ce9178" font-size="19" font-family="monospace">exact a.</text>
+  <text x="118" y="332" fill="#c586c0" font-size="19" font-family="monospace">Qed.</text>
+
+  <line x1="500" y1="244" x2="500" y2="264" stroke="#4fc1ff" stroke-width="3"/>
+  <text x="118" y="378" fill="#bbbbbb" font-size="17" font-family="Arial, sans-serif">Caret before line end: tactic not fully applied</text>
+  <text x="118" y="406" fill="#89d185" font-size="17" font-family="Arial, sans-serif">Caret at/after line end: tactic is applied</text>
+  <text x="118" y="434" fill="#bbbbbb" font-size="17" font-family="Arial, sans-serif">After Qed.: theorem proof script is complete</text>
+
+  <rect x="764" y="140" width="426" height="484" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="790" y="184" fill="#dcdcaa" font-size="22" font-family="Arial, sans-serif">Proof State</text>
+  <text x="790" y="222" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Current goal: A</text>
+  <text x="790" y="254" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Context:</text>
+  <text x="818" y="286" fill="#cccccc" font-size="17" font-family="monospace">A : Type</text>
+  <text x="818" y="314" fill="#cccccc" font-size="17" font-family="monospace">a : A</text>
+  <text x="790" y="356" fill="#89d185" font-size="18" font-family="Arial, sans-serif">Applied tactics: intros</text>
+  <text x="790" y="388" fill="#bbbbbb" font-size="18" font-family="Arial, sans-serif">Next expected: exact a.</text>
+
+  <text x="90" y="646" fill="#bbbbbb" font-size="18" font-family="Arial, sans-serif">Open tutorial - Enter Proof Mode - Watch state update while moving the cursor.</text>
+</svg>

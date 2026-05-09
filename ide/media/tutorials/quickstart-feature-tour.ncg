@@ -1,0 +1,70 @@
+(* NiceGeo Quickstart Feature Tour
+   This file is used by Getting Started buttons.
+   Each section below tells you exactly what to do and what to expect.
+   Tip: use File > Save As... to make an editable copy in your workspace.
+*)
+
+(* ============================================================= *)
+(* [DIAGNOSTICS]                                                 *)
+(* Action: Run command "NiceGeo: Run Diagnostics".              *)
+(* Expect: parse/type issues show as squiggles and in Problems. *)
+(* Try: replace "exact" with "exat", run diagnostics, then undo.*)
+(* ============================================================= *)
+Theorem diag_demo : (A : Type) -> A -> A
+Proof.
+  intros A a.
+  exact a.
+Qed.
+
+
+(* ============================================================= *)
+(* [AUTOCOMPLETION]                                              *)
+(* Action: place cursor on the blank line below and type "ex".   *)
+(* Then press Ctrl/Cmd+Space.                                    *)
+(* Expect: tactic suggestions like intros/exact/apply/split.    *)
+(* ============================================================= *)
+Theorem completion_demo : (A : Type) -> A -> A
+Proof.
+  intros A a.
+  
+  exact a.
+Qed.
+
+
+(* ============================================================= *)
+(* [HOVER]                                                       *)
+(* Action: hover on "dup" and local names ("P", "p").           *)
+(* Expect: symbol/type info in tooltip.                         *)
+(* ============================================================= *)
+Definition dup : (P : Prop) -> P -> P := fun (P : Prop) (p : P) => p
+
+Theorem hover_demo : (P : Prop) -> P -> P
+Proof.
+  intros P p.
+  exact (dup P p).
+Qed.
+
+
+(* ============================================================= *)
+(* [GO TO DEFINITION]                                            *)
+(* Action: put cursor on "dup" below and press F12.             *)
+(* Expect: jump to Definition dup above.                        *)
+(* ============================================================= *)
+Theorem goto_demo : (P : Prop) -> P -> P
+Proof.
+  intros P p.
+  exact (dup P p).
+Qed.
+
+
+(* ============================================================= *)
+(* [PROOF STATE]                                                 *)
+(* Action: enter Proof Mode and open the Proof State sidebar.   *)
+(* Expect: goals/hypotheses update as cursor moves by tactic.   *)
+(* ============================================================= *)
+Theorem proofstate_demo : (A : Prop) -> (B : Prop) -> And A B -> A
+Proof.
+  intros A B h.
+  destruct_ands h a b.
+  exact a.
+Qed.

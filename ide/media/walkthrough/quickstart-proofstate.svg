@@ -1,0 +1,20 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NiceGeo proof state feature">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="70" y="70" width="1140" height="580" rx="16" fill="#252526" stroke="#3c3c3c"/>
+  <text x="110" y="126" fill="#cccccc" font-size="32" font-family="Arial, sans-serif">Proof State Feature</text>
+  <text x="110" y="162" fill="#bbbbbb" font-size="20" font-family="Arial, sans-serif">Enable Proof Mode and watch state while moving the cursor.</text>
+
+  <rect x="110" y="210" width="700" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="140" y="260" fill="#c586c0" font-size="20" font-family="monospace">Proof.</text>
+  <text x="140" y="296" fill="#ce9178" font-size="20" font-family="monospace">  intros A B h.</text>
+  <rect x="136" y="312" width="310" height="32" rx="6" fill="#2d2d30"/>
+  <text x="140" y="334" fill="#ce9178" font-size="20" font-family="monospace">  destruct_ands h a b.</text>
+  <text x="140" y="370" fill="#ce9178" font-size="20" font-family="monospace">  exact a.</text>
+  <text x="140" y="406" fill="#c586c0" font-size="20" font-family="monospace">Qed.</text>
+
+  <rect x="840" y="210" width="330" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="866" y="258" fill="#dcdcaa" font-size="22" font-family="Arial, sans-serif">Proof State</text>
+  <text x="866" y="298" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Goal: A</text>
+  <text x="866" y="330" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Hyp: h : And A B</text>
+  <text x="866" y="362" fill="#89d185" font-size="18" font-family="Arial, sans-serif">Applied: intros, destruct_ands</text>
+</svg>

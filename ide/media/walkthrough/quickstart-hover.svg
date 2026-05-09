@@ -1,0 +1,18 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NiceGeo hover feature">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="70" y="70" width="1140" height="580" rx="16" fill="#252526" stroke="#3c3c3c"/>
+  <text x="110" y="126" fill="#cccccc" font-size="32" font-family="Arial, sans-serif">Hover Information</text>
+  <text x="110" y="162" fill="#bbbbbb" font-size="20" font-family="Arial, sans-serif">Place cursor on a symbol and pause.</text>
+
+  <rect x="110" y="210" width="760" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="140" y="260" fill="#9cdcfe" font-size="20" font-family="monospace">Theorem t : A -&gt; A := dup</text>
+  <rect x="500" y="292" width="340" height="130" rx="10" fill="#2d2d30" stroke="#3c3c3c"/>
+  <text x="522" y="332" fill="#dcdcaa" font-size="18" font-family="Arial, sans-serif">walkthrough_dup</text>
+  <text x="522" y="364" fill="#cccccc" font-size="16" font-family="monospace">(A: Prop) -&gt; A -&gt; A</text>
+
+  <rect x="900" y="210" width="260" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="924" y="258" fill="#dcdcaa" font-size="22" font-family="Arial, sans-serif">Use hover for</text>
+  <text x="924" y="296" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">- Type previews</text>
+  <text x="924" y="326" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">- Local context</text>
+  <text x="924" y="356" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">- Tactic hints</text>
+</svg>
