@@ -89,6 +89,7 @@ let token lexbuf =
     | ident -> IDENT (Sedlexing.Utf8.lexeme lexbuf)
     | "Proof." -> PROOF
     | "Qed." -> QED
+    | "Admitted." -> ADMITTED
     | "." -> PERIOD
     | eof -> EOF
     | any ->

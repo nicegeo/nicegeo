@@ -11,7 +11,8 @@ type tactic = {
 
 type proof_script = {
   tactics : tactic list;
-  qed_loc : range;  (** Span of the closing [Qed] token. *)
+  qed_loc : range;  (** Span of the closing [Qed] or [Admitted] token. *)
+  admitted : bool;
 }
 
 type theorem_body =
@@ -46,7 +47,7 @@ type directive =
 
 type import = { filename : string }
 
-(** A parsed statement (either a declaration or a directive). *)
+(** A parsed statement (either a declaration, directive, or import statement). *)
 type statement =
   | Declaration of declaration
       (** [Declaration(decl)] is a parsed declaration, intended to be added to the

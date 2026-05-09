@@ -50,6 +50,9 @@ let raise_at (tm : term) (lctx : local_ctx option) (e : Error.error_type) : 'a =
     (Error.ElabError
        { context = { loc = Some tm.loc; decl_name = None; lctx }; error_type = e })
 
+(** Represents a normalized term. The main difference is that applications are flattened:
+    instead of representing [f a b] as [app (app f a) b], it is represented as
+    [VarSpine (f, [a, b])]. *)
 type normterm =
   | Fun of string option * int * term * term
   | Arrow of string option * int * term * term
@@ -86,7 +89,7 @@ let rec whnf (e : ctx) (tm : term) : term =
       | _ -> tm)
   | _ -> tm
 
-(** converts a term to a [normterm]. tm must already be in whnf (call whnf) *)
+(** Converts a term to a [normterm]. The term must already be in whnf (call whnf) *)
 let rec to_norm (e : ctx) (tm : term) : normterm =
   match tm.inner with
   | Fun (arg, bid, ty_arg, body) -> Fun (arg, bid, ty_arg, body)
@@ -264,8 +267,8 @@ let rec unify ?(depth = 0) (e : ctx) ?(lctx : local_ctx = []) (t1 : term) (g : r
              error_type = Error.UnificationFailure { left = t1; right = t2 };
            })
 
-(** checks that tm has expected type ty, trying to fill in metavariables (holes). If it
-    fails it throws an ElabError. *)
+(** Checks that [tm] has expected type [ty], trying to fill in metavariables (holes). If
+    it fails it throws an [ElabError]. *)
 let rec checktype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) (ty : term) : unit
     =
   (* print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e ~lctx tm ^ " has type " ^ Pretty.term_to_string e ~lctx ty); *)
@@ -458,6 +461,8 @@ and infertype ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : term =
   (* print_endline ("inferred type " ^ Pretty.term_to_string e res ^ " for term " ^ Pretty.term_to_string e tm); *)
   res
 
+(** Throws an error if the given term is not a type, otherwise does nothing. It checks
+    that the type of the given term is a [Sort] (or that it is a [Hole]). *)
 and check_is_type ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : unit =
   (* print_endline (String.make depth ' ' ^ "checking " ^ Pretty.term_to_string e tm ^ " is a type"); *)
   match tm.inner with
@@ -473,6 +478,8 @@ and check_is_type ?(depth = 0) (e : ctx) (lctx : local_ctx) (tm : term) : unit =
             (Some lctx)
             (Error.TypeExpected { not_type = tm; not_type_infer = inferred_ty_whnf }))
 
+(** For each hole in [tm], creates an entry in the hashtable [e.metas] to track
+    information about the hole (like its solution). *)
 let rec create_metas (e : ctx) (tm : term) (stack : int list) =
   match tm.inner with
   | Hole m -> Hashtbl.replace e.metas m { sol = None; ty = None; context = stack }
@@ -487,8 +494,10 @@ let rec create_metas (e : ctx) (tm : term) (stack : int list) =
       create_metas e arg stack
   | _ -> ()
 
-(** Needs to be trusted for faithfulness of meaning. This returns tm unchanged except for
-    replacing metavariables (holes) with their solutions. *)
+(** Returns [tm] unchanged except for replacing metavariables (holes) with their
+    solutions. (Needs to be trusted for faithfulness of meaning.)
+
+    Throws an error if it encounters a hole without a solution. *)
 let rec replace_metas (e : ctx) ?(complete = true) (tm : term) : term =
   match tm.inner with
   | Hole m -> (
@@ -530,12 +539,18 @@ let rec list_axioms_used (e : ctx) (tm : term) : string list =
   | App (f, arg) -> union (list_axioms_used e f) (list_axioms_used e arg)
   | _ -> []
 
+(** [elaborate ctx tm ty] elaborates term [tm] with an optional expected type [ty].
+
+    Uses [checktype] or [infertype] to do the actual work of assigning the holes. *)
 let elaborate (e : ctx) (tm : term) (ty : term option) : term =
   create_metas e tm [];
   (match ty with Some ty -> checktype e [] tm ty | None -> ignore (infertype e [] tm));
   let tm_filled = replace_metas e tm in
   Hashtbl.clear e.metas;
-  (* Re-typecheck term to validate meta solutions *)
+  (* Re-typecheck term to validate meta solutions.
+    This is necessary as explained in issue #116
+    (https://github.com/nicegeo/nicegeo/issues/116).
+  *)
   (match ty with
   | Some ty -> checktype e [] tm_filled ty
   | None -> ignore (infertype e [] tm_filled));
@@ -553,16 +568,33 @@ let process_decl (e : ctx) (d : declaration) : unit =
          })
   else
     try
-      let ty_filled = elaborate e d.ty None in
+      let ty_filled : term = elaborate e d.ty None in
       check_is_type e [] ty_filled;
       match d.kind with
       | Theorem body ->
-          let proof =
+          let proof_filled =
             match body with
-            | Proof script -> replace_metas e (Tactic.run e script.tactics ty_filled)
-            | DefEq proof -> proof
+            | Proof script ->
+                let proof_tm = replace_metas e (Tactic.run e script.tactics ty_filled) in
+                let proof_filled = elaborate e proof_tm (Some ty_filled) in
+                if
+                  List.mem "sorry_ax" (list_axioms_used e proof_filled)
+                  && not script.admitted
+                then
+                  raise
+                    (Error.ElabError
+                       {
+                         context =
+                           {
+                             loc = Some script.qed_loc;
+                             decl_name = Some d.name;
+                             lctx = None;
+                           };
+                         error_type = Error.SorryRequiresAdmitted;
+                       })
+                else proof_filled
+            | DefEq proof -> elaborate e proof (Some ty_filled)
           in
-          let proof_filled = elaborate e proof (Some ty_filled) in
 
           Kernel.Interface.add_theorem
             e.kenv
