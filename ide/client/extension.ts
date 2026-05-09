@@ -56,6 +56,9 @@ export function activate(context: vscode.ExtensionContext) {
   const proofModeStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
   proofModeStatusBar.command = "nicegeo.proofMode.toggle";
   context.subscriptions.push(proofModeStatusBar);
+  let proofModeStatusBarVisible = false;
+  const isNiceGeoActiveEditor = () =>
+    vscode.window.activeTextEditor?.document.languageId === "nicegeo";
 
   const syncProofModeContext = (enabled: boolean) => {
     void vscode.commands.executeCommand("setContext", "nicegeo.proofMode", enabled);
@@ -71,9 +74,16 @@ export function activate(context: vscode.ExtensionContext) {
     proofModeStatusBar.tooltip = proofModeEnabled
       ? "NiceGeo proof mode is on (click to toggle)"
       : "NiceGeo proof mode is off (click to toggle)";
-    proofModeStatusBar.show();
+    if (isNiceGeoActiveEditor()) {
+      proofModeStatusBar.show();
+      proofModeStatusBarVisible = true;
+    } else if (proofModeStatusBarVisible) {
+      proofModeStatusBar.hide();
+      proofModeStatusBarVisible = false;
+    }
   };
   refreshProofModeStatusBar();
+  status.setVisible(isNiceGeoActiveEditor());
 
   const setProofMode = async (enabled: boolean) => {
     proofModeEnabled = enabled;
@@ -306,6 +316,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
+      status.setVisible(isNiceGeoActiveEditor());
+      refreshProofModeStatusBar();
       scheduleProofStateFollowCursor();
       if (proofModeEnabled && editor && editor.document.languageId === "nicegeo") {
         void refreshProofStateAtCursor(editor, true, true);
