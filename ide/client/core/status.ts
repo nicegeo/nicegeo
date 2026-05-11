@@ -8,13 +8,13 @@ export type NiceGeoStatusState =
 
 export class NiceGeoStatusBar {
   private readonly item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  private visible = false;
 
   constructor(private readonly onClickCommand: string) {}
 
   init() {
     this.item.command = this.onClickCommand;
     this.set({ kind: "idle" });
-    this.item.show();
   }
 
   dispose() {
@@ -39,6 +39,18 @@ export class NiceGeoStatusBar {
         this.item.text = `NiceGeo: ${state.count} issue${state.count === 1 ? "" : "s"}`;
         this.item.tooltip = "Click to open diagnostics output";
         return;
+    }
+  }
+
+  setVisible(visible: boolean) {
+    if (visible && !this.visible) {
+      this.item.show();
+      this.visible = true;
+      return;
+    }
+    if (!visible && this.visible) {
+      this.item.hide();
+      this.visible = false;
     }
   }
 }

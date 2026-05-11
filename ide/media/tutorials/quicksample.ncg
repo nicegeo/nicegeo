@@ -1,0 +1,15 @@
+(* NiceGeo walkthrough — quick sample
+   This file ships with the extension. Use File > Save As… if you want a writable
+   copy in your workspace.
+
+   The proof below uses a tactic script: Proof. … Qed. That is the style the
+   Proof State panel follows when Proof Mode is on (see the Proof Mode walkthrough).
+*)
+
+Theorem walkthrough_hello : (A : Type) -> A -> A
+Proof.
+  intros A a.
+  exact a.
+Qed.
+
+#check walkthrough_hello

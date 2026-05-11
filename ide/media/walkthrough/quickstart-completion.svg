@@ -1,0 +1,21 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NiceGeo autocompletion feature">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="70" y="70" width="1140" height="580" rx="16" fill="#252526" stroke="#3c3c3c"/>
+  <text x="110" y="126" fill="#cccccc" font-size="32" font-family="Arial, sans-serif">Autocompletion</text>
+  <text x="110" y="162" fill="#bbbbbb" font-size="20" font-family="Arial, sans-serif">Press Ctrl+Space / Cmd+Space in .ncg files.</text>
+
+  <rect x="110" y="210" width="720" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="140" y="258" fill="#9cdcfe" font-size="20" font-family="monospace">Proof.</text>
+  <text x="140" y="292" fill="#ce9178" font-size="20" font-family="monospace">  in</text>
+  <rect x="210" y="264" width="300" height="210" rx="10" fill="#2d2d30" stroke="#3c3c3c"/>
+  <text x="230" y="300" fill="#dcdcaa" font-size="18" font-family="Arial, sans-serif">Suggestions</text>
+  <text x="230" y="334" fill="#cccccc" font-size="17" font-family="Arial, sans-serif">intros</text>
+  <text x="230" y="364" fill="#cccccc" font-size="17" font-family="Arial, sans-serif">exact</text>
+  <text x="230" y="394" fill="#cccccc" font-size="17" font-family="Arial, sans-serif">apply</text>
+  <text x="230" y="424" fill="#cccccc" font-size="17" font-family="Arial, sans-serif">split</text>
+
+  <rect x="860" y="210" width="300" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="886" y="256" fill="#dcdcaa" font-size="22" font-family="Arial, sans-serif">Related setting</text>
+  <text x="886" y="300" fill="#9cdcfe" font-size="18" font-family="monospace">nicegeo.completion.enable</text>
+  <text x="886" y="338" fill="#cccccc" font-size="17" font-family="Arial, sans-serif">Enable / disable completion.</text>
+</svg>

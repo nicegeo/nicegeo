@@ -56,6 +56,9 @@ export function activate(context: vscode.ExtensionContext) {
   const proofModeStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
   proofModeStatusBar.command = "nicegeo.proofMode.toggle";
   context.subscriptions.push(proofModeStatusBar);
+  let proofModeStatusBarVisible = false;
+  const isNiceGeoActiveEditor = () =>
+    vscode.window.activeTextEditor?.document.languageId === "nicegeo";
 
   const syncProofModeContext = (enabled: boolean) => {
     void vscode.commands.executeCommand("setContext", "nicegeo.proofMode", enabled);
@@ -71,9 +74,16 @@ export function activate(context: vscode.ExtensionContext) {
     proofModeStatusBar.tooltip = proofModeEnabled
       ? "NiceGeo proof mode is on (click to toggle)"
       : "NiceGeo proof mode is off (click to toggle)";
-    proofModeStatusBar.show();
+    if (isNiceGeoActiveEditor()) {
+      proofModeStatusBar.show();
+      proofModeStatusBarVisible = true;
+    } else if (proofModeStatusBarVisible) {
+      proofModeStatusBar.hide();
+      proofModeStatusBarVisible = false;
+    }
   };
   refreshProofModeStatusBar();
+  status.setVisible(isNiceGeoActiveEditor());
 
   const setProofMode = async (enabled: boolean) => {
     proofModeEnabled = enabled;
@@ -84,6 +94,100 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   const clientStart = client.start();
+
+  const openBundledNcG = async (relativePath: string) => {
+    const uri = vscode.Uri.file(context.asAbsolutePath(relativePath));
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document, {
+      viewColumn: vscode.ViewColumn.Beside,
+      preview: false,
+    });
+  };
+
+  const openBundledNcGAtLine = async (relativePath: string, line: number) => {
+    const uri = vscode.Uri.file(context.asAbsolutePath(relativePath));
+    const document = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(document, {
+      viewColumn: vscode.ViewColumn.Beside,
+      preview: false,
+    });
+    const target = new vscode.Position(line, 0);
+    editor.selection = new vscode.Selection(target, target);
+    editor.revealRange(
+      new vscode.Range(target, target),
+      vscode.TextEditorRevealType.InCenter,
+    );
+  };
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openQuickSample", async () => {
+      await openBundledNcG(path.join("media", "tutorials", "quicksample.ncg"));
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openProofTutorial", async () => {
+      await openBundledNcG(path.join("media", "tutorials", "nicegeo-walkthrough-tutorial.ncg"));
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openProofModeWalkthrough", async () => {
+      await vscode.commands.executeCommand(
+        "workbench.action.openWalkthrough",
+        "nicegeo.nicegeo-ide#nicegeo.proofMode",
+        false,
+      );
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openSettings", async () => {
+      await vscode.commands.executeCommand("workbench.action.openSettings", "nicegeo");
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureDiagnostics", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 9);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureCompletion", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 22);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureHover", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 33);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureGoto", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 44);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.openFeatureProofState", async () => {
+      await openBundledNcGAtLine(path.join("media", "tutorials", "quickstart-feature-tour.ncg"), 54);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.ackQuickstartMore", () => {
+      /* walkthrough completionEvents */
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nicegeo.walkthrough.ackProofPlay", () => {
+      /* walkthrough completionEvents */
+    }),
+  );
 
   let proofStateFollowDebounce: ReturnType<typeof setTimeout> | undefined;
   const refreshProofStateAtCursor = async (
@@ -212,6 +316,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
+      status.setVisible(isNiceGeoActiveEditor());
+      refreshProofModeStatusBar();
       scheduleProofStateFollowCursor();
       if (proofModeEnabled && editor && editor.document.languageId === "nicegeo") {
         void refreshProofStateAtCursor(editor, true, true);

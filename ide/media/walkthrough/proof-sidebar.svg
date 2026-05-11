@@ -1,0 +1,35 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Open and use NiceGeo Proof State sidebar">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="44" y="52" width="1192" height="616" rx="16" fill="#252526" stroke="#3c3c3c"/>
+
+  <rect x="44" y="52" width="62" height="616" rx="16" fill="#333333"/>
+  <circle cx="75" cy="126" r="14" fill="#0e639c"/>
+  <text x="68" y="131" fill="#ffffff" font-size="14" font-family="Arial, sans-serif">N</text>
+  <circle cx="75" cy="184" r="10" fill="#5a5a5a"/>
+  <circle cx="75" cy="222" r="10" fill="#5a5a5a"/>
+  <text x="118" y="92" fill="#cccccc" font-size="21" font-family="Arial, sans-serif">Activity bar - open NiceGeo</text>
+
+  <rect x="116" y="112" width="728" height="520" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="144" y="154" fill="#dcdcaa" font-size="22" font-family="Arial, sans-serif">tutorial.ncg</text>
+  <text x="144" y="194" fill="#9cdcfe" font-size="18" font-family="monospace">Theorem walkthrough_and_elim ...</text>
+  <text x="144" y="228" fill="#c586c0" font-size="18" font-family="monospace">Proof.</text>
+  <text x="144" y="262" fill="#ce9178" font-size="18" font-family="monospace">  intros A B h.</text>
+  <rect x="140" y="276" width="290" height="30" rx="6" fill="#2d2d30"/>
+  <text x="144" y="296" fill="#ce9178" font-size="18" font-family="monospace">  destruct_ands h a b.</text>
+  <text x="144" y="330" fill="#ce9178" font-size="18" font-family="monospace">  exact a.</text>
+  <text x="144" y="364" fill="#c586c0" font-size="18" font-family="monospace">Qed.</text>
+  <line x1="382" y1="282" x2="382" y2="302" stroke="#4fc1ff" stroke-width="3"/>
+  <text x="144" y="414" fill="#bbbbbb" font-size="17" font-family="Arial, sans-serif">Move cursor through tactic lines</text>
+
+  <rect x="868" y="112" width="338" height="520" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="892" y="154" fill="#dcdcaa" font-size="22" font-family="Arial, sans-serif">Proof State</text>
+  <text x="892" y="194" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Goal: A</text>
+  <text x="892" y="228" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Hypotheses:</text>
+  <text x="912" y="258" fill="#cccccc" font-size="16" font-family="monospace">A : Prop</text>
+  <text x="912" y="284" fill="#cccccc" font-size="16" font-family="monospace">B : Prop</text>
+  <text x="912" y="310" fill="#cccccc" font-size="16" font-family="monospace">h : And A B</text>
+  <text x="892" y="356" fill="#89d185" font-size="17" font-family="Arial, sans-serif">Applied: intros, destruct_ands</text>
+  <text x="892" y="388" fill="#bbbbbb" font-size="17" font-family="Arial, sans-serif">Next: exact a.</text>
+
+  <text x="118" y="656" fill="#bbbbbb" font-size="18" font-family="Arial, sans-serif">If updates stop, ensure Proof Mode is on and this view is visible.</text>
+</svg>

@@ -1,0 +1,23 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Categorized NiceGeo commands">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="60" y="60" width="1160" height="600" rx="16" fill="#252526" stroke="#3c3c3c"/>
+  <text x="100" y="120" fill="#cccccc" font-size="34" font-family="Arial, sans-serif">Manual Commands (When You Need Control)</text>
+  <text x="100" y="156" fill="#bbbbbb" font-size="20" font-family="Arial, sans-serif">Default behavior is automated from settings. Use these manually for explicit actions.</text>
+
+  <rect x="100" y="210" width="340" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="128" y="254" fill="#dcdcaa" font-size="24" font-family="Arial, sans-serif">Diagnostics</text>
+  <text x="128" y="294" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">NiceGeo: Run Diagnostics</text>
+  <text x="128" y="328" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">NiceGeo: Show Diagnostics Output</text>
+
+  <rect x="470" y="210" width="340" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="498" y="254" fill="#dcdcaa" font-size="24" font-family="Arial, sans-serif">Proof Mode</text>
+  <text x="498" y="294" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">NiceGeo: Enter Proof Mode</text>
+  <text x="498" y="328" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">NiceGeo: Exit Proof Mode</text>
+  <text x="498" y="362" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">NiceGeo: Toggle Proof Mode</text>
+
+  <rect x="840" y="210" width="340" height="380" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="868" y="254" fill="#dcdcaa" font-size="24" font-family="Arial, sans-serif">Utilities</text>
+  <text x="868" y="294" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">NiceGeo: Open Visual Editor</text>
+  <text x="868" y="328" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Open walkthrough tutorial</text>
+  <text x="868" y="362" fill="#cccccc" font-size="18" font-family="Arial, sans-serif">Open quick sample</text>
+</svg>

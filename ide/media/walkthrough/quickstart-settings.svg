@@ -1,0 +1,21 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simple NiceGeo settings overview">
+  <rect width="1280" height="720" fill="#1e1e1e"/>
+  <rect x="60" y="60" width="1160" height="600" rx="16" fill="#252526" stroke="#3c3c3c"/>
+  <text x="100" y="120" fill="#cccccc" font-size="34" font-family="Arial, sans-serif">NiceGeo Settings</text>
+  <text x="100" y="158" fill="#bbbbbb" font-size="20" font-family="Arial, sans-serif">Set these once, then most behavior runs automatically.</text>
+
+  <rect x="100" y="210" width="1080" height="110" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="130" y="254" fill="#dcdcaa" font-size="24" font-family="Arial, sans-serif">Execution</text>
+  <text x="360" y="254" fill="#9cdcfe" font-size="20" font-family="monospace">nicegeo.execution.mode</text>
+  <text x="840" y="254" fill="#cccccc" font-size="20" font-family="Arial, sans-serif">dune | installedBinary</text>
+
+  <rect x="100" y="340" width="1080" height="110" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="130" y="384" fill="#dcdcaa" font-size="24" font-family="Arial, sans-serif">Diagnostics</text>
+  <text x="360" y="384" fill="#9cdcfe" font-size="20" font-family="monospace">trigger + debounce</text>
+  <text x="840" y="384" fill="#cccccc" font-size="20" font-family="Arial, sans-serif">onSave | onType | both</text>
+
+  <rect x="100" y="470" width="1080" height="110" rx="12" fill="#1f1f1f" stroke="#3c3c3c"/>
+  <text x="130" y="514" fill="#dcdcaa" font-size="24" font-family="Arial, sans-serif">Proof State</text>
+  <text x="360" y="514" fill="#9cdcfe" font-size="20" font-family="monospace">followCursor + debounce</text>
+  <text x="840" y="514" fill="#cccccc" font-size="20" font-family="Arial, sans-serif">live updates</text>
+</svg>
